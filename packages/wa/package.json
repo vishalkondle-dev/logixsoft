@@ -1,0 +1,40 @@
+{
+  "name": "@logixsoft/wa",
+  "version": "1.0.0",
+  "description": "Client SDK and direct helper functions for OpenWA WhatsApp API Gateway",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "whatsapp",
+    "openwa",
+    "waha",
+    "messaging",
+    "sms",
+    "client",
+    "sdk"
+  ],
+  "license": "MIT"
+}

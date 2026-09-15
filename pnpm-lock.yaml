@@ -164,6 +164,18 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/wa:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.0
+        version: 20.19.43
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+
 packages:
 
   '@ast-grep/napi-darwin-arm64@0.40.5':

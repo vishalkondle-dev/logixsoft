@@ -1,0 +1,38 @@
+{
+  "name": "@logixsoft/mail",
+  "version": "1.0.0",
+  "description": "Email sender via SMTP for Cloudflare Workers",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external cloudflare:sockets",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260902.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.122.0"
+  },
+  "keywords": [
+    "email",
+    "smtp",
+    "cloudflare-workers",
+    "mailer"
+  ],
+  "license": "MIT"
+}

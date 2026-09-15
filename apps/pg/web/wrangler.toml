@@ -1,0 +1,16 @@
+name = "pg-web"
+main = ".open-next/worker.js"
+compatibility_date = "2026-08-13"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "payment.logixsoft.in/*", zone_name = "logixsoft.in" },
+  { pattern = "pg.logixsoft.in/*", zone_name = "logixsoft.in" }
+]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[vars]
+NEXT_PUBLIC_API_URL = "https://payment-api.logixsoft.in"

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+.turbo/
+.next/
+out/
+*.log
+.DS_Store
+.claude-flow
+.dev.vars
+.prod.vars
+.wrangler/
+.env
+.env.local
+.env.*.local
+*.tsbuildinfo
+.open-next/

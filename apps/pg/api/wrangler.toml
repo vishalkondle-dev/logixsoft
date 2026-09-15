@@ -1,0 +1,19 @@
+name = "pg-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-13"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+routes = [
+  { pattern = "payment-api.logixsoft.in/*", zone_name = "logixsoft.in" },
+  { pattern = "pg-api.logixsoft.in/*", zone_name = "logixsoft.in" }
+]
+
+[[env.production.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "21d770a176254310990534eb1f814faf"
+
+[env.production.vars]
+NODE_ENV = "production"
+API_URL = "https://payment-api.logixsoft.in"
+FRONTEND_URL = "https://payment.logixsoft.in"

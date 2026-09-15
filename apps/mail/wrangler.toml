@@ -1,0 +1,19 @@
+name = "mail"
+main = "src/worker.ts"
+compatibility_date = "2026-08-13"
+
+[[routes]]
+pattern = "mail.logixsoft.in"
+custom_domain = true
+
+[vars]
+SMTP_HOST = "smtp.zoho.in"
+SMTP_PORT = "465"
+SMTP_SECURE = "true"
+SMTP_USER = "support@logixsoft.in"
+
+[env.development]
+vars = { SMTP_HOST = "smtp.zoho.in", SMTP_PORT = "465", SMTP_SECURE = "true", SMTP_USER = "support@logixsoft.in" }
+
+[env.production]
+vars = { SMTP_HOST = "smtp.zoho.in", SMTP_PORT = "465", SMTP_SECURE = "true", SMTP_USER = "support@logixsoft.in" }

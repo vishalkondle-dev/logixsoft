@@ -1,5 +1,5 @@
 {
-  "name": "@logixsoft/mail",
+  "name": "@logixsoft/mail-worker",
   "version": "1.0.0",
   "description": "Email sender via SMTP for Cloudflare Workers",
   "type": "module",

@@ -2,3 +2,7 @@ name = "logix-dine-api"
 main = "src/index.ts"
 compatibility_date = "2026-08-13"
 compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "dine-api.logixsoft.in/*", zone_name = "logixsoft.in" }
+]

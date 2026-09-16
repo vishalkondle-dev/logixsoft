@@ -1,6 +1,8 @@
 {
   "private": true,
-  "scripts": {},
+  "scripts": {
+    "deploy:dine-api": "pnpm --filter logix-dine-api run deploy"
+  },
   "devDependencies": {
     "turbo": "latest"
   }

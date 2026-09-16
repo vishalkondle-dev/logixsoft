@@ -1,6 +1,6 @@
 # @logixsoft/helpers
 
-Shared helpers, infrastructure primitives, cryptography, HTTP response utilities, and string manipulation tools for Logixsoft applications.
+Shared helpers, infrastructure primitives, cryptography, HTTP response utilities, string tools, validation, currency, and date/data utilities for Logixsoft applications.
 
 ## Installation
 
@@ -24,12 +24,146 @@ Within the monorepo workspace:
 | **`crypto`** | `@logixsoft/helpers/crypto` | Cryptographically secure prefixed IDs, random tokens, OTP generation, and timing-safe HMAC verification |
 | **`http`** | `@logixsoft/helpers/http` | Standard API response envelopes (`successResponse`, `errorResponse`), HTTP status constants, and status predicates |
 | **`string`** | `@logixsoft/helpers/string` | Privacy masking (email, phone, secrets), slugification, casing transformations, truncation, and sanitization |
+| **`currency`** | `@logixsoft/helpers/currency` | Safe paise/rupee conversions, Indian numbering system currency formatting (`formatINR`), and UPI URI generators |
+| **`validators`** | `@logixsoft/helpers/validators` | Zero-dependency validators for emails, URLs, Indian phone numbers, UPI VPAs, UUIDs, and PIN codes |
+| **`date`** | `@logixsoft/helpers/date` | Relative time formatting, human duration parser, token expiry checks, and IST day boundaries |
+| **`data`** | `@logixsoft/helpers/data` | Type-safe object picking/omitting, array chunking, groupBy, deduplication, deep cloning, and empty checks |
 
 All helpers are also accessible directly or namespaced from the root import:
 ```typescript
-import { createDbWithClient, generateId, successResponse, maskEmail } from '@logixsoft/helpers';
+import { createDbWithClient, generateId, successResponse, toPaise, isVpa } from '@logixsoft/helpers';
 // or namespaced:
-import { db, crypto, http, string } from '@logixsoft/helpers';
+import { db, crypto, http, string, currency, validators, date, data } from '@logixsoft/helpers';
+```
+
+---
+
+## Module: `currency` (`@logixsoft/helpers/currency`)
+
+Precision-safe currency conversions, Indian Rupee (`INR`) formatting, and UPI URI generation.
+
+### Exported API
+
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `toPaise(rupees)` | Function | Converts decimal rupees to integer paise without floating-point rounding bugs. |
+| `toRupees(paise)` | Function | Converts integer paise to rupees with 2-decimal precision. |
+| `formatINR(paise, options?)` | Function | Formats paise into Indian currency notation (e.g. `125000` -> `"₹1,250.00"`). |
+| `buildUpiUri(params)` | Function | Constructs standardized UPI deep link payment URI (`upi://pay?...`). |
+| `parseUpiUri(uri)` | Function | Parses a `upi://pay?...` payment URI back into structured parameters. |
+| `UpiUriParams` | Type | Interface for UPI payment parameters (`pa`, `pn`, `amount`, `tr`, `tn`, etc.). |
+
+### Usage Examples
+
+```typescript
+import { toPaise, toRupees, formatINR, buildUpiUri } from '@logixsoft/helpers/currency';
+
+// Safe conversions (prevents 19.99 * 100 float bug)
+toPaise(19.99); // 1999
+toRupees(1999); // 19.99
+
+// Indian currency notation
+formatINR(125000); // "₹1,250.00"
+formatINR(10000000); // "₹1,00,000.00"
+
+// Generate UPI QR / deep link
+const upiUri = buildUpiUri({
+  pa: 'merchant@okhdfcbank',
+  pn: 'Logixsoft',
+  amount: 50000,
+  isPaise: true,
+  tr: 'order_1024',
+  tn: 'Payment for Order #1024',
+});
+// "upi://pay?pa=merchant%40okhdfcbank&pn=Logixsoft&am=500.00&tr=order_1024&cu=INR&tn=Payment+for+Order+%231024"
+```
+
+---
+
+## Module: `validators` (`@logixsoft/helpers/validators`)
+
+Zero-dependency validation primitives.
+
+### Exported API
+
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `isEmail(val)` | Function | RFC 5322 compliant email validator. |
+| `isUrl(val)` | Function | Validates HTTP/HTTPS URLs. |
+| `isIndianPhone(val)` | Function | Validates 10-digit Indian mobile numbers (supports +91/91/0 prefixes). |
+| `isVpa(val)` | Function | Validates UPI Virtual Payment Addresses (`name@bank`, `9876543210@paytm`). |
+| `isUuid(val)` | Function | Validates UUID strings (v1-v5). |
+| `isNumeric(val)` | Function | Checks if value is a valid finite number or numeric string. |
+| `isPostalCode(val)` | Function | Validates 6-digit Indian PIN codes. |
+| `isNonEmptyString(val)` | Function | Type predicate asserting string is non-empty after trimming. |
+
+### Usage Examples
+
+```typescript
+import { isVpa, isIndianPhone, isEmail } from '@logixsoft/helpers/validators';
+
+isVpa('merchant@okhdfcbank'); // true
+isIndianPhone('+919876543210'); // true
+isEmail('support@logixsoft.in'); // true
+```
+
+---
+
+## Module: `date` (`@logixsoft/helpers/date`)
+
+Date manipulation, durations, relative time, and IST boundaries.
+
+### Exported API
+
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `parseDuration(duration)` | Function | Converts duration strings to milliseconds (`'15m'` -> `900_000`, `'2h'`, `'7d'`). |
+| `formatRelativeTime(date)` | Function | Human-readable relative time (`"just now"`, `"2 minutes ago"`, `"in 5 minutes"`). |
+| `isExpired(date)` | Function | Checks if a timestamp or date is in the past. |
+| `addDuration(date, duration)` | Function | Adds duration string or ms to a date. |
+| `getStartOfDay(date?, timezone?)` | Function | Start of day (00:00:00.000) for a timezone (defaults to `'Asia/Kolkata'`). |
+| `getEndOfDay(date?, timezone?)` | Function | End of day (23:59:59.999) for a timezone (defaults to `'Asia/Kolkata'`). |
+
+### Usage Examples
+
+```typescript
+import { parseDuration, formatRelativeTime, isExpired, getStartOfDay } from '@logixsoft/helpers/date';
+
+parseDuration('15m'); // 900000
+formatRelativeTime(new Date(Date.now() - 120_000)); // "2 minutes ago"
+isExpired(order.expiresAt); // true / false
+
+// Indian Standard Time day boundary for daily revenue dashboards
+const todayStart = getStartOfDay(); // 2026-09-16T00:00:00.000+05:30
+```
+
+---
+
+## Module: `data` (`@logixsoft/helpers/data`)
+
+Object and array manipulation utilities.
+
+### Exported API
+
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `pick(obj, keys)` | Function | Typesafe object property picker. |
+| `omit(obj, keys)` | Function | Typesafe object property omitter. |
+| `chunk(array, size)` | Function | Splits an array into batches of a given size. |
+| `groupBy(array, keyFn)` | Function | Groups array elements by key or extractor function. |
+| `unique(array, keyFn?)` | Function | Deduplicates array items. |
+| `deepClone(obj)` | Function | Deep clone using `structuredClone` (with fallback). |
+| `isEmpty(val)` | Function | Checks if value is empty (`null`, `undefined`, `""`, `[]`, `{}`). |
+
+### Usage Examples
+
+```typescript
+import { pick, omit, chunk, groupBy } from '@logixsoft/helpers/data';
+
+pick({ id: 1, name: 'Logixsoft', secret: 'abc' }, ['id', 'name']); // { id: 1, name: 'Logixsoft' }
+omit({ id: 1, name: 'Logixsoft', secret: 'abc' }, ['secret']);     // { id: 1, name: 'Logixsoft' }
+chunk([1, 2, 3, 4, 5], 2);                                        // [[1, 2], [3, 4], [5]]
+groupBy(orders, (o) => o.status);                                  // { SUCCESS: [...], PENDING: [...] }
 ```
 
 ---
@@ -55,66 +189,6 @@ Database connection initialization, connection pooling, Cloudflare Workers / ser
 | `DbClientResult<TSchema>` | Type | Return structure for `createDbWithClient` containing `db`, `client`, and `close()`. |
 | `ConnectionHealth` | Type | Health check report structure. |
 
-### Usage Examples
-
-#### 1. Serverless / Cloudflare Workers (`createDbWithClient`)
-
-```typescript
-import { createDbWithClient, type Database } from '@logixsoft/helpers/db';
-import * as schema from './db/schema'; // Application-specific schema
-
-export function getScopedDb(connectionString: string) {
-  return createDbWithClient<typeof schema>({
-    connectionString,
-    schema,
-    maxConnections: 1,
-    idleTimeout: 30,
-  });
-}
-
-// Inside a request handler:
-export async function handleRequest(env: Env) {
-  const { db, close } = getScopedDb(env.DATABASE_URL);
-  try {
-    const orders = await db.query.paymentOrder.findMany();
-    return Response.json(orders);
-  } finally {
-    await close();
-  }
-}
-```
-
-#### 2. Stateful Node.js Server (`getDb` Singleton)
-
-```typescript
-import { getDb, closeDb } from '@logixsoft/helpers/db';
-import * as schema from './db/schema';
-
-export const db = getDb<typeof schema>({
-  connectionString: process.env.DATABASE_URL,
-  schema,
-  maxConnections: 10,
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  await closeDb();
-  process.exit(0);
-});
-```
-
-#### 3. Database Health Check (`checkConnection`)
-
-```typescript
-import { checkConnection, getDb } from '@logixsoft/helpers/db';
-
-const db = getDb();
-const health = await checkConnection(db);
-
-console.log(health);
-// { ok: true, latencyMs: 14 }
-```
-
 ---
 
 ## Module: `crypto` (`@logixsoft/helpers/crypto`)
@@ -133,33 +207,6 @@ Cryptographically secure ID generators, random tokens, OTP generation, and timin
 | `signHmacSha256(data, secret)` | Function | Computes HMAC-SHA256 hex signature. |
 | `verifyHmacSha256(data, secret, signature)` | Function | Timing-safe HMAC verification (protects webhooks/APIs against timing attacks). |
 | `timingSafeEqual(a, b)` | Function | Constant-time string comparison. |
-
-### Usage Examples
-
-#### 1. Generate Prefixed IDs and Tokens
-
-```typescript
-import { generateId, generateToken, generateNumericOtp } from '@logixsoft/helpers/crypto';
-
-const orderId = generateId('order');    // "order_2p8Xk9Lm4Q1vA0..."
-const apiKey = `pg_live_${generateToken(24)}`; // "pg_live_7f8a9e..."
-const otp = generateNumericOtp(6);      // "582910"
-```
-
-#### 2. Sign and Verify Webhook Payloads (Timing-Safe)
-
-```typescript
-import { signHmacSha256, verifyHmacSha256 } from '@logixsoft/helpers/crypto';
-
-// When dispatching a webhook:
-const signature = signHmacSha256(payloadJson, webhookSecret);
-
-// When receiving and verifying a webhook:
-const isValid = verifyHmacSha256(payloadJson, webhookSecret, incomingSignature);
-if (!isValid) {
-  return Response.json({ error: 'Invalid signature' }, { status: 401 });
-}
-```
 
 ---
 
@@ -181,34 +228,6 @@ Standardized JSON API response envelopes, HTTP status codes, and status predicat
 | `ApiSuccessResponse<T>` | Type | Successful response structure. |
 | `ApiErrorResponse` | Type | Error response structure. |
 | `ApiError` | Type | Error body containing `code`, `message`, and optional `details`. |
-
-### Usage Examples
-
-#### 1. Standard Success Response
-
-```typescript
-import { successResponse, HttpStatus } from '@logixsoft/helpers/http';
-
-export async function getOrderHandler(c: Context) {
-  const order = await getOrderById(c.req.param('id'));
-  return c.json(successResponse(order), HttpStatus.OK);
-}
-```
-
-#### 2. Standard Error Response
-
-```typescript
-import { errorResponse, HttpStatus } from '@logixsoft/helpers/http';
-
-export async function createPaymentHandler(c: Context) {
-  if (!isValidAmount) {
-    return c.json(
-      errorResponse('Amount must be at least 100 paise', 'INVALID_AMOUNT', { minAmount: 100 }),
-      HttpStatus.BAD_REQUEST
-    );
-  }
-}
-```
 
 ---
 
@@ -234,34 +253,3 @@ String manipulation, PII privacy masking, slugification, casing utilities, trunc
 | `stripHtml(html)` | Function | Strips HTML tags and decodes common HTML entities. |
 | `normalizeWhitespace(text)` | Function | Collapses multiple consecutive spaces and newlines into single spaces. |
 | `pluralize(count, singular, plural?)` | Function | Pluralizes word based on numerical count (e.g. `'1 order'`, `'5 orders'`). |
-
-### Usage Examples
-
-#### 1. Privacy Masking
-
-```typescript
-import { maskEmail, maskPhone, maskSecret } from '@logixsoft/helpers/string';
-
-maskEmail('vishal.kondle@logixsoft.in');   // "v***e@logixsoft.in"
-maskPhone('+919876543210');                // "+91 ****** 3210"
-maskSecret('whsec_8f3a9e21b7c4d019a8bc4'); // "whsec_8f...8bc4"
-```
-
-#### 2. Slugification & Casing
-
-```typescript
-import { slugify, titleCase } from '@logixsoft/helpers/string';
-
-slugify('Logixsoft UPI Payment Gateway!'); // "logixsoft-upi-payment-gateway"
-titleCase('payment_order_status');          // "Payment Order Status"
-```
-
-#### 3. Truncation & Initials
-
-```typescript
-import { truncate, getInitials, pluralize } from '@logixsoft/helpers/string';
-
-truncate('Payment received for Invoice #1024', 20); // "Payment received..."
-getInitials('Vishal Kondle');                         // "VK"
-pluralize(3, 'transaction');                         // "3 transactions"
-```

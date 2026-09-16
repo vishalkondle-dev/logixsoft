@@ -1,7 +1,7 @@
 {
   "name": "@logixsoft/helpers",
   "version": "1.0.0",
-  "description": "Shared helpers, database connection lifecycle, cryptography, HTTP envelopes, string utilities, and primitives for Logixsoft applications",
+  "description": "Shared helpers, database connection lifecycle, cryptography, HTTP envelopes, string utilities, validators, currency, date, and primitives for Logixsoft applications",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -31,14 +31,34 @@
       "types": "./dist/string.d.ts",
       "import": "./dist/string.js",
       "require": "./dist/string.cjs"
+    },
+    "./date": {
+      "types": "./dist/date.d.ts",
+      "import": "./dist/date.js",
+      "require": "./dist/date.cjs"
+    },
+    "./data": {
+      "types": "./dist/data.d.ts",
+      "import": "./dist/data.js",
+      "require": "./dist/data.cjs"
+    },
+    "./validators": {
+      "types": "./dist/validators.d.ts",
+      "import": "./dist/validators.js",
+      "require": "./dist/validators.cjs"
+    },
+    "./currency": {
+      "types": "./dist/currency.d.ts",
+      "import": "./dist/currency.js",
+      "require": "./dist/currency.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/db.ts src/crypto.ts src/http.ts src/string.ts --format esm,cjs --dts --clean",
-    "dev": "tsup src/index.ts src/db.ts src/crypto.ts src/http.ts src/string.ts --format esm,cjs --dts --watch",
+    "build": "tsup src/index.ts src/db.ts src/crypto.ts src/http.ts src/string.ts src/date.ts src/data.ts src/validators.ts src/currency.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts src/db.ts src/crypto.ts src/http.ts src/string.ts src/date.ts src/data.ts src/validators.ts src/currency.ts --format esm,cjs --dts --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },

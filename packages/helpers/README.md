@@ -322,3 +322,69 @@ await cache.hset('session:xyz', 'role', 'admin');
 const session = await cache.hgetall('session:xyz');
 ```
 
+---
+
+## Module: `storage` (`@logixsoft/helpers/storage`)
+
+Cloudflare Workers, Edge, and Node.js compatible MinIO & AWS S3 Storage Client. Built with native **Web Crypto (`crypto.subtle`)** and AWS Signature Version 4 (SigV4) with **zero external dependencies**.
+
+### Client Configuration
+
+```ts
+import { createStorageClient } from '@logixsoft/helpers/storage';
+
+// Initialize a client bound to a specific bucket & credentials
+export const restroStorage = createStorageClient({
+  endpoint: 'https://storage.logixsoft.in', // Defaults to https://storage.logixsoft.in
+  bucket: 'restro',
+  accessKeyId: process.env.MINIO_ACCESS_KEY || 'vishalkondledev',
+  secretAccessKey: process.env.MINIO_SECRET_KEY || 'Vammavg@1605',
+});
+```
+
+### Storage Client API
+
+| Method | Returns | Description |
+| :--- | :--- | :--- |
+| `upload(key, data, options?)` | `Promise<{ key, url, etag }>` | Uploads `string`, `Uint8Array`, `ArrayBuffer`, or `Blob` to the bucket. |
+| `download(key)` | `Promise<Uint8Array \| null>` | Downloads object content as raw bytes. Returns `null` if 404. |
+| `downloadText(key)` | `Promise<string \| null>` | Downloads object content as UTF-8 string. Returns `null` if 404. |
+| `downloadJson<T>(key)` | `Promise<T \| null>` | Downloads and parses object as JSON. Returns `null` if 404. |
+| `exists(key)` | `Promise<boolean>` | Performs fast `HEAD` request checking if object exists. |
+| `head(key)` | `Promise<FileMetadata \| null>` | Retrieves object metadata (`size`, `contentType`, `etag`, `lastModified`). |
+| `delete(key)` | `Promise<boolean>` | Deletes an object from the bucket. |
+| `deleteMany(keys[])` | `Promise<number>` | Batch deletes multiple objects. |
+| `getSignedDownloadUrl(key, expiresInSeconds?)` | `Promise<string>` | Generates a time-limited presigned GET URL (default 3600s). |
+| `getSignedUploadUrl(key, options?)` | `Promise<string>` | Generates a presigned PUT URL for direct browser uploads (default 900s). |
+| `getPublicUrl(key)` | `string` | Returns public URL (`https://storage.logixsoft.in/<bucket>/<key>`). |
+| `list(options?)` | `Promise<ListFilesResult>` | Lists objects in the bucket with optional `prefix` and pagination. |
+| `createBucketIfNotExists()` | `Promise<boolean>` | Checks if bucket exists; creates it if missing. |
+
+### Code Examples
+
+```ts
+// 1. Upload a file
+const uploadResult = await restroStorage.upload('menu/item-1.jpg', imageBuffer, {
+  contentType: 'image/jpeg',
+});
+
+// 2. Direct browser upload with Presigned URL
+const uploadUrl = await restroStorage.getSignedUploadUrl('uploads/avatar.png', {
+  expiresInSeconds: 900,
+  contentType: 'image/png',
+});
+
+// 3. Time-limited presigned download URL
+const downloadUrl = await restroStorage.getSignedDownloadUrl('invoices/inv-101.pdf', 3600);
+
+// 4. Download and parse JSON
+const settings = await restroStorage.downloadJson<{ theme: string }>('config/settings.json');
+
+// 5. Check if file exists
+const isPresent = await restroStorage.exists('menu/item-1.jpg');
+
+// 6. Delete file
+await restroStorage.delete('menu/old-item.jpg');
+```
+
+

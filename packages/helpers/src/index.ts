@@ -33,3 +33,7 @@ export * as currency from './currency';
 // Cloudflare Durable Objects Redis-like cache and client
 export * from './do';
 export * as durableObject from './do';
+
+// MinIO & S3 Storage client
+export * from './storage';
+export * as storage from './storage';

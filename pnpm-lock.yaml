@@ -12,6 +12,22 @@ importers:
         specifier: latest
         version: 2.10.13
 
+  apps/logix-dine/api:
+    dependencies:
+      hono:
+        specifier: ^4.6.0
+        version: 4.13.7
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^5.20260902.1
+        version: 5.20260914.1
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+      wrangler:
+        specifier: ^4.122.0
+        version: 4.131.2(@cloudflare/workers-types@5.20260914.1)(@types/node@26.5.1)
+
   apps/mail:
     devDependencies:
       '@cloudflare/workers-types':

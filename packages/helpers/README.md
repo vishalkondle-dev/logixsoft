@@ -1,6 +1,6 @@
 # @logixsoft/helpers
 
-Shared helpers, infrastructure primitives, cryptography, and HTTP response utilities for Logixsoft applications.
+Shared helpers, infrastructure primitives, cryptography, HTTP response utilities, and string manipulation tools for Logixsoft applications.
 
 ## Installation
 
@@ -23,12 +23,13 @@ Within the monorepo workspace:
 | **`db`** | `@logixsoft/helpers/db` | Database connection lifecycle, connection pooling, Cloudflare Workers cleanup, and health checks |
 | **`crypto`** | `@logixsoft/helpers/crypto` | Cryptographically secure prefixed IDs, random tokens, OTP generation, and timing-safe HMAC verification |
 | **`http`** | `@logixsoft/helpers/http` | Standard API response envelopes (`successResponse`, `errorResponse`), HTTP status constants, and status predicates |
+| **`string`** | `@logixsoft/helpers/string` | Privacy masking (email, phone, secrets), slugification, casing transformations, truncation, and sanitization |
 
 All helpers are also accessible directly or namespaced from the root import:
 ```typescript
-import { createDbWithClient, generateId, successResponse } from '@logixsoft/helpers';
+import { createDbWithClient, generateId, successResponse, maskEmail } from '@logixsoft/helpers';
 // or namespaced:
-import { db, crypto, http } from '@logixsoft/helpers';
+import { db, crypto, http, string } from '@logixsoft/helpers';
 ```
 
 ---
@@ -192,12 +193,6 @@ export async function getOrderHandler(c: Context) {
   const order = await getOrderById(c.req.param('id'));
   return c.json(successResponse(order), HttpStatus.OK);
 }
-// Response body:
-// {
-//   "success": true,
-//   "data": { "id": "order_123", "amount": 5000 },
-//   "timestamp": "2026-09-16T04:20:00.000Z"
-// }
 ```
 
 #### 2. Standard Error Response
@@ -213,14 +208,60 @@ export async function createPaymentHandler(c: Context) {
     );
   }
 }
-// Response body:
-// {
-//   "success": false,
-//   "error": {
-//     "code": "INVALID_AMOUNT",
-//     "message": "Amount must be at least 100 paise",
-//     "details": { "minAmount": 100 }
-//   },
-//   "timestamp": "2026-09-16T04:20:00.000Z"
-// }
+```
+
+---
+
+## Module: `string` (`@logixsoft/helpers/string`)
+
+String manipulation, PII privacy masking, slugification, casing utilities, truncation, and sanitization.
+
+### Exported API
+
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `maskEmail(email)` | Function | Masks email address preserving domain (e.g. `v***e@logixsoft.in`). |
+| `maskPhone(phone, visibleDigits?)` | Function | Masks phone number preserving trailing digits (e.g. `******3210`). |
+| `maskSecret(secret, prefixLen?, suffixLen?)` | Function | Masks secret string preserving prefix/suffix (e.g. `pg_live_...d019`). |
+| `slugify(text)` | Function | Converts string into clean URL-friendly hyphenated slug. |
+| `capitalize(text)` | Function | Capitalizes the first letter of a string. |
+| `titleCase(text)` | Function | Converts snake_case, kebab-case, or camelCase to Title Case words. |
+| `camelCase(text)` | Function | Converts string to camelCase format. |
+| `snakeCase(text)` | Function | Converts string to snake_case format. |
+| `kebabCase(text)` | Function | Converts string to kebab-case format. |
+| `truncate(text, maxLen, options?)` | Function | Truncates string with ellipsis, optionally preserving word boundaries. |
+| `getInitials(name, maxInitials?)` | Function | Extracts up to N initials from full name for user avatars (e.g. `'VK'`). |
+| `stripHtml(html)` | Function | Strips HTML tags and decodes common HTML entities. |
+| `normalizeWhitespace(text)` | Function | Collapses multiple consecutive spaces and newlines into single spaces. |
+| `pluralize(count, singular, plural?)` | Function | Pluralizes word based on numerical count (e.g. `'1 order'`, `'5 orders'`). |
+
+### Usage Examples
+
+#### 1. Privacy Masking
+
+```typescript
+import { maskEmail, maskPhone, maskSecret } from '@logixsoft/helpers/string';
+
+maskEmail('vishal.kondle@logixsoft.in');   // "v***e@logixsoft.in"
+maskPhone('+919876543210');                // "+91 ****** 3210"
+maskSecret('whsec_8f3a9e21b7c4d019a8bc4'); // "whsec_8f...8bc4"
+```
+
+#### 2. Slugification & Casing
+
+```typescript
+import { slugify, titleCase } from '@logixsoft/helpers/string';
+
+slugify('Logixsoft UPI Payment Gateway!'); // "logixsoft-upi-payment-gateway"
+titleCase('payment_order_status');          // "Payment Order Status"
+```
+
+#### 3. Truncation & Initials
+
+```typescript
+import { truncate, getInitials, pluralize } from '@logixsoft/helpers/string';
+
+truncate('Payment received for Invoice #1024', 20); // "Payment received..."
+getInitials('Vishal Kondle');                         // "VK"
+pluralize(3, 'transaction');                         // "3 transactions"
 ```

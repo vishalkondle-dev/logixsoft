@@ -29,3 +29,7 @@ export * as validators from './validators';
 // Currency, paise/rupee conversion, formatINR, and UPI links
 export * from './currency';
 export * as currency from './currency';
+
+// Cloudflare Durable Objects Redis-like cache and client
+export * from './do';
+export * as durableObject from './do';

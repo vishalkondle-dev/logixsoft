@@ -253,3 +253,72 @@ String manipulation, PII privacy masking, slugification, casing utilities, trunc
 | `stripHtml(html)` | Function | Strips HTML tags and decodes common HTML entities. |
 | `normalizeWhitespace(text)` | Function | Collapses multiple consecutive spaces and newlines into single spaces. |
 | `pluralize(count, singular, plural?)` | Function | Pluralizes word based on numerical count (e.g. `'1 order'`, `'5 orders'`). |
+
+---
+
+## Module: `do` (`@logixsoft/helpers/do`)
+
+Production-grade in-memory Redis-like cache powered by **Cloudflare Durable Objects**. Offers sub-millisecond in-memory cache operations with atomic counters, TTL support, hash maps, and both Worker DO binding and remote HTTP transports.
+
+### Features
+- **Redis-Compatible Commands**: `get`, `set` (with `ttl`/`ex`/`px`/`nx`/`xx`), `del`, `exists`, `incr`, `decr`, `expire`, `ttl`, `mget`, `mset`, `hget`, `hset`, `hgetall`, `hdel`, `keys`, `flush`.
+- **Cache-Aside Helper**: `remember(key, ttl, fetcher)` automatically checks the cache and runs the fetcher only on a cache miss.
+- **Dual Transport**:
+  1. Direct Cloudflare Worker DO binding (`env.CACHE`) via RPC/fetch.
+  2. Remote HTTP endpoint with optional Bearer token authentication.
+
+### Worker Setup (`wrangler.toml`)
+
+```toml
+[durable_objects]
+bindings = [{ name = "CACHE", class_name = "RedisDurableObject" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RedisDurableObject"]
+```
+
+### Export the Durable Object Class in your Worker:
+
+```ts
+import { RedisDurableObject } from '@logixsoft/helpers/do';
+
+// Re-export the DO class so Cloudflare can instantiate it
+export { RedisDurableObject };
+
+export default {
+  async fetch(request, env) {
+    // ...
+  }
+};
+```
+
+### Using the Cache Client:
+
+```ts
+import { createCacheClient } from '@logixsoft/helpers/do';
+
+// 1. Inside a Cloudflare Worker using namespace binding
+const cache = createCacheClient({ namespace: env.CACHE });
+
+// 2. Or from external app / Node.js via HTTP
+// const cache = createCacheClient({ url: 'https://cache.your-domain.workers.dev', authToken: 'secret' });
+
+// Basic operations
+await cache.set('user:101', { name: 'Vishal', plan: 'pro' }, { ttl: '15m' });
+const user = await cache.get<{ name: string }>('user:101');
+
+// Atomic counter (rate limiting, analytics)
+const visits = await cache.incr('page:views:today');
+
+// Cache-aside pattern
+const product = await cache.remember('product:99', '1h', async () => {
+  return await db.query.products.findFirst({ where: eq(products.id, 99) });
+});
+
+// Hashes
+await cache.hset('session:xyz', 'userId', 'usr_1');
+await cache.hset('session:xyz', 'role', 'admin');
+const session = await cache.hgetall('session:xyz');
+```
+

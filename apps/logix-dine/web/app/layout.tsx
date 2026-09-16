@@ -1,11 +1,10 @@
 import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+import "@mantine/notifications/styles.css";
+import "@mantine/nprogress/styles.css";
 import React from "react";
-import {
-  MantineProvider,
-  ColorSchemeScript,
-  mantineHtmlProps,
-} from "@mantine/core";
-import { theme } from "../theme";
+import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
+import { Providers } from "@/components/providers";
 
 export const metadata = {
   title: "Logix Dine",
@@ -15,7 +14,11 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: any }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" {...mantineHtmlProps}>
       <head>
@@ -27,7 +30,7 @@ export default function RootLayout({ children }: { children: any }) {
         />
       </head>
       <body>
-        <MantineProvider theme={theme}>{children}</MantineProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

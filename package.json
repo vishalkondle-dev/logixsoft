@@ -1,9 +1,11 @@
 {
   "private": true,
   "scripts": {
-    "deploy:dine-api": "pnpm --filter logix-dine-api run deploy"
+    "deploy:dine-api": "pnpm --filter logix-dine-api run deploy",
+    "deploy:dine-web": "pnpm --filter logix-dine-web run deploy"
   },
   "devDependencies": {
-    "turbo": "latest"
+    "turbo": "latest",
+    "wrangler": "^4.132.0"
   }
 }

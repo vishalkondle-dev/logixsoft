@@ -14,7 +14,7 @@ To update existing docs or add new framework documentation:
 
 ```bash
 # Update Hono
-curl -sL https://hono.dev/llms-full.txt -o docs/llms/hono.txt
+curl -sL https://hono.dev/llms-full.txt -o docs/llms/hono.md
 
 # Add another framework/tool llms.txt (example)
 # curl -sL <URL> -o docs/llms/<name>.txt

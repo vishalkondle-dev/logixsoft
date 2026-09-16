@@ -7,6 +7,7 @@ This directory contains full-text documentation and `llms.txt` / `llms-full.txt`
 | Tool / Framework | File | Source URL | Last Updated |
 | :--- | :--- | :--- | :--- |
 | **Hono** | [`hono.md`](./hono.md) | [https://hono.dev/llms-full.txt](https://hono.dev/llms-full.txt) | 2026-09-16 |
+| **Mantine** | [`mantine.md`](./mantine.md) | [https://mantine.dev/llms-full.txt](https://mantine.dev/llms-full.txt) | 2026-09-16 |
 
 ## Updating or Adding Files
 
@@ -16,6 +17,6 @@ To update existing docs or add new framework documentation:
 # Update Hono
 curl -sL https://hono.dev/llms-full.txt -o docs/llms/hono.md
 
-# Add another framework/tool llms.txt (example)
-# curl -sL <URL> -o docs/llms/<name>.md
+# Update Mantine
+curl -sL https://mantine.dev/llms-full.txt -o docs/llms/mantine.md
 ```

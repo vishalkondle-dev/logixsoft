@@ -1,6 +1,6 @@
 # @logixsoft/helpers
 
-Shared helpers and utilities for Logixsoft applications.
+Shared helpers, infrastructure primitives, cryptography, and HTTP response utilities for Logixsoft applications.
 
 ## Installation
 
@@ -18,9 +18,18 @@ Within the monorepo workspace:
 
 ## Available Modules
 
-| Module | Import Path | Description |
+| Module | Subpath Import | Description |
 | :--- | :--- | :--- |
-| **`db`** | `@logixsoft/helpers/db` (or `@logixsoft/helpers`) | Database connection lifecycle, pooling, serverless cleanup, and health checks |
+| **`db`** | `@logixsoft/helpers/db` | Database connection lifecycle, connection pooling, Cloudflare Workers cleanup, and health checks |
+| **`crypto`** | `@logixsoft/helpers/crypto` | Cryptographically secure prefixed IDs, random tokens, OTP generation, and timing-safe HMAC verification |
+| **`http`** | `@logixsoft/helpers/http` | Standard API response envelopes (`successResponse`, `errorResponse`), HTTP status constants, and status predicates |
+
+All helpers are also accessible directly or namespaced from the root import:
+```typescript
+import { createDbWithClient, generateId, successResponse } from '@logixsoft/helpers';
+// or namespaced:
+import { db, crypto, http } from '@logixsoft/helpers';
+```
 
 ---
 
@@ -49,8 +58,6 @@ Database connection initialization, connection pooling, Cloudflare Workers / ser
 
 #### 1. Serverless / Cloudflare Workers (`createDbWithClient`)
 
-In serverless or edge environments (such as Cloudflare Workers), reusing persistent connection pools across requests can cause socket timeouts or cross-request connection reuse issues. Use `createDbWithClient` to obtain a scoped instance with a single connection limit (`max: 1`) and an explicit `close()` cleanup function:
-
 ```typescript
 import { createDbWithClient, type Database } from '@logixsoft/helpers/db';
 import * as schema from './db/schema'; // Application-specific schema
@@ -78,8 +85,6 @@ export async function handleRequest(env: Env) {
 
 #### 2. Stateful Node.js Server (`getDb` Singleton)
 
-For standard persistent Node.js servers, use `getDb` to maintain a pooled singleton connection:
-
 ```typescript
 import { getDb, closeDb } from '@logixsoft/helpers/db';
 import * as schema from './db/schema';
@@ -99,8 +104,6 @@ process.on('SIGTERM', async () => {
 
 #### 3. Database Health Check (`checkConnection`)
 
-Verify database connectivity and measure query latency (e.g., in a `/health` endpoint):
-
 ```typescript
 import { checkConnection, getDb } from '@logixsoft/helpers/db';
 
@@ -109,4 +112,115 @@ const health = await checkConnection(db);
 
 console.log(health);
 // { ok: true, latencyMs: 14 }
+```
+
+---
+
+## Module: `crypto` (`@logixsoft/helpers/crypto`)
+
+Cryptographically secure ID generators, random tokens, OTP generation, and timing-safe signature verification.
+
+### Exported API
+
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `generateId(prefix?, length?)` | Function | Generates Stripe-style prefixed Base62 IDs (e.g. `order_k7x9...`, `user_8ab2...`). |
+| `generateToken(byteLength?)` | Function | Generates secure hex tokens for session IDs, password resets, and API keys. |
+| `generateNumericOtp(length?)` | Function | Generates cryptographically secure numeric OTPs (default: 6 digits). |
+| `generateRandomString(length?)` | Function | Generates random Base62 alphanumeric strings. |
+| `hashSha256(data)` | Function | Computes SHA-256 hex digest. |
+| `signHmacSha256(data, secret)` | Function | Computes HMAC-SHA256 hex signature. |
+| `verifyHmacSha256(data, secret, signature)` | Function | Timing-safe HMAC verification (protects webhooks/APIs against timing attacks). |
+| `timingSafeEqual(a, b)` | Function | Constant-time string comparison. |
+
+### Usage Examples
+
+#### 1. Generate Prefixed IDs and Tokens
+
+```typescript
+import { generateId, generateToken, generateNumericOtp } from '@logixsoft/helpers/crypto';
+
+const orderId = generateId('order');    // "order_2p8Xk9Lm4Q1vA0..."
+const apiKey = `pg_live_${generateToken(24)}`; // "pg_live_7f8a9e..."
+const otp = generateNumericOtp(6);      // "582910"
+```
+
+#### 2. Sign and Verify Webhook Payloads (Timing-Safe)
+
+```typescript
+import { signHmacSha256, verifyHmacSha256 } from '@logixsoft/helpers/crypto';
+
+// When dispatching a webhook:
+const signature = signHmacSha256(payloadJson, webhookSecret);
+
+// When receiving and verifying a webhook:
+const isValid = verifyHmacSha256(payloadJson, webhookSecret, incomingSignature);
+if (!isValid) {
+  return Response.json({ error: 'Invalid signature' }, { status: 401 });
+}
+```
+
+---
+
+## Module: `http` (`@logixsoft/helpers/http`)
+
+Standardized JSON API response envelopes, HTTP status codes, and status predicates for consistent API contracts across Cloudflare Workers, Hono, and Next.js.
+
+### Exported API
+
+| Name | Type | Description |
+| :--- | :--- | :--- |
+| `successResponse(data, meta?)` | Function | Constructs `{ success: true, data, meta?, timestamp }`. |
+| `errorResponse(message, code?, details?)` | Function | Constructs `{ success: false, error: { code, message, details? }, timestamp }`. |
+| `HttpStatus` | Object | Standard HTTP status code constants (`OK: 200`, `NOT_FOUND: 404`, etc.). |
+| `isSuccessStatus(status)` | Function | Returns `true` for 2xx status codes. |
+| `isClientError(status)` | Function | Returns `true` for 4xx status codes. |
+| `isServerError(status)` | Function | Returns `true` for 5xx status codes. |
+| `ApiResponse<T>` | Type | Union type (`ApiSuccessResponse<T> \| ApiErrorResponse`). |
+| `ApiSuccessResponse<T>` | Type | Successful response structure. |
+| `ApiErrorResponse` | Type | Error response structure. |
+| `ApiError` | Type | Error body containing `code`, `message`, and optional `details`. |
+
+### Usage Examples
+
+#### 1. Standard Success Response
+
+```typescript
+import { successResponse, HttpStatus } from '@logixsoft/helpers/http';
+
+export async function getOrderHandler(c: Context) {
+  const order = await getOrderById(c.req.param('id'));
+  return c.json(successResponse(order), HttpStatus.OK);
+}
+// Response body:
+// {
+//   "success": true,
+//   "data": { "id": "order_123", "amount": 5000 },
+//   "timestamp": "2026-09-16T04:20:00.000Z"
+// }
+```
+
+#### 2. Standard Error Response
+
+```typescript
+import { errorResponse, HttpStatus } from '@logixsoft/helpers/http';
+
+export async function createPaymentHandler(c: Context) {
+  if (!isValidAmount) {
+    return c.json(
+      errorResponse('Amount must be at least 100 paise', 'INVALID_AMOUNT', { minAmount: 100 }),
+      HttpStatus.BAD_REQUEST
+    );
+  }
+}
+// Response body:
+// {
+//   "success": false,
+//   "error": {
+//     "code": "INVALID_AMOUNT",
+//     "message": "Amount must be at least 100 paise",
+//     "details": { "minAmount": 100 }
+//   },
+//   "timestamp": "2026-09-16T04:20:00.000Z"
+// }
 ```

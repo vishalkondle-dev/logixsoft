@@ -1,7 +1,7 @@
 {
   "name": "@logixsoft/helpers",
   "version": "1.0.0",
-  "description": "Shared helpers, database connection lifecycle, and utilities for Logixsoft applications",
+  "description": "Shared helpers, database connection lifecycle, cryptography, HTTP envelopes, and utilities for Logixsoft applications",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -16,14 +16,24 @@
       "types": "./dist/db.d.ts",
       "import": "./dist/db.js",
       "require": "./dist/db.cjs"
+    },
+    "./crypto": {
+      "types": "./dist/crypto.d.ts",
+      "import": "./dist/crypto.js",
+      "require": "./dist/crypto.cjs"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "import": "./dist/http.js",
+      "require": "./dist/http.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/db.ts --format esm,cjs --dts --clean",
-    "dev": "tsup src/index.ts src/db.ts --format esm,cjs --dts --watch",
+    "build": "tsup src/index.ts src/db.ts src/crypto.ts src/http.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts src/db.ts src/crypto.ts src/http.ts --format esm,cjs --dts --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },

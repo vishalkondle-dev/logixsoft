@@ -8,8 +8,11 @@ import {
 import { theme } from "../theme";
 
 export const metadata = {
-  title: "Mantine Next.js template",
-  description: "I am using Mantine with Next.js!",
+  title: "Logix Dine",
+  description: "Logix Dine Restaurant Management & Dining Platform",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: any }) {

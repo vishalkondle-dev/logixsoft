@@ -1,0 +1,43 @@
+{
+  "name": "@logixsoft/logix-dine",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./schemas/*": {
+      "types": "./schemas/*.ts",
+      "import": "./schemas/*.ts",
+      "default": "./schemas/*.ts"
+    },
+    "./schemas": {
+      "types": "./schemas/index.ts",
+      "import": "./schemas/index.ts",
+      "default": "./schemas/index.ts"
+    },
+    "./types/*": {
+      "types": "./types/*.ts",
+      "import": "./types/*.ts",
+      "default": "./types/*.ts"
+    },
+    "./types": {
+      "types": "./types/index.ts",
+      "import": "./types/index.ts",
+      "default": "./types/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

@@ -7,6 +7,8 @@ import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import { timing } from 'hono/timing';
 import { trimTrailingSlash } from 'hono/trailing-slash';
+import { createOpenApiDocument, openApi } from 'hono-zod-openapi';
+import { HealthResponseSchema } from '@logixsoft/logix-dine/schemas/health';
 
 type Bindings = {
   // Bindings for Cloudflare Workers (e.g. KV, D1, Queues, Environment variables)
@@ -16,16 +18,16 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// 1. Request ID Middleware: Generates a unique UUID for each request & sets X-Request-Id header
+// 1. Request ID Middleware: Generates unique UUID for each request & sets X-Request-Id
 app.use('*', requestId());
 
-// 2. Performance Timing: Adds Server-Timing headers to inspect API latency
+// 2. Performance Timing: Adds Server-Timing headers
 app.use('*', timing());
 
 // 3. Logger Middleware: Logs request methods, paths, status codes, and execution duration
 app.use('*', logger());
 
-// 4. Secure Headers: Protects against common web vulnerabilities (XSS, Clickjacking, MIME-sniffing)
+// 4. Secure Headers: Protects against common web vulnerabilities
 app.use(
   '*',
   secureHeaders({
@@ -35,11 +37,8 @@ app.use(
   })
 );
 
-// 5. CORS Middleware: Configures Cross-Origin Resource Sharing for web & mobile apps
+// 5. CORS Middleware
 const ALLOWED_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
   'https://dine.logixsoft.in',
   'https://dine-api.logixsoft.in',
   'https://logixsoft.in',
@@ -49,11 +48,11 @@ app.use(
   '*',
   cors({
     origin: (origin, c) => {
-      if (!origin) return '*';
+      if (!origin) return ALLOWED_ORIGINS[0];
       if (ALLOWED_ORIGINS.includes(origin)) return origin;
       const frontendUrl = c.env?.FRONTEND_URL;
       if (frontendUrl && origin === frontendUrl) return origin;
-      return origin; // Permissive for API consumers & dev environments
+      return ALLOWED_ORIGINS[0];
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -63,13 +62,13 @@ app.use(
   })
 );
 
-// 6. Trailing Slash Middleware: Normalizes URLs by trimming trailing slashes
+// 6. Trailing Slash Middleware
 app.use('*', trimTrailingSlash());
 
-// 7. Pretty JSON Middleware: Formats JSON responses when requested via ?pretty
+// 7. Pretty JSON Middleware
 app.use('*', prettyJSON());
 
-// 8. Body Limit Middleware: Prevents large payload denial-of-service (5MB limit)
+// 8. Body Limit Middleware (5MB limit)
 app.use(
   '*',
   bodyLimit({
@@ -86,13 +85,58 @@ app.use(
   })
 );
 
-// Health check endpoint
-app.get('/health', (c) => {
-  return c.json({
-    status: 'ok',
-    service: 'logix-dine-api',
-    timestamp: new Date().toISOString(),
-  });
+// OpenAPI: Health Check Route
+app.get(
+  '/health',
+  openApi({
+    tags: ['Health'],
+    summary: 'Check API Health',
+    description: 'Returns the health status and metadata for logix-dine-api',
+    responses: {
+      200: HealthResponseSchema,
+    },
+  }),
+  (c) => {
+    return c.var.res(200, {
+      status: 'ok',
+      service: 'logix-dine-api',
+      timestamp: new Date().toISOString(),
+    });
+  }
+);
+
+// Register OpenAPI 3.1 specification at /doc
+createOpenApiDocument(app, {
+  info: {
+    title: 'Logix Dine API',
+    version: '1.0.0',
+    description: 'OpenAPI specification for Logix Dine API service',
+  },
+  servers: [
+    {
+      url: 'https://dine-api.logixsoft.in',
+      description: 'Production server',
+    },
+  ],
+});
+
+// Interactive API Documentation via Scalar UI at /ui
+app.get('/ui', (c) => {
+  return c.html(`<!doctype html>
+<html>
+  <head>
+    <title>Logix Dine API Reference</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { margin: 0; }
+    </style>
+  </head>
+  <body>
+    <script id="api-reference" data-url="/doc"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  </body>
+</html>`);
 });
 
 // 404 Not Found Handler

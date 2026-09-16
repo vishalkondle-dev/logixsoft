@@ -8,7 +8,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.6.0"
+    "@logixsoft/logix-dine": "workspace:*",
+    "hono": "^4.6.0",
+    "hono-zod-openapi": "^1.1.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260902.1",

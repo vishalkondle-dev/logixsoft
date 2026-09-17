@@ -39,6 +39,21 @@ function normalizePhone(input: string): string {
   return cleaned.startsWith('+') ? cleaned : `+${digits}`;
 }
 
+/**
+ * Extract the session cookie from a Better Auth response as a request
+ * `Cookie` header. Better Auth's api methods need the REQUEST cookie —
+ * passing response headers (which only carry Set-Cookie) silently
+ * resolves no session.
+ */
+function sessionCookieHeader(res: Response): Headers | undefined {
+  const setCookie = res.headers.get('set-cookie');
+  const cookiePair = setCookie?.split(';')[0] ?? '';
+  if (!cookiePair) return undefined;
+  const headers = new Headers();
+  headers.set('cookie', cookiePair);
+  return headers;
+}
+
 // 1. Request ID Middleware
 app.use('*', requestId());
 
@@ -224,17 +239,20 @@ const handleVerifyOtp = async (c: any) => {
       try {
         await auth.api.updateUser({
           body: { name: parsed.name },
-          headers: verifyRes.headers,
+          headers: sessionCookieHeader(verifyRes),
         });
       } catch (err) {
         console.warn('[updateUser] Note on updateUser:', err);
       }
     }
 
-    // 3. Fetch established session details and fresh user record directly from database
-    const sessionData = await auth.api.getSession({
-      headers: verifyRes.headers,
-    });
+    // 3. Fetch established session: pass the session cookie as a REQUEST
+    //    header — verifyRes.headers only carries Set-Cookie (response), and
+    //    getSession/auth calls need the Cookie header to resolve a session.
+    const sessionCookieHeaders = sessionCookieHeader(verifyRes);
+    const sessionData = sessionCookieHeaders
+      ? await auth.api.getSession({ headers: sessionCookieHeaders })
+      : await auth.api.getSession();
 
     const [freshUser] = await db
       .select()

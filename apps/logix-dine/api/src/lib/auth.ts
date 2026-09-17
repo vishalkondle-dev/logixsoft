@@ -3,7 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { phoneNumber } from 'better-auth/plugins';
 import { sendWhatsAppOtp } from '@logixsoft/wa';
 import { createDbWithClient, type Database } from '../db';
-import { authSchema } from '../db/auth-schema';
+import { authSchema } from '@logixsoft/logix-dine/schemas/auth-schema';
 
 export interface AuthEnv {
   DATABASE_URL?: string;

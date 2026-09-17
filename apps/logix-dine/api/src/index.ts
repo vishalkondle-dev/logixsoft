@@ -19,7 +19,7 @@ import {
 } from '@logixsoft/logix-dine/schemas/auth';
 import { createAuth, AUTH_BASE_PATH, type AuthEnv } from './lib/auth';
 import { rateLimiter } from './lib/rate-limit';
-import { user } from './db/auth-schema';
+import { user } from '@logixsoft/logix-dine/schemas/auth-schema';
 
 type Bindings = AuthEnv & {
   ENVIRONMENT?: string;

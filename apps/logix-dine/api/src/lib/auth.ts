@@ -136,6 +136,10 @@ export function createAuth(overrides?: Partial<AuthEnv>) {
     },
 
     rateLimit: {
+      // NOTE: better-auth's built-in limiter only fires on its own HTTP
+      // endpoints (auth.handler). Our custom /auth/phone/* routes call
+      // auth.api.* internally, so rate limiting is enforced in the Hono
+      // middleware layer instead (see src/lib/rate-limit.ts).
       enabled: false,
     },
 

@@ -18,6 +18,7 @@ import {
   AuthSessionSchema,
 } from '@logixsoft/logix-dine/schemas/auth';
 import { createAuth, AUTH_BASE_PATH, type AuthEnv } from './lib/auth';
+import { rateLimiter } from './lib/rate-limit';
 import { user } from './db/auth-schema';
 
 type Bindings = AuthEnv & {
@@ -329,11 +330,12 @@ const handleBetterAuth = async (c: any) => {
 // -------------------------------------------------------------
 // Register routes under both /auth and /api/auth
 // -------------------------------------------------------------
-app.post('/auth/phone/send-otp', handleSendOtp);
-app.post('/api/auth/phone/send-otp', handleSendOtp);
+// OTP endpoints are rate-limited per IP (DB-backed, works across isolates)
+app.post('/auth/phone/send-otp', rateLimiter({ keyPrefix: 'send-otp', max: 3 }), handleSendOtp);
+app.post('/api/auth/phone/send-otp', rateLimiter({ keyPrefix: 'send-otp', max: 3 }), handleSendOtp);
 
-app.post('/auth/phone/verify', handleVerifyOtp);
-app.post('/api/auth/phone/verify', handleVerifyOtp);
+app.post('/auth/phone/verify', rateLimiter({ keyPrefix: 'verify-otp', max: 10 }), handleVerifyOtp);
+app.post('/api/auth/phone/verify', rateLimiter({ keyPrefix: 'verify-otp', max: 10 }), handleVerifyOtp);
 
 app.get('/auth/me', handleGetMe);
 app.get('/api/auth/me', handleGetMe);

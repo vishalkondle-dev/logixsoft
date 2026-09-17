@@ -3,28 +3,42 @@
 import React from "react";
 import Link from "next/link";
 import {
-  Container,
-  Title,
-  Text,
-  Button,
-  Group,
-  Stack,
-  SimpleGrid,
-  Card,
-  ThemeIcon,
-  Badge,
+  Container, Title, Text, Button, Group, Stack, SimpleGrid, Card, ThemeIcon, Badge,
 } from "@mantine/core";
 import {
-  IconBrandWhatsapp,
-  IconShieldLock,
-  IconCookie,
-  IconArrowRight,
-  IconDashboard,
+  IconBrandWhatsapp, IconShieldLock, IconCookie, IconArrowRight,
+  IconShoppingCart, IconReceipt, IconBuildingStore,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
+import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function HomePage() {
   const { isAuthenticated, openLoginModal } = useAuth();
+  const { restaurant } = useRestaurant();
+
+  // Redirect owners directly to POS
+  if (isAuthenticated && restaurant) {
+    return (
+      <Container size="lg" py={60} px={0}>
+        <Stack align="center" gap="md" style={{ textAlign: "center" }}>
+          <Badge color="dinePrimary" variant="light" size="lg" radius="xl" px="md">
+            {restaurant.name}
+          </Badge>
+          <Title order={1} style={{ fontSize: "2rem", fontWeight: 800 }}>
+            Welcome back! Ready to start billing?
+          </Title>
+          <Group justify="center">
+            <Button component={Link} href="/pos" size="lg" color="dinePrimary" leftSection={<IconShoppingCart size={20} />}>
+              Go to POS
+            </Button>
+            <Button component={Link} href="/orders" size="lg" variant="default" leftSection={<IconReceipt size={20} />}>
+              View Orders
+            </Button>
+          </Group>
+        </Stack>
+      </Container>
+    );
+  }
 
   return (
     <Container size="lg" py={60} px={0}>
@@ -65,7 +79,7 @@ export default function HomePage() {
               size="lg"
               color="dinePrimary"
               rightSection={<IconArrowRight size={18} />}
-              leftSection={<IconDashboard size={18} />}
+              leftSection={<IconShoppingCart size={18} />}
             >
               Go to Protected Dashboard
             </Button>

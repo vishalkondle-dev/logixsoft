@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { theme } from "@/theme";
 import { AuthProvider } from "@/lib/auth-context";
+import { RestaurantProvider } from "@/lib/restaurant-context";
 import { AppShellLayout } from "@/components/layout/app-shell";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -31,7 +32,9 @@ export function Providers({ children }: { children: ReactNode }) {
           <NavigationProgress />
           <Notifications position="top-right" />
           <AuthProvider>
-            <AppShellLayout>{children}</AppShellLayout>
+            <RestaurantProvider>
+              <AppShellLayout>{children}</AppShellLayout>
+            </RestaurantProvider>
           </AuthProvider>
         </ModalsProvider>
       </MantineProvider>

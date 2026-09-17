@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission } from '../lib/tenancy';
+import { requirePermission, requireAuth } from '../lib/tenancy';
 import { UpdateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
@@ -30,8 +30,8 @@ app.get('/me', requirePermission('restaurant:read'), async (c) => {
   }
 });
 
-// GET /restaurants — list all restaurants the user is a member of
-app.get('/', requirePermission('restaurant:read'), async (c) => {
+// GET /restaurants — list all restaurants the user is a member of (auth only, no restaurant context needed)
+app.get('/', requireAuth(), async (c) => {
   const user = c.get('sessionUser') as any;
   const { db, close } = getDb(c);
   try {

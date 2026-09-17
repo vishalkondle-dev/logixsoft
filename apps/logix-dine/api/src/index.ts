@@ -102,7 +102,7 @@ app.use(
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'x-api-key'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'x-api-key', 'X-Restaurant-Id'],
     exposeHeaders: ['Content-Length', 'Set-Cookie', 'X-Request-Id', 'Server-Timing'],
     maxAge: 86400,
   })

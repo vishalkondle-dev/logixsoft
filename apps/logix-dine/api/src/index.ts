@@ -21,6 +21,13 @@ import { createAuth, AUTH_BASE_PATH, type AuthEnv } from './lib/auth';
 import { rateLimiter } from './lib/rate-limit';
 import { toAuthSession, toAuthUser } from '@logixsoft/logix-dine/mappers/auth';
 import { user } from '@logixsoft/logix-dine/schemas/auth-schema';
+import './types'; // Hono ContextVariableMap declarations
+import { onboardingRoutes } from './routes/onboarding';
+import { restaurantRoutes } from './routes/restaurants';
+import { outletRoutes } from './routes/outlets';
+import { menuRoutes } from './routes/menu';
+import { billingRoutes } from './routes/billing';
+import { adminRoutes } from './routes/admin';
 
 type Bindings = AuthEnv & {
   ENVIRONMENT?: string;
@@ -353,6 +360,27 @@ app.get('/api/auth/me', handleGetMe);
 
 app.on(['GET', 'POST'], `${AUTH_BASE_PATH}/*`, handleBetterAuth);
 app.on(['GET', 'POST'], `/api${AUTH_BASE_PATH}/*`, handleBetterAuth);
+
+// -------------------------------------------------------------
+// POS / Billing routes (dual-mount /xxx and /api/xxx)
+// -------------------------------------------------------------
+app.route('/onboarding', onboardingRoutes);
+app.route('/api/onboarding', onboardingRoutes);
+
+app.route('/restaurants', restaurantRoutes);
+app.route('/api/restaurants', restaurantRoutes);
+
+app.route('/outlets', outletRoutes);
+app.route('/api/outlets', outletRoutes);
+
+app.route('/menu', menuRoutes);
+app.route('/api/menu', menuRoutes);
+
+app.route('/billing', billingRoutes);
+app.route('/api/billing', billingRoutes);
+
+app.route('/admin', adminRoutes);
+app.route('/api/admin', adminRoutes);
 
 // Register OpenAPI 3.1 specification at /doc
 createOpenApiDocument(app, {

@@ -1,0 +1,268 @@
+import { Hono } from 'hono';
+import { eq, and } from 'drizzle-orm';
+import { generateId } from '@logixsoft/helpers/crypto';
+import { createDbWithClient, appSchema } from '../db';
+import { requirePermission } from '../lib/tenancy';
+import {
+  CreateCategorySchema,
+  UpdateCategorySchema,
+  CreateItemSchema,
+  UpdateItemSchema,
+  ReorderSchema,
+} from '@logixsoft/logix-dine/schemas/pos';
+import { toCategory, toMenuItem } from '@logixsoft/logix-dine/mappers/pos';
+import type { AuthEnv } from '../lib/auth';
+
+const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+
+function getDb(c: any) {
+  const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
+  return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
+}
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+
+app.get('/categories', requirePermission('menu:read'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const { db, close } = getDb(c);
+  try {
+    const cats = await db
+      .select()
+      .from(appSchema.menuCategory)
+      .where(eq(appSchema.menuCategory.restaurantId, restaurantId));
+    return c.json(cats.map(toCategory));
+  } finally {
+    await close();
+  }
+});
+
+app.post('/categories', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = CreateCategorySchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    const now = new Date();
+    const id = generateId('cat');
+    await db.insert(appSchema.menuCategory).values({
+      id,
+      restaurantId,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      sortOrder: parsed.data.sortOrder ?? 0,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const [cat] = await db.select().from(appSchema.menuCategory).where(eq(appSchema.menuCategory.id, id));
+    return c.json(toCategory(cat), 201);
+  } finally {
+    await close();
+  }
+});
+
+app.put('/categories/:id', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateCategorySchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    await db
+      .update(appSchema.menuCategory)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
+    const [cat] = await db.select().from(appSchema.menuCategory).where(eq(appSchema.menuCategory.id, id));
+    if (!cat) return c.json({ error: 'Not Found' }, 404);
+    return c.json(toCategory(cat));
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/categories/:id', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    // Check if any items exist in this category
+    const items = await db
+      .select({ id: appSchema.menuItem.id })
+      .from(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.categoryId, id), eq(appSchema.menuItem.restaurantId, restaurantId)))
+      .limit(1);
+    if (items.length) {
+      return c.json({ error: 'Conflict', message: 'Cannot delete category with items. Delete or move items first.' }, 409);
+    }
+    await db
+      .delete(appSchema.menuCategory)
+      .where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
+    return c.json({ success: true });
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/categories/reorder', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const body = await c.req.json().catch(() => []);
+  const parsed = ReorderSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    await db.transaction(async (tx) => {
+      for (const { id, sortOrder } of parsed.data) {
+        await tx
+          .update(appSchema.menuCategory)
+          .set({ sortOrder, updatedAt: new Date() })
+          .where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
+      }
+    });
+    return c.json({ success: true });
+  } finally {
+    await close();
+  }
+});
+
+// ─── Items ────────────────────────────────────────────────────────────────────
+
+app.get('/items', requirePermission('menu:read'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const categoryId = c.req.query('categoryId');
+  const { db, close } = getDb(c);
+  try {
+    const items = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(
+        categoryId
+          ? and(eq(appSchema.menuItem.restaurantId, restaurantId), eq(appSchema.menuItem.categoryId, categoryId))
+          : eq(appSchema.menuItem.restaurantId, restaurantId),
+      );
+    return c.json(items.map(toMenuItem));
+  } finally {
+    await close();
+  }
+});
+
+app.post('/items', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = CreateItemSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    // Verify category belongs to this restaurant
+    const [cat] = await db
+      .select({ id: appSchema.menuCategory.id })
+      .from(appSchema.menuCategory)
+      .where(and(eq(appSchema.menuCategory.id, parsed.data.categoryId), eq(appSchema.menuCategory.restaurantId, restaurantId)))
+      .limit(1);
+    if (!cat) return c.json({ error: 'Not Found', message: 'Category not found' }, 404);
+
+    const now = new Date();
+    const id = generateId('item');
+    await db.insert(appSchema.menuItem).values({
+      id,
+      restaurantId,
+      categoryId: parsed.data.categoryId,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      pricePaise: parsed.data.pricePaise,
+      available: true,
+      sortOrder: parsed.data.sortOrder ?? 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
+    return c.json(toMenuItem(item), 201);
+  } finally {
+    await close();
+  }
+});
+
+app.put('/items/:id', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateItemSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    await db
+      .update(appSchema.menuItem)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
+    if (!item) return c.json({ error: 'Not Found' }, 404);
+    return c.json(toMenuItem(item));
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/items/:id', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    await db
+      .delete(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    return c.json({ success: true });
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/items/:id/toggle', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [item] = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    if (!item) return c.json({ error: 'Not Found' }, 404);
+    await db
+      .update(appSchema.menuItem)
+      .set({ available: !item.available, updatedAt: new Date() })
+      .where(eq(appSchema.menuItem.id, id));
+    const [updated] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
+    return c.json(toMenuItem(updated));
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/items/reorder', requirePermission('menu:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const body = await c.req.json().catch(() => []);
+  const parsed = ReorderSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    await db.transaction(async (tx) => {
+      for (const { id, sortOrder } of parsed.data) {
+        await tx
+          .update(appSchema.menuItem)
+          .set({ sortOrder, updatedAt: new Date() })
+          .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+      }
+    });
+    return c.json({ success: true });
+  } finally {
+    await close();
+  }
+});
+
+export { app as menuRoutes };

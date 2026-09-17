@@ -27,7 +27,7 @@ export default function HomePage() {
   const { isAuthenticated, openLoginModal } = useAuth();
 
   return (
-    <Container size="lg" py={60}>
+    <Container size="lg" py={60} px={0}>
       <Stack align="center" gap="xl" style={{ textAlign: "center" }}>
         <Badge
           color="dinePrimary"

@@ -31,7 +31,7 @@ export default function ProtectedDashboardPage() {
   const { user, signOut } = useAuth();
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg" py="xl" px={0}>
       <Stack gap="xl">
         {/* Welcome Header */}
         <Group justify="space-between" align="flex-start">

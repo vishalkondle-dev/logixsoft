@@ -40,9 +40,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSession = useCallback(async () => {
     try {
-      const res = await authClient.getSession();
-      if (res?.data?.user) {
-        setUser(res.data.user as unknown as AuthUser);
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
+      const res = await fetch(`${apiBase}/auth/me`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) {
+          setUser(data.user as AuthUser);
+          return;
+        }
+      }
+
+      const clientRes = await authClient.getSession();
+      if (clientRes?.data?.user) {
+        setUser(clientRes.data.user as unknown as AuthUser);
       } else {
         setUser(null);
       }

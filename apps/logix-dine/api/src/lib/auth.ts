@@ -131,8 +131,7 @@ export function createAuth(overrides?: Partial<AuthEnv>) {
 
     session: {
       cookieCache: {
-        enabled: true,
-        maxAge: 5 * 60,
+        enabled: false,
       },
     },
 

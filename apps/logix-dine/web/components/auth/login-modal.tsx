@@ -119,7 +119,7 @@ export function LoginModal() {
       const res = await verifyOtp({
         phoneNumber,
         otp,
-        name: !userExists ? name.trim() : undefined,
+        name: name.trim() ? name.trim() : undefined,
       });
 
       setUser(res.user);

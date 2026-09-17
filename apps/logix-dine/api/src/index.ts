@@ -212,18 +212,33 @@ const handleVerifyOtp = async (c: any) => {
       );
     }
 
-    // 2. If name is provided (for new registration), update the user record
+    // 2. If name is provided, update the user record in database
     if (parsed.name) {
       await db
         .update(user)
         .set({ name: parsed.name, phoneNumberVerified: true, updatedAt: new Date() })
         .where(eq(user.phoneNumber, normalizedPhone));
+
+      try {
+        await auth.api.updateUser({
+          body: { name: parsed.name },
+          headers: verifyRes.headers,
+        });
+      } catch (err) {
+        console.warn('[updateUser] Note on updateUser:', err);
+      }
     }
 
-    // 3. Fetch established session details
+    // 3. Fetch established session details and fresh user record directly from database
     const sessionData = await auth.api.getSession({
       headers: verifyRes.headers,
     });
+
+    const [freshUser] = await db
+      .select()
+      .from(user)
+      .where(eq(user.phoneNumber, normalizedPhone))
+      .limit(1);
 
     const responseHeaders = new Headers();
     // Forward all Set-Cookie headers from Better Auth
@@ -236,14 +251,14 @@ const handleVerifyOtp = async (c: any) => {
 
     const responseBody = {
       user: {
-        id: sessionData?.user?.id || '',
-        name: parsed.name || sessionData?.user?.name || 'Guest User',
+        id: freshUser?.id || sessionData?.user?.id || '',
+        name: freshUser?.name || parsed.name || sessionData?.user?.name || 'Guest User',
         phoneNumber: normalizedPhone,
         phoneNumberVerified: true,
-        role: (sessionData?.user as any)?.role || 'CUSTOMER',
-        image: sessionData?.user?.image || null,
-        createdAt: sessionData?.user?.createdAt || new Date().toISOString(),
-        updatedAt: sessionData?.user?.updatedAt || new Date().toISOString(),
+        role: freshUser?.role || (sessionData?.user as any)?.role || 'CUSTOMER',
+        image: freshUser?.image || sessionData?.user?.image || null,
+        createdAt: freshUser?.createdAt || sessionData?.user?.createdAt || new Date().toISOString(),
+        updatedAt: freshUser?.updatedAt || sessionData?.user?.updatedAt || new Date().toISOString(),
       },
       session: {
         id: sessionData?.session?.id || '',
@@ -271,7 +286,7 @@ const handleVerifyOtp = async (c: any) => {
 };
 
 const handleGetMe = async (c: any) => {
-  const { auth, close } = getAuthInstance(c);
+  const { auth, db, close } = getAuthInstance(c);
   try {
     const sessionData = await auth.api.getSession({
       headers: c.req.raw.headers,
@@ -281,8 +296,14 @@ const handleGetMe = async (c: any) => {
       return c.json({ user: null, session: null }, 401);
     }
 
+    const [freshUser] = await db
+      .select()
+      .from(user)
+      .where(eq(user.id, sessionData.user.id))
+      .limit(1);
+
     return c.json({
-      user: sessionData.user,
+      user: freshUser || sessionData.user,
       session: sessionData.session,
     });
   } finally {

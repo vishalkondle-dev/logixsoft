@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container, Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
-  TextInput, Tabs, Loader, Center, Modal, Select, Divider, NumberInput,
+  TextInput, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconPlus, IconMinus, IconTrash, IconPrinter, IconCash, IconQrcode,
-  IconCheck, IconShoppingCart, IconX, IconTableAlias,
+  IconPlus, IconMinus, IconTrash, IconChevronRight,
+  IconCheck, IconShoppingCart, IconCash, IconTableAlias,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -141,6 +141,18 @@ export default function POSPage() {
     }
   };
 
+  const handleSend = async () => {
+    // Send = print KOT, keep order OPEN (payment collected later)
+    if (!currentOrder) return;
+    notifications.show({
+      title: `Order #${currentOrder.order.orderNo} sent to kitchen`,
+      message: "Collect payment later from Orders",
+      color: "dinePrimary",
+      icon: <IconCheck size={16} />,
+    });
+    // v2: print KOT here via printTicket()
+  };
+
   const handleSettle = async () => {
     setSettling(true);
     try {
@@ -245,9 +257,37 @@ export default function POSPage() {
 
       {currentOrder ? (
         <Stack gap="xs">
-          <Button fullWidth color="dinePrimary" onClick={() => setSettleModal(true)} leftSection={<IconCash size={16} />}>
-            Settle
-          </Button>
+          {/* Split button: Send (primary) + chevron → Settle & Send */}
+          <Group gap={0} grow>
+            <Button
+              color="dinePrimary"
+              onClick={handleSend}
+              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
+              disabled={cartItems.length === 0}
+            >
+              Send
+            </Button>
+            <Menu position="top-end" withinPortal>
+              <Menu.Target>
+                <Button
+                  color="dinePrimary"
+                  px="xs"
+                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: "1px solid rgba(255,255,255,0.3)" }}
+                  disabled={cartItems.length === 0}
+                >
+                  <IconChevronRight size={16} />
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconCash size={16} />}
+                  onClick={() => setSettleModal(true)}
+                >
+                  Settle &amp; Send
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
           <Button fullWidth variant="light" color="red" onClick={handleVoid} size="xs">
             Void Order
           </Button>
@@ -362,7 +402,7 @@ export default function POSPage() {
       </Drawer>
 
       {/* Settle Modal */}
-      <Modal opened={settleModal} onClose={() => setSettleModal(false)} title="Settle Order" size="sm">
+      <Modal opened={settleModal} onClose={() => setSettleModal(false)} title="Settle & Send" size="sm">
         <Stack>
           <Group justify="space-between">
             <Text>Order #{currentOrder?.order.orderNo}</Text>

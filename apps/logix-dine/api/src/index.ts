@@ -20,7 +20,7 @@ import {
 import { createAuth, AUTH_BASE_PATH, type AuthEnv } from './lib/auth';
 import { rateLimiter } from './lib/rate-limit';
 import { toAuthSession, toAuthUser } from '@logixsoft/logix-dine/mappers/auth';
-import { user } from '@logixsoft/logix-dine/schemas/auth-schema';
+import { user, verification } from '@logixsoft/logix-dine/schemas/auth-schema';
 import './types'; // Hono ContextVariableMap declarations
 import { onboardingRoutes } from './routes/onboarding';
 import { restaurantRoutes } from './routes/restaurants';
@@ -188,6 +188,15 @@ const handleSendOtp = async (c: any) => {
         phoneNumber: normalizedPhone,
       },
     });
+
+    // DEV: When bypass is enabled, overwrite the stored OTP with 123456
+    const isBypass = (c.env?.DEV_OTP_BYPASS ?? process.env.DEV_OTP_BYPASS) === 'true';
+    if (isBypass) {
+      await db
+        .update(verification)
+        .set({ value: '123456:0', updatedAt: new Date() })
+        .where(eq(verification.identifier, normalizedPhone));
+    }
 
     return c.json({
       success: true,

@@ -16,6 +16,8 @@ export interface AuthEnv {
   HYPERDRIVE?: {
     connectionString: string;
   };
+  /** DEV ONLY: when 'true', skips WhatsApp send and accepts OTP 123456 for any number. */
+  DEV_OTP_BYPASS?: string;
 }
 
 export const AUTH_BASE_PATH = '/auth';
@@ -35,6 +37,7 @@ function readEnv(overrides?: Partial<AuthEnv>): {
   isProd: boolean;
   waApiUrl: string;
   waApiKey?: string;
+  devOtpBypass: boolean;
 } {
   const env = { ...(typeof process !== 'undefined' ? process.env : {}), ...overrides } as any;
 
@@ -57,6 +60,7 @@ function readEnv(overrides?: Partial<AuthEnv>): {
 
   const waApiUrl = env.WA_API_URL || 'https://wa.logixsoft.in';
   const waApiKey = env.WA_API_KEY;
+  const devOtpBypass = env.DEV_OTP_BYPASS === 'true';
 
   return {
     databaseUrl,
@@ -66,6 +70,7 @@ function readEnv(overrides?: Partial<AuthEnv>): {
     isProd,
     waApiUrl,
     waApiKey,
+    devOtpBypass,
   };
 }
 
@@ -146,6 +151,9 @@ export function createAuth(overrides?: Partial<AuthEnv>) {
     plugins: [
       phoneNumber({
         sendOTP: async ({ phoneNumber: targetPhone, code }) => {
+          // When DEV_OTP_BYPASS is enabled, skip WhatsApp — bypass code is set in handleSendOtp
+          if (cfg.devOtpBypass) return;
+
           // Normalize phone number (strip spaces/dashes, default to +91 if 10 digits)
           const digitsOnly = targetPhone.replace(/\D/g, '');
           const normalizedPhone = digitsOnly.length === 10 ? `91${digitsOnly}` : digitsOnly;

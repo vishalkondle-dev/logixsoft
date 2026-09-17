@@ -66,9 +66,6 @@ importers:
       '@tanstack/react-query-devtools':
         specifier: ^5.102.8
         version: 5.102.8(@tanstack/react-query@5.102.8(react@19.3.0))(react@19.3.0)
-      '@tanstack/react-table':
-        specifier: ^8.21.3
-        version: 8.21.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       dayjs:
         specifier: ^1.11.23
         version: 1.11.23
@@ -2196,17 +2193,6 @@ packages:
     resolution: {integrity: sha512-TYBea4OuXWD7MhaSHq069TWbFe7rcwWN6kzT7JF0OKi1K6c1gTv2IzD6A6ExJsCMozdkqBWeuIUZmu4KQg0O5A==}
     peerDependencies:
       react: ^18 || ^19
-
-  '@tanstack/react-table@8.21.3':
-    resolution: {integrity: sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@tanstack/table-core@8.21.3':
-    resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
-    engines: {node: '>=12'}
 
   '@tsconfig/node18@1.0.3':
     resolution: {integrity: sha512-RbwvSJQsuN9TB04AQbGULYfOGE/RnSFk/FLQ5b0NmDf5Kx2q/lABZbHQPKCO1vZ6Fiwkplu+yb9pGdLy1iGseQ==}
@@ -5849,14 +5835,6 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.102.8
       react: 19.3.0
-
-  '@tanstack/react-table@8.21.3(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
-    dependencies:
-      '@tanstack/table-core': 8.21.3
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-
-  '@tanstack/table-core@8.21.3': {}
 
   '@tsconfig/node18@1.0.3': {}
 

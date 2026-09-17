@@ -6,3 +6,13 @@ compatibility_flags = ["nodejs_compat"]
 routes = [
   { pattern = "dine-api.logixsoft.in/*", zone_name = "logixsoft.in" }
 ]
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "21d770a176254310990534eb1f814faf"
+
+[vars]
+NODE_ENV = "production"
+API_URL = "https://dine-api.logixsoft.in"
+FRONTEND_URL = "https://dine.logixsoft.in"
+WA_API_URL = "https://wa.logixsoft.in"

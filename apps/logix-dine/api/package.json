@@ -8,9 +8,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@logixsoft/helpers": "workspace:*",
     "@logixsoft/logix-dine": "workspace:*",
+    "@logixsoft/wa": "workspace:*",
+    "better-auth": "^1.7.3",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.6.0",
     "hono-zod-openapi": "^1.1.1",
+    "postgres": "^3.4.9",
     "zod": "^4.6.5"
   },
   "devDependencies": {

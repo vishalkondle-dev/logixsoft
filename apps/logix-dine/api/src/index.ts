@@ -19,6 +19,7 @@ import {
 } from '@logixsoft/logix-dine/schemas/auth';
 import { createAuth, AUTH_BASE_PATH, type AuthEnv } from './lib/auth';
 import { rateLimiter } from './lib/rate-limit';
+import { toAuthSession, toAuthUser } from '@logixsoft/logix-dine/mappers/auth';
 import { user } from '@logixsoft/logix-dine/schemas/auth-schema';
 
 type Bindings = AuthEnv & {
@@ -250,23 +251,10 @@ const handleVerifyOtp = async (c: any) => {
     });
     responseHeaders.set('Content-Type', 'application/json');
 
-    const responseBody = {
-      user: {
-        id: freshUser?.id || sessionData?.user?.id || '',
-        name: freshUser?.name || parsed.name || sessionData?.user?.name || 'Guest User',
-        phoneNumber: normalizedPhone,
-        phoneNumberVerified: true,
-        role: freshUser?.role || (sessionData?.user as any)?.role || 'CUSTOMER',
-        image: freshUser?.image || sessionData?.user?.image || null,
-        createdAt: freshUser?.createdAt || sessionData?.user?.createdAt || new Date().toISOString(),
-        updatedAt: freshUser?.updatedAt || sessionData?.user?.updatedAt || new Date().toISOString(),
-      },
-      session: {
-        id: sessionData?.session?.id || '',
-        userId: sessionData?.session?.userId || '',
-        expiresAt: sessionData?.session?.expiresAt || new Date(Date.now() + 7 * 86400000).toISOString(),
-      },
-    };
+    const responseBody = toAuthSession(toAuthUser(freshUser, sessionData?.user, {
+      name: parsed.name,
+      phoneNumber: normalizedPhone,
+    }), sessionData?.session);
 
     return new Response(JSON.stringify(responseBody), {
       status: 200,
@@ -303,9 +291,14 @@ const handleGetMe = async (c: any) => {
       .where(eq(user.id, sessionData.user.id))
       .limit(1);
 
+    const sessionPayload = toAuthSession(
+      toAuthUser(freshUser, sessionData.user),
+      sessionData.session
+    );
+
     return c.json({
-      user: freshUser || sessionData.user,
-      session: sessionData.session,
+      user: sessionPayload.user,
+      session: sessionPayload.session,
     });
   } finally {
     await close();

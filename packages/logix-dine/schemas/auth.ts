@@ -1,4 +1,6 @@
 import * as z from 'zod';
+import type { JsonSessionRow, JsonUserRow } from '../types/auth-schema';
+import { AssertSame, Equal, Expect } from '../types/utils';
 
 /**
  * Mobile phone number schema supporting 10-digit Indian numbers and E.164 international format.
@@ -50,26 +52,44 @@ export const VerifyOtpRequestSchema = z.object({
 
 /**
  * Authenticated user profile schema.
+ *
+ * SSOT: mirrors the `user` DB table exactly (dates as ISO strings).
+ * The assertion below fails the build if this schema ever drifts from
+ * the table definition — update table + schema + mapper together.
  */
 export const AuthUserSchema = z.object({
   id: z.string().meta({ description: 'Unique user identifier' }),
   name: z.string().meta({ description: 'User full name', example: 'Rajesh Kumar' }),
-  phoneNumber: z.string().meta({ description: 'User phone number', example: '+919876543210' }),
-  phoneNumberVerified: z.boolean().default(true).meta({ description: 'Whether phone number is verified' }),
-  role: z.string().default('CUSTOMER').meta({ description: 'User permission role', example: 'CUSTOMER' }),
-  image: z.string().nullable().optional().meta({ description: 'User profile avatar URL' }),
-  createdAt: z.union([z.string(), z.date()]).meta({ description: 'Account creation timestamp' }),
-  updatedAt: z.union([z.string(), z.date()]).meta({ description: 'Last account update timestamp' }),
+  email: z.string().nullable().meta({ description: 'User email address' }),
+  emailVerified: z.boolean().meta({ description: 'Whether email is verified' }),
+  phoneNumber: z.string().nullable().meta({ description: 'User phone number', example: '+919876543210' }),
+  phoneNumberVerified: z.boolean().meta({ description: 'Whether phone number is verified' }),
+  image: z.string().nullable().meta({ description: 'User profile avatar URL' }),
+  role: z.string().meta({ description: 'User permission role', example: 'CUSTOMER' }),
+  createdAt: z.string().meta({ description: 'Account creation timestamp (ISO)' }),
+  updatedAt: z.string().meta({ description: 'Last account update timestamp (ISO)' }),
 });
 
+type _AuthUserMatchesUserRow = Expect<AssertSame<z.infer<typeof AuthUserSchema>, JsonUserRow>>;
+
 /**
- * Active authentication session schema.
+ * Active authentication session payload.
+ *
+ * SSOT: `user` mirrors the user table exactly; `session` is a deliberate
+ * projection of the session table (raw session token never crosses the wire).
  */
 export const AuthSessionSchema = z.object({
   user: AuthUserSchema,
   session: z.object({
     id: z.string().meta({ description: 'Session identifier' }),
     userId: z.string().meta({ description: 'User ID associated with session' }),
-    expiresAt: z.union([z.string(), z.date()]).meta({ description: 'Session expiry timestamp' }),
+    expiresAt: z.string().meta({ description: 'Session expiry timestamp (ISO)' }),
   }),
 });
+
+type _AuthSessionMatchesSessionRow = Expect<
+  AssertSame<
+    z.infer<typeof AuthSessionSchema>['session'],
+    Pick<JsonSessionRow, 'id' | 'userId' | 'expiresAt'>
+  >
+>;

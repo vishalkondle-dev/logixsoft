@@ -29,6 +29,16 @@
       "types": "./types/index.ts",
       "import": "./types/index.ts",
       "default": "./types/index.ts"
+    },
+    "./mappers/*": {
+      "types": "./mappers/*.ts",
+      "import": "./mappers/*.ts",
+      "default": "./mappers/*.ts"
+    },
+    "./mappers": {
+      "types": "./mappers/index.ts",
+      "import": "./mappers/index.ts",
+      "default": "./mappers/index.ts"
     }
   },
   "scripts": {

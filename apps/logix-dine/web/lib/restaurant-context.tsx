@@ -3,6 +3,7 @@
 import React, {
   createContext, useContext, useState, useEffect, useCallback, ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import type { JsonRestaurantRow, JsonRestaurantOutletRow } from "@logixsoft/logix-dine/types/pos-schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMyRole } from "@/lib/api-client";
@@ -10,6 +11,26 @@ import { getMyRole } from "@/lib/api-client";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 const RESTAURANT_COOKIE = "dine.restaurantId";
 const OUTLET_COOKIE = "dine.outletId";
+
+function getUrlOutletId(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("outletId") || params.get("outlet");
+}
+
+function updateUrlOutletId(outletId: string | null) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (outletId) {
+    if (url.searchParams.get("outletId") === outletId && !url.searchParams.has("outlet")) return;
+    url.searchParams.set("outletId", outletId);
+    url.searchParams.delete("outlet"); // canonicalize to outletId
+  } else {
+    url.searchParams.delete("outletId");
+    url.searchParams.delete("outlet");
+  }
+  window.history.replaceState(window.history.state, "", url.toString());
+}
 
 interface RestaurantContextType {
   restaurant: JsonRestaurantRow | null;
@@ -83,11 +104,23 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
           ? o.filter((out) => roleInfo.outletIds.includes(out.id))
           : o;
         setOutlets(scoped);
-        // Set active outlet from cookie or default
+        // Priority: 1. URL search param (if valid for this user/role)
+        //           2. Saved cookie
+        //           3. Default outlet
+        const urlOutletId = getUrlOutletId();
         const savedOutletId = getCookie(OUTLET_COOKIE);
-        const saved = scoped.find((out) => out.id === savedOutletId);
+        const fromUrl = urlOutletId ? scoped.find((out) => out.id === urlOutletId) : null;
+        const fromCookie = savedOutletId ? scoped.find((out) => out.id === savedOutletId) : null;
         const defaultOutlet = scoped.find((out) => out.isDefault) ?? scoped[0] ?? null;
-        setActiveOutletState(saved ?? defaultOutlet);
+        const chosen = fromUrl ?? fromCookie ?? defaultOutlet;
+
+        setActiveOutletState(chosen);
+        if (chosen) {
+          setCookie(OUTLET_COOKIE, chosen.id);
+          if (typeof window !== "undefined" && window.location.pathname !== "/") {
+            updateUrlOutletId(chosen.id);
+          }
+        }
       }
     } catch {
       // silently fail — auth-context handles login state
@@ -95,6 +128,29 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (activeOutlet && pathname && pathname !== "/" && pathname !== "/onboarding") {
+      updateUrlOutletId(activeOutlet.id);
+    }
+  }, [pathname, activeOutlet]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlId = getUrlOutletId();
+      if (urlId && urlId !== activeOutlet?.id) {
+        const found = outlets.find((o) => o.id === urlId);
+        if (found) {
+          setCookie(OUTLET_COOKIE, found.id);
+          setActiveOutletState(found);
+        }
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [outlets, activeOutlet]);
 
   const refresh = useCallback(async () => {
     if (activeRestaurantId) await fetchData(activeRestaurantId);
@@ -140,6 +196,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
 
   const setActiveOutlet = useCallback((outletId: string) => {
     setCookie(OUTLET_COOKIE, outletId);
+    updateUrlOutletId(outletId);
     const outlet = outlets.find((o) => o.id === outletId) ?? null;
     setActiveOutletState(outlet);
   }, [outlets]);

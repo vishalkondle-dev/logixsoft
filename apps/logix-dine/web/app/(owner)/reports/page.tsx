@@ -100,8 +100,29 @@ export default function ReportsPage() {
 
   // Non-owner (MANAGER) is forced to their own outlet; OWNER can filter or see all.
   useEffect(() => {
-    if (!allOutlets && activeOutlet) setReportOutletId(activeOutlet.id);
-  }, [allOutlets, activeOutlet]);
+    if (!allOutlets && activeOutlet) {
+      setReportOutletId(activeOutlet.id);
+    } else if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlOId = params.get("outletId");
+      if (urlOId && outlets.some((o) => o.id === urlOId)) {
+        setReportOutletId(urlOId);
+      }
+    }
+  }, [allOutlets, activeOutlet, outlets]);
+
+  const handleReportOutletChange = (v: string | null) => {
+    setReportOutletId(v);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (v) {
+        url.searchParams.set("outletId", v);
+      } else {
+        url.searchParams.delete("outletId");
+      }
+      window.history.replaceState(window.history.state, "", url.toString());
+    }
+  };
 
   useEffect(() => {
     if (preset === "custom") {
@@ -173,7 +194,7 @@ export default function ReportsPage() {
               placeholder="All outlets"
               clearable
               value={reportOutletId}
-              onChange={setReportOutletId}
+              onChange={handleReportOutletChange}
               data={outlets.map((o) => ({ value: o.id, label: o.name }))}
               w={180}
             />

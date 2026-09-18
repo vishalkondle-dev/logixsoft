@@ -142,9 +142,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           {visibleNav.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const itemHref = activeOutlet && item.href !== "/"
+              ? `${item.href}?outletId=${activeOutlet.id}`
+              : item.href;
             return (
               <UnstyledButton
-                key={item.href} component={Link} href={item.href} aria-label={item.label}
+                key={item.href} component={Link} href={itemHref} aria-label={item.label}
                 px={{ base: isActive ? 14 : 10, sm: 16 }} py={8}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,

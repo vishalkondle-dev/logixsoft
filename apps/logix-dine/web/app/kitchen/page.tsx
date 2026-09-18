@@ -116,7 +116,7 @@ export default function KitchenPage() {
           {role !== "KITCHEN" && (
             // Owner/Manager previewing the KDS can navigate back; KITCHEN-only
             // accounts have nowhere else to go, so we just offer sign out.
-            <Button component="a" href="/pos" size="sm" variant="light" color="gray">Back to POS</Button>
+            <Button component="a" href={activeOutlet ? `/pos?outletId=${activeOutlet.id}` : "/pos"} size="sm" variant="light" color="gray">Back to POS</Button>
           )}
           <ActionIcon size="lg" variant="light" color="red" onClick={() => signOut()} title="Sign out">
             <IconLogout size={18} />

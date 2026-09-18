@@ -15,14 +15,14 @@ import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function HomePage() {
   const { isAuthenticated, openLoginModal } = useAuth();
-  const { restaurant, role, isLoading } = useRestaurant();
+  const { restaurant, activeOutlet, role, isLoading } = useRestaurant();
   const router = useRouter();
 
   React.useEffect(() => {
     if (isAuthenticated && restaurant && role === "KITCHEN") {
-      router.replace("/kitchen");
+      router.replace(activeOutlet ? `/kitchen?outletId=${activeOutlet.id}` : "/kitchen");
     }
-  }, [isAuthenticated, restaurant, role, router]);
+  }, [isAuthenticated, restaurant, activeOutlet, role, router]);
 
   if (isAuthenticated && restaurant && role === "KITCHEN") {
     return (
@@ -44,10 +44,10 @@ export default function HomePage() {
             Welcome back! Ready to start billing?
           </Title>
           <Group justify="center">
-            <Button component={Link} href="/pos" size="lg" color="dinePrimary" leftSection={<IconShoppingCart size={20} />}>
+            <Button component={Link} href={activeOutlet ? `/pos?outletId=${activeOutlet.id}` : "/pos"} size="lg" color="dinePrimary" leftSection={<IconShoppingCart size={20} />}>
               Go to POS
             </Button>
-            <Button component={Link} href="/orders" size="lg" variant="default" leftSection={<IconReceipt size={20} />}>
+            <Button component={Link} href={activeOutlet ? `/orders?outletId=${activeOutlet.id}` : "/orders"} size="lg" variant="default" leftSection={<IconReceipt size={20} />}>
               View Orders
             </Button>
           </Group>

@@ -514,14 +514,13 @@ export default function POSPage() {
       style={{
         height: "calc(100dvh - var(--app-shell-header-offset, 60px))",
         maxHeight: "calc(100dvh - var(--app-shell-header-offset, 60px))",
-        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
       }}
       px={{ base: "xs", sm: "md" }}
       pt="xs"
     >
-      <Grid gap="md" style={{ flex: 1, overflow: "hidden", height: "100%" }}>
+      <Grid gap="md" style={{ flex: 1, height: "100%", overflow: "visible" }}>
         {/* Menu Panel */}
         <Grid.Col
           span={{ base: 12, sm: 8 }}
@@ -611,7 +610,7 @@ export default function POSPage() {
             withBorder
             p="md"
             radius="md"
-          style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}
+          style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative" }}
           >
             <CartPanel {...cartPanelProps} />
           </Paper>

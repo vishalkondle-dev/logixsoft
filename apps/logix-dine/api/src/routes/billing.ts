@@ -93,12 +93,21 @@ async function getOrderWithItems(db: any, orderId: string, restaurantId: string)
 // GET /billing/bootstrap
 app.get('/bootstrap', requirePermission('menu:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
+  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id');
   const { db, close } = getDb(c);
   try {
     const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
     const outlets = await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
-    const categories = await db.select().from(appSchema.menuCategory).where(and(eq(appSchema.menuCategory.restaurantId, restaurantId), eq(appSchema.menuCategory.active, true)));
-    const items = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.restaurantId, restaurantId));
+
+    const catWhere = outletId
+      ? and(eq(appSchema.menuCategory.restaurantId, restaurantId), eq(appSchema.menuCategory.active, true), eq(appSchema.menuCategory.outletId, outletId))
+      : and(eq(appSchema.menuCategory.restaurantId, restaurantId), eq(appSchema.menuCategory.active, true));
+    const categories = await db.select().from(appSchema.menuCategory).where(catWhere);
+
+    const itemWhere = outletId
+      ? and(eq(appSchema.menuItem.restaurantId, restaurantId), eq(appSchema.menuItem.outletId, outletId))
+      : eq(appSchema.menuItem.restaurantId, restaurantId);
+    const items = await db.select().from(appSchema.menuItem).where(itemWhere);
 
     return c.json({
       restaurant: toRestaurant(rest),

@@ -30,7 +30,6 @@ const STAFF_ROLES = [
 
 export const VALID_SETTINGS_TABS = [
   "restaurant",
-  "outlets",
   "menu",
   "tables",
   "reports",
@@ -53,6 +52,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     const settingsIdx = parts.indexOf("settings");
     if (settingsIdx !== -1 && parts[settingsIdx + 1]) {
       const tabName = parts[settingsIdx + 1];
+      if (tabName === "outlets") return "restaurant";
       if (VALID_SETTINGS_TABS.includes(tabName as any)) {
         return tabName;
       }
@@ -315,7 +315,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
           <Tabs.List mb="md" style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
             <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Restaurant</Tabs.Tab>
-            <Tabs.Tab value="outlets" leftSection={<IconBuildingStore size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Outlets</Tabs.Tab>
             <Tabs.Tab value="menu" leftSection={<IconBook size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Menu</Tabs.Tab>
             <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Tables</Tabs.Tab>
             <Tabs.Tab value="reports" leftSection={<IconChartBar size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Reports</Tabs.Tab>
@@ -352,16 +351,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           </Grid>
         </Tabs.Panel>
 
-        {/* Outlets tab */}
-        <Tabs.Panel value="outlets">
-          <Stack gap="md">
-            {outlets.map((o) => <OutletCard key={o.id} outlet={o} />)}
-            <Button variant="light" color="dinePrimary" leftSection={<IconPlus size={16} />} onClick={openCreateOutlet} w="fit-content">
-              Add Outlet
-            </Button>
-          </Stack>
-        </Tabs.Panel>
-
         {/* Menu tab */}
         <Tabs.Panel value="menu">
           <MenuManagement embedded />
@@ -370,7 +359,12 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Tables tab */}
         <Tabs.Panel value="tables">
           <Stack gap="md">
-            <Group justify="flex-end">
+            <Group justify="space-between" align="center">
+              {activeOutlet ? (
+                <Badge variant="light" color="dinePrimary" size="md">
+                  {activeOutlet.name}
+                </Badge>
+              ) : <div />}
               <Button color="dinePrimary" leftSection={<IconPlus size={14} />} onClick={openCreateTable} disabled={!tableOutletId}>
                 Add Table
               </Button>

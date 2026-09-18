@@ -1,8 +1,8 @@
 import { SettingsView } from "../settings-view";
+import { redirect } from "next/navigation";
 
 export const VALID_SETTINGS_TABS = [
   "restaurant",
-  "outlets",
   "menu",
   "tables",
   "reports",
@@ -20,5 +20,8 @@ export default async function SettingsTabPage({
   params: Promise<{ tab: string }>;
 }) {
   const { tab } = await params;
+  if (tab === "outlets") {
+    redirect("/settings/restaurant");
+  }
   return <SettingsView currentTab={tab} />;
 }

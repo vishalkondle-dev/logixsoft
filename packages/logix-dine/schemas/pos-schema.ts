@@ -141,6 +141,8 @@ export const menuCategory = pgTable(
     restaurantId: text('restaurantId')
       .notNull()
       .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
     sortOrder: integer('sortOrder').notNull().default(0),
@@ -150,7 +152,10 @@ export const menuCategory = pgTable(
     createdBy: text('createdBy'),
     updatedBy: text('updatedBy'),
   },
-  (t) => [index('menuCategory_restaurantId_idx').on(t.restaurantId)],
+  (t) => [
+    index('menuCategory_restaurantId_idx').on(t.restaurantId),
+    index('menuCategory_outletId_idx').on(t.outletId),
+  ],
 );
 
 // ─── Menu Item ────────────────────────────────────────────────────────────────
@@ -162,6 +167,8 @@ export const menuItem = pgTable(
     restaurantId: text('restaurantId')
       .notNull()
       .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
     categoryId: text('categoryId')
       .notNull()
       .references(() => menuCategory.id, { onDelete: 'restrict' }),
@@ -177,6 +184,7 @@ export const menuItem = pgTable(
   },
   (t) => [
     index('menuItem_restaurantId_idx').on(t.restaurantId),
+    index('menuItem_outletId_idx').on(t.outletId),
     index('menuItem_categoryId_idx').on(t.categoryId),
   ],
 );

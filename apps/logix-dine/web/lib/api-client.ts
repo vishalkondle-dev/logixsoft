@@ -25,8 +25,8 @@ async function apiFetch<T>(
 
 // ─── Billing ──────────────────────────────────────────────────────────────────
 
-export const getBootstrap = (restaurantId: string) =>
-  apiFetch<any>("/billing/bootstrap", restaurantId);
+export const getBootstrap = (restaurantId: string, outletId?: string | null) =>
+  apiFetch<any>(`/billing/bootstrap${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
 
 export const startOrder = (
   restaurantId: string,
@@ -88,35 +88,40 @@ export const markOrderReady = (restaurantId: string, orderId: string, outletId?:
 
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 
-export const getCategories = (restaurantId: string) =>
-  apiFetch<any[]>("/menu/categories", restaurantId);
+export const getCategories = (restaurantId: string, outletId?: string | null) =>
+  apiFetch<any[]>(`/menu/categories${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
 
-export const createCategory = (restaurantId: string, body: { name: string; description?: string; sortOrder?: number }) =>
-  apiFetch<any>("/menu/categories", restaurantId, { method: "POST", body: JSON.stringify(body) });
+export const createCategory = (restaurantId: string, body: { name: string; description?: string; sortOrder?: number; outletId?: string | null }, outletId?: string | null) =>
+  apiFetch<any>("/menu/categories", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId ?? body.outletId);
 
-export const updateCategory = (restaurantId: string, id: string, body: any) =>
-  apiFetch<any>(`/menu/categories/${id}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
+export const updateCategory = (restaurantId: string, id: string, body: any, outletId?: string | null) =>
+  apiFetch<any>(`/menu/categories/${id}`, restaurantId, { method: "PUT", body: JSON.stringify(body) }, outletId);
 
-export const deleteCategory = (restaurantId: string, id: string) =>
-  apiFetch<any>(`/menu/categories/${id}`, restaurantId, { method: "DELETE" });
+export const deleteCategory = (restaurantId: string, id: string, outletId?: string | null) =>
+  apiFetch<any>(`/menu/categories/${id}`, restaurantId, { method: "DELETE" }, outletId);
 
-export const reorderCategories = (restaurantId: string, items: { id: string; sortOrder: number }[]) =>
-  apiFetch<any>("/menu/categories/reorder", restaurantId, { method: "PATCH", body: JSON.stringify(items) });
+export const reorderCategories = (restaurantId: string, items: { id: string; sortOrder: number }[], outletId?: string | null) =>
+  apiFetch<any>("/menu/categories/reorder", restaurantId, { method: "PATCH", body: JSON.stringify(items) }, outletId);
 
-export const getItems = (restaurantId: string, categoryId?: string) =>
-  apiFetch<any[]>(`/menu/items${categoryId ? `?categoryId=${categoryId}` : ""}`, restaurantId);
+export const getItems = (restaurantId: string, categoryId?: string, outletId?: string | null) => {
+  const params = new URLSearchParams();
+  if (categoryId) params.append("categoryId", categoryId);
+  if (outletId) params.append("outletId", outletId);
+  const qs = params.toString();
+  return apiFetch<any[]>(`/menu/items${qs ? `?${qs}` : ""}`, restaurantId, {}, outletId);
+};
 
-export const createItem = (restaurantId: string, body: { categoryId: string; name: string; pricePaise: number; description?: string }) =>
-  apiFetch<any>("/menu/items", restaurantId, { method: "POST", body: JSON.stringify(body) });
+export const createItem = (restaurantId: string, body: { categoryId: string; name: string; pricePaise: number; description?: string; outletId?: string | null }, outletId?: string | null) =>
+  apiFetch<any>("/menu/items", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId ?? body.outletId);
 
-export const updateItem = (restaurantId: string, id: string, body: any) =>
-  apiFetch<any>(`/menu/items/${id}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
+export const updateItem = (restaurantId: string, id: string, body: any, outletId?: string | null) =>
+  apiFetch<any>(`/menu/items/${id}`, restaurantId, { method: "PUT", body: JSON.stringify(body) }, outletId);
 
-export const deleteItem = (restaurantId: string, id: string) =>
-  apiFetch<any>(`/menu/items/${id}`, restaurantId, { method: "DELETE" });
+export const deleteItem = (restaurantId: string, id: string, outletId?: string | null) =>
+  apiFetch<any>(`/menu/items/${id}`, restaurantId, { method: "DELETE" }, outletId);
 
-export const toggleItem = (restaurantId: string, id: string) =>
-  apiFetch<any>(`/menu/items/${id}/toggle`, restaurantId, { method: "PATCH" });
+export const toggleItem = (restaurantId: string, id: string, outletId?: string | null) =>
+  apiFetch<any>(`/menu/items/${id}/toggle`, restaurantId, { method: "PATCH" }, outletId);
 
 // ─── Restaurant & Outlets ────────────────────────────────────────────────────
 

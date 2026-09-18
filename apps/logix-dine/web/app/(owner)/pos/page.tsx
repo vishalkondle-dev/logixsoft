@@ -319,18 +319,23 @@ export default function POSPage() {
   };
 
   const loadBootstrap = useCallback(async () => {
-    if (!restaurantId) return;
+    if (!restaurantId || !outletId) {
+      setBootstrap(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const data = await getBootstrap(restaurantId);
+      const data = await getBootstrap(restaurantId, outletId);
       setBootstrap(data);
       if (data.categories?.length) setActiveCatId(data.categories[0].id);
+      else setActiveCatId(null);
     } catch (err: any) {
       notifications.show({ title: "Error", message: "Failed to load menu", color: "red" });
     } finally {
       setLoading(false);
     }
-  }, [restaurantId]);
+  }, [restaurantId, outletId]);
 
   useEffect(() => { loadBootstrap(); }, [loadBootstrap]);
 

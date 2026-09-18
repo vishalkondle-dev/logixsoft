@@ -90,6 +90,7 @@ type _PosTableAssert = Expect<AssertSame<z.infer<typeof PosTableSchema>, JsonPos
 export const MenuCategorySchema = z.object({
   id: z.string(),
   restaurantId: z.string(),
+  outletId: z.string().nullable(),
   name: z.string(),
   description: z.string().nullable(),
   sortOrder: z.number().int(),
@@ -104,6 +105,7 @@ type _CategoryAssert = Expect<AssertSame<z.infer<typeof MenuCategorySchema>, Jso
 export const MenuItemSchema = z.object({
   id: z.string(),
   restaurantId: z.string(),
+  outletId: z.string().nullable(),
   categoryId: z.string(),
   name: z.string(),
   description: z.string().nullable(),
@@ -182,6 +184,7 @@ export const UpdateOutletSchema = z.object({
 
 export const CreateCategorySchema = z.object({
   name: z.string().min(1).max(100),
+  outletId: z.string().optional(),
   description: z.string().max(255).optional(),
   sortOrder: z.number().int().nonnegative().optional().default(0),
 });
@@ -199,6 +202,7 @@ export const ReorderSchema = z.array(
 
 export const CreateItemSchema = z.object({
   categoryId: z.string(),
+  outletId: z.string().optional(),
   name: z.string().min(1).max(100),
   description: z.string().max(255).optional(),
   pricePaise: MoneySchema,

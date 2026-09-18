@@ -24,12 +24,16 @@ function getDb(c: any) {
 
 app.get('/categories', requirePermission('menu:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
+  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id');
   const { db, close } = getDb(c);
   try {
+    const where = outletId
+      ? and(eq(appSchema.menuCategory.restaurantId, restaurantId), eq(appSchema.menuCategory.outletId, outletId))
+      : eq(appSchema.menuCategory.restaurantId, restaurantId);
     const cats = await db
       .select()
       .from(appSchema.menuCategory)
-      .where(eq(appSchema.menuCategory.restaurantId, restaurantId));
+      .where(where);
     return c.json(cats.map(toCategory));
   } finally {
     await close();
@@ -38,9 +42,12 @@ app.get('/categories', requirePermission('menu:read'), async (c) => {
 
 app.post('/categories', requirePermission('menu:write'), async (c) => {
   const { restaurantId } = c.get('tenant');
+  const headerOutletId = c.req.header('x-outlet-id');
   const body = await c.req.json().catch(() => ({}));
   const parsed = CreateCategorySchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const outletId = parsed.data.outletId || headerOutletId || null;
 
   const { db, close } = getDb(c);
   try {
@@ -49,6 +56,7 @@ app.post('/categories', requirePermission('menu:write'), async (c) => {
     await db.insert(appSchema.menuCategory).values({
       id,
       restaurantId,
+      outletId,
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       sortOrder: parsed.data.sortOrder ?? 0,
@@ -134,16 +142,17 @@ app.patch('/categories/reorder', requirePermission('menu:write'), async (c) => {
 app.get('/items', requirePermission('menu:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
   const categoryId = c.req.query('categoryId');
+  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id');
   const { db, close } = getDb(c);
   try {
+    const conditions = [eq(appSchema.menuItem.restaurantId, restaurantId)];
+    if (categoryId) conditions.push(eq(appSchema.menuItem.categoryId, categoryId));
+    if (outletId) conditions.push(eq(appSchema.menuItem.outletId, outletId));
+
     const items = await db
       .select()
       .from(appSchema.menuItem)
-      .where(
-        categoryId
-          ? and(eq(appSchema.menuItem.restaurantId, restaurantId), eq(appSchema.menuItem.categoryId, categoryId))
-          : eq(appSchema.menuItem.restaurantId, restaurantId),
-      );
+      .where(and(...conditions));
     return c.json(items.map(toMenuItem));
   } finally {
     await close();
@@ -152,6 +161,7 @@ app.get('/items', requirePermission('menu:read'), async (c) => {
 
 app.post('/items', requirePermission('menu:write'), async (c) => {
   const { restaurantId } = c.get('tenant');
+  const headerOutletId = c.req.header('x-outlet-id');
   const body = await c.req.json().catch(() => ({}));
   const parsed = CreateItemSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
@@ -160,17 +170,20 @@ app.post('/items', requirePermission('menu:write'), async (c) => {
   try {
     // Verify category belongs to this restaurant
     const [cat] = await db
-      .select({ id: appSchema.menuCategory.id })
+      .select({ id: appSchema.menuCategory.id, outletId: appSchema.menuCategory.outletId })
       .from(appSchema.menuCategory)
       .where(and(eq(appSchema.menuCategory.id, parsed.data.categoryId), eq(appSchema.menuCategory.restaurantId, restaurantId)))
       .limit(1);
     if (!cat) return c.json({ error: 'Not Found', message: 'Category not found' }, 404);
+
+    const outletId = parsed.data.outletId || headerOutletId || cat.outletId || null;
 
     const now = new Date();
     const id = generateId('item');
     await db.insert(appSchema.menuItem).values({
       id,
       restaurantId,
+      outletId,
       categoryId: parsed.data.categoryId,
       name: parsed.data.name,
       description: parsed.data.description ?? null,

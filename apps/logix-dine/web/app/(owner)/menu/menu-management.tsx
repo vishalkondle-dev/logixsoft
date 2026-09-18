@@ -14,8 +14,9 @@ import {
 } from "@/lib/api-client";
 
 export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
-  const { restaurant } = useRestaurant();
+  const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
+  const outletId = activeOutlet?.id ?? null;
 
   const [categories, setCategories] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
@@ -30,28 +31,36 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const [itemSaving, setItemSaving] = useState(false);
 
   const loadCategories = useCallback(async () => {
-    if (!restaurantId) return;
-    const cats = await getCategories(restaurantId);
+    if (!restaurantId || !outletId) {
+      setCategories([]);
+      setActiveCatId(null);
+      return;
+    }
+    const cats = await getCategories(restaurantId, outletId);
     setCategories(cats);
-    if (cats.length && !activeCatId) setActiveCatId(cats[0].id);
-  }, [restaurantId, activeCatId]);
+    setActiveCatId((prev) => (cats.some((c) => c.id === prev) ? prev : cats[0]?.id ?? null));
+  }, [restaurantId, outletId]);
 
   const loadItems = useCallback(async () => {
-    if (!restaurantId) return;
-    const all = await getItems(restaurantId);
+    if (!restaurantId || !outletId) {
+      setItems([]);
+      return;
+    }
+    const all = await getItems(restaurantId, undefined, outletId);
     setItems(all);
-  }, [restaurantId]);
+  }, [restaurantId, outletId]);
 
   useEffect(() => { loadCategories(); }, [loadCategories]);
   useEffect(() => { loadItems(); }, [loadItems]);
 
   const saveCategory = async () => {
+    if (!outletId) return;
     setCatSaving(true);
     try {
       if (catModal.editing) {
-        await updateCategory(restaurantId, catModal.editing.id, { name: catForm.name, description: catForm.description || null });
+        await updateCategory(restaurantId, catModal.editing.id, { name: catForm.name, description: catForm.description || null }, outletId);
       } else {
-        await createCategory(restaurantId, { name: catForm.name, description: catForm.description || undefined });
+        await createCategory(restaurantId, { name: catForm.name, description: catForm.description || undefined, outletId }, outletId);
       }
       await loadCategories();
       setCatModal({ open: false, editing: null });
@@ -66,7 +75,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const handleDeleteCat = async (cat: any) => {
     if (!confirm(`Delete category "${cat.name}"?`)) return;
     try {
-      await deleteCategory(restaurantId, cat.id);
+      await deleteCategory(restaurantId, cat.id, outletId ?? undefined);
       await loadCategories();
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -74,6 +83,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   };
 
   const saveItem = async () => {
+    if (!outletId) return;
     setItemSaving(true);
     try {
       if (itemModal.editing) {
@@ -82,14 +92,15 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           name: itemForm.name,
           description: itemForm.description || null,
           pricePaise: itemForm.pricePaise,
-        });
+        }, outletId);
       } else {
         await createItem(restaurantId, {
           categoryId: itemForm.categoryId,
           name: itemForm.name,
           description: itemForm.description || undefined,
           pricePaise: itemForm.pricePaise,
-        });
+          outletId,
+        }, outletId);
       }
       await loadItems();
       setItemModal({ open: false, editing: null });
@@ -104,7 +115,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const handleDeleteItem = async (item: any) => {
     if (!confirm(`Delete item "${item.name}"?`)) return;
     try {
-      await deleteItem(restaurantId, item.id);
+      await deleteItem(restaurantId, item.id, outletId ?? undefined);
       await loadItems();
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -113,7 +124,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
   const handleToggle = async (item: any) => {
     try {
-      await toggleItem(restaurantId, item.id);
+      await toggleItem(restaurantId, item.id, outletId ?? undefined);
       await loadItems();
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -126,17 +137,58 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
   const content = (
     <>
-      <Group justify={embedded ? "flex-end" : "space-between"} mb={embedded ? "sm" : "lg"}>
-        {!embedded && <Title order={2}>Menu</Title>}
-        <Button color="dinePrimary" leftSection={<IconPlus size={16} />}
-          onClick={() => { setItemForm({ categoryId: activeCatId ?? "", name: "", description: "", pricePaise: 0 }); setItemModal({ open: true, editing: null }); }}>
-          Add Item
-        </Button>
+      <Group justify="space-between" align="center" mb="sm" wrap="wrap" gap="xs">
+        <Group gap="xs" align="center">
+          {!embedded && <Title order={2}>Menu</Title>}
+          {activeOutlet && (
+            <Badge variant="light" color="dinePrimary" size="md">
+              {activeOutlet.name}
+            </Badge>
+          )}
+        </Group>
+        <Group gap="xs">
+          <Button
+            variant="light"
+            color="dinePrimary"
+            size="sm"
+            leftSection={<IconPlus size={14} />}
+            onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+            disabled={!outletId}
+          >
+            Category
+          </Button>
+          <Button
+            color="dinePrimary"
+            size="sm"
+            leftSection={<IconPlus size={14} />}
+            onClick={() => { setItemForm({ categoryId: activeCatId ?? "", name: "", description: "", pricePaise: 0 }); setItemModal({ open: true, editing: null }); }}
+            disabled={!outletId || !categories.length}
+          >
+            Add Item
+          </Button>
+        </Group>
       </Group>
 
-      <Tabs value={activeCatId} onChange={setActiveCatId}>
-        <Group mb="xs" align="center" wrap="nowrap">
-          <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x" style={{ flex: 1, minWidth: 0 }}>
+      {!categories.length ? (
+        <Paper withBorder p="xl" radius="md" ta="center" my="md">
+          <Text size="sm" c="dimmed">
+            No menu categories yet for {activeOutlet?.name || "this outlet"}.
+          </Text>
+          <Button
+            size="xs"
+            variant="light"
+            color="dinePrimary"
+            mt="md"
+            leftSection={<IconPlus size={14} />}
+            onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+            disabled={!outletId}
+          >
+            Create Category
+          </Button>
+        </Paper>
+      ) : (
+        <Tabs value={activeCatId} onChange={setActiveCatId}>
+          <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x" mb="xs">
             <Tabs.List style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
               {categories.map((cat) => (
                 <Tabs.Tab key={cat.id} value={cat.id} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
@@ -148,11 +200,6 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
               ))}
             </Tabs.List>
           </ScrollArea>
-          <Button size="xs" variant="light" leftSection={<IconPlus size={12} />} style={{ flexShrink: 0 }}
-            onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}>
-            Category
-          </Button>
-        </Group>
 
         {categories.map((cat) => (
           <Tabs.Panel key={cat.id} value={cat.id}>
@@ -206,6 +253,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           </Tabs.Panel>
         ))}
       </Tabs>
+      )}
 
       {/* Category Modal */}
       <Modal opened={catModal.open} onClose={() => setCatModal({ open: false, editing: null })} title={catModal.editing ? "Edit Category" : "Add Category"}>

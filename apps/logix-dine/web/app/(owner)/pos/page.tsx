@@ -14,7 +14,7 @@ import {
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   getBootstrap, startOrder, addOrderItem, updateOrderItemQty,
-  removeOrderItem, settleOrder, voidOrder, markKotPrinted,
+  removeOrderItem, settleOrder, voidOrder, markKotPrinted, getTables,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
@@ -28,8 +28,10 @@ interface CartItem {
 }
 
 export default function POSPage() {
-  const { restaurant, activeOutlet } = useRestaurant();
+  const { restaurant, activeOutlet, role } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
+  const outletId = activeOutlet?.id ?? null;
+  const canVoid = role === "OWNER" || role === "MANAGER";
 
   const [bootstrap, setBootstrap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,7 @@ export default function POSPage() {
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [tableNo, setTableNo] = useState("");
+  const [tables, setTables] = useState<any[]>([]);
   const [settleModal, setSettleModal] = useState(false);
   const [settleMethod, setSettleMethod] = useState<string>("Cash");
   const [settling, setSettling] = useState(false);
@@ -59,6 +62,16 @@ export default function POSPage() {
   }, [restaurantId]);
 
   useEffect(() => { loadBootstrap(); }, [loadBootstrap]);
+
+  // Load the outlet's table registry, if any have been configured. If empty,
+  // the cart falls back to the free-text table number input (v2 behaviour) —
+  // owners aren't forced to set up tables to keep using the POS.
+  useEffect(() => {
+    if (!restaurantId || !outletId) { setTables([]); return; }
+    getTables(restaurantId, outletId)
+      .then((rows) => setTables(rows.filter((t: any) => t.active)))
+      .catch(() => setTables([]));
+  }, [restaurantId, outletId]);
 
   const syncOrder = useCallback(async (orderId: string) => {
     const updated = await getBootstrap(restaurantId); // minimal — just re-use bootstrap for now
@@ -103,12 +116,12 @@ export default function POSPage() {
         const result = await startOrder(restaurantId, { outletId: activeOutlet.id, tableNo: tableNo || undefined });
         setCurrentOrder(result);
         // Then add item
-        const updated = await addOrderItem(restaurantId, result.order.id, { itemId: item.id, qty: 1 });
+        const updated = await addOrderItem(restaurantId, result.order.id, { itemId: item.id, qty: 1 }, outletId);
         setCurrentOrder(updated);
         // Print KOT automatically
         const kotPayload = buildKotPayload(updated, restaurant);
         const printResult = await printTicket(kotPayload);
-        await markKotPrinted(restaurantId, result.order.id).catch(() => {});
+        await markKotPrinted(restaurantId, result.order.id, outletId).catch(() => {});
         notifications.show({
           title: `KOT #${updated.order.orderNo}`,
           message: printResult === "ble" ? "Sent to printer" : printResult === "browser" ? "Sent to browser print" : "Print failed — reprint from Orders",
@@ -123,7 +136,7 @@ export default function POSPage() {
     }
 
     try {
-      const updated = await addOrderItem(restaurantId, currentOrder.order.id, { itemId: item.id, qty: 1 });
+      const updated = await addOrderItem(restaurantId, currentOrder.order.id, { itemId: item.id, qty: 1 }, outletId);
       setCurrentOrder(updated);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -136,7 +149,7 @@ export default function POSPage() {
       return;
     }
     try {
-      const updated = await updateOrderItemQty(restaurantId, currentOrder.order.id, orderItemId, qty);
+      const updated = await updateOrderItemQty(restaurantId, currentOrder.order.id, orderItemId, qty, outletId);
       setCurrentOrder(updated);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -145,7 +158,7 @@ export default function POSPage() {
 
   const handleRemoveItem = async (orderItemId: string) => {
     try {
-      const updated = await removeOrderItem(restaurantId, currentOrder.order.id, orderItemId);
+      const updated = await removeOrderItem(restaurantId, currentOrder.order.id, orderItemId, outletId);
       setCurrentOrder(updated);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -156,7 +169,7 @@ export default function POSPage() {
     if (!currentOrder || !restaurant) return;
     const kotPayload = buildKotPayload(currentOrder, restaurant);
     const printResult = await printTicket(kotPayload);
-    await markKotPrinted(restaurantId, currentOrder.order.id).catch(() => {});
+    await markKotPrinted(restaurantId, currentOrder.order.id, outletId).catch(() => {});
     notifications.show({
       title: `Order #${currentOrder.order.orderNo} sent to kitchen`,
       message: printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to browser print" : "Print failed — reprint from Orders",
@@ -168,7 +181,7 @@ export default function POSPage() {
   const handleSettle = async () => {
     setSettling(true);
     try {
-      const updated = await settleOrder(restaurantId, currentOrder.order.id, { method: settleMethod });
+      const updated = await settleOrder(restaurantId, currentOrder.order.id, { method: settleMethod }, outletId);
       setCurrentOrder(null);
       setSettleModal(false);
       setTableNo("");
@@ -200,7 +213,7 @@ export default function POSPage() {
   const handleVoid = async () => {
     if (!confirm("Void this order?")) return;
     try {
-      await voidOrder(restaurantId, currentOrder.order.id);
+      await voidOrder(restaurantId, currentOrder.order.id, outletId);
       setCurrentOrder(null);
       setTableNo("");
       notifications.show({ title: "Order voided", message: "", color: "gray" });
@@ -231,13 +244,28 @@ export default function POSPage() {
 
       {!currentOrder && (
         <Stack gap="xs">
-          <TextInput
-            placeholder="Table no. (optional)"
-            size="sm"
-            value={tableNo}
-            onChange={(e) => setTableNo(e.target.value)}
-            leftSection={<IconTableAlias size={14} />}
-          />
+          {tables.length > 0 ? (
+            <Select
+              placeholder="Select a table (optional)"
+              size="sm"
+              clearable
+              value={tableNo || null}
+              onChange={(v) => setTableNo(v ?? "")}
+              data={tables.map((t) => ({
+                value: t.name,
+                label: t.section ? `${t.name} · ${t.section}` : t.name,
+              }))}
+              leftSection={<IconTableAlias size={14} />}
+            />
+          ) : (
+            <TextInput
+              placeholder="Table no. (optional)"
+              size="sm"
+              value={tableNo}
+              onChange={(e) => setTableNo(e.target.value)}
+              leftSection={<IconTableAlias size={14} />}
+            />
+          )}
         </Stack>
       )}
 
@@ -312,7 +340,7 @@ export default function POSPage() {
               </Menu.Dropdown>
             </Menu>
           </Group>
-          <Button fullWidth variant="light" color="red" onClick={handleVoid} size="xs">
+          <Button fullWidth variant="light" color="red" onClick={handleVoid} size="xs" style={{ display: canVoid ? undefined : "none" }}>
             Void Order
           </Button>
         </Stack>

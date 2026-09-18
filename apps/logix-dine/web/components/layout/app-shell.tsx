@@ -10,26 +10,30 @@ import {
 import {
   IconLogin, IconLogout, IconShoppingCart, IconHome,
   IconBook, IconSettings, IconBuildingStore, IconReceipt,
+  IconChartBar,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
 
+// `roles: undefined` = visible to every restaurant member (incl. no restaurant yet).
+// KITCHEN never sees this nav at all — it's redirected to the dedicated /kitchen layout.
 const NAV_ITEMS = [
   { label: "Home", href: "/", icon: IconHome },
-  { label: "POS", href: "/pos", icon: IconShoppingCart, ownerOnly: true },
-  { label: "Orders", href: "/orders", icon: IconReceipt, ownerOnly: true },
-  { label: "Menu", href: "/menu", icon: IconBook, ownerOnly: true },
-  { label: "Settings", href: "/settings", icon: IconSettings, ownerOnly: true },
+  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
+  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
+  { label: "Menu", href: "/menu", icon: IconBook, roles: ["OWNER", "MANAGER"] },
+  { label: "Reports", href: "/reports", icon: IconChartBar, roles: ["OWNER", "MANAGER"] },
+  { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
 ];
 
 export function AppShellLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
-  const { restaurant, outlets, activeOutlet, setActiveOutlet } = useRestaurant();
+  const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
 
-  const isOwner = (user as any)?.role === "OWNER" || (user as any)?.role === "ADMIN";
-  const visibleNav = NAV_ITEMS.filter((n) => !n.ownerOnly || isOwner);
+  const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
+  const visibleNav = NAV_ITEMS.filter((n) => !n.roles || (effectiveRole && n.roles.includes(effectiveRole)));
 
   return (
     <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0}>
@@ -45,7 +49,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               </Text>
             </Link>
 
-            {isOwner && outlets.length > 1 && (
+            {!!effectiveRole && outlets.length > 1 && (
               <Box visibleFrom="sm">
                 <Select
                   size="xs"
@@ -57,7 +61,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                 />
               </Box>
             )}
-            {isOwner && restaurant && outlets.length <= 1 && (
+            {!!effectiveRole && restaurant && outlets.length <= 1 && (
               <Box visibleFrom="sm">
                 <Badge color="dinePrimary" variant="light" size="sm" leftSection={<IconBuildingStore size={12} />}>
                   {restaurant.name}

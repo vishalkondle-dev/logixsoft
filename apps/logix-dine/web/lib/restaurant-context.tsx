@@ -5,6 +5,7 @@ import React, {
 } from "react";
 import type { JsonRestaurantRow, JsonRestaurantOutletRow } from "@logixsoft/logix-dine/types/pos-schema";
 import { useAuth } from "@/lib/auth-context";
+import { getMyRole } from "@/lib/api-client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 const RESTAURANT_COOKIE = "dine.restaurantId";
@@ -16,6 +17,9 @@ interface RestaurantContextType {
   activeOutlet: JsonRestaurantOutletRow | null;
   myRestaurants: JsonRestaurantRow[];
   isLoading: boolean;
+  role: string | null;
+  allOutlets: boolean;
+  myOutletIds: string[];
   setActiveRestaurant: (restaurantId: string) => void;
   setActiveOutlet: (outletId: string) => void;
   refresh: () => Promise<void>;
@@ -42,11 +46,14 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   const [myRestaurants, setMyRestaurants] = useState<JsonRestaurantRow[]>([]);
   const [isLoading, setIsLoading] = useState(true); // start true until first fetch resolves
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [allOutlets, setAllOutlets] = useState<boolean>(true);
+  const [myOutletIds, setMyOutletIds] = useState<string[]>([]);
 
   const fetchData = useCallback(async (restaurantId: string) => {
     setIsLoading(true);
     try {
-      const [restRes, outletsRes] = await Promise.all([
+      const [restRes, outletsRes, roleInfo] = await Promise.all([
         fetch(`${API_BASE}/restaurants/me`, {
           credentials: "include",
           headers: { "X-Restaurant-Id": restaurantId },
@@ -55,19 +62,31 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
           credentials: "include",
           headers: { "X-Restaurant-Id": restaurantId },
         }),
+        getMyRole(restaurantId).catch(() => null),
       ]);
 
       if (restRes.ok) {
         const r = await restRes.json();
         setRestaurant(r);
       }
+      if (roleInfo) {
+        setRole(roleInfo.role);
+        setAllOutlets(roleInfo.allOutlets);
+        setMyOutletIds(roleInfo.outletIds);
+      }
       if (outletsRes.ok) {
-        const o = await outletsRes.json();
-        setOutlets(o);
+        const o: JsonRestaurantOutletRow[] = await outletsRes.json();
+        // Non-owner roles only ever see/select outlets they're assigned to —
+        // the API already enforces this server-side, but scoping the picker
+        // here too avoids showing outlets the user can't actually act on.
+        const scoped = roleInfo && !roleInfo.allOutlets
+          ? o.filter((out) => roleInfo.outletIds.includes(out.id))
+          : o;
+        setOutlets(scoped);
         // Set active outlet from cookie or default
         const savedOutletId = getCookie(OUTLET_COOKIE);
-        const saved = o.find((out: JsonRestaurantOutletRow) => out.id === savedOutletId);
-        const defaultOutlet = o.find((out: JsonRestaurantOutletRow) => out.isDefault) ?? o[0] ?? null;
+        const saved = scoped.find((out) => out.id === savedOutletId);
+        const defaultOutlet = scoped.find((out) => out.isDefault) ?? scoped[0] ?? null;
         setActiveOutletState(saved ?? defaultOutlet);
       }
     } catch {
@@ -89,10 +108,11 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       setRestaurant(null);
       setOutlets([]);
       setMyRestaurants([]);
+      setRole(null);
       setIsLoading(false); // auth settled, no session — done
       return;
     }
-    // Fetch the list of restaurants the user owns
+    // Fetch the list of restaurants the user is a member of (owner or staff)
     fetch(`${API_BASE}/restaurants`, {
       credentials: "include",
     })
@@ -131,6 +151,9 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       activeOutlet,
       myRestaurants,
       isLoading,
+      role,
+      allOutlets,
+      myOutletIds,
       setActiveRestaurant,
       setActiveOutlet,
       refresh,
@@ -146,10 +169,10 @@ export function useRestaurant() {
   return ctx;
 }
 
+/** The caller's restaurant-level role: OWNER | MANAGER | WAITER | KITCHEN | CUSTOM_ROLE | null (not a member / not loaded yet). */
 export function useRestaurantRole(): string | null {
-  // In v1 every member is OWNER — expands in v2 via restaurantMember lookup
-  const { restaurant } = useRestaurant();
+  const { role } = useRestaurant();
   const { user } = useAuth();
-  if (!restaurant || !user) return null;
-  return (user as any).role === "ADMIN" ? "ADMIN" : "OWNER";
+  if ((user as any)?.role === "ADMIN") return "ADMIN";
+  return role;
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Container, Title, Text, Button, Group, Stack, SimpleGrid, Card, ThemeIcon, Badge,
+  Container, Title, Text, Button, Group, Stack, SimpleGrid, Card, ThemeIcon, Badge, Center, Loader,
 } from "@mantine/core";
 import {
   IconBrandWhatsapp, IconShieldLock, IconCookie, IconArrowRight,
@@ -14,7 +15,22 @@ import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function HomePage() {
   const { isAuthenticated, openLoginModal } = useAuth();
-  const { restaurant } = useRestaurant();
+  const { restaurant, role, isLoading } = useRestaurant();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (isAuthenticated && restaurant && role === "KITCHEN") {
+      router.replace("/kitchen");
+    }
+  }, [isAuthenticated, restaurant, role, router]);
+
+  if (isAuthenticated && restaurant && role === "KITCHEN") {
+    return (
+      <Center py={100} style={{ minHeight: "60vh" }}>
+        <Loader size="lg" color="dinePrimary" />
+      </Center>
+    );
+  }
 
   // Redirect owners directly to POS
   if (isAuthenticated && restaurant) {

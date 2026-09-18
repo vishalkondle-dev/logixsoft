@@ -1,7 +1,7 @@
 "use client";
 
 import React, { ReactNode, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Center, Loader, Container, Paper, Stack, Title, Text, Button, ThemeIcon } from "@mantine/core";
 import { IconLock, IconBrandWhatsapp } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
@@ -9,9 +9,14 @@ import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function OwnerLayout({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
-  const { restaurant, isLoading: restLoading } = useRestaurant();
+  const { restaurant, isLoading: restLoading, role } = useRestaurant();
   const router = useRouter();
+  const pathname = usePathname();
   const redirected = useRef(false);
+
+  useEffect(() => {
+    redirected.current = false;
+  }, [pathname]);
 
   useEffect(() => {
     // Only redirect after BOTH auth and restaurant have fully loaded
@@ -21,8 +26,22 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     if (!restaurant && !redirected.current) {
       redirected.current = true;
       router.replace("/onboarding");
+      return;
     }
-  }, [authLoading, restLoading, isAuthenticated, restaurant, router]);
+    // KITCHEN role never sees the owner-area nav/pages — dedicated /kitchen
+    // screen only. Redirect away from any (owner) route immediately.
+    if (restaurant && role === "KITCHEN" && !redirected.current && pathname !== "/kitchen") {
+      redirected.current = true;
+      router.replace("/kitchen");
+      return;
+    }
+    // WAITER role can only access /pos and /orders
+    if (restaurant && role === "WAITER" && !redirected.current && !pathname.startsWith("/pos") && !pathname.startsWith("/orders")) {
+      redirected.current = true;
+      router.replace("/pos");
+      return;
+    }
+  }, [authLoading, restLoading, isAuthenticated, restaurant, role, pathname, router]);
 
   // Still loading either auth or restaurant context
   if (authLoading || (isAuthenticated && restLoading)) {
@@ -53,8 +72,9 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // Authenticated but no restaurant yet — show loader while redirect fires
-  if (!restaurant) {
+  // Authenticated but no restaurant yet, or KITCHEN/WAITER restricted role being redirected — show loader
+  const isRestrictedRole = role === "KITCHEN" || (role === "WAITER" && !pathname.startsWith("/pos") && !pathname.startsWith("/orders"));
+  if (!restaurant || isRestrictedRole) {
     return (
       <Center py={100}>
         <Loader size="lg" color="dinePrimary" />

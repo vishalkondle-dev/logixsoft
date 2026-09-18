@@ -15,8 +15,9 @@ import { printTicket } from "@/lib/print";
 const STATUS_COLORS: Record<string, string> = { OPEN: "blue", PAID: "green", VOID: "gray" };
 
 export default function OrdersPage() {
-  const { restaurant } = useRestaurant();
+  const { restaurant, activeOutlet, allOutlets } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
+  const outletId = activeOutlet?.id ?? null;
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -25,14 +26,22 @@ export default function OrdersPage() {
 
   const load = useCallback(async () => {
     if (!restaurantId) return;
+    // Non-owner/manager roles are outlet-scoped — the API requires an
+    // explicit outletId for them (400 without it). Owner/manager may omit
+    // it to see all outlets, or pass activeOutlet to filter.
+    if (!allOutlets && !outletId) return;
     setLoading(true);
     try {
-      const data = await listOrders(restaurantId, { status: statusFilter ?? undefined, limit: 100 });
+      const data = await listOrders(restaurantId, {
+        status: statusFilter ?? undefined,
+        outletId: outletId ?? undefined,
+        limit: 100,
+      });
       setOrders(data);
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, statusFilter]);
+  }, [restaurantId, statusFilter, outletId, allOutlets]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -78,7 +87,9 @@ export default function OrdersPage() {
         </Group>
       </Group>
 
-      {loading ? (
+      {!allOutlets && !outletId ? (
+        <Text c="dimmed" ta="center" py="xl">Select an outlet to view orders</Text>
+      ) : loading ? (
         <Center py={60}><Loader color="dinePrimary" /></Center>
       ) : !orders.length ? (
         <Text c="dimmed" ta="center" py="xl">No orders found</Text>
@@ -108,7 +119,7 @@ export default function OrdersPage() {
                 </Group>
                 <Text size="xs" c="dimmed" mt={4}>
                   {items.length} item{items.length !== 1 ? "s" : ""}
-                  {order.paymentMethod ? ` · ${order.paymentMethod}` : ""}
+                  {order.method ? ` · ${order.method}` : ""}
                   {order.kotPrintedAt ? " · KOT ✓" : ""}
                 </Text>
               </Paper>
@@ -136,7 +147,7 @@ export default function OrdersPage() {
               <Text fw={700}>Total</Text>
               <Text fw={700} c="dinePrimary">₹{(selected.order.subtotalPaise / 100).toFixed(0)}</Text>
             </Group>
-            {selected.order.paymentMethod && <Text size="xs" c="dimmed">Payment: {selected.order.paymentMethod}</Text>}
+            {selected.order.method && <Text size="xs" c="dimmed">Payment: {selected.order.method}</Text>}
             {selected.order.kotPrintedAt && (
               <Text size="xs" c="dimmed">
                 KOT printed: {new Date(selected.order.kotPrintedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}

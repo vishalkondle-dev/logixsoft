@@ -130,14 +130,14 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
       <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
 
       <Stack gap={6} mb="md">
-        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 340 : 160 }}>
+        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 360 : 170 }}>
           <Select
             size="sm"
             value={preset}
             onChange={(val) => val && setPreset(val as Preset)}
             data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
             leftSection={<IconCalendar size={15} />}
-            w={preset === "custom" ? { base: 105, sm: 115 } : { base: 140, sm: 155 }}
+            w={preset === "custom" ? { base: 120, sm: 135 } : { base: 150, sm: 165 }}
             style={{ flexShrink: 0 }}
             allowDeselect={false}
             aria-label="Duration"
@@ -146,7 +146,7 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
           {preset === "custom" && (
             <DatePickerInput
               type="range"
-              placeholder="MMM DD, YY - MMM DD, YY"
+              placeholder="Select date(s)"
               valueFormat="MMM DD, YY"
               labelSeparator="-"
               valueFormatter={({ date }) => {

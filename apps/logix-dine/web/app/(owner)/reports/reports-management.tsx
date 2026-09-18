@@ -129,18 +129,19 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
     <>
       <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
 
-      <Group gap="sm" mb="lg" wrap="wrap" align="center">
-        <Group gap="xs" wrap="nowrap" align="center" style={{ flex: preset === "custom" ? "1 1 auto" : "0 0 auto", minWidth: 0, maxWidth: "100%" }}>
+      <Stack gap={6} mb="md">
+        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 340 : 160 }}>
           <Select
             size="sm"
             value={preset}
             onChange={(val) => val && setPreset(val as Preset)}
             data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
             leftSection={<IconCalendar size={15} />}
-            w={{ base: preset === "custom" ? 115 : 145, sm: 155 }}
+            w={preset === "custom" ? { base: 105, sm: 115 } : { base: 140, sm: 155 }}
             style={{ flexShrink: 0 }}
             allowDeselect={false}
             aria-label="Duration"
+            comboboxProps={{ withinPortal: true, zIndex: 1500 }}
           />
           {preset === "custom" && (
             <DatePickerInput
@@ -165,26 +166,26 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
                 if (!v) { setCustomRange([null, null]); return; }
                 setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
               }}
-              leftSection={<IconCalendar size={15} />}
               size="sm"
               styles={{
                 input: {
-                  fontSize: "12.5px",
-                  paddingLeft: "28px",
-                  paddingRight: "6px",
+                  fontSize: "12px",
+                  paddingLeft: "8px",
+                  paddingRight: "8px",
                   textAlign: "center",
+                  height: "36px",
                 },
               }}
-              style={{ flex: "0 1 215px", minWidth: 0 }}
-              w={{ base: "auto", xs: 215 }}
-              maw={215}
+              style={{ flex: 1, minWidth: 0 }}
+              maw={{ base: "100%", sm: 210 }}
+              popoverProps={{ withinPortal: true, zIndex: 1500 }}
             />
           )}
         </Group>
         <Text size="xs" c="dimmed">
           {`${dayjs(range.from).format("MMM DD, YY")} - ${dayjs(range.to).format("MMM DD, YY")}`}
         </Text>
-      </Group>
+      </Stack>
 
       <Tabs
         value={activeType}

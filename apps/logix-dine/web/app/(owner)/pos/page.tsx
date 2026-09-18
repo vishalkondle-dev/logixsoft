@@ -329,7 +329,7 @@ export default function POSPage() {
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "calc(100vh - 60px)",
+        height: "100%",
         overflow: "hidden",
       }}
       px={{ base: "xs", sm: "md" }}

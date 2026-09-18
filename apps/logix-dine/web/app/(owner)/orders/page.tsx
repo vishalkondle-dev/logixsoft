@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container, Title, Stack, Paper, Group, Text, Badge, Select, Button,
-  Loader, Center, Modal, Divider,
+  Loader, Center, Modal, Divider, Box,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconReceipt, IconRefresh, IconPrinter } from "@tabler/icons-react";
@@ -57,7 +57,8 @@ export default function OrdersPage() {
   if (!restaurant) return null;
 
   return (
-    <Container size="xl" pt="md" pb={100} px={0}>
+    <Box style={{ flex: 1, overflowY: "auto" }}>
+    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <Title order={2}>Orders</Title>
         <Group>
@@ -173,5 +174,6 @@ export default function OrdersPage() {
         )}
       </Modal>
     </Container>
+    </Box>
   );
 }

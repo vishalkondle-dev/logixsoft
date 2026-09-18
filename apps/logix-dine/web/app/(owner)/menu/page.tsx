@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container, Title, Tabs, Stack, Group, Text, Paper, Badge, ActionIcon,
-  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid,
+  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconEdit, IconTrash, IconCheck, IconGripVertical } from "@tabler/icons-react";
@@ -125,7 +125,8 @@ export default function MenuPage() {
   if (!restaurant) return null;
 
   return (
-    <Container size="xl" pt="md" pb={100} px={0}>
+    <Box style={{ flex: 1, overflowY: "auto" }}>
+    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <Title order={2}>Menu</Title>
         <Button color="dinePrimary" leftSection={<IconPlus size={16} />}
@@ -240,5 +241,6 @@ export default function MenuPage() {
         </Stack>
       </Modal>
     </Container>
+    </Box>
   );
 }

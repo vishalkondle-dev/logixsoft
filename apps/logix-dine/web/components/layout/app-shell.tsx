@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { label: "Home", href: "/", icon: IconHome },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
+  { label: "Settings", href: "/settings/restaurant", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
 ];
 
 export function AppShellLayout({ children }: { children: ReactNode }) {
@@ -143,7 +143,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         <Group gap={4} wrap="nowrap" style={{ flexWrap: "nowrap", minWidth: "max-content" }}>
           {visibleNav.map((item) => {
             const Icon = item.icon;
-            const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const isActive = item.href === "/"
+              ? pathname === "/"
+              : item.href.startsWith("/settings")
+                ? pathname.startsWith("/settings")
+                : pathname.startsWith(item.href);
             const itemHref = activeOutlet && item.href !== "/"
               ? `${item.href}?outletId=${activeOutlet.id}`
               : item.href;

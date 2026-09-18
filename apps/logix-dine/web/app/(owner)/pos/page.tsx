@@ -527,26 +527,12 @@ export default function POSPage() {
           style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
         >
           <Stack gap="sm" style={{ height: "100%", overflow: "hidden" }}>
-            <Group>
-              <TextInput
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                flex={1}
-                size="sm"
-              />
-              {/* Mobile cart button */}
-              <Button
-                hiddenFrom="sm"
-                color="dinePrimary"
-                variant={cartCount > 0 ? "filled" : "light"}
-                onClick={() => setCartOpen(true)}
-                leftSection={<IconShoppingCart size={16} />}
-                size="sm"
-              >
-                {cartCount > 0 ? `Cart (${cartCount}) — ₹${(total / 100).toFixed(0)}` : "Cart"}
-              </Button>
-            </Group>
+            <TextInput
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              size="sm"
+            />
 
             {/* Category Tabs */}
             <ScrollArea type="auto">
@@ -616,6 +602,34 @@ export default function POSPage() {
           </Paper>
         </Grid.Col>
       </Grid>
+
+      {/* Floating Cart Button on Mobile: right bottom above bottom navbar */}
+      {!cartOpen && (
+        <Box
+          hiddenFrom="sm"
+          style={{
+            position: "fixed",
+            bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+            right: 16,
+            zIndex: 110,
+          }}
+        >
+          <Button
+            color="dinePrimary"
+            variant="filled"
+            radius="xl"
+            size="md"
+            onClick={() => setCartOpen(true)}
+            leftSection={<IconShoppingCart size={20} />}
+            style={{
+              boxShadow: "0 6px 20px rgba(175, 115, 215, 0.45), 0 2px 8px rgba(0, 0, 0, 0.15)",
+              fontWeight: 600,
+            }}
+          >
+            {cartCount > 0 ? `Cart (${cartCount}) — ₹${(total / 100).toFixed(0)}` : "Cart"}
+          </Button>
+        </Box>
+      )}
 
       {/* Mobile Cart Drawer */}
       <Drawer

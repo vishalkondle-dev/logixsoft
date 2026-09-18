@@ -286,8 +286,17 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     console.log('Mobile search input font size:', searchFz);
     expect(parseFloat(searchFz)).toBeGreaterThanOrEqual(16);
 
-    // 3. Open mobile cart drawer and verify phone input font-size is at least 16px
+    // 3. Verify mobile cart button is NOT visible when cart is empty
+    await expect(page.getByRole('button', { name: /cart/i })).not.toBeVisible();
+
+    // 4. Add an item and verify mobile cart button becomes visible
+    const itemCard = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
+    await expect(itemCard).toBeVisible();
+    await itemCard.click();
+    await page.waitForTimeout(300);
+
     const openCartBtn = page.getByRole('button', { name: /cart/i }).first();
+    await expect(openCartBtn).toBeVisible();
     await openCartBtn.click();
     const phoneInput = page.locator('input[placeholder*="WhatsApp" i]:visible');
     await expect(phoneInput).toBeVisible();

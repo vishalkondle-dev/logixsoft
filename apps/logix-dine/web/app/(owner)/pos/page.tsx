@@ -308,6 +308,7 @@ export default function POSPage() {
     setCartItems([]);
     setTableNo("Takeaway");
     setCustomerPhone("");
+    if (cartOpen) setCartOpen(false);
   };
 
   const loadBootstrap = useCallback(async () => {
@@ -603,8 +604,8 @@ export default function POSPage() {
         </Grid.Col>
       </Grid>
 
-      {/* Floating Cart Button on Mobile: right bottom above bottom navbar */}
-      {!cartOpen && (
+      {/* Floating Cart Button on Mobile: right bottom above bottom navbar (only visible if items added) */}
+      {!cartOpen && cartCount > 0 && (
         <Box
           hiddenFrom="sm"
           style={{
@@ -626,7 +627,7 @@ export default function POSPage() {
               fontWeight: 600,
             }}
           >
-            {cartCount > 0 ? `Cart (${cartCount}) — ₹${(total / 100).toFixed(0)}` : "Cart"}
+            Cart ({cartCount}) — ₹{(total / 100).toFixed(0)}
           </Button>
         </Box>
       )}

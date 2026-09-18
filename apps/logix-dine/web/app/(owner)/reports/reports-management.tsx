@@ -130,14 +130,14 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
       <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
 
       <Stack gap={6} mb="md">
-        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 360 : 170 }}>
+        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 420 : 230 }}>
           <Select
             size="sm"
             value={preset}
             onChange={(val) => val && setPreset(val as Preset)}
             data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
             leftSection={<IconCalendar size={15} />}
-            w={preset === "custom" ? { base: 120, sm: 135 } : { base: 150, sm: 165 }}
+            w={preset === "custom" ? { base: 148, sm: 165 } : { base: 195, sm: 220 }}
             style={{ flexShrink: 0 }}
             allowDeselect={false}
             aria-label="Duration"
@@ -170,14 +170,14 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
               styles={{
                 input: {
                   fontSize: "12px",
-                  paddingLeft: "8px",
-                  paddingRight: "8px",
+                  paddingLeft: "6px",
+                  paddingRight: "6px",
                   textAlign: "center",
                   height: "36px",
                 },
               }}
               style={{ flex: 1, minWidth: 0 }}
-              maw={{ base: "100%", sm: 210 }}
+              maw={{ base: "100%", sm: 220 }}
               popoverProps={{ withinPortal: true, zIndex: 1500 }}
             />
           )}

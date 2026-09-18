@@ -136,8 +136,8 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
             value={preset}
             onChange={(val) => val && setPreset(val as Preset)}
             data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
-            leftSection={<IconCalendar size={16} />}
-            w={{ base: preset === "custom" ? 125 : 150, sm: 160 }}
+            leftSection={<IconCalendar size={15} />}
+            w={{ base: preset === "custom" ? 115 : 145, sm: 155 }}
             style={{ flexShrink: 0 }}
             allowDeselect={false}
             aria-label="Duration"
@@ -147,30 +147,42 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
               type="range"
               placeholder="MMM DD, YY - MMM DD, YY"
               valueFormat="MMM DD, YY"
-              labelSeparator=" - "
+              labelSeparator="-"
+              valueFormatter={({ date }) => {
+                if (Array.isArray(date)) {
+                  if (date[0] && date[1]) {
+                    return `${dayjs(date[0]).format("MMM DD, YY")} - ${dayjs(date[1]).format("MMM DD, YY")}`;
+                  }
+                  if (date[0]) {
+                    return `${dayjs(date[0]).format("MMM DD, YY")} - `;
+                  }
+                  return "";
+                }
+                return date ? dayjs(date).format("MMM DD, YY") : "";
+              }}
               value={customRange}
               onChange={(v: [string | null, string | null] | null) => {
                 if (!v) { setCustomRange([null, null]); return; }
                 setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
               }}
-              leftSection={<IconCalendar size={16} />}
+              leftSection={<IconCalendar size={15} />}
               size="sm"
               styles={{
                 input: {
-                  fontSize: "13px",
-                  paddingLeft: "32px",
-                  paddingRight: "8px",
+                  fontSize: "12.5px",
+                  paddingLeft: "28px",
+                  paddingRight: "6px",
+                  textAlign: "center",
                 },
               }}
-              style={{ flex: 1, minWidth: 0 }}
-              maw={{ sm: 270 }}
+              style={{ flex: "0 1 215px", minWidth: 0 }}
+              w={{ base: "auto", xs: 215 }}
+              maw={215}
             />
           )}
         </Group>
         <Text size="xs" c="dimmed">
-          {range.from === range.to
-            ? dayjs(range.from).format("MMM DD, YY")
-            : `${dayjs(range.from).format("MMM DD, YY")} - ${dayjs(range.to).format("MMM DD, YY")}`}
+          {`${dayjs(range.from).format("MMM DD, YY")} - ${dayjs(range.to).format("MMM DD, YY")}`}
         </Text>
       </Group>
 

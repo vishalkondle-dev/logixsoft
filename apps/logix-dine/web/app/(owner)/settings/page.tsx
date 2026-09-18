@@ -116,8 +116,7 @@ export default function SettingsPage() {
   if (!restaurant) return <Loader />;
 
   return (
-    <Box style={{ flex: 1, overflowY: "auto" }}>
-      <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
         <Title order={2} mb="md">Settings</Title>
         <Tabs defaultValue="restaurant">
           <Tabs.List mb="md">
@@ -188,7 +187,6 @@ export default function SettingsPage() {
             </Group>
           </Stack>
         </Modal>
-      </Container>
-    </Box>
+    </Container>
   );
 }

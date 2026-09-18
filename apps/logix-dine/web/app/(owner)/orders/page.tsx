@@ -57,7 +57,6 @@ export default function OrdersPage() {
   if (!restaurant) return null;
 
   return (
-    <Box style={{ flex: 1, overflowY: "auto" }}>
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <Title order={2}>Orders</Title>
@@ -174,6 +173,5 @@ export default function OrdersPage() {
         )}
       </Modal>
     </Container>
-    </Box>
   );
 }

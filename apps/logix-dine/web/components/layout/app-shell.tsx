@@ -32,7 +32,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const visibleNav = NAV_ITEMS.filter((n) => !n.ownerOnly || isOwner);
 
   return (
-    <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0} style={{ height: "100dvh", overflow: "hidden" }}>
+    <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0}>
       <AppShell.Header>
         <Container size="xl" h="100%" px={{ base: "md", sm: "lg" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
@@ -105,7 +105,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         </Container>
       </AppShell.Header>
 
-      <AppShell.Main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <AppShell.Main>
         {children}
         <LoginModal />
       </AppShell.Main>

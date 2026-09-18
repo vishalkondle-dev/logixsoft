@@ -125,7 +125,6 @@ export default function MenuPage() {
   if (!restaurant) return null;
 
   return (
-    <Box style={{ flex: 1, overflowY: "auto" }}>
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <Title order={2}>Menu</Title>
@@ -241,6 +240,5 @@ export default function MenuPage() {
         </Stack>
       </Modal>
     </Container>
-    </Box>
   );
 }

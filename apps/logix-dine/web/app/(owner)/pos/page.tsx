@@ -327,10 +327,14 @@ export default function POSPage() {
   return (
     <Box
       style={{
+        position: "fixed",
+        top: 60,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
       }}
       px={{ base: "xs", sm: "md" }}
       pt="xs"

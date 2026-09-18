@@ -129,30 +129,34 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
       <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
 
       <Group gap="sm" mb="lg" wrap="wrap" align="center">
-        <Select
-          size="sm"
-          value={preset}
-          onChange={(val) => val && setPreset(val as Preset)}
-          data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
-          leftSection={<IconCalendar size={16} />}
-          w={{ base: "100%", xs: 160 }}
-          allowDeselect={false}
-          aria-label="Duration"
-        />
-        {preset === "custom" && (
-          <DatePickerInput
-            type="range"
-            placeholder="Pick date range"
-            value={customRange}
-            onChange={(v: [string | null, string | null] | null) => {
-              if (!v) { setCustomRange([null, null]); return; }
-              setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
-            }}
-            leftSection={<IconCalendar size={16} />}
+        <Group gap="xs" wrap="nowrap" align="center" style={{ flex: preset === "custom" ? "1 1 auto" : "0 0 auto", minWidth: 0, maxWidth: "100%" }}>
+          <Select
             size="sm"
-            w={{ base: "100%", xs: 240 }}
+            value={preset}
+            onChange={(val) => val && setPreset(val as Preset)}
+            data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
+            leftSection={<IconCalendar size={16} />}
+            w={{ base: preset === "custom" ? 125 : 150, sm: 160 }}
+            style={{ flexShrink: 0 }}
+            allowDeselect={false}
+            aria-label="Duration"
           />
-        )}
+          {preset === "custom" && (
+            <DatePickerInput
+              type="range"
+              placeholder="Pick date range"
+              value={customRange}
+              onChange={(v: [string | null, string | null] | null) => {
+                if (!v) { setCustomRange([null, null]); return; }
+                setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
+              }}
+              leftSection={<IconCalendar size={16} />}
+              size="sm"
+              style={{ flex: 1, minWidth: 0 }}
+              maw={{ sm: 260 }}
+            />
+          )}
+        </Group>
         <Text size="xs" c="dimmed">
           {range.from === range.to ? range.from : `${range.from} → ${range.to}`}
         </Text>

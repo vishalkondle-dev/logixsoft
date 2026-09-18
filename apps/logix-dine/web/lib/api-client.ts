@@ -50,6 +50,9 @@ export const settleOrder = (restaurantId: string, orderId: string, body: { metho
 export const voidOrder = (restaurantId: string, orderId: string) =>
   apiFetch<any>(`/billing/orders/${orderId}/void`, restaurantId, { method: "POST", body: JSON.stringify({}) });
 
+export const markKotPrinted = (restaurantId: string, orderId: string) =>
+  apiFetch<any>(`/billing/orders/${orderId}/mark-kot-printed`, restaurantId, { method: "PATCH" });
+
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 
 export const getCategories = (restaurantId: string) =>

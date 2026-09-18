@@ -8,12 +8,13 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconBuildingStore, IconCheck, IconAlertCircle, IconTrash,
-  IconEdit, IconPlus, IconStar,
+  IconEdit, IconPlus, IconStar, IconPrinter,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   updateRestaurant, getOutlets, createOutlet, updateOutlet, deleteOutlet, setDefaultOutlet,
 } from "@/lib/api-client";
+import { PrinterButton } from "@/components/print/printer-button";
 
 export default function SettingsPage() {
   const { restaurant, outlets: ctxOutlets, refresh } = useRestaurant();
@@ -114,6 +115,7 @@ export default function SettingsPage() {
         <Tabs.List mb="lg">
           <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />}>Restaurant</Tabs.Tab>
           <Tabs.Tab value="outlets" leftSection={<IconBuildingStore size={16} />}>Outlets</Tabs.Tab>
+          <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />}>Printing</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="restaurant">
@@ -164,6 +166,19 @@ export default function SettingsPage() {
               Add Outlet
             </Button>
           </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="printing">
+          <Paper withBorder p="xl" radius="md" maw={480}>
+            <Stack gap="md">
+              <Text fw={600}>Bluetooth Printer</Text>
+              <Text size="sm" c="dimmed">
+                Pair your 58mm thermal printer once. KOT and bills will print automatically via Bluetooth.
+                Requires Chrome on Android or desktop.
+              </Text>
+              <PrinterButton />
+            </Stack>
+          </Paper>
         </Tabs.Panel>
       </Tabs>
 

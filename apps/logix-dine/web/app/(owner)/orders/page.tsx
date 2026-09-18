@@ -5,9 +5,12 @@ import {
   Container, Title, Stack, Paper, Group, Text, Badge, Select, Button,
   Loader, Center, Modal, Divider,
 } from "@mantine/core";
-import { IconReceipt, IconRefresh } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { IconReceipt, IconRefresh, IconPrinter } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { listOrders } from "@/lib/api-client";
+import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
+import { printTicket } from "@/lib/print";
 
 const STATUS_COLORS: Record<string, string> = { OPEN: "blue", PAID: "green", VOID: "gray" };
 
@@ -18,6 +21,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<any>(null);
+  const [reprinting, setReprinting] = useState<"KOT" | "BILL" | null>(null);
 
   const load = useCallback(async () => {
     if (!restaurantId) return;
@@ -28,9 +32,27 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, statusFilter]);  // restaurantId in deps → reloads when restaurant loads
+  }, [restaurantId, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleReprint = async (type: "KOT" | "BILL") => {
+    if (!selected || !restaurant) return;
+    setReprinting(type);
+    try {
+      const payload = type === "KOT"
+        ? buildKotPayload(selected, restaurant)
+        : buildBillPayload(selected, restaurant);
+      const result = await printTicket(payload);
+      notifications.show({
+        title: `${type} reprinted`,
+        message: result === "ble" ? "Sent to printer" : result === "browser" ? "Sent to browser print" : "Print failed",
+        color: result === "error" ? "red" : "green",
+      });
+    } finally {
+      setReprinting(null);
+    }
+  };
 
   if (!restaurant) return null;
 
@@ -84,7 +106,11 @@ export default function OrdersPage() {
                     <Text size="xs" c="dimmed">{new Date(order.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</Text>
                   </Group>
                 </Group>
-                <Text size="xs" c="dimmed" mt={4}>{items.length} item{items.length !== 1 ? "s" : ""}{order.method ? ` · ${order.method}` : ""}</Text>
+                <Text size="xs" c="dimmed" mt={4}>
+                  {items.length} item{items.length !== 1 ? "s" : ""}
+                  {order.paymentMethod ? ` · ${order.paymentMethod}` : ""}
+                  {order.kotPrintedAt ? " · KOT ✓" : ""}
+                </Text>
               </Paper>
             );
           })}
@@ -100,8 +126,8 @@ export default function OrdersPage() {
             </Group>
             <Divider />
             {selected.items.map((item: any) => (
-              <Group key={item.id} justify="space-between">
-                <Text size="sm">{item.nameSnapshot} × {item.qty}</Text>
+              <Group key={item.orderItemId ?? item.id} justify="space-between">
+                <Text size="sm">{item.name ?? item.nameSnapshot} × {item.qty}</Text>
                 <Text size="sm">₹{((item.pricePaiseSnapshot * item.qty) / 100).toFixed(0)}</Text>
               </Group>
             ))}
@@ -110,8 +136,39 @@ export default function OrdersPage() {
               <Text fw={700}>Total</Text>
               <Text fw={700} c="dinePrimary">₹{(selected.order.subtotalPaise / 100).toFixed(0)}</Text>
             </Group>
-            {selected.order.method && <Text size="xs" c="dimmed">Payment: {selected.order.method}</Text>}
-            {selected.order.settledAt && <Text size="xs" c="dimmed">Settled: {new Date(selected.order.settledAt).toLocaleString("en-IN")}</Text>}
+            {selected.order.paymentMethod && <Text size="xs" c="dimmed">Payment: {selected.order.paymentMethod}</Text>}
+            {selected.order.kotPrintedAt && (
+              <Text size="xs" c="dimmed">
+                KOT printed: {new Date(selected.order.kotPrintedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+              </Text>
+            )}
+            {selected.order.settledAt && (
+              <Text size="xs" c="dimmed">Settled: {new Date(selected.order.settledAt).toLocaleString("en-IN")}</Text>
+            )}
+            <Divider />
+            <Group gap="xs">
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconPrinter size={14} />}
+                loading={reprinting === "KOT"}
+                onClick={() => handleReprint("KOT")}
+              >
+                Reprint KOT
+              </Button>
+              {selected.order.status === "PAID" && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="green"
+                  leftSection={<IconReceipt size={14} />}
+                  loading={reprinting === "BILL"}
+                  onClick={() => handleReprint("BILL")}
+                >
+                  Reprint Bill
+                </Button>
+              )}
+            </Group>
           </Stack>
         )}
       </Modal>

@@ -14,8 +14,10 @@ import {
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   getBootstrap, startOrder, addOrderItem, updateOrderItemQty,
-  removeOrderItem, settleOrder, voidOrder,
+  removeOrderItem, settleOrder, voidOrder, markKotPrinted,
 } from "@/lib/api-client";
+import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
+import { printTicket } from "@/lib/print";
 
 interface CartItem {
   orderItemId: string;
@@ -103,6 +105,15 @@ export default function POSPage() {
         // Then add item
         const updated = await addOrderItem(restaurantId, result.order.id, { itemId: item.id, qty: 1 });
         setCurrentOrder(updated);
+        // Print KOT automatically
+        const kotPayload = buildKotPayload(updated, restaurant);
+        const printResult = await printTicket(kotPayload);
+        await markKotPrinted(restaurantId, result.order.id).catch(() => {});
+        notifications.show({
+          title: `KOT #${updated.order.orderNo}`,
+          message: printResult === "ble" ? "Sent to printer" : printResult === "browser" ? "Sent to browser print" : "Print failed — reprint from Orders",
+          color: printResult === "error" ? "orange" : "dinePrimary",
+        });
       } catch (err: any) {
         notifications.show({ title: "Error", message: err.message, color: "red" });
       } finally {
@@ -142,15 +153,16 @@ export default function POSPage() {
   };
 
   const handleSend = async () => {
-    // Send = print KOT, keep order OPEN (payment collected later)
-    if (!currentOrder) return;
+    if (!currentOrder || !restaurant) return;
+    const kotPayload = buildKotPayload(currentOrder, restaurant);
+    const printResult = await printTicket(kotPayload);
+    await markKotPrinted(restaurantId, currentOrder.order.id).catch(() => {});
     notifications.show({
       title: `Order #${currentOrder.order.orderNo} sent to kitchen`,
-      message: "Collect payment later from Orders",
-      color: "dinePrimary",
+      message: printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to browser print" : "Print failed — reprint from Orders",
+      color: printResult === "error" ? "orange" : "dinePrimary",
       icon: <IconCheck size={16} />,
     });
-    // v2: print KOT here via printTicket()
   };
 
   const handleSettle = async () => {
@@ -160,12 +172,24 @@ export default function POSPage() {
       setCurrentOrder(null);
       setSettleModal(false);
       setTableNo("");
-      notifications.show({
-        title: "Order settled!",
-        message: `Order #${updated.order.orderNo} — ₹${(updated.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}`,
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
+      // Print bill
+      if (restaurant) {
+        const billPayload = buildBillPayload(updated, restaurant);
+        const printResult = await printTicket(billPayload);
+        notifications.show({
+          title: "Order settled!",
+          message: `#${updated.order.orderNo} — ₹${(updated.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${printResult === "ble" ? " · Bill printed" : printResult === "browser" ? " · Bill sent to print" : ""}`,
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+      } else {
+        notifications.show({
+          title: "Order settled!",
+          message: `Order #${updated.order.orderNo} — ₹${(updated.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}`,
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+      }
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {

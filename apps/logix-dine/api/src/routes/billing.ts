@@ -339,4 +339,32 @@ app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
   }
 });
 
+// PATCH /billing/orders/:id/mark-kot-printed
+app.patch('/orders/:id/mark-kot-printed', requirePermission('order:create'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const orderId = c.req.param('id');
+
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db
+      .select({ id: appSchema.saleOrder.id, kotPrintedAt: appSchema.saleOrder.kotPrintedAt })
+      .from(appSchema.saleOrder)
+      .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+    if (!order) return c.json({ error: 'Not Found' }, 404);
+
+    // Only set if not already marked
+    if (!order.kotPrintedAt) {
+      await db
+        .update(appSchema.saleOrder)
+        .set({ kotPrintedAt: new Date(), updatedAt: new Date() })
+        .where(eq(appSchema.saleOrder.id, orderId));
+    }
+
+    const result = await getOrderWithItems(db, orderId, restaurantId);
+    return c.json(result);
+  } finally {
+    await close();
+  }
+});
+
 export { app as billingRoutes };

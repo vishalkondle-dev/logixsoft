@@ -265,4 +265,40 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     console.log('Order modal details:', modalText);
     expect(modalText).toMatch(/Takeaway/i);
   });
+
+  test('5. Viewport meta tag and mobile input font-size >= 16px prevent auto-zoom on focus', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 }); // Mobile viewport (iPhone 13)
+    await page.goto(`${WEB_BASE}/pos`);
+    await page.waitForLoadState('networkidle');
+
+    // 1. Verify Viewport meta tag contains proper scale locks & interactive-widget
+    const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute('content');
+    console.log('Viewport Meta Content:', viewportMeta);
+    expect(viewportMeta).toContain('width=device-width');
+    expect(viewportMeta).toContain('maximum-scale=1');
+    expect(viewportMeta).toContain('user-scalable=no');
+    expect(viewportMeta).toContain('interactive-widget=resizes-content');
+
+    // 2. Verify search input font-size is at least 16px on mobile (prevents iOS auto-zoom)
+    const searchInput = page.locator('input[placeholder*="Search" i]').first();
+    await expect(searchInput).toBeVisible();
+    const searchFz = await searchInput.evaluate((el) => window.getComputedStyle(el).fontSize);
+    console.log('Mobile search input font size:', searchFz);
+    expect(parseFloat(searchFz)).toBeGreaterThanOrEqual(16);
+
+    // 3. Open mobile cart drawer and verify phone input font-size is at least 16px
+    const openCartBtn = page.getByRole('button', { name: /cart/i }).first();
+    await openCartBtn.click();
+    const phoneInput = page.locator('input[placeholder*="WhatsApp" i]:visible');
+    await expect(phoneInput).toBeVisible();
+    const phoneFz = await phoneInput.evaluate((el) => window.getComputedStyle(el).fontSize);
+    console.log('Mobile phone input font size:', phoneFz);
+    expect(parseFloat(phoneFz)).toBeGreaterThanOrEqual(16);
+
+    // 4. Focus on phone input and ensure page scale / visualViewport does not zoom
+    await phoneInput.focus();
+    const scale = await page.evaluate(() => window.visualViewport?.scale ?? 1);
+    console.log('Visual viewport scale after focus:', scale);
+    expect(scale).toBe(1);
+  });
 });

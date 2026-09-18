@@ -1,0 +1,22 @@
+/* Prevent iOS Safari and mobile browsers from auto-zooming / shifting viewport on input focus */
+@media screen and (max-width: 1024px), (pointer: coarse) {
+  input,
+  select,
+  textarea,
+  .mantine-Input-input,
+  .mantine-TextInput-input,
+  .mantine-Select-input,
+  .mantine-NumberInput-input,
+  .mantine-PasswordInput-input,
+  .mantine-Autocomplete-input,
+  .mantine-PinInput-input {
+    font-size: 16px !important;
+  }
+}
+
+/* Prevent accidental double-tap zoom and unwanted text scaling on mobile viewports */
+html,
+body {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+}

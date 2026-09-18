@@ -352,11 +352,8 @@ export default function POSPage() {
   return (
     <Box
       style={{
-        position: "fixed",
-        top: 60,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        height: "calc(100dvh - var(--app-shell-header-offset, 60px))",
+        maxHeight: "calc(100dvh - var(--app-shell-header-offset, 60px))",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",

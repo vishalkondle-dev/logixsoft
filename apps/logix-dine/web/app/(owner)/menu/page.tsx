@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container, Title, Tabs, Stack, Group, Text, Paper, Badge, ActionIcon,
-  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select,
+  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconEdit, IconTrash, IconCheck, IconGripVertical } from "@tabler/icons-react";
@@ -125,7 +125,7 @@ export default function MenuPage() {
   if (!restaurant) return null;
 
   return (
-    <Container size="lg" py="xl" px={0}>
+    <Container size="xl" pt="md" pb={100} px={0}>
       <Group justify="space-between" mb="lg">
         <Title order={2}>Menu</Title>
         <Button color="dinePrimary" leftSection={<IconPlus size={16} />}
@@ -170,7 +170,7 @@ export default function MenuPage() {
               </Group>
             </Paper>
 
-            <Stack gap="xs">
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs">
               {itemsForCat.map((item) => (
                 <Paper key={item.id} withBorder p="md" radius="md">
                   <Group justify="space-between">
@@ -200,7 +200,7 @@ export default function MenuPage() {
               {!itemsForCat.length && (
                 <Text c="dimmed" size="sm" ta="center" py="xl">No items in this category yet.</Text>
               )}
-            </Stack>
+            </SimpleGrid>
           </Tabs.Panel>
         ))}
       </Tabs>

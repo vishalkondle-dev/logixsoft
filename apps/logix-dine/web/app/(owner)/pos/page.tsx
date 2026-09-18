@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  Container, Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
+  Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea,
 } from "@mantine/core";
@@ -242,7 +242,7 @@ export default function POSPage() {
       )}
 
       <Divider />
-      <ScrollArea flex={1} type="auto">
+      <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }}>
         <Stack gap="xs">
           {cartItems.length === 0 && (
             <Text c="dimmed" size="sm" ta="center" py="xl">Add items to start an order</Text>
@@ -325,11 +325,23 @@ export default function POSPage() {
   );
 
   return (
-    <Container size="xl" py="md" px={0}>
-      <Grid gap="md">
+    <Box
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "calc(100vh - 60px)",
+        overflow: "hidden",
+      }}
+      px={{ base: "xs", sm: "md" }}
+      pt="xs"
+    >
+      <Grid gap="md" style={{ flex: 1, overflow: "hidden", height: "100%" }}>
         {/* Menu Panel */}
-        <Grid.Col span={{ base: 12, sm: 8 }}>
-          <Stack gap="sm">
+        <Grid.Col
+          span={{ base: 12, sm: 8 }}
+          style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
+        >
+          <Stack gap="sm" style={{ height: "100%", overflow: "hidden" }}>
             <Group>
               <TextInput
                 placeholder="Search items..."
@@ -368,46 +380,53 @@ export default function POSPage() {
               </Group>
             </ScrollArea>
 
-            {/* Item Grid */}
-            <Grid gap="xs">
-              {filteredItems.map((item: any) => {
-                const inCart = cartItems.find((ci: any) => ci.itemId === item.id);
-                return (
-                  <Grid.Col key={item.id} span={{ base: 6, xs: 4, md: 3 }}>
-                    <Paper
-                      withBorder
-                      p="sm"
-                      radius="md"
-                      onClick={() => handleAddItem(item)}
-                      style={{ cursor: "pointer", position: "relative", borderColor: inCart ? "#af73d7" : undefined }}
-                    >
-                      {inCart && (
-                        <Badge
-                          size="xs"
-                          color="dinePrimary"
-                          style={{ position: "absolute", top: 6, right: 6 }}
-                        >
-                          ×{inCart.qty}
-                        </Badge>
-                      )}
-                      <Text size="sm" fw={500} lineClamp={2} mb={4}>{item.name}</Text>
-                      <Text size="sm" fw={700} c="dinePrimary">₹{(item.pricePaise / 100).toFixed(0)}</Text>
-                    </Paper>
+            {/* Item Grid - scrollable */}
+            <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }} pb={100}>
+              <Grid gap="xs">
+                {filteredItems.map((item: any) => {
+                  const inCart = cartItems.find((ci: any) => ci.itemId === item.id);
+                  return (
+                    <Grid.Col key={item.id} span={{ base: 6, sm: 4, md: 3, lg: 2 }}>
+                      <Paper
+                        withBorder
+                        p="sm"
+                        radius="md"
+                        onClick={() => handleAddItem(item)}
+                        style={{ cursor: "pointer", position: "relative", borderColor: inCart ? "#af73d7" : undefined }}
+                      >
+                        {inCart && (
+                          <Badge
+                            size="xs"
+                            color="dinePrimary"
+                            style={{ position: "absolute", top: 6, right: 6 }}
+                          >
+                            ×{inCart.qty}
+                          </Badge>
+                        )}
+                        <Text size="sm" fw={500} lineClamp={2} mb={4}>{item.name}</Text>
+                        <Text size="sm" fw={700} c="dinePrimary">₹{(item.pricePaise / 100).toFixed(0)}</Text>
+                      </Paper>
+                    </Grid.Col>
+                  );
+                })}
+                {!filteredItems.length && (
+                  <Grid.Col span={12}>
+                    <Text c="dimmed" size="sm" ta="center" py="xl">No items found</Text>
                   </Grid.Col>
-                );
-              })}
-              {!filteredItems.length && (
-                <Grid.Col span={12}>
-                  <Text c="dimmed" size="sm" ta="center" py="xl">No items found</Text>
-                </Grid.Col>
-              )}
-            </Grid>
+                )}
+              </Grid>
+            </ScrollArea>
           </Stack>
         </Grid.Col>
 
         {/* Desktop Cart Panel */}
-        <Grid.Col span={{ base: 0, sm: 4 }} visibleFrom="sm">
-          <Paper withBorder p="md" radius="md" style={{ position: "sticky", top: 80, height: "calc(100vh - 180px)", display: "flex", flexDirection: "column" }}>
+        <Grid.Col span={{ base: 0, sm: 4 }} visibleFrom="sm" style={{ height: "100%" }}>
+          <Paper
+            withBorder
+            p="md"
+            radius="md"
+            style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}
+          >
             <CartPanel />
           </Paper>
         </Grid.Col>
@@ -447,6 +466,6 @@ export default function POSPage() {
           </Button>
         </Stack>
       </Modal>
-    </Container>
+    </Box>
   );
 }

@@ -109,7 +109,7 @@ export default function SettingsPage() {
   if (!restaurant) return <Loader />;
 
   return (
-    <Container size="lg" py="xl" px={0}>
+    <Container size="xl" pt="md" pb={100} px={0}>
       <Title order={2} mb="lg">Settings</Title>
       <Tabs defaultValue="restaurant">
         <Tabs.List mb="lg">
@@ -119,7 +119,7 @@ export default function SettingsPage() {
         </Tabs.List>
 
         <Tabs.Panel value="restaurant">
-          <Paper withBorder p="xl" radius="md" maw={480}>
+          <Paper withBorder p="xl" radius="md" maw={{ base: "100%", sm: 480, lg: 600 }}>
             <form onSubmit={saveRestaurant}>
               <Stack gap="md">
                 <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
@@ -169,7 +169,7 @@ export default function SettingsPage() {
         </Tabs.Panel>
 
         <Tabs.Panel value="printing">
-          <Paper withBorder p="xl" radius="md" maw={480}>
+          <Paper withBorder p="xl" radius="md" maw={{ base: "100%", sm: 480, lg: 600 }}>
             <Stack gap="md">
               <Text fw={600}>Bluetooth Printer</Text>
               <Text size="sm" c="dimmed">

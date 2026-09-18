@@ -57,7 +57,7 @@ export default function OrdersPage() {
   if (!restaurant) return null;
 
   return (
-    <Container size="lg" py="xl" px={0}>
+    <Container size="xl" pt="md" pb={100} px={0}>
       <Group justify="space-between" mb="lg">
         <Title order={2}>Orders</Title>
         <Group>

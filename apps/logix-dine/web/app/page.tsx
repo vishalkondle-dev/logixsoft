@@ -19,7 +19,7 @@ export default function HomePage() {
   // Redirect owners directly to POS
   if (isAuthenticated && restaurant) {
     return (
-      <Container size="lg" py={60} px={0}>
+      <Container size="xl" pt="md" pb={100} px="md">
         <Stack align="center" gap="md" style={{ textAlign: "center" }}>
           <Badge color="dinePrimary" variant="light" size="lg" radius="xl" px="md">
             {restaurant.name}
@@ -41,7 +41,7 @@ export default function HomePage() {
   }
 
   return (
-    <Container size="lg" py={60} px={0}>
+    <Container size="xl" pt="md" pb={100} px="md">
       <Stack align="center" gap="xl" style={{ textAlign: "center" }}>
         <Badge
           color="dinePrimary"

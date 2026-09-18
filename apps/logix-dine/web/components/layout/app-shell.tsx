@@ -32,6 +32,15 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
   const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
 
+  if (pathname?.startsWith("/kitchen")) {
+    return (
+      <main style={{ minHeight: "100dvh", background: "#1a1a1a" }}>
+        {children}
+        <LoginModal />
+      </main>
+    );
+  }
+
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
   const visibleNav = NAV_ITEMS.filter((n) => !n.roles || (effectiveRole && n.roles.includes(effectiveRole)));
 

@@ -107,8 +107,13 @@ export default function OrdersPage() {
                 style={{ cursor: "pointer" }}
               >
                 <Group justify="space-between">
-                  <Group gap="xs">
+                  <Group gap="xs" align="center">
                     <Text fw={700}>#{order.orderNo}</Text>
+                    {order.id && (
+                      <Badge size="xs" variant="light" color="gray" style={{ textTransform: "none", fontFamily: "monospace" }}>
+                        {order.id}
+                      </Badge>
+                    )}
                     {order.tableNo && <Badge size="xs" variant="outline">{order.tableNo === "Takeaway" ? "Takeaway" : `T: ${order.tableNo}`}</Badge>}
                     {order.customerPhone && <Badge size="xs" variant="outline" color="teal">WA</Badge>}
                     <Badge size="xs" color={STATUS_COLORS[order.status] ?? "gray"}>{order.status}</Badge>
@@ -129,13 +134,14 @@ export default function OrdersPage() {
         </Stack>
       )}
 
-      <Modal opened={!!selected} onClose={() => setSelected(null)} title={`Order #${selected?.order?.orderNo}`} size="sm">
+      <Modal opened={!!selected} onClose={() => setSelected(null)} title={`Order #${selected?.order?.orderNo} (${selected?.order?.id})`} size="sm">
         {selected && (
           <Stack>
             <Group justify="space-between">
+              <Text size="xs" c="dimmed" ff="monospace">ID: {selected.order.id}</Text>
               <Badge color={STATUS_COLORS[selected.order.status]}>{selected.order.status}</Badge>
-              {selected.order.tableNo && <Text size="sm">{selected.order.tableNo === "Takeaway" ? "Takeaway" : `Table: ${selected.order.tableNo}`}</Text>}
             </Group>
+            {selected.order.tableNo && <Text size="sm">{selected.order.tableNo === "Takeaway" ? "Takeaway" : `Table: ${selected.order.tableNo}`}</Text>}
             {selected.order.customerPhone && (
               <Text size="xs" c="dimmed">Customer: {selected.order.customerPhone}</Text>
             )}

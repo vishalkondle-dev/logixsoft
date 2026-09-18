@@ -64,7 +64,8 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
   // ── Order meta ──
   push(ALIGN_LEFT);
   const tablePart = p.tableNo ? `Table: ${p.tableNo}` : "";
-  push(twoCol(`Order #: ${p.orderNo}`, tablePart));
+  push(twoCol(`Token #: ${p.orderNo}`, tablePart));
+  if (p.orderId) push(row(`Order ID: ${p.orderId}`));
   push(twoCol(`Time: ${p.time}`, `Date: ${p.date}`));
   push(dashes());
 

@@ -2,6 +2,7 @@
 // Both ESC/POS encoder and HTML fallback consume this shape.
 
 export interface TicketPayload {
+  orderId?: string;
   restaurantName: string;
   restaurantAddress: string;
   orderNo: number;
@@ -31,6 +32,7 @@ function formatIST(iso: string): { date: string; time: string } {
 export function buildKotPayload(order: any, restaurant: any): TicketPayload {
   const { date, time } = formatIST(order.order.createdAt);
   return {
+    orderId: order.order.id,
     restaurantName: restaurant.name,
     restaurantAddress: restaurant.address ?? "",
     orderNo: order.order.orderNo,
@@ -52,6 +54,7 @@ export function buildKotPayload(order: any, restaurant: any): TicketPayload {
 export function buildBillPayload(order: any, restaurant: any): TicketPayload {
   const { date, time } = formatIST(order.order.createdAt);
   return {
+    orderId: order.order.id,
     restaurantName: restaurant.name,
     restaurantAddress: restaurant.address ?? "",
     orderNo: order.order.orderNo,

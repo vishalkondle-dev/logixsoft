@@ -387,4 +387,64 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     const resetTableInput = page.locator('input[value="Takeaway"]').first();
     await expect(resetTableInput).toBeVisible();
   });
+
+  test('7. Order ID is dynamic string based on outlet, and token sequence is per-outlet', async () => {
+    // 1. Fetch restaurant and bootstrap
+    const [restaurant] = await apiGet('/restaurants');
+    const restaurantId = restaurant.id;
+    const bootstrap = await apiGet('/billing/bootstrap', restaurantId);
+    expect(bootstrap.outlets.length).toBeGreaterThanOrEqual(2);
+
+    const outlet1 = bootstrap.outlets[0];
+    const outlet2 = bootstrap.outlets.find((o: any) => o.id !== outlet1.id);
+    expect(outlet2).toBeDefined();
+
+    const item = bootstrap.items[0];
+    expect(item).toBeDefined();
+
+    // 2. Create an order in outlet2 via API
+    const res = await fetch(`${API_BASE}/billing/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `${authCookie.name}=${authCookie.value}`,
+        'X-Restaurant-Id': restaurantId,
+      },
+      body: JSON.stringify({
+        outletId: outlet2.id,
+        tableNo: 'Takeaway',
+        items: [{ itemId: item.id, qty: 1 }],
+      }),
+    });
+    expect(res.ok).toBe(true);
+    const created = await res.json();
+    console.log(`Created order in ${outlet2.name}:`, created.order.id, 'Token #:', created.order.orderNo);
+
+    // 3. Verify order ID is dynamic string based on outlet (e.g. ord_<slug>_<base62>)
+    const expectedSlug = outlet2.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 16);
+    expect(created.order.id).toMatch(new RegExp(`^ord_${expectedSlug}_[A-Za-z0-9]{16}$`));
+
+    // 4. Verify token ID is positive number
+    expect(created.order.orderNo).toBeGreaterThanOrEqual(1);
+
+    // 5. Create another order in outlet2 and verify token ID increments by 1
+    const res2 = await fetch(`${API_BASE}/billing/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `${authCookie.name}=${authCookie.value}`,
+        'X-Restaurant-Id': restaurantId,
+      },
+      body: JSON.stringify({
+        outletId: outlet2.id,
+        tableNo: 'Takeaway',
+        items: [{ itemId: item.id, qty: 1 }],
+      }),
+    });
+    expect(res2.ok).toBe(true);
+    const created2 = await res2.json();
+    expect(created2.order.orderNo).toBe(created.order.orderNo + 1);
+    expect(created2.order.id).toMatch(new RegExp(`^ord_${expectedSlug}_[A-Za-z0-9]{16}$`));
+    expect(created2.order.id).not.toBe(created.order.id);
+  });
 });

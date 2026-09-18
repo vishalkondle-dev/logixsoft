@@ -100,7 +100,7 @@ function CartPanel({
           data={tableSelectData}
           leftSection={<IconTableAlias size={16} />}
           allowDeselect={false}
-          comboboxProps={{ withinPortal: true, zIndex: 1400 }}
+          comboboxProps={{ withinPortal: true, zIndex: 1500 }}
         />
 
         <TextInput
@@ -195,7 +195,7 @@ function CartPanel({
         >
           Send
         </Button>
-        <Menu position="top-end" withinPortal>
+        <Menu position="top-end" withinPortal zIndex={1500}>
           <Menu.Target>
             <ActionIcon
               color="dinePrimary"
@@ -397,7 +397,7 @@ export default function POSPage() {
       const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
       notifications.show({
         title: `Order #${created.order.orderNo} sent to kitchen`,
-        message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
+        message: `${created.order.id} · ${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
         color: "dinePrimary",
         icon: <IconCheck size={16} />,
       });
@@ -453,7 +453,7 @@ export default function POSPage() {
       const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
       notifications.show({
         title: "Order settled!",
-        message: `#${settled.order.orderNo} — ₹${(settled.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
+        message: `#${settled.order.orderNo} (${settled.order.id}) — ₹${(settled.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
         color: "green",
         icon: <IconCheck size={16} />,
       });
@@ -667,6 +667,7 @@ export default function POSPage() {
               { value: "UPI", label: "📱 UPI" },
               { value: "QR", label: "🔲 QR Code" },
             ]}
+            comboboxProps={{ withinPortal: true, zIndex: 1500 }}
           />
           <Button
             fullWidth

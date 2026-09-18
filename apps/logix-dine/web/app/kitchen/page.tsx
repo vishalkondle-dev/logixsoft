@@ -141,7 +141,10 @@ export default function KitchenPage() {
             return (
               <Paper key={order.id} radius="md" p="md" style={{ background: "#252525", borderLeft: `4px solid ${u.color}` }}>
                 <Group justify="space-between" mb="xs">
-                  <Text fw={800} size="xl" c="white">#{order.orderNo}</Text>
+                  <div>
+                    <Text fw={800} size="xl" c="white">Token #{order.orderNo}</Text>
+                    {order.id && <Text size="xs" c="gray.5" ff="monospace">{order.id}</Text>}
+                  </div>
                   <Badge size="lg" style={{ background: u.color, color: "white" }} leftSection={<IconClock size={12} />}>
                     {u.label}
                   </Badge>

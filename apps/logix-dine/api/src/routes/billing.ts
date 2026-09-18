@@ -42,7 +42,7 @@ function formatOrderWhatsAppMessage(
   const header = `*${restaurantName}*${outletName ? ` (${outletName})` : ''}`;
   const paymentLine = isSettled && order.method ? `\n💳 Payment: *${order.method}*` : '';
 
-  return `${title}\n${header}\nOrder: *#${order.orderNo}*\nType: *${tableStr}*${paymentLine}\n\n*Items:*\n${itemsList}\n\n*Total:* ₹${totalRupees}\n\nThank you for dining with us!`;
+  return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}\n\n*Items:*\n${itemsList}\n\n*Total:* ₹${totalRupees}\n\nThank you for dining with us!`;
 }
 
 const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
@@ -135,15 +135,28 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
 
-    // Generate orderNo (MAX + 1 per restaurant, in transaction)
+    // Generate dynamic unique order ID based on outlet
     const now = new Date();
-    const id = generateId('order');
+    const outletSlug = (outlet.name || 'outlet')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 16) || 'outlet';
+    const id = generateId(`ord_${outletSlug}`, 16);
 
     await db.transaction(async (tx: any) => {
+      // Token ID scoped per outlet (starts at #1 for each outlet)
       const [{ maxNo }] = await tx
         .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
         .from(appSchema.saleOrder)
-        .where(eq(appSchema.saleOrder.restaurantId, restaurantId));
+        .where(
+          and(
+            eq(appSchema.saleOrder.restaurantId, restaurantId),
+            eq(appSchema.saleOrder.outletId, parsed.data.outletId)
+          )
+        );
+      const tokenNo = (maxNo ?? 0) + 1;
 
       let subtotalPaise = 0;
       const orderItemsToInsert: any[] = [];
@@ -179,7 +192,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
         id,
         restaurantId,
         outletId: parsed.data.outletId,
-        orderNo: (maxNo ?? 0) + 1,
+        orderNo: tokenNo,
         tableNo: parsed.data.tableNo ?? null,
         customerPhone: parsed.data.customerPhone ?? null,
         status: 'OPEN',

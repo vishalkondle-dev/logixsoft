@@ -230,6 +230,7 @@ export const saleOrderItem = pgTable(
     nameSnapshot: text('nameSnapshot').notNull(),
     pricePaiseSnapshot: integer('pricePaiseSnapshot').notNull(),
     qty: integer('qty').notNull(),
+    note: text('note'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
     updatedBy: text('updatedBy'),

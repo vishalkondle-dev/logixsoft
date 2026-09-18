@@ -38,16 +38,16 @@ export function printHtml(payload: TicketPayload): void {
     ? payload.items
         .map(
           (i) =>
-            `<tr><td style="padding-right:6px;white-space:nowrap">${i.qty}×</td><td>${esc(i.name)}</td></tr>`
+            `<tr><td style="padding-right:6px;white-space:nowrap;vertical-align:top">${i.qty}×</td><td>${esc(i.name)}${i.note ? `<br/><small style="color:#555;font-size:11px"><em>(${esc(i.note)})</em></small>` : ''}</td></tr>`
         )
         .join("")
     : payload.items
         .map(
           (i) =>
             `<tr>
-              <td style="padding-right:4px">${esc(i.name)}</td>
-              <td style="text-align:center;padding:0 4px">${i.qty}</td>
-              <td style="text-align:right;white-space:nowrap">Rs${(
+              <td style="padding-right:4px">${esc(i.name)}${i.note ? `<br/><small style="color:#555;font-size:11px"><em>(${esc(i.note)})</em></small>` : ''}</td>
+              <td style="text-align:center;padding:0 4px;vertical-align:top">${i.qty}</td>
+              <td style="text-align:right;white-space:nowrap;vertical-align:top">Rs${(
                 (i.pricePaise * i.qty) /
                 100
               ).toFixed(0)}</td>

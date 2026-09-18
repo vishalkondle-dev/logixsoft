@@ -280,7 +280,7 @@ export default function SettingsPage() {
                     <Stack gap="md">
                       <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
                       <TextInput label="Address" required value={restForm.address} onChange={(e) => setRestForm((f) => ({ ...f, address: e.target.value }))} />
-                      <TextInput label="Phone" value={restForm.phone} onChange={(e) => setRestForm((f) => ({ ...f, phone: e.target.value }))} />
+                      <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={restForm.phone} onChange={(e) => setRestForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
                       <Button type="submit" color="dinePrimary" loading={restSaving} leftSection={<IconCheck size={16} />}>Save Changes</Button>
                     </Stack>
                   </form>
@@ -440,7 +440,7 @@ export default function SettingsPage() {
           <Stack gap="md">
             <TextInput label="Name" required value={outletForm.name} onChange={(e) => setOutletForm((f) => ({ ...f, name: e.target.value }))} />
             <TextInput label="Address" value={outletForm.address} onChange={(e) => setOutletForm((f) => ({ ...f, address: e.target.value }))} />
-            <TextInput label="Phone" value={outletForm.phone} onChange={(e) => setOutletForm((f) => ({ ...f, phone: e.target.value }))} />
+            <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={outletForm.phone} onChange={(e) => setOutletForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
             <Group justify="flex-end">
               <Button variant="default" onClick={() => setOutletModal({ open: false, editing: null })}>Cancel</Button>
               <Button color="dinePrimary" onClick={saveOutlet} loading={outletSaving}>Save</Button>
@@ -453,9 +453,13 @@ export default function SettingsPage() {
             <TextInput
               label="Phone Number"
               placeholder="10-digit mobile number"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
               required
               value={inviteForm.phone}
-              onChange={(e) => setInviteForm((f) => ({ ...f, phone: e.target.value }))}
+              onChange={(e) => setInviteForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
             />
             <Select
               label="Role"

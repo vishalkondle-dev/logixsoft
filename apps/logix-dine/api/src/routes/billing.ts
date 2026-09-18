@@ -32,8 +32,9 @@ function formatOrderWhatsAppMessage(
   const itemsList = items
     .map((item) => {
       const name = item.nameSnapshot || item.name || 'Item';
+      const noteStr = item.note ? ` (${item.note})` : '';
       const itemTotal = (((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0);
-      return `• ${item.qty}x ${name} — ₹${itemTotal}`;
+      return `• ${item.qty}x ${name}${noteStr} — ₹${itemTotal}`;
     })
     .join('\n');
 
@@ -166,6 +167,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
             nameSnapshot: menuItem.name,
             pricePaiseSnapshot,
             qty: item.qty,
+            note: item.note ? item.note.trim() : null,
             createdAt: now,
             createdBy: actorPhone,
             updatedBy: actorPhone,
@@ -375,9 +377,11 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
       .where(and(eq(appSchema.saleOrderItem.orderId, orderId), eq(appSchema.saleOrderItem.itemId, parsed.data.itemId)));
 
     if (existing) {
+      const updateData: any = { qty: existing.qty + (parsed.data.qty ?? 1) };
+      if (parsed.data.note !== undefined) updateData.note = parsed.data.note ? parsed.data.note.trim() : null;
       await db
         .update(appSchema.saleOrderItem)
-        .set({ qty: existing.qty + (parsed.data.qty ?? 1) })
+        .set(updateData)
         .where(eq(appSchema.saleOrderItem.id, existing.id));
     } else {
       await db.insert(appSchema.saleOrderItem).values({
@@ -387,6 +391,7 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
         nameSnapshot: menuItem.name,
         pricePaiseSnapshot: menuItem.pricePaise,
         qty: parsed.data.qty ?? 1,
+        note: parsed.data.note ? parsed.data.note.trim() : null,
         createdAt: new Date(),
       });
     }
@@ -399,7 +404,7 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
   }
 });
 
-// PATCH /billing/orders/:id/items/:orderItemId — update qty
+// PATCH /billing/orders/:id/items/:orderItemId — update qty or note
 app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
@@ -421,9 +426,13 @@ app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), a
     }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
+    const updateData: any = {};
+    if (parsed.data.qty !== undefined) updateData.qty = Math.max(1, parsed.data.qty);
+    if (parsed.data.note !== undefined) updateData.note = parsed.data.note ? parsed.data.note.trim() : null;
+
     await db
       .update(appSchema.saleOrderItem)
-      .set({ qty: Math.max(1, parsed.data.qty) })
+      .set(updateData)
       .where(and(eq(appSchema.saleOrderItem.id, orderItemId), eq(appSchema.saleOrderItem.orderId, orderId)));
 
     await recomputeTotal(db, orderId);

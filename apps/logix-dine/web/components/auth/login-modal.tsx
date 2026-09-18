@@ -185,8 +185,12 @@ export function LoginModal() {
             <TextInput
               leftSection={<IconDeviceMobile size={18} />}
               placeholder="e.g. 9876543210"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.currentTarget.value)}
+              onChange={(e) => setPhoneNumber(e.currentTarget.value.replace(/\D/g, "").slice(0, 10))}
               disabled={isLoading}
               required
               autoFocus

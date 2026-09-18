@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
-  TextInput, Loader, Center, Modal, Select, Divider, Menu,
+  TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconPlus, IconMinus, IconTrash, IconChevronDown,
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
+  IconNote, IconEdit, IconX,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -23,7 +24,21 @@ interface LocalCartItem {
   name: string;
   pricePaise: number;
   qty: number;
+  note?: string;
 }
+
+const DEFAULT_NOTE_CHIPS = [
+  "Less Spicy",
+  "Extra Spicy",
+  "No Onion / Garlic",
+  "Jain",
+  "Less Oil",
+  "Extra Crispy",
+  "Parcel",
+  "No Ice",
+  "Less Sugar",
+  "Serve Hot",
+];
 
 export default function POSPage() {
   const { restaurant, activeOutlet } = useRestaurant();
@@ -47,6 +62,64 @@ export default function POSPage() {
   const [settleMethod, setSettleMethod] = useState<string>("Cash");
   const [settling, setSettling] = useState(false);
   const [sending, setSending] = useState(false);
+
+  // Item note modal state
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteTargetItemId, setNoteTargetItemId] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+
+  const openNoteModal = (item: LocalCartItem) => {
+    setNoteTargetItemId(item.itemId);
+    setNoteText(item.note || "");
+    setNoteModalOpen(true);
+  };
+
+  const handleToggleChip = (chip: string) => {
+    const parts = noteText.split(",").map((s) => s.trim()).filter(Boolean);
+    const exists = parts.some((p) => p.toLowerCase() === chip.toLowerCase());
+    let newText = "";
+    if (exists) {
+      newText = parts.filter((p) => p.toLowerCase() !== chip.toLowerCase()).join(", ");
+    } else {
+      newText = parts.length > 0 ? `${parts.join(", ")}, ${chip}` : chip;
+    }
+    setNoteText(newText);
+  };
+
+  const handleSaveNote = () => {
+    if (!noteTargetItemId) return;
+    const trimmed = noteText.trim();
+    setCartItems((prev) =>
+      prev.map((ci) =>
+        ci.itemId === noteTargetItemId
+          ? { ...ci, note: trimmed || undefined }
+          : ci
+      )
+    );
+    setNoteModalOpen(false);
+    setNoteTargetItemId(null);
+    setNoteText("");
+  };
+
+  const handleClearItemNote = () => {
+    if (!noteTargetItemId) return;
+    setCartItems((prev) =>
+      prev.map((ci) =>
+        ci.itemId === noteTargetItemId
+          ? { ...ci, note: undefined }
+          : ci
+      )
+    );
+    setNoteModalOpen(false);
+    setNoteTargetItemId(null);
+    setNoteText("");
+  };
+
+  const handleClearCart = () => {
+    setCartItems([]);
+    setTableNo("Takeaway");
+    setCustomerPhone("");
+  };
 
   const loadBootstrap = useCallback(async () => {
     if (!restaurantId) return;
@@ -124,7 +197,7 @@ export default function POSPage() {
         outletId: activeOutlet.id,
         tableNo: tableNo || "Takeaway",
         customerPhone: customerPhone.trim() || undefined,
-        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty })),
+        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
       });
 
       // Print KOT automatically
@@ -167,7 +240,7 @@ export default function POSPage() {
         outletId: activeOutlet.id,
         tableNo: tableNo || "Takeaway",
         customerPhone: customerPhone.trim() || undefined,
-        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty })),
+        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
       });
 
       // 2. Settle order
@@ -236,8 +309,8 @@ export default function POSPage() {
           <Title order={4}>Cart</Title>
           {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
         </Group>
-        {cartItems.length > 0 && (
-          <Button variant="subtle" color="red" size="compact-xs" onClick={() => setCartItems([])}>
+        {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
+          <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
             Clear
           </Button>
         )}
@@ -259,9 +332,13 @@ export default function POSPage() {
         <TextInput
           label="Customer Phone (optional)"
           placeholder="WhatsApp number (e.g. 9876543210)"
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={20}
           size="sm"
           value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
+          onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
           leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
         />
       </Stack>
@@ -274,24 +351,52 @@ export default function POSPage() {
           )}
           {cartItems.map((item) => (
             <Paper key={item.itemId} withBorder p="xs" radius="sm">
-              <Group justify="space-between" gap="xs" wrap="nowrap">
+              <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
-                  <Text size="xs" c="dimmed">₹{(item.pricePaise / 100).toFixed(0)} each</Text>
+                  <Group gap={6} align="center" mt={2} wrap="nowrap">
+                    <Text size="xs" c="dimmed">₹{(item.pricePaise / 100).toFixed(0)}</Text>
+                    <Text size="xs" c="dimmed">·</Text>
+                    {item.note ? (
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color="dinePrimary"
+                        style={{ cursor: "pointer", maxWidth: 130 }}
+                        onClick={() => openNoteModal(item)}
+                        title="Click to edit note"
+                        rightSection={<IconEdit size={10} />}
+                      >
+                        {item.note}
+                      </Badge>
+                    ) : (
+                      <Button
+                        variant="subtle"
+                        color="dinePrimary"
+                        size="compact-xs"
+                        px={4}
+                        h={18}
+                        style={{ fontSize: 11, fontWeight: 500 }}
+                        onClick={() => openNoteModal(item)}
+                      >
+                        + Note
+                      </Button>
+                    )}
+                  </Group>
                 </div>
-                <Group gap={4} wrap="nowrap">
-                  <ActionIcon size="xs" variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty - 1)}>
-                    <IconMinus size={10} />
+                <Group gap={6} wrap="nowrap" align="center">
+                  <ActionIcon size={30} variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty - 1)} aria-label="Decrease quantity">
+                    <IconMinus size={15} />
                   </ActionIcon>
-                  <Text size="sm" w={20} ta="center">{item.qty}</Text>
-                  <ActionIcon size="xs" variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty + 1)}>
-                    <IconPlus size={10} />
+                  <Text size="sm" fw={600} w={22} ta="center">{item.qty}</Text>
+                  <ActionIcon size={30} variant="light" color="dinePrimary" onClick={() => handleUpdateQty(item.itemId, item.qty + 1)} aria-label="Increase quantity">
+                    <IconPlus size={15} />
                   </ActionIcon>
-                  <ActionIcon size="xs" variant="light" color="red" onClick={() => handleRemoveItem(item.itemId)}>
-                    <IconTrash size={10} />
+                  <ActionIcon size={30} variant="light" color="red" onClick={() => handleRemoveItem(item.itemId)} aria-label="Remove item">
+                    <IconTrash size={15} />
                   </ActionIcon>
                 </Group>
-                <Text size="sm" fw={600} w={48} ta="right">₹{((item.pricePaise * item.qty) / 100).toFixed(0)}</Text>
+                <Text size="sm" fw={600} w={52} ta="right">₹{((item.pricePaise * item.qty) / 100).toFixed(0)}</Text>
               </Group>
             </Paper>
           ))}
@@ -481,9 +586,13 @@ export default function POSPage() {
           <TextInput
             label="Customer Phone (WhatsApp)"
             placeholder="WhatsApp number (e.g. 9876543210)"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={20}
             size="sm"
             value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
+            onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
             leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
           />
           <Select
@@ -505,6 +614,72 @@ export default function POSPage() {
           >
             Confirm Settlement &amp; Send
           </Button>
+        </Stack>
+      </Modal>
+
+      {/* Item Note Modal */}
+      <Modal
+        opened={noteModalOpen}
+        onClose={() => {
+          setNoteModalOpen(false);
+          setNoteTargetItemId(null);
+        }}
+        title={
+          <Group gap="xs">
+            <IconNote size={18} color="#af73d7" />
+            <Text fw={600}>
+              Note for {cartItems.find((ci) => ci.itemId === noteTargetItemId)?.name || "Item"}
+            </Text>
+          </Group>
+        }
+        size="sm"
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Select suggestions or type special cooking/packing instructions:
+          </Text>
+          <Group gap={6}>
+            {DEFAULT_NOTE_CHIPS.map((chip) => {
+              const parts = noteText.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+              const isSelected = parts.includes(chip.toLowerCase());
+              return (
+                <Button
+                  key={chip}
+                  size="compact-xs"
+                  variant={isSelected ? "filled" : "light"}
+                  color="dinePrimary"
+                  radius="xl"
+                  onClick={() => handleToggleChip(chip)}
+                  leftSection={isSelected ? <IconCheck size={12} /> : undefined}
+                >
+                  {chip}
+                </Button>
+              );
+            })}
+          </Group>
+          <Textarea
+            label="Special Instructions"
+            placeholder="e.g. Less spicy, pack separately, extra chutney..."
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            minRows={2}
+            autosize
+          />
+          <Group justify="space-between" mt="xs">
+            {noteTargetItemId && cartItems.find((ci) => ci.itemId === noteTargetItemId)?.note ? (
+              <Button variant="subtle" color="red" size="xs" onClick={handleClearItemNote} leftSection={<IconX size={14} />}>
+                Remove Note
+              </Button>
+            ) : <div />}
+            <Group gap="xs">
+              <Button variant="default" size="xs" onClick={() => setNoteModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button color="dinePrimary" size="xs" onClick={handleSaveNote} leftSection={<IconCheck size={14} />}>
+                Save Note
+              </Button>
+            </Group>
+          </Group>
         </Stack>
       </Modal>
     </Box>

@@ -145,7 +145,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     await page.waitForTimeout(500);
 
     // Verify item is visible in local cart
-    const cartItem = page.locator('.mantine-Paper-root').filter({ hasText: 'each' }).first();
+    const cartItem = page.locator('.mantine-Paper-root').filter({ has: page.locator('button[aria-label="Increase quantity"]') }).first();
     await expect(cartItem).toBeVisible();
 
     // CRITICAL CHECK: Verify order was NOT created in backend yet!
@@ -300,5 +300,91 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     const scale = await page.evaluate(() => window.visualViewport?.scale ?? 1);
     console.log('Visual viewport scale after focus:', scale);
     expect(scale).toBe(1);
+  });
+
+  test('6. Phone numeric only, Clear button clears table & phone, bigger action buttons, no each word, and + Note modal with chips', async ({ page }) => {
+    await page.goto(`${WEB_BASE}/pos`);
+    await page.waitForLoadState('networkidle');
+
+    // 1. Phone number must be numbers only
+    const phoneInput = page.locator('input[placeholder*="WhatsApp" i]').first();
+    await phoneInput.fill('abc987-xyz.654#3210');
+    const filteredPhone = await phoneInput.inputValue();
+    console.log('Filtered Phone:', filteredPhone);
+    expect(filteredPhone).toBe('9876543210');
+    expect(filteredPhone).not.toMatch(/\D/);
+
+    // 2. Change table selection away from Takeaway
+    const tableSelect = page.locator('input[value="Takeaway"]').first();
+    await tableSelect.click();
+    await page.waitForTimeout(300);
+    const t1Option = page.getByRole('option', { name: /T1/i });
+    if (await t1Option.isVisible()) {
+      await t1Option.click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
+
+    // 3. Add item to cart
+    const itemCard = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
+    await itemCard.click();
+    await page.waitForTimeout(500);
+
+    // 4. Verify "each" is NOT present; shows ₹X only
+    const cartItem = page.locator('.mantine-Paper-root').filter({ has: page.locator('button[aria-label="Increase quantity"]') }).first();
+    await expect(cartItem).toBeVisible();
+    const itemText = await cartItem.innerText();
+    console.log('Cart item text:', itemText);
+    expect(itemText).not.toMatch(/each/i);
+    expect(itemText).toMatch(/₹\d+/);
+
+    // 5. Verify action buttons are bigger (>= 28px)
+    const plusBtn = cartItem.locator('button[aria-label="Increase quantity"]');
+    const plusBox = await plusBtn.boundingBox();
+    expect(plusBox).not.toBeNull();
+    console.log('Plus button size:', plusBox!.width, 'x', plusBox!.height);
+    expect(plusBox!.width).toBeGreaterThanOrEqual(28);
+    expect(plusBox!.height).toBeGreaterThanOrEqual(28);
+
+    // 6. Test "+ Note" button and Note Modal with chips
+    const addNoteBtn = cartItem.getByRole('button', { name: /\+ Note/i });
+    await expect(addNoteBtn).toBeVisible();
+    await addNoteBtn.click();
+
+    // Note Modal opens
+    const noteModal = page.getByRole('dialog').filter({ hasText: /Note for/i });
+    await expect(noteModal).toBeVisible();
+
+    // Verify default chips are visible
+    const spicyChip = noteModal.getByRole('button', { name: /Less Spicy/i });
+    await expect(spicyChip).toBeVisible();
+    await spicyChip.click();
+
+    // Verify chip text appears in textarea
+    const textarea = noteModal.locator('textarea');
+    await expect(textarea).toHaveValue(/Less Spicy/);
+
+    // Save Note
+    const saveNoteBtn = noteModal.getByRole('button', { name: /Save Note/i });
+    await saveNoteBtn.click();
+
+    // Modal closes and note badge is visible on cart item
+    await expect(noteModal).not.toBeVisible();
+    await expect(cartItem.getByText(/Less Spicy/i)).toBeVisible();
+
+    // 7. Clear button clears items, table, and phone
+    const clearBtn = page.getByRole('button', { name: /^Clear$/i });
+    await expect(clearBtn).toBeVisible();
+    await clearBtn.click();
+
+    // Verify cart is empty
+    await expect(page.getByText('Add items from menu to start an order')).toBeVisible();
+
+    // Verify phone is cleared
+    expect(await phoneInput.inputValue()).toBe('');
+
+    // Verify table is reset to Takeaway
+    const resetTableInput = page.locator('input[value="Takeaway"]').first();
+    await expect(resetTableInput).toBeVisible();
   });
 });

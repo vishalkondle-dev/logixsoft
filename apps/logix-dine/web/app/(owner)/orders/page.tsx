@@ -141,9 +141,14 @@ export default function OrdersPage() {
             )}
             <Divider />
             {selected.items.map((item: any) => (
-              <Group key={item.orderItemId ?? item.id} justify="space-between">
-                <Text size="sm">{item.name ?? item.nameSnapshot} × {item.qty}</Text>
-                <Text size="sm">₹{((item.pricePaiseSnapshot * item.qty) / 100).toFixed(0)}</Text>
+              <Group key={item.orderItemId ?? item.id} justify="space-between" align="flex-start">
+                <div>
+                  <Text size="sm">{item.name ?? item.nameSnapshot} × {item.qty}</Text>
+                  {item.note && (
+                    <Text size="xs" c="dinePrimary" fs="italic">Note: {item.note}</Text>
+                  )}
+                </div>
+                <Text size="sm">₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}</Text>
               </Group>
             ))}
             <Divider />

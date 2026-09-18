@@ -35,7 +35,7 @@ export const startOrder = (
     tableNo?: string;
     customerPhone?: string;
     note?: string;
-    items?: Array<{ itemId: string; qty: number }>;
+    items?: Array<{ itemId: string; qty: number; note?: string }>;
   }
 ) => apiFetch<any>("/billing/orders", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
 

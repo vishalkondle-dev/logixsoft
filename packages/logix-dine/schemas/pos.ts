@@ -146,6 +146,7 @@ export const SaleOrderItemSchema = z.object({
   nameSnapshot: z.string(),
   pricePaiseSnapshot: z.number().int(),
   qty: z.number().int(),
+  note: z.string().nullable(),
   createdAt: z.string(),
   createdBy: z.string().nullable(),
   updatedBy: z.string().nullable(),
@@ -222,6 +223,7 @@ export const StartOrderSchema = z.object({
     z.object({
       itemId: z.string(),
       qty: z.number().int().positive(),
+      note: z.string().max(255).optional(),
     })
   ).optional(),
 });
@@ -229,10 +231,12 @@ export const StartOrderSchema = z.object({
 export const AddOrderItemSchema = z.object({
   itemId: z.string(),
   qty: z.number().int().positive().default(1),
+  note: z.string().max(255).optional(),
 });
 
 export const UpdateOrderItemSchema = z.object({
-  qty: z.number().int().positive(),
+  qty: z.number().int().positive().optional(),
+  note: z.string().max(255).optional(),
 });
 
 export const SettleOrderSchema = z.object({

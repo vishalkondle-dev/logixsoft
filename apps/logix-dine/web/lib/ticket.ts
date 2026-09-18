@@ -8,7 +8,7 @@ export interface TicketPayload {
   tableNo: string | null;
   date: string;  // "17/09/2026"
   time: string;  // "05:33 PM"
-  items: { name: string; qty: number; pricePaise: number }[];
+  items: { name: string; qty: number; pricePaise: number; note?: string | null }[];
   subtotalPaise: number;
   method: string | null;
   type: "KOT" | "BILL";
@@ -38,9 +38,10 @@ export function buildKotPayload(order: any, restaurant: any): TicketPayload {
     date,
     time,
     items: (order.items ?? []).map((i: any) => ({
-      name: i.name,
+      name: i.nameSnapshot ?? i.name,
       qty: i.qty,
       pricePaise: i.pricePaiseSnapshot ?? i.pricePaise ?? 0,
+      note: i.note ?? null,
     })),
     subtotalPaise: order.order.subtotalPaise,
     method: null,

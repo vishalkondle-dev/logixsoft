@@ -92,8 +92,12 @@ export default function OnboardingPage() {
               <TextInput
                 label="Phone (optional)"
                 placeholder="e.g. 9876543210"
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={15}
                 value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))}
                 disabled={isLoading}
               />
               <TextInput

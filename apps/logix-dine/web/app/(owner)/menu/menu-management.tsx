@@ -126,8 +126,8 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
   const content = (
     <>
-      <Group justify="space-between" mb="lg">
-        <Title order={embedded ? 3 : 2}>Menu</Title>
+      <Group justify={embedded ? "flex-end" : "space-between"} mb={embedded ? "sm" : "lg"}>
+        {!embedded && <Title order={2}>Menu</Title>}
         <Button color="dinePrimary" leftSection={<IconPlus size={16} />}
           onClick={() => { setItemForm({ categoryId: activeCatId ?? "", name: "", description: "", pricePaise: 0 }); setItemModal({ open: true, editing: null }); }}>
           Add Item

@@ -96,7 +96,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const [inviteSaving, setInviteSaving] = useState(false);
 
   // Table state
-  const [tableOutletId, setTableOutletId] = useState<string | null>(null);
+  const tableOutletId = activeOutlet?.id ?? (ctxOutlets[0]?.id || null);
   const [tables, setTables] = useState<any[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
   const [tableModal, setTableModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
@@ -108,13 +108,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   }, [restaurant]);
 
   useEffect(() => { setOutlets(ctxOutlets); }, [ctxOutlets]);
-  useEffect(() => {
-    if (activeOutlet?.id) {
-      setTableOutletId(activeOutlet.id);
-    } else if (ctxOutlets.length && !tableOutletId) {
-      setTableOutletId(ctxOutlets[0].id);
-    }
-  }, [ctxOutlets, activeOutlet?.id, tableOutletId]);
 
   const loadStaff = async () => {
     if (!restaurantId || !isOwner) return;
@@ -377,14 +370,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Tables tab */}
         <Tabs.Panel value="tables">
           <Stack gap="md">
-            <Group justify="space-between" wrap="wrap">
-              <Select
-                label="Outlet"
-                value={tableOutletId}
-                onChange={setTableOutletId}
-                data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-                w={220}
-              />
+            <Group justify="flex-end">
               <Button color="dinePrimary" leftSection={<IconPlus size={14} />} onClick={openCreateTable} disabled={!tableOutletId}>
                 Add Table
               </Button>

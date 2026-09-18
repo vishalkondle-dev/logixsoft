@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   Container, Title, Text, Group, Stack, Paper, SimpleGrid, Loader, Center,
-  Button, Tabs, ScrollArea, Select, Box,
+  Button, Select, Box, ActionIcon, ThemeIcon,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { BarChart, LineChart, DonutChart } from "@mantine/charts";
 import {
   IconChartBar, IconToolsKitchen2, IconStatusChange, IconCash,
-  IconClockHour4, IconTrendingUp, IconCalendar,
+  IconClockHour4, IconTrendingUp, IconCalendar, IconArrowLeft, IconChevronRight,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { getReport, type ReportType } from "@/lib/api-client";
@@ -72,28 +73,119 @@ function presetToRange(preset: Preset): { from: string; to: string } {
   }
 }
 
-const REPORT_TABS: { value: ReportType; label: string; icon: React.ElementType }[] = [
-  { value: "summary", label: "Sales Summary", icon: IconChartBar },
-  { value: "top-items", label: "Top Items", icon: IconToolsKitchen2 },
-  { value: "orders-by-status", label: "Order Status", icon: IconStatusChange },
-  { value: "payment-methods", label: "Payment Methods", icon: IconCash },
-  { value: "hourly", label: "Hourly Sales", icon: IconClockHour4 },
-  { value: "daily-trend", label: "Daily Trend", icon: IconTrendingUp },
+export interface ReportCardMeta {
+  id: ReportType;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  color: string;
+}
+
+export const REPORT_CARDS: ReportCardMeta[] = [
+  {
+    id: "summary",
+    title: "Sales Summary",
+    description: "Gross revenue, net sales, taxes, discounts, and order totals overview.",
+    icon: IconChartBar,
+    color: "indigo",
+  },
+  {
+    id: "top-items",
+    title: "Top Items",
+    description: "Best-selling menu items ranked by quantity sold and revenue generated.",
+    icon: IconToolsKitchen2,
+    color: "teal",
+  },
+  {
+    id: "orders-by-status",
+    title: "Orders by Status",
+    description: "Distribution and volume of completed, open, and cancelled orders.",
+    icon: IconStatusChange,
+    color: "orange",
+  },
+  {
+    id: "payment-methods",
+    title: "Payment Methods",
+    description: "Revenue split across Cash, UPI, Cards, and other payment channels.",
+    icon: IconCash,
+    color: "green",
+  },
+  {
+    id: "hourly",
+    title: "Hourly Sales",
+    description: "Peak business hours and sales distribution throughout the day.",
+    icon: IconClockHour4,
+    color: "grape",
+  },
+  {
+    id: "daily-trend",
+    title: "Daily Trend",
+    description: "Day-by-day revenue progression and order trends over time.",
+    icon: IconTrendingUp,
+    color: "blue",
+  },
 ];
 
 const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
-export function ReportsManagement({ embedded = false }: { embedded?: boolean }) {
+export function ReportsCardsList() {
+  return (
+    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+      {REPORT_CARDS.map((card) => {
+        const Icon = card.icon;
+        return (
+          <Paper
+            key={card.id}
+            component={Link}
+            href={`/settings/reports/${card.id}`}
+            withBorder
+            p="lg"
+            radius="md"
+            style={{
+              textDecoration: "none",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              transition: "transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease",
+              background: "var(--mantine-color-body)",
+            }}
+          >
+            <div>
+              <Group justify="space-between" align="flex-start" mb="md">
+                <ThemeIcon size={44} radius="md" variant="light" color={card.color}>
+                  <Icon size={24} />
+                </ThemeIcon>
+                <ActionIcon variant="subtle" color="gray" size="sm">
+                  <IconChevronRight size={18} />
+                </ActionIcon>
+              </Group>
+              <Text fw={600} size="md" mb={4} c="var(--mantine-color-text)">
+                {card.title}
+              </Text>
+              <Text size="xs" c="dimmed" lh={1.4}>
+                {card.description}
+              </Text>
+            </div>
+          </Paper>
+        );
+      })}
+    </SimpleGrid>
+  );
+}
+
+export function ReportDetailView({ reportType }: { reportType: ReportType }) {
   const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
 
-  const [activeType, setActiveType] = useState<ReportType>("summary");
   const [preset, setPreset] = useState<Preset>("today");
   const [customRange, setCustomRange] = useState<[Date | null, Date | null]>([null, null]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState(() => presetToRange("today"));
+
+  const cardMeta = REPORT_CARDS.find((c) => c.id === reportType) || REPORT_CARDS[0];
 
   useEffect(() => {
     if (preset === "custom") {
@@ -109,14 +201,14 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
     if (!restaurantId || !range.from || !range.to || !outletId) return;
     setLoading(true);
     try {
-      const result = await getReport(restaurantId, activeType, range.from, range.to, outletId);
+      const result = await getReport(restaurantId, reportType, range.from, range.to, outletId);
       setData(result.data);
     } catch {
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, activeType, range, outletId]);
+  }, [restaurantId, reportType, range, outletId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -125,107 +217,104 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
     return <Center py={80}><Loader color="dinePrimary" /></Center>;
   }
 
-  const content = (
-    <>
-      <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
-
-      <Stack gap={6} mb="md">
-        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 440 : 230 }}>
-          <Select
-            size="sm"
-            value={preset}
-            onChange={(val) => val && setPreset(val as Preset)}
-            data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
-            leftSection={<IconCalendar size={15} />}
-            w={preset === "custom" ? { base: 142, sm: 165 } : { base: 195, sm: 220 }}
-            style={{ flexShrink: 0 }}
-            allowDeselect={false}
-            aria-label="Duration"
-            comboboxProps={{ withinPortal: true, zIndex: 1500 }}
-          />
-          {preset === "custom" && (
-            <DatePickerInput
-              type="range"
-              placeholder="Select date(s)"
-              valueFormat="DD MMM YYYY"
-              labelSeparator="-"
-              valueFormatter={({ date }) => {
-                if (Array.isArray(date)) {
-                  if (date[0] && date[1]) {
-                    return `${dayjs(date[0]).format("DD MMM YYYY")} - ${dayjs(date[1]).format("DD MMM YYYY")}`;
-                  }
-                  if (date[0]) {
-                    return `${dayjs(date[0]).format("DD MMM YYYY")} - `;
-                  }
-                  return "";
-                }
-                return date ? dayjs(date).format("DD MMM YYYY") : "";
-              }}
-              value={customRange}
-              onChange={(v: [string | null, string | null] | null) => {
-                if (!v) { setCustomRange([null, null]); return; }
-                setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
-              }}
-              size="sm"
-              styles={{
-                input: {
-                  fontSize: "11.5px",
-                  paddingLeft: "6px",
-                  paddingRight: "6px",
-                  textAlign: "center",
-                  height: "36px",
-                },
-              }}
-              style={{ flex: 1, minWidth: 0 }}
-              maw={{ base: "100%", sm: 240 }}
-              popoverProps={{ withinPortal: true, zIndex: 1500 }}
-            />
-          )}
-        </Group>
-        <Text size="xs" c="dimmed">
-          {`${dayjs(range.from).format("DD MMM YYYY")} - ${dayjs(range.to).format("DD MMM YYYY")}`}
-        </Text>
-      </Stack>
-
-      <Tabs
-        value={activeType}
-        onChange={(v) => {
-          if (!v) return;
-          setActiveType(v as ReportType);
-          setData(null);
-        }}
-        mb="lg"
-      >
-        <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
-          <Tabs.List style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
-            {REPORT_TABS.map((t) => (
-              <Tabs.Tab key={t.value} value={t.value} leftSection={<t.icon size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
-                {t.label}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-        </ScrollArea>
-      </Tabs>
-
-      {loading ? (
-        <Center py={80}><Loader color="dinePrimary" /></Center>
-      ) : data === null || data === undefined ? (
-        <Text c="dimmed" ta="center" py="xl">No data for this period</Text>
-      ) : (
-        <ReportPanel type={activeType} data={data} />
-      )}
-    </>
-  );
-
-  if (embedded) {
-    return <Box pt="xs">{content}</Box>;
-  }
-
   return (
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
-      {content}
+      <Stack gap="lg">
+        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
+          <Group gap="sm" align="center" wrap="nowrap">
+            <ActionIcon
+              component={Link}
+              href="/settings/reports"
+              variant="light"
+              color="gray"
+              size="lg"
+              radius="md"
+              aria-label="Back to Reports"
+            >
+              <IconArrowLeft size={20} />
+            </ActionIcon>
+            <Box>
+              <Title order={2} lh={1.2}>{cardMeta.title}</Title>
+              <Text size="xs" c="dimmed">{cardMeta.description}</Text>
+            </Box>
+          </Group>
+
+          <Stack gap={4} align="flex-start" w={{ base: "100%", sm: "auto" }}>
+            <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 440 : 230 }}>
+              <Select
+                size="sm"
+                value={preset}
+                onChange={(val) => val && setPreset(val as Preset)}
+                data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
+                leftSection={<IconCalendar size={15} />}
+                w={preset === "custom" ? { base: 142, sm: 165 } : { base: 195, sm: 220 }}
+                style={{ flexShrink: 0 }}
+                allowDeselect={false}
+                aria-label="Duration"
+                comboboxProps={{ withinPortal: true, zIndex: 1500 }}
+              />
+              {preset === "custom" && (
+                <DatePickerInput
+                  type="range"
+                  placeholder="Select date(s)"
+                  valueFormat="DD MMM YYYY"
+                  labelSeparator="-"
+                  valueFormatter={({ date }) => {
+                    if (Array.isArray(date)) {
+                      if (date[0] && date[1]) {
+                        return `${dayjs(date[0]).format("DD MMM YYYY")} - ${dayjs(date[1]).format("DD MMM YYYY")}`;
+                      }
+                      if (date[0]) {
+                        return `${dayjs(date[0]).format("DD MMM YYYY")} - `;
+                      }
+                      return "";
+                    }
+                    return date ? dayjs(date).format("DD MMM YYYY") : "";
+                  }}
+                  value={customRange}
+                  onChange={(v: [string | null, string | null] | null) => {
+                    if (!v) { setCustomRange([null, null]); return; }
+                    setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
+                  }}
+                  size="sm"
+                  styles={{
+                    input: {
+                      fontSize: "11.5px",
+                      paddingLeft: "6px",
+                      paddingRight: "6px",
+                      textAlign: "center",
+                      height: "36px",
+                    },
+                  }}
+                  style={{ flex: 1, minWidth: 0 }}
+                  maw={{ base: "100%", sm: 240 }}
+                  popoverProps={{ withinPortal: true, zIndex: 1500 }}
+                />
+              )}
+            </Group>
+            <Text size="xs" c="dimmed">
+              {`${dayjs(range.from).format("DD MMM YYYY")} - ${dayjs(range.to).format("DD MMM YYYY")}`}
+            </Text>
+          </Stack>
+        </Group>
+
+        {loading ? (
+          <Center py={80}><Loader color="dinePrimary" /></Center>
+        ) : data === null || data === undefined ? (
+          <Text c="dimmed" ta="center" py="xl">No data for this period</Text>
+        ) : (
+          <ReportPanel type={reportType} data={data} />
+        )}
+      </Stack>
     </Container>
   );
+}
+
+export function ReportsManagement({ embedded = false, reportType }: { embedded?: boolean; reportType?: ReportType }) {
+  if (reportType) {
+    return <ReportDetailView reportType={reportType} />;
+  }
+  return <ReportsCardsList />;
 }
 
 function ReportPanel({ type, data }: { type: ReportType; data: any }) {

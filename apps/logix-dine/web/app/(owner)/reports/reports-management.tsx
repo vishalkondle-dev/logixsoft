@@ -150,54 +150,46 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
     <>
       <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
 
-      <Stack gap="sm" mb="lg">
-        <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
-          <Group gap="xs" wrap="nowrap" pb={4} style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
-            {PRESETS.map((p) => (
-              <Button
-                key={p.value}
-                size="xs"
-                variant={preset === p.value ? "filled" : "light"}
-                color="dinePrimary"
-                onClick={() => setPreset(p.value)}
-                style={{ flexShrink: 0, whiteSpace: "nowrap" }}
-              >
-                {p.label}
-              </Button>
-            ))}
-          </Group>
-        </ScrollArea>
-        <Group gap="sm" wrap="wrap">
-          {preset === "custom" && (
-            <DatePickerInput
-              type="range"
-              placeholder="Pick date range"
-              value={customRange}
-              onChange={(v: [string | null, string | null] | null) => {
-                if (!v) { setCustomRange([null, null]); return; }
-                setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
-              }}
-              leftSection={<IconCalendar size={16} />}
-              size="sm"
-              w={260}
-            />
-          )}
-          {allOutlets && outlets.length > 0 && (
-            <Select
-              size="sm"
-              placeholder="All outlets"
-              clearable
-              value={reportOutletId}
-              onChange={handleReportOutletChange}
-              data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-              w={180}
-            />
-          )}
-          <Text size="xs" c="dimmed">
-            {range.from === range.to ? range.from : `${range.from} → ${range.to}`}
-          </Text>
-        </Group>
-      </Stack>
+      <Group gap="sm" mb="lg" wrap="wrap" align="center">
+        <Select
+          size="sm"
+          value={preset}
+          onChange={(val) => val && setPreset(val as Preset)}
+          data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
+          leftSection={<IconCalendar size={16} />}
+          w={{ base: "100%", xs: 160 }}
+          allowDeselect={false}
+          aria-label="Duration"
+        />
+        {preset === "custom" && (
+          <DatePickerInput
+            type="range"
+            placeholder="Pick date range"
+            value={customRange}
+            onChange={(v: [string | null, string | null] | null) => {
+              if (!v) { setCustomRange([null, null]); return; }
+              setCustomRange([v[0] ? new Date(v[0]) : null, v[1] ? new Date(v[1]) : null]);
+            }}
+            leftSection={<IconCalendar size={16} />}
+            size="sm"
+            w={{ base: "100%", xs: 240 }}
+          />
+        )}
+        {allOutlets && outlets.length > 0 && (
+          <Select
+            size="sm"
+            placeholder="All outlets"
+            clearable
+            value={reportOutletId}
+            onChange={handleReportOutletChange}
+            data={outlets.map((o) => ({ value: o.id, label: o.name }))}
+            w={{ base: "100%", xs: 180 }}
+          />
+        )}
+        <Text size="xs" c="dimmed">
+          {range.from === range.to ? range.from : `${range.from} → ${range.to}`}
+        </Text>
+      </Group>
 
       <Tabs
         value={activeType}

@@ -130,14 +130,14 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
       <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
 
       <Stack gap={6} mb="md">
-        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 420 : 230 }}>
+        <Group gap="xs" wrap="nowrap" align="center" style={{ width: "100%", maxWidth: preset === "custom" ? 440 : 230 }}>
           <Select
             size="sm"
             value={preset}
             onChange={(val) => val && setPreset(val as Preset)}
             data={PRESETS.map((p) => ({ value: p.value, label: p.label }))}
             leftSection={<IconCalendar size={15} />}
-            w={preset === "custom" ? { base: 148, sm: 165 } : { base: 195, sm: 220 }}
+            w={preset === "custom" ? { base: 142, sm: 165 } : { base: 195, sm: 220 }}
             style={{ flexShrink: 0 }}
             allowDeselect={false}
             aria-label="Duration"
@@ -147,19 +147,19 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
             <DatePickerInput
               type="range"
               placeholder="Select date(s)"
-              valueFormat="MMM DD, YY"
+              valueFormat="DD MMM YYYY"
               labelSeparator="-"
               valueFormatter={({ date }) => {
                 if (Array.isArray(date)) {
                   if (date[0] && date[1]) {
-                    return `${dayjs(date[0]).format("MMM DD, YY")} - ${dayjs(date[1]).format("MMM DD, YY")}`;
+                    return `${dayjs(date[0]).format("DD MMM YYYY")} - ${dayjs(date[1]).format("DD MMM YYYY")}`;
                   }
                   if (date[0]) {
-                    return `${dayjs(date[0]).format("MMM DD, YY")} - `;
+                    return `${dayjs(date[0]).format("DD MMM YYYY")} - `;
                   }
                   return "";
                 }
-                return date ? dayjs(date).format("MMM DD, YY") : "";
+                return date ? dayjs(date).format("DD MMM YYYY") : "";
               }}
               value={customRange}
               onChange={(v: [string | null, string | null] | null) => {
@@ -169,7 +169,7 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
               size="sm"
               styles={{
                 input: {
-                  fontSize: "12px",
+                  fontSize: "11.5px",
                   paddingLeft: "6px",
                   paddingRight: "6px",
                   textAlign: "center",
@@ -177,13 +177,13 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
                 },
               }}
               style={{ flex: 1, minWidth: 0 }}
-              maw={{ base: "100%", sm: 220 }}
+              maw={{ base: "100%", sm: 240 }}
               popoverProps={{ withinPortal: true, zIndex: 1500 }}
             />
           )}
         </Group>
         <Text size="xs" c="dimmed">
-          {`${dayjs(range.from).format("MMM DD, YY")} - ${dayjs(range.to).format("MMM DD, YY")}`}
+          {`${dayjs(range.from).format("DD MMM YYYY")} - ${dayjs(range.to).format("DD MMM YYYY")}`}
         </Text>
       </Stack>
 

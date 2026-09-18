@@ -100,6 +100,7 @@ function CartPanel({
           data={tableSelectData}
           leftSection={<IconTableAlias size={16} />}
           allowDeselect={false}
+          comboboxProps={{ withinPortal: true, zIndex: 1400 }}
         />
 
         <TextInput
@@ -610,7 +611,7 @@ export default function POSPage() {
             withBorder
             p="md"
             radius="md"
-            style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}
+          style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}
           >
             <CartPanel {...cartPanelProps} />
           </Paper>

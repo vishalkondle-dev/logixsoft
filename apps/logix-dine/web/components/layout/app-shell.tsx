@@ -133,9 +133,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(175, 115, 215, 0.3)",
           borderRadius: "9999px", padding: "6px 8px",
           boxShadow: "0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
         }}
       >
-        <Group gap={4} wrap="nowrap">
+        <Group gap={4} wrap="nowrap" style={{ flexWrap: "nowrap", minWidth: "max-content" }}>
           {visibleNav.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -149,6 +152,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   color: isActive ? "#af73d7" : "rgba(30, 30, 30, 0.8)",
                   backgroundColor: isActive ? "rgba(175, 115, 215, 0.15)" : "transparent",
                   textDecoration: "none", userSelect: "none", fontSize: 13,
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
                 }}
               >
                 <Icon size={18} stroke={isActive ? 2.2 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />

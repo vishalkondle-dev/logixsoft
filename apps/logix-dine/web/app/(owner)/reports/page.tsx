@@ -136,19 +136,22 @@ export default function ReportsPage() {
 
       {/* Shared controls */}
       <Stack gap="sm" mb="lg">
-        <Group gap="xs" wrap="wrap">
-          {PRESETS.map((p) => (
-            <Button
-              key={p.value}
-              size="xs"
-              variant={preset === p.value ? "filled" : "light"}
-              color="dinePrimary"
-              onClick={() => setPreset(p.value)}
-            >
-              {p.label}
-            </Button>
-          ))}
-        </Group>
+        <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
+          <Group gap="xs" wrap="nowrap" pb={4} style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
+            {PRESETS.map((p) => (
+              <Button
+                key={p.value}
+                size="xs"
+                variant={preset === p.value ? "filled" : "light"}
+                color="dinePrimary"
+                onClick={() => setPreset(p.value)}
+                style={{ flexShrink: 0, whiteSpace: "nowrap" }}
+              >
+                {p.label}
+              </Button>
+            ))}
+          </Group>
+        </ScrollArea>
         <Group gap="sm" wrap="wrap">
           {preset === "custom" && (
             <DatePickerInput
@@ -198,10 +201,10 @@ export default function ReportsPage() {
         }}
         mb="lg"
       >
-        <ScrollArea type="auto">
-          <Tabs.List style={{ flexWrap: "nowrap" }}>
+        <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
+          <Tabs.List style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
             {REPORT_TABS.map((t) => (
-              <Tabs.Tab key={t.value} value={t.value} leftSection={<t.icon size={16} />}>
+              <Tabs.Tab key={t.value} value={t.value} leftSection={<t.icon size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
                 {t.label}
               </Tabs.Tab>
             ))}

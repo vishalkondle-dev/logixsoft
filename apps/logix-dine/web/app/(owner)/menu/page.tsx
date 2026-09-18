@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Container, Title, Tabs, Stack, Group, Text, Paper, Badge, ActionIcon,
-  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box,
+  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box, ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconEdit, IconTrash, IconCheck, IconGripVertical } from "@tabler/icons-react";
@@ -135,18 +135,20 @@ export default function MenuPage() {
       </Group>
 
       <Tabs value={activeCatId} onChange={setActiveCatId}>
-        <Group mb="xs" align="flex-end">
-          <Tabs.List>
-            {categories.map((cat) => (
-              <Tabs.Tab key={cat.id} value={cat.id}>
-                <Group gap={6}>
-                  {cat.name}
-                  {!cat.active && <Badge size="xs" color="gray">Hidden</Badge>}
-                </Group>
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
-          <Button size="xs" variant="light" leftSection={<IconPlus size={12} />}
+        <Group mb="xs" align="center" wrap="nowrap">
+          <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x" style={{ flex: 1, minWidth: 0 }}>
+            <Tabs.List style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
+              {categories.map((cat) => (
+                <Tabs.Tab key={cat.id} value={cat.id} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
+                  <Group gap={6} wrap="nowrap">
+                    {cat.name}
+                    {!cat.active && <Badge size="xs" color="gray">Hidden</Badge>}
+                  </Group>
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+          </ScrollArea>
+          <Button size="xs" variant="light" leftSection={<IconPlus size={12} />} style={{ flexShrink: 0 }}
             onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}>
             Category
           </Button>

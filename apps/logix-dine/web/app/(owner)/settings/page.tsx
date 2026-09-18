@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Container, Title, Tabs, TextInput, Button, Stack, Group, Text,
-  Paper, Badge, ActionIcon, Modal, Loader, Grid, Box, Select, MultiSelect,
+  Paper, Badge, ActionIcon, Modal, Loader, Grid, Box, Select, MultiSelect, ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -261,13 +261,15 @@ export default function SettingsPage() {
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
         <Title order={2} mb="md">Settings</Title>
         <Tabs defaultValue="restaurant">
-          <Tabs.List mb="md">
-            <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />}>Restaurant</Tabs.Tab>
-            <Tabs.Tab value="outlets" leftSection={<IconBuildingStore size={16} />}>Outlets</Tabs.Tab>
-            <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />}>Tables</Tabs.Tab>
-            {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />}>Staff</Tabs.Tab>}
-            <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />}>Printing</Tabs.Tab>
-          </Tabs.List>
+          <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
+            <Tabs.List mb="md" style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
+              <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Restaurant</Tabs.Tab>
+              <Tabs.Tab value="outlets" leftSection={<IconBuildingStore size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Outlets</Tabs.Tab>
+              <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Tables</Tabs.Tab>
+              {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Staff</Tabs.Tab>}
+              <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Printing</Tabs.Tab>
+            </Tabs.List>
+          </ScrollArea>
 
           {/* Restaurant tab: form left, outlets right on desktop */}
           <Tabs.Panel value="restaurant">

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Container, Title, Tabs, Table, Text, Badge, Button, Loader, Center, Select } from "@mantine/core";
+import { Container, Title, Tabs, Table, Text, Badge, Button, Loader, Center, Select, ScrollArea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
@@ -46,10 +46,12 @@ export default function AdminPage() {
     <Container size="lg" py="xl" px={0}>
       <Title order={2} mb="lg">Platform Admin</Title>
       <Tabs defaultValue="restaurants">
-        <Tabs.List mb="lg">
-          <Tabs.Tab value="restaurants">Restaurants ({restaurants.length})</Tabs.Tab>
-          <Tabs.Tab value="users">Users ({users.length})</Tabs.Tab>
-        </Tabs.List>
+        <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
+          <Tabs.List mb="lg" style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
+            <Tabs.Tab value="restaurants" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Restaurants ({restaurants.length})</Tabs.Tab>
+            <Tabs.Tab value="users" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Users ({users.length})</Tabs.Tab>
+          </Tabs.List>
+        </ScrollArea>
 
         <Tabs.Panel value="restaurants">
           <Table striped withTableBorder>

@@ -9,6 +9,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconBuildingStore, IconCheck, IconTrash,
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
+  IconBook, IconChartBar,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -17,6 +18,8 @@ import {
   getTables, createTable, updateTable, toggleTable, deleteTable,
 } from "@/lib/api-client";
 import { PrinterButton } from "@/components/print/printer-button";
+import { MenuManagement } from "../menu/page";
+import { ReportsManagement } from "../reports/page";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -28,6 +31,27 @@ export default function SettingsPage() {
   const { restaurant, outlets: ctxOutlets, refresh, role } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const isOwner = role === "OWNER";
+
+  const [activeTab, setActiveTab] = useState<string | null>("restaurant");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (val: string | null) => {
+    setActiveTab(val);
+    if (typeof window !== "undefined" && val) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", val);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   const [restForm, setRestForm] = useState({ name: "", address: "", phone: "" });
   const [restSaving, setRestSaving] = useState(false);
@@ -260,12 +284,14 @@ export default function SettingsPage() {
   return (
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
         <Title order={2} mb="md">Settings</Title>
-        <Tabs defaultValue="restaurant">
+        <Tabs value={activeTab} onChange={handleTabChange}>
           <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
             <Tabs.List mb="md" style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
               <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Restaurant</Tabs.Tab>
               <Tabs.Tab value="outlets" leftSection={<IconBuildingStore size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Outlets</Tabs.Tab>
+              <Tabs.Tab value="menu" leftSection={<IconBook size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Menu</Tabs.Tab>
               <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Tables</Tabs.Tab>
+              <Tabs.Tab value="reports" leftSection={<IconChartBar size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Reports</Tabs.Tab>
               {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Staff</Tabs.Tab>}
               <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Printing</Tabs.Tab>
             </Tabs.List>
@@ -308,6 +334,10 @@ export default function SettingsPage() {
             </Stack>
           </Tabs.Panel>
 
+          <Tabs.Panel value="menu">
+            <MenuManagement embedded />
+          </Tabs.Panel>
+
           <Tabs.Panel value="tables">
             <Stack gap="md">
               <Group justify="space-between" wrap="wrap">
@@ -318,29 +348,26 @@ export default function SettingsPage() {
                   data={outlets.map((o) => ({ value: o.id, label: o.name }))}
                   w={220}
                 />
-                <Button
-                  mt={{ base: 0, sm: 24 }}
-                  color="dinePrimary"
-                  leftSection={<IconPlus size={16} />}
-                  onClick={openCreateTable}
-                  disabled={!tableOutletId}
-                >
+                <Button color="dinePrimary" leftSection={<IconPlus size={14} />} onClick={openCreateTable} disabled={!tableOutletId}>
                   Add Table
                 </Button>
               </Group>
-              <Text size="xs" c="dimmed">
-                Optional. If no tables are configured, the POS falls back to a free-text table number field.
-              </Text>
+
               {tablesLoading ? (
                 <Loader size="sm" />
               ) : (
-                <Grid gap="xs">
+                <Grid gap="sm">
                   {tables.map((t) => (
                     <Grid.Col key={t.id} span={{ base: 12, sm: 6, md: 4 }}>
-                      <Paper withBorder p="sm" radius="md" opacity={t.active ? 1 : 0.5}>
+                      <Paper withBorder p="md" radius="md">
                         <Group justify="space-between">
                           <div>
-                            <Text fw={600} size="sm">{t.name}</Text>
+                            <Group gap="xs">
+                              <Text fw={600}>{t.name}</Text>
+                              <Badge size="xs" color={t.active ? "green" : "gray"}>
+                                {t.active ? "Active" : "Inactive"}
+                              </Badge>
+                            </Group>
                             <Text size="xs" c="dimmed">
                               {[t.section, t.capacity ? `${t.capacity} seats` : null].filter(Boolean).join(" · ") || "—"}
                             </Text>
@@ -362,6 +389,10 @@ export default function SettingsPage() {
                 </Grid>
               )}
             </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="reports">
+            <ReportsManagement embedded />
           </Tabs.Panel>
 
           {isOwner && (

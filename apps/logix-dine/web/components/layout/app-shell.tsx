@@ -22,8 +22,6 @@ const NAV_ITEMS = [
   { label: "Home", href: "/", icon: IconHome },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Menu", href: "/menu", icon: IconBook, roles: ["OWNER", "MANAGER"] },
-  { label: "Reports", href: "/reports", icon: IconChartBar, roles: ["OWNER", "MANAGER"] },
   { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
 ];
 

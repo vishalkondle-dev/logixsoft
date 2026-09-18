@@ -13,7 +13,7 @@ import {
   getItems, createItem, updateItem, deleteItem, toggleItem,
 } from "@/lib/api-client";
 
-export default function MenuPage() {
+export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const { restaurant } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
 
@@ -124,10 +124,10 @@ export default function MenuPage() {
 
   if (!restaurant) return null;
 
-  return (
-    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+  const content = (
+    <>
       <Group justify="space-between" mb="lg">
-        <Title order={2}>Menu</Title>
+        <Title order={embedded ? 3 : 2}>Menu</Title>
         <Button color="dinePrimary" leftSection={<IconPlus size={16} />}
           onClick={() => { setItemForm({ categoryId: activeCatId ?? "", name: "", description: "", pricePaise: 0 }); setItemModal({ open: true, editing: null }); }}>
           Add Item
@@ -241,6 +241,20 @@ export default function MenuPage() {
           </Group>
         </Stack>
       </Modal>
+    </>
+  );
+
+  if (embedded) {
+    return <Box pt="xs">{content}</Box>;
+  }
+
+  return (
+    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+      {content}
     </Container>
   );
+}
+
+export default function MenuPage() {
+  return <MenuManagement embedded={false} />;
 }

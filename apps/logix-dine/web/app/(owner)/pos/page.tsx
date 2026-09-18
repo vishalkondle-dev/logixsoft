@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
-  Drawer, Box, ScrollArea,
+  Drawer, Box, ScrollArea, CloseButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -56,6 +56,7 @@ interface CartPanelProps {
   handleSend: () => void;
   sending: boolean;
   setSettleModal: (open: boolean) => void;
+  onClose?: () => void;
 }
 
 function CartPanel({
@@ -74,19 +75,25 @@ function CartPanel({
   handleSend,
   sending,
   setSettleModal,
+  onClose,
 }: CartPanelProps) {
   return (
     <Stack gap="sm" h="100%">
-      <Group justify="space-between">
-        <Group gap="xs">
+      <Group justify="space-between" align="center">
+        <Group gap="xs" align="center">
           <Title order={4}>Cart</Title>
           {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
         </Group>
-        {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
-          <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
-            Clear
-          </Button>
-        )}
+        <Group gap="xs" align="center">
+          {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
+            <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
+              Clear
+            </Button>
+          )}
+          {onClose && (
+            <CloseButton onClick={onClose} size="sm" aria-label="Close cart" />
+          )}
+        </Group>
       </Group>
 
       {/* Cart Selection: Table select (default to Takeaway) + optional Customer Phone */}
@@ -636,21 +643,22 @@ export default function POSPage() {
       <Drawer
         opened={cartOpen}
         onClose={() => setCartOpen(false)}
-        title="Cart"
         position="bottom"
         size="80%"
         zIndex={1200}
         hiddenFrom="sm"
+        withCloseButton={false}
         styles={{
           body: {
-            height: "calc(100% - 60px)",
+            height: "100%",
             display: "flex",
             flexDirection: "column",
+            paddingTop: "16px",
             paddingBottom: "max(16px, env(safe-area-inset-bottom))",
           },
         }}
       >
-        <CartPanel {...cartPanelProps} />
+        <CartPanel {...cartPanelProps} onClose={() => setCartOpen(false)} />
       </Drawer>
 
       {/* Settle Modal */}

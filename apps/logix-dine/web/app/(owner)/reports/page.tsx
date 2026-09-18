@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Container, Title, Text, Group, Stack, Paper, SimpleGrid, Loader, Center,
-  Button, Tabs, ScrollArea, Select,
+  Button, Tabs, ScrollArea, Select, Box,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { BarChart, LineChart, DonutChart } from "@mantine/charts";
@@ -86,7 +86,7 @@ const REPORT_TABS: { value: ReportType; label: string; icon: React.ElementType }
 
 const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
-export default function ReportsPage() {
+export function ReportsManagement({ embedded = false }: { embedded?: boolean }) {
   const { restaurant, outlets, activeOutlet, allOutlets, role } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
 
@@ -151,9 +151,9 @@ export default function ReportsPage() {
 
   if (!restaurant) return null;
 
-  return (
-    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
-      <Title order={2} mb="md">Reports</Title>
+  const content = (
+    <>
+      <Title order={embedded ? 3 : 2} mb="md">Reports</Title>
 
       {/* Shared controls */}
       <Stack gap="sm" mb="lg">
@@ -240,8 +240,22 @@ export default function ReportsPage() {
       ) : (
         <ReportPanel type={activeType} data={data} />
       )}
+    </>
+  );
+
+  if (embedded) {
+    return <Box pt="xs">{content}</Box>;
+  }
+
+  return (
+    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+      {content}
     </Container>
   );
+}
+
+export default function ReportsPage() {
+  return <ReportsManagement embedded={false} />;
 }
 
 function ReportPanel({ type, data }: { type: ReportType; data: any }) {

@@ -28,8 +28,16 @@ async function apiFetch<T>(
 export const getBootstrap = (restaurantId: string) =>
   apiFetch<any>("/billing/bootstrap", restaurantId);
 
-export const startOrder = (restaurantId: string, body: { outletId: string; tableNo?: string; note?: string }) =>
-  apiFetch<any>("/billing/orders", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
+export const startOrder = (
+  restaurantId: string,
+  body: {
+    outletId: string;
+    tableNo?: string;
+    customerPhone?: string;
+    note?: string;
+    items?: Array<{ itemId: string; qty: number }>;
+  }
+) => apiFetch<any>("/billing/orders", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
 
 export const getOrder = (restaurantId: string, orderId: string, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}`, restaurantId, {}, outletId);
@@ -50,8 +58,19 @@ export const updateOrderItemQty = (restaurantId: string, orderId: string, orderI
 export const removeOrderItem = (restaurantId: string, orderId: string, orderItemId: string, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}/items/${orderItemId}`, restaurantId, { method: "DELETE" }, outletId);
 
-export const settleOrder = (restaurantId: string, orderId: string, body: { method?: string }, outletId?: string | null) =>
-  apiFetch<any>(`/billing/orders/${orderId}/settle`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+export const settleOrder = (
+  restaurantId: string,
+  orderId: string,
+  body: { method?: string; customerPhone?: string },
+  outletId?: string | null
+) => apiFetch<any>(`/billing/orders/${orderId}/settle`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
+export const sendOrderWhatsApp = (
+  restaurantId: string,
+  orderId: string,
+  body: { phone?: string },
+  outletId?: string | null
+) => apiFetch<any>(`/billing/orders/${orderId}/whatsapp`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
 
 export const voidOrder = (restaurantId: string, orderId: string, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}/void`, restaurantId, { method: "POST", body: JSON.stringify({}) }, outletId);

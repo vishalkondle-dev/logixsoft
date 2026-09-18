@@ -8,19 +8,17 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconPlus, IconMinus, IconTrash, IconChevronRight,
-  IconCheck, IconShoppingCart, IconCash, IconTableAlias,
+  IconPlus, IconMinus, IconTrash, IconChevronDown,
+  IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
-  getBootstrap, startOrder, addOrderItem, updateOrderItemQty,
-  removeOrderItem, settleOrder, voidOrder, markKotPrinted, getTables,
+  getBootstrap, startOrder, settleOrder, markKotPrinted, getTables,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
 
-interface CartItem {
-  orderItemId: string;
+interface LocalCartItem {
   itemId: string;
   name: string;
   pricePaise: number;
@@ -28,24 +26,27 @@ interface CartItem {
 }
 
 export default function POSPage() {
-  const { restaurant, activeOutlet, role } = useRestaurant();
+  const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
-  const canVoid = role === "OWNER" || role === "MANAGER";
 
   const [bootstrap, setBootstrap] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [currentOrder, setCurrentOrder] = useState<any>(null);
+  // Local cart state — orders are only created upon clicking Send
+  const [cartItems, setCartItems] = useState<LocalCartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [tableNo, setTableNo] = useState("");
+  const [tableNo, setTableNo] = useState<string>("Takeaway");
+  const [customerPhone, setCustomerPhone] = useState<string>("");
   const [tables, setTables] = useState<any[]>([]);
+
+  // Settle modal state
   const [settleModal, setSettleModal] = useState(false);
   const [settleMethod, setSettleMethod] = useState<string>("Cash");
   const [settling, setSettling] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const loadBootstrap = useCallback(async () => {
     if (!restaurantId) return;
@@ -63,162 +64,148 @@ export default function POSPage() {
 
   useEffect(() => { loadBootstrap(); }, [loadBootstrap]);
 
-  // Load the outlet's table registry, if any have been configured. If empty,
-  // the cart falls back to the free-text table number input (v2 behaviour) —
-  // owners aren't forced to set up tables to keep using the POS.
+  // Load the outlet's table registry
   useEffect(() => {
-    if (!restaurantId || !outletId) { setTables([]); return; }
+    if (!restaurantId || !outletId) {
+      setTables([]);
+      return;
+    }
     getTables(restaurantId, outletId)
       .then((rows) => setTables(rows.filter((t: any) => t.active)))
       .catch(() => setTables([]));
   }, [restaurantId, outletId]);
 
-  const syncOrder = useCallback(async (orderId: string) => {
-    const updated = await getBootstrap(restaurantId); // minimal — just re-use bootstrap for now
-    // fetch the actual order
-    const { order, items } = await (async () => {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
-      const r = await fetch(`${API_BASE}/billing/orders/${orderId}`, {
-        credentials: "include",
-        headers: { "X-Restaurant-Id": restaurantId },
-      });
-      return r.json();
-    })();
-    setCurrentOrder({ order, items });
-  }, [restaurantId]);
+  // Handle adding items to local cart
+  const handleAddItem = (item: any) => {
+    setCartItems((prev) => {
+      const existing = prev.find((ci) => ci.itemId === item.id);
+      if (existing) {
+        return prev.map((ci) =>
+          ci.itemId === item.id ? { ...ci, qty: ci.qty + 1 } : ci
+        );
+      }
+      return [
+        ...prev,
+        {
+          itemId: item.id,
+          name: item.name,
+          pricePaise: item.pricePaise,
+          qty: 1,
+        },
+      ];
+    });
+  };
 
-  const handleStartOrder = async () => {
+  const handleUpdateQty = (itemId: string, qty: number) => {
+    if (qty < 1) {
+      handleRemoveItem(itemId);
+      return;
+    }
+    setCartItems((prev) =>
+      prev.map((ci) => (ci.itemId === itemId ? { ...ci, qty } : ci))
+    );
+  };
+
+  const handleRemoveItem = (itemId: string) => {
+    setCartItems((prev) => prev.filter((ci) => ci.itemId !== itemId));
+  };
+
+  // Order created only after clicking Send
+  const handleSend = async () => {
+    if (cartItems.length === 0) return;
     if (!activeOutlet) {
       notifications.show({ title: "No outlet", message: "Select an outlet first", color: "red" });
       return;
     }
-    setStarting(true);
+
+    setSending(true);
     try {
-      const result = await startOrder(restaurantId, { outletId: activeOutlet.id, tableNo: tableNo || undefined });
-      setCurrentOrder(result);
-      notifications.show({ title: `Order #${result.order.orderNo} started`, message: tableNo ? `Table ${tableNo}` : "No table", color: "dinePrimary", icon: <IconCheck size={16} /> });
+      const created = await startOrder(restaurantId, {
+        outletId: activeOutlet.id,
+        tableNo: tableNo || "Takeaway",
+        customerPhone: customerPhone.trim() || undefined,
+        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty })),
+      });
+
+      // Print KOT automatically
+      const kotPayload = buildKotPayload(created, restaurant);
+      const printResult = await printTicket(kotPayload);
+      await markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
+
+      const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
+      notifications.show({
+        title: `Order #${created.order.orderNo} sent to kitchen`,
+        message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
+        color: "dinePrimary",
+        icon: <IconCheck size={16} />,
+      });
+
+      // Reset cart for subsequent orders
+      setCartItems([]);
+      setCustomerPhone("");
+      setTableNo("Takeaway");
+      if (cartOpen) setCartOpen(false);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
-      setStarting(false);
+      setSending(false);
     }
   };
 
-  const handleAddItem = async (item: any) => {
-    if (!currentOrder) {
-      // Auto-start order
-      if (!activeOutlet) {
-        notifications.show({ title: "No outlet", message: "Select an outlet first", color: "orange" });
-        return;
-      }
-      setStarting(true);
-      try {
-        const result = await startOrder(restaurantId, { outletId: activeOutlet.id, tableNo: tableNo || undefined });
-        setCurrentOrder(result);
-        // Then add item
-        const updated = await addOrderItem(restaurantId, result.order.id, { itemId: item.id, qty: 1 }, outletId);
-        setCurrentOrder(updated);
-        // Print KOT automatically
-        const kotPayload = buildKotPayload(updated, restaurant);
-        const printResult = await printTicket(kotPayload);
-        await markKotPrinted(restaurantId, result.order.id, outletId).catch(() => {});
-        notifications.show({
-          title: `KOT #${updated.order.orderNo}`,
-          message: printResult === "ble" ? "Sent to printer" : printResult === "browser" ? "Sent to browser print" : "Print failed — reprint from Orders",
-          color: printResult === "error" ? "orange" : "dinePrimary",
-        });
-      } catch (err: any) {
-        notifications.show({ title: "Error", message: err.message, color: "red" });
-      } finally {
-        setStarting(false);
-      }
+  // Settle & Send: create order, settle immediately, and dispatch receipt
+  const handleSettleAndSend = async () => {
+    if (cartItems.length === 0) return;
+    if (!activeOutlet) {
+      notifications.show({ title: "No outlet", message: "Select an outlet first", color: "red" });
       return;
     }
 
-    try {
-      const updated = await addOrderItem(restaurantId, currentOrder.order.id, { itemId: item.id, qty: 1 }, outletId);
-      setCurrentOrder(updated);
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
-  };
-
-  const handleUpdateQty = async (orderItemId: string, qty: number) => {
-    if (qty < 1) {
-      await handleRemoveItem(orderItemId);
-      return;
-    }
-    try {
-      const updated = await updateOrderItemQty(restaurantId, currentOrder.order.id, orderItemId, qty, outletId);
-      setCurrentOrder(updated);
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
-  };
-
-  const handleRemoveItem = async (orderItemId: string) => {
-    try {
-      const updated = await removeOrderItem(restaurantId, currentOrder.order.id, orderItemId, outletId);
-      setCurrentOrder(updated);
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
-  };
-
-  const handleSend = async () => {
-    if (!currentOrder || !restaurant) return;
-    const kotPayload = buildKotPayload(currentOrder, restaurant);
-    const printResult = await printTicket(kotPayload);
-    await markKotPrinted(restaurantId, currentOrder.order.id, outletId).catch(() => {});
-    notifications.show({
-      title: `Order #${currentOrder.order.orderNo} sent to kitchen`,
-      message: printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to browser print" : "Print failed — reprint from Orders",
-      color: printResult === "error" ? "orange" : "dinePrimary",
-      icon: <IconCheck size={16} />,
-    });
-  };
-
-  const handleSettle = async () => {
     setSettling(true);
     try {
-      const updated = await settleOrder(restaurantId, currentOrder.order.id, { method: settleMethod }, outletId);
-      setCurrentOrder(null);
-      setSettleModal(false);
-      setTableNo("");
-      // Print bill
+      // 1. Create order
+      const created = await startOrder(restaurantId, {
+        outletId: activeOutlet.id,
+        tableNo: tableNo || "Takeaway",
+        customerPhone: customerPhone.trim() || undefined,
+        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty })),
+      });
+
+      // 2. Settle order
+      const settled = await settleOrder(
+        restaurantId,
+        created.order.id,
+        { method: settleMethod, customerPhone: customerPhone.trim() || undefined },
+        activeOutlet.id
+      );
+
+      // 3. Print KOT & Bill
+      const kotPayload = buildKotPayload(settled, restaurant);
+      await printTicket(kotPayload);
+      await markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
+
       if (restaurant) {
-        const billPayload = buildBillPayload(updated, restaurant);
-        const printResult = await printTicket(billPayload);
-        notifications.show({
-          title: "Order settled!",
-          message: `#${updated.order.orderNo} — ₹${(updated.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${printResult === "ble" ? " · Bill printed" : printResult === "browser" ? " · Bill sent to print" : ""}`,
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
-      } else {
-        notifications.show({
-          title: "Order settled!",
-          message: `Order #${updated.order.orderNo} — ₹${(updated.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}`,
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
+        const billPayload = buildBillPayload(settled, restaurant);
+        await printTicket(billPayload);
       }
+
+      const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
+      notifications.show({
+        title: "Order settled!",
+        message: `#${settled.order.orderNo} — ₹${(settled.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+
+      // Reset cart and modal
+      setCartItems([]);
+      setCustomerPhone("");
+      setTableNo("Takeaway");
+      setSettleModal(false);
+      if (cartOpen) setCartOpen(false);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
       setSettling(false);
-    }
-  };
-
-  const handleVoid = async () => {
-    if (!confirm("Void this order?")) return;
-    try {
-      await voidOrder(restaurantId, currentOrder.order.id, outletId);
-      setCurrentOrder(null);
-      setTableNo("");
-      notifications.show({ title: "Order voided", message: "", color: "gray" });
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
     }
   };
 
@@ -231,70 +218,80 @@ export default function POSPage() {
     .filter((i: any) => i.available)
     .filter((i: any) => !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const cartItems = currentOrder?.items ?? [];
-  const total = currentOrder?.order.subtotalPaise ?? 0;
-  const cartCount = cartItems.reduce((s: number, i: any) => s + i.qty, 0);
+  const total = cartItems.reduce((s, i) => s + i.pricePaise * i.qty, 0);
+  const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
+
+  const tableSelectData = [
+    { value: "Takeaway", label: "Takeaway" },
+    ...tables.map((t) => ({
+      value: t.name,
+      label: t.section ? `${t.name} · ${t.section}` : t.name,
+    })),
+  ];
 
   const CartPanel = () => (
     <Stack gap="sm" h="100%">
       <Group justify="space-between">
-        <Title order={4}>Cart {currentOrder ? `#${currentOrder.order.orderNo}` : ""}</Title>
-        {currentOrder?.order.tableNo && <Badge size="sm" leftSection={<IconTableAlias size={12} />}>{currentOrder.order.tableNo}</Badge>}
+        <Group gap="xs">
+          <Title order={4}>Cart</Title>
+          {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
+        </Group>
+        {cartItems.length > 0 && (
+          <Button variant="subtle" color="red" size="compact-xs" onClick={() => setCartItems([])}>
+            Clear
+          </Button>
+        )}
       </Group>
 
-      {!currentOrder && (
-        <Stack gap="xs">
-          {tables.length > 0 ? (
-            <Select
-              placeholder="Select a table (optional)"
-              size="sm"
-              clearable
-              value={tableNo || null}
-              onChange={(v) => setTableNo(v ?? "")}
-              data={tables.map((t) => ({
-                value: t.name,
-                label: t.section ? `${t.name} · ${t.section}` : t.name,
-              }))}
-              leftSection={<IconTableAlias size={14} />}
-            />
-          ) : (
-            <TextInput
-              placeholder="Table no. (optional)"
-              size="sm"
-              value={tableNo}
-              onChange={(e) => setTableNo(e.target.value)}
-              leftSection={<IconTableAlias size={14} />}
-            />
-          )}
-        </Stack>
-      )}
+      {/* Cart Selection: Table select (default to Takeaway) + optional Customer Phone */}
+      <Stack gap="xs">
+        <Select
+          label="Table / Order Type"
+          placeholder="Select table"
+          size="sm"
+          value={tableNo}
+          onChange={(v) => setTableNo(v || "Takeaway")}
+          data={tableSelectData}
+          leftSection={<IconTableAlias size={16} />}
+          allowDeselect={false}
+        />
+
+        <TextInput
+          label="Customer Phone (optional)"
+          placeholder="WhatsApp number (e.g. 9876543210)"
+          size="sm"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value)}
+          leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
+        />
+      </Stack>
 
       <Divider />
       <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }}>
         <Stack gap="xs">
           {cartItems.length === 0 && (
-            <Text c="dimmed" size="sm" ta="center" py="xl">Add items to start an order</Text>
+            <Text c="dimmed" size="sm" ta="center" py="xl">Add items from menu to start an order</Text>
           )}
-          {cartItems.map((item: any) => (
-            <Paper key={item.id} withBorder p="xs" radius="sm">
+          {cartItems.map((item) => (
+            <Paper key={item.itemId} withBorder p="xs" radius="sm">
               <Group justify="space-between" gap="xs" wrap="nowrap">
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text size="sm" fw={500} lineClamp={1}>{item.nameSnapshot}</Text>
-                  <Text size="xs" c="dimmed">₹{(item.pricePaiseSnapshot / 100).toFixed(0)} each</Text>
+                  <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
+                  <Text size="xs" c="dimmed">₹{(item.pricePaise / 100).toFixed(0)} each</Text>
                 </div>
                 <Group gap={4} wrap="nowrap">
-                  <ActionIcon size="xs" variant="light" onClick={() => handleUpdateQty(item.id, item.qty - 1)}>
+                  <ActionIcon size="xs" variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty - 1)}>
                     <IconMinus size={10} />
                   </ActionIcon>
                   <Text size="sm" w={20} ta="center">{item.qty}</Text>
-                  <ActionIcon size="xs" variant="light" onClick={() => handleUpdateQty(item.id, item.qty + 1)}>
+                  <ActionIcon size="xs" variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty + 1)}>
                     <IconPlus size={10} />
                   </ActionIcon>
-                  <ActionIcon size="xs" variant="light" color="red" onClick={() => handleRemoveItem(item.id)}>
+                  <ActionIcon size="xs" variant="light" color="red" onClick={() => handleRemoveItem(item.itemId)}>
                     <IconTrash size={10} />
                   </ActionIcon>
                 </Group>
-                <Text size="sm" fw={600} w={48} ta="right">₹{((item.pricePaiseSnapshot * item.qty) / 100).toFixed(0)}</Text>
+                <Text size="sm" fw={600} w={48} ta="right">₹{((item.pricePaise * item.qty) / 100).toFixed(0)}</Text>
               </Group>
             </Paper>
           ))}
@@ -307,48 +304,48 @@ export default function POSPage() {
         <Text fw={700} c="dinePrimary" size="lg">₹{(total / 100).toFixed(0)}</Text>
       </Group>
 
-      {currentOrder ? (
-        <Stack gap="xs">
-          {/* Split button: Send (primary) + chevron → Settle & Send */}
-          <Group gap={0} grow>
-            <Button
-              color="dinePrimary"
-              onClick={handleSend}
-              style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
-              disabled={cartItems.length === 0}
-            >
-              Send
-            </Button>
-            <Menu position="top-end" withinPortal>
-              <Menu.Target>
-                <Button
-                  color="dinePrimary"
-                  px="xs"
-                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: "1px solid rgba(255,255,255,0.3)" }}
-                  disabled={cartItems.length === 0}
-                >
-                  <IconChevronRight size={16} />
-                </Button>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<IconCash size={16} />}
-                  onClick={() => setSettleModal(true)}
-                >
-                  Settle &amp; Send
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-          <Button fullWidth variant="light" color="red" onClick={handleVoid} size="xs" style={{ display: canVoid ? undefined : "none" }}>
-            Void Order
-          </Button>
-        </Stack>
-      ) : (
-        <Button fullWidth color="dinePrimary" onClick={handleStartOrder} loading={starting} leftSection={<IconShoppingCart size={16} />}>
-          New Order
+      {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
+      <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
+        <Button
+          color="dinePrimary"
+          onClick={handleSend}
+          loading={sending}
+          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
+          disabled={cartItems.length === 0}
+          leftSection={<IconShoppingCart size={16} />}
+        >
+          Send
         </Button>
-      )}
+        <Menu position="top-end" withinPortal>
+          <Menu.Target>
+            <ActionIcon
+              color="dinePrimary"
+              variant="filled"
+              size={36}
+              style={{
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderLeft: "1px solid rgba(255,255,255,0.3)",
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+              }}
+              disabled={cartItems.length === 0 || sending}
+              aria-label="More order options"
+            >
+              <IconChevronDown size={16} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<IconCash size={16} />}
+              onClick={() => setSettleModal(true)}
+            >
+              Settle &amp; Send
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
     </Stack>
   );
 
@@ -416,7 +413,7 @@ export default function POSPage() {
             <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }} pb={100}>
               <Grid gap="xs">
                 {filteredItems.map((item: any) => {
-                  const inCart = cartItems.find((ci: any) => ci.itemId === item.id);
+                  const inCart = cartItems.find((ci) => ci.itemId === item.id);
                   return (
                     <Grid.Col key={item.id} span={{ base: 6, sm: 4, md: 3, lg: 2 }}>
                       <Paper
@@ -480,9 +477,18 @@ export default function POSPage() {
       <Modal opened={settleModal} onClose={() => setSettleModal(false)} title="Settle & Send" size="sm">
         <Stack>
           <Group justify="space-between">
-            <Text>Order #{currentOrder?.order.orderNo}</Text>
+            <Text fw={500}>Order Total</Text>
             <Text fw={700} c="dinePrimary" size="xl">₹{(total / 100).toFixed(0)}</Text>
           </Group>
+          <Text size="xs" c="dimmed">Table: {tableNo || "Takeaway"}</Text>
+          <TextInput
+            label="Customer Phone (WhatsApp)"
+            placeholder="WhatsApp number (e.g. 9876543210)"
+            size="sm"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
+          />
           <Select
             label="Payment Method"
             value={settleMethod}
@@ -493,8 +499,14 @@ export default function POSPage() {
               { value: "QR", label: "🔲 QR Code" },
             ]}
           />
-          <Button fullWidth color="dinePrimary" onClick={handleSettle} loading={settling} leftSection={<IconCheck size={16} />}>
-            Confirm Settlement
+          <Button
+            fullWidth
+            color="dinePrimary"
+            onClick={handleSettleAndSend}
+            loading={settling}
+            leftSection={<IconCheck size={16} />}
+          >
+            Confirm Settlement &amp; Send
           </Button>
         </Stack>
       </Modal>

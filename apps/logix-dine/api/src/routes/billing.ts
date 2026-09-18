@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, hasOutletAccess } from '../lib/tenancy';
@@ -12,7 +12,37 @@ import {
   SettleOrderSchema,
 } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant, toOutlet, toCategory, toMenuItem, toOrderWithItems, toOrder } from '@logixsoft/logix-dine/mappers/pos';
+import { sendWhatsAppText } from '@logixsoft/wa';
 import type { AuthEnv } from '../lib/auth';
+
+function formatOrderWhatsAppMessage(
+  restaurantName: string,
+  outletName: string | null | undefined,
+  order: any,
+  items: any[],
+  isSettled = false
+): string {
+  const tableStr = order.tableNo
+    ? order.tableNo.toLowerCase() === 'takeaway'
+      ? 'Takeaway'
+      : `Table: ${order.tableNo}`
+    : 'Takeaway';
+  const totalRupees = ((order.subtotalPaise ?? 0) / 100).toFixed(0);
+
+  const itemsList = items
+    .map((item) => {
+      const name = item.nameSnapshot || item.name || 'Item';
+      const itemTotal = (((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0);
+      return `• ${item.qty}x ${name} — ₹${itemTotal}`;
+    })
+    .join('\n');
+
+  const title = isSettled ? '🧾 *Payment Receipt*' : '🍽️ *Order Confirmed!*';
+  const header = `*${restaurantName}*${outletName ? ` (${outletName})` : ''}`;
+  const paymentLine = isSettled && order.method ? `\n💳 Payment: *${order.method}*` : '';
+
+  return `${title}\n${header}\nOrder: *#${order.orderNo}*\nType: *${tableStr}*${paymentLine}\n\n*Items:*\n${itemsList}\n\n*Total:* ₹${totalRupees}\n\nThank you for dining with us!`;
+}
 
 const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
 
@@ -93,7 +123,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
   try {
     // Verify outlet belongs to restaurant
     const [outlet] = await db
-      .select({ id: appSchema.restaurantOutlet.id })
+      .select({ id: appSchema.restaurantOutlet.id, name: appSchema.restaurantOutlet.name })
       .from(appSchema.restaurantOutlet)
       .where(and(eq(appSchema.restaurantOutlet.id, parsed.data.outletId), eq(appSchema.restaurantOutlet.restaurantId, restaurantId)))
       .limit(1);
@@ -114,23 +144,83 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
         .from(appSchema.saleOrder)
         .where(eq(appSchema.saleOrder.restaurantId, restaurantId));
 
+      let subtotalPaise = 0;
+      const orderItemsToInsert: any[] = [];
+
+      if (parsed.data.items && parsed.data.items.length > 0) {
+        const menuItems = await tx
+          .select()
+          .from(appSchema.menuItem)
+          .where(eq(appSchema.menuItem.restaurantId, restaurantId));
+        const menuMap = new Map(menuItems.map((m: any) => [m.id, m]));
+
+        for (const item of parsed.data.items) {
+          const menuItem = menuMap.get(item.itemId) as any;
+          if (!menuItem) continue;
+          const pricePaiseSnapshot = menuItem.pricePaise;
+          subtotalPaise += pricePaiseSnapshot * item.qty;
+          orderItemsToInsert.push({
+            id: generateId('orderItem'),
+            orderId: id,
+            itemId: item.itemId,
+            nameSnapshot: menuItem.name,
+            pricePaiseSnapshot,
+            qty: item.qty,
+            createdAt: now,
+            createdBy: actorPhone,
+            updatedBy: actorPhone,
+          });
+        }
+      }
+
       await tx.insert(appSchema.saleOrder).values({
         id,
         restaurantId,
         outletId: parsed.data.outletId,
         orderNo: (maxNo ?? 0) + 1,
         tableNo: parsed.data.tableNo ?? null,
+        customerPhone: parsed.data.customerPhone ?? null,
         status: 'OPEN',
-        subtotalPaise: 0,
+        subtotalPaise,
         note: parsed.data.note ?? null,
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,
         updatedBy: actorPhone,
       });
+
+      if (orderItemsToInsert.length > 0) {
+        await tx.insert(appSchema.saleOrderItem).values(orderItemsToInsert);
+      }
     });
 
     const result = await getOrderWithItems(db, id, restaurantId);
+
+    // Send WhatsApp notification if customerPhone is provided
+    if (parsed.data.customerPhone && result) {
+      try {
+        const [rest] = await db
+          .select({ name: appSchema.restaurant.name })
+          .from(appSchema.restaurant)
+          .where(eq(appSchema.restaurant.id, restaurantId));
+        const message = formatOrderWhatsAppMessage(
+          rest?.name ?? 'Restaurant',
+          outlet.name,
+          result.order,
+          result.items,
+          false
+        );
+        await sendWhatsAppText(
+          parsed.data.customerPhone,
+          message,
+          undefined,
+          { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
+        ).catch((err) => console.warn('[billing/order] sendWhatsAppText error:', err));
+      } catch (waErr) {
+        console.warn('[billing/order] WhatsApp send error:', waErr);
+      }
+    }
+
     return c.json(result, 201);
   } finally {
     await close();
@@ -166,6 +256,7 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
       .select()
       .from(appSchema.saleOrder)
       .where(and(...conditions))
+      .orderBy(desc(appSchema.saleOrder.createdAt))
       .limit(limit);
 
     // Fetch items for all orders
@@ -398,11 +489,13 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
     const now = new Date();
+    const targetPhone = parsed.data.customerPhone || order.customerPhone;
     await db
       .update(appSchema.saleOrder)
       .set({
         status: 'PAID',
         method: parsed.data.method ?? null,
+        customerPhone: targetPhone ?? null,
         settledAt: now,
         settledByUserId: user.id,
         updatedAt: now,
@@ -411,7 +504,101 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
       .where(eq(appSchema.saleOrder.id, orderId));
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
+
+    if (targetPhone && result) {
+      try {
+        const [rest] = await db
+          .select({ name: appSchema.restaurant.name })
+          .from(appSchema.restaurant)
+          .where(eq(appSchema.restaurant.id, restaurantId));
+        const [outlet] = await db
+          .select({ name: appSchema.restaurantOutlet.name })
+          .from(appSchema.restaurantOutlet)
+          .where(eq(appSchema.restaurantOutlet.id, order.outletId));
+        const message = formatOrderWhatsAppMessage(
+          rest?.name ?? 'Restaurant',
+          outlet?.name,
+          result.order,
+          result.items,
+          true
+        );
+        await sendWhatsAppText(
+          targetPhone,
+          message,
+          undefined,
+          { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
+        ).catch((err) => console.warn('[billing/settle] sendWhatsAppText error:', err));
+      } catch (waErr) {
+        console.warn('[billing/settle] WhatsApp send error:', waErr);
+      }
+    }
+
     return c.json(result);
+  } finally {
+    await close();
+  }
+});
+
+// POST /billing/orders/:id/whatsapp — dispatch/resend WhatsApp order details
+app.post('/orders/:id/whatsapp', requirePermission('order:read'), async (c) => {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const orderId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const phone = body.phone;
+
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db
+      .select()
+      .from(appSchema.saleOrder)
+      .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+    if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
+    const targetPhone = phone || order.customerPhone;
+    if (!targetPhone) {
+      return c.json({ error: 'Bad Request', message: 'Phone number is required' }, 400);
+    }
+
+    if (phone && phone !== order.customerPhone) {
+      await db
+        .update(appSchema.saleOrder)
+        .set({ customerPhone: phone, updatedAt: new Date() })
+        .where(eq(appSchema.saleOrder.id, orderId));
+    }
+
+    const result = await getOrderWithItems(db, orderId, restaurantId);
+    if (!result) return c.json({ error: 'Not Found' }, 404);
+
+    const [rest] = await db
+      .select({ name: appSchema.restaurant.name })
+      .from(appSchema.restaurant)
+      .where(eq(appSchema.restaurant.id, restaurantId));
+    const [outlet] = await db
+      .select({ name: appSchema.restaurantOutlet.name })
+      .from(appSchema.restaurantOutlet)
+      .where(eq(appSchema.restaurantOutlet.id, order.outletId));
+
+    const isSettled = result.order.status === 'PAID';
+    const message = formatOrderWhatsAppMessage(
+      rest?.name ?? 'Restaurant',
+      outlet?.name,
+      result.order,
+      result.items,
+      isSettled
+    );
+
+    const waRes = await sendWhatsAppText(
+      targetPhone,
+      message,
+      undefined,
+      { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
+    );
+
+    return c.json({ success: true, waResponse: waRes });
   } finally {
     await close();
   }

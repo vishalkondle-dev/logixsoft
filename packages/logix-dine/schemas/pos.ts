@@ -123,6 +123,7 @@ export const SaleOrderSchema = z.object({
   outletId: z.string(),
   orderNo: z.number().int(),
   tableNo: z.string().nullable(),
+  customerPhone: z.string().nullable(),
   status: z.string(),
   subtotalPaise: z.number().int(),
   method: z.string().nullable(),
@@ -214,8 +215,15 @@ export const UpdateItemSchema = z.object({
 
 export const StartOrderSchema = z.object({
   outletId: z.string(),
-  tableNo: z.string().max(20).optional(),
+  tableNo: z.string().max(50).optional(),
+  customerPhone: z.string().max(25).optional(),
   note: z.string().max(255).optional(),
+  items: z.array(
+    z.object({
+      itemId: z.string(),
+      qty: z.number().int().positive(),
+    })
+  ).optional(),
 });
 
 export const AddOrderItemSchema = z.object({
@@ -229,6 +237,7 @@ export const UpdateOrderItemSchema = z.object({
 
 export const SettleOrderSchema = z.object({
   method: z.enum(['Cash', 'UPI', 'QR']).optional(),
+  customerPhone: z.string().max(25).optional(),
 });
 
 // ─── Response schemas ─────────────────────────────────────────────────────────

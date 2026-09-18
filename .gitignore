@@ -15,3 +15,5 @@ out/
 .env.*.local
 *.tsbuildinfo
 .open-next/
+test-results/
+playwright-report/

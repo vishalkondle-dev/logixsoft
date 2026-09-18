@@ -109,7 +109,8 @@ export default function OrdersPage() {
                 <Group justify="space-between">
                   <Group gap="xs">
                     <Text fw={700}>#{order.orderNo}</Text>
-                    {order.tableNo && <Badge size="xs" variant="outline">T: {order.tableNo}</Badge>}
+                    {order.tableNo && <Badge size="xs" variant="outline">{order.tableNo === "Takeaway" ? "Takeaway" : `T: ${order.tableNo}`}</Badge>}
+                    {order.customerPhone && <Badge size="xs" variant="outline" color="teal">WA</Badge>}
                     <Badge size="xs" color={STATUS_COLORS[order.status] ?? "gray"}>{order.status}</Badge>
                   </Group>
                   <Group gap="xs">
@@ -133,8 +134,11 @@ export default function OrdersPage() {
           <Stack>
             <Group justify="space-between">
               <Badge color={STATUS_COLORS[selected.order.status]}>{selected.order.status}</Badge>
-              {selected.order.tableNo && <Text size="sm">Table: {selected.order.tableNo}</Text>}
+              {selected.order.tableNo && <Text size="sm">{selected.order.tableNo === "Takeaway" ? "Takeaway" : `Table: ${selected.order.tableNo}`}</Text>}
             </Group>
+            {selected.order.customerPhone && (
+              <Text size="xs" c="dimmed">Customer: {selected.order.customerPhone}</Text>
+            )}
             <Divider />
             {selected.items.map((item: any) => (
               <Group key={item.orderItemId ?? item.id} justify="space-between">

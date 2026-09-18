@@ -195,6 +195,7 @@ export const saleOrder = pgTable(
       .references(() => restaurantOutlet.id, { onDelete: 'restrict' }),
     orderNo: integer('orderNo').notNull(),
     tableNo: text('tableNo'),
+    customerPhone: text('customerPhone'),
     status: text('status').notNull().default('OPEN'), // OPEN | PAID | VOID
     subtotalPaise: integer('subtotalPaise').notNull().default(0),
     method: text('method'), // Cash | UPI | QR

@@ -5,6 +5,7 @@
     "deploy:dine-web": "pnpm --filter logix-dine-web run deploy"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "turbo": "latest",
     "wrangler": "^4.132.0"
   }

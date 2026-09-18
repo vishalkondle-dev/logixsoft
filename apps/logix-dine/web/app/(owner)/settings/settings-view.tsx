@@ -43,7 +43,7 @@ export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
 export function SettingsView({ currentTab }: { currentTab?: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { restaurant, outlets: ctxOutlets, refresh, role } = useRestaurant();
+  const { restaurant, outlets: ctxOutlets, activeOutlet, refresh, role } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const isOwner = role === "OWNER";
 
@@ -108,7 +108,13 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   }, [restaurant]);
 
   useEffect(() => { setOutlets(ctxOutlets); }, [ctxOutlets]);
-  useEffect(() => { if (ctxOutlets.length && !tableOutletId) setTableOutletId(ctxOutlets[0].id); }, [ctxOutlets, tableOutletId]);
+  useEffect(() => {
+    if (activeOutlet?.id) {
+      setTableOutletId(activeOutlet.id);
+    } else if (ctxOutlets.length && !tableOutletId) {
+      setTableOutletId(ctxOutlets[0].id);
+    }
+  }, [ctxOutlets, activeOutlet?.id, tableOutletId]);
 
   const loadStaff = async () => {
     if (!restaurantId || !isOwner) return;

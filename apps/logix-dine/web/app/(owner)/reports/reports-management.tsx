@@ -83,41 +83,16 @@ const REPORT_TABS: { value: ReportType; label: string; icon: React.ElementType }
 const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 export function ReportsManagement({ embedded = false }: { embedded?: boolean }) {
-  const { restaurant, outlets, activeOutlet, allOutlets } = useRestaurant();
+  const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
+  const outletId = activeOutlet?.id ?? null;
 
   const [activeType, setActiveType] = useState<ReportType>("summary");
   const [preset, setPreset] = useState<Preset>("today");
   const [customRange, setCustomRange] = useState<[Date | null, Date | null]>([null, null]);
-  const [reportOutletId, setReportOutletId] = useState<string | null>(null);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState(() => presetToRange("today"));
-
-  useEffect(() => {
-    if (!allOutlets && activeOutlet) {
-      setReportOutletId(activeOutlet.id);
-    } else if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const urlOId = params.get("outletId");
-      if (urlOId && outlets.some((o) => o.id === urlOId)) {
-        setReportOutletId(urlOId);
-      }
-    }
-  }, [allOutlets, activeOutlet, outlets]);
-
-  const handleReportOutletChange = (v: string | null) => {
-    setReportOutletId(v);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (v) {
-        url.searchParams.set("outletId", v);
-      } else {
-        url.searchParams.delete("outletId");
-      }
-      window.history.replaceState(window.history.state, "", url.toString());
-    }
-  };
 
   useEffect(() => {
     if (preset === "custom") {
@@ -130,21 +105,24 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
   }, [preset, customRange]);
 
   const load = useCallback(async () => {
-    if (!restaurantId || !range.from || !range.to) return;
+    if (!restaurantId || !range.from || !range.to || !outletId) return;
     setLoading(true);
     try {
-      const result = await getReport(restaurantId, activeType, range.from, range.to, reportOutletId);
+      const result = await getReport(restaurantId, activeType, range.from, range.to, outletId);
       setData(result.data);
     } catch {
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, activeType, range, reportOutletId]);
+  }, [restaurantId, activeType, range, outletId]);
 
   useEffect(() => { load(); }, [load]);
 
   if (!restaurant) return null;
+  if (!activeOutlet) {
+    return <Center py={80}><Loader color="dinePrimary" /></Center>;
+  }
 
   const content = (
     <>
@@ -173,17 +151,6 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
             leftSection={<IconCalendar size={16} />}
             size="sm"
             w={{ base: "100%", xs: 240 }}
-          />
-        )}
-        {allOutlets && outlets.length > 0 && (
-          <Select
-            size="sm"
-            placeholder="All outlets"
-            clearable
-            value={reportOutletId}
-            onChange={handleReportOutletChange}
-            data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-            w={{ base: "100%", xs: 180 }}
           />
         )}
         <Text size="xs" c="dimmed">

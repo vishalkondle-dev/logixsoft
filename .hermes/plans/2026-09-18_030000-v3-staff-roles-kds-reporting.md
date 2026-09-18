@@ -296,25 +296,105 @@ Replace free-text `tableNo` input with a table picker grid (from `GET /tables`).
 
 ## Reporting Dashboard `/reports`
 
-Three cards at the top (Today / This Week / This Month):
-```
-Revenue: ₹12,400   Orders: 47   Avg: ₹263
-```
+### Architecture — extensible by design
 
-Below: Top 10 items by quantity (bar chart using a lightweight lib or just CSS bars — no recharts, keep bundle small).
+Left sidebar (desktop) / scrollable top tabs (mobile) lists all report types.
+Each report is a self-contained panel. Adding a new report = one API handler + one component, zero restructuring.
 
-SQL for summary (single query):
+**Shared controls (all reports):**
+- Period selector: Today / Week / Month (default: Today)
+- Outlet filter: OWNER sees all outlets or filtered; MANAGER sees own outlet only (no selector shown)
+
+**API pattern:** `GET /reports/:type?from=2026-09-18&to=2026-09-18&outletId=`
+
+- `from` / `to` are ISO date strings (YYYY-MM-DD, IST) — always explicit, never a period slug
+- The web converts period presets to date ranges before calling the API
+- All times compared in IST (UTC+5:30): `from` = start of day IST, `to` = end of day IST
+
+### Period presets (web → API translation)
+
+| Preset | `from` | `to` |
+|--------|--------|------|
+| Today | today (IST) | today (IST) |
+| Yesterday | yesterday (IST) | yesterday (IST) |
+| This Week | Monday of current week (IST) | today (IST) |
+| This Month | 1st of current month (IST) | today (IST) |
+| This Year | Jan 1 of current year (IST) | today (IST) |
+| All Time | `1970-01-01` | today (IST) |
+| Custom | user-picked start | user-picked end |
+
+Period selector UI: pill buttons for the 6 presets + a "Custom" button that opens a `@mantine/dates` `DatePickerInput` range picker.
+
+### v3 Report Types
+
+| Slug | Title | What it shows |
+|------|-------|---------------|
+| `summary` | Sales Summary | Revenue + order count + avg order value, 3 period cards side by side |
+| `top-items` | Top Items | Ranked by qty sold + by revenue; CSS bar chart, no extra libs |
+| `orders-by-status` | Order Status | OPEN / PAID / VOID counts + % of total for the period |
+| `payment-methods` | Payment Methods | Cash vs UPI vs QR — count + revenue per method |
+| `hourly` | Hourly Sales | Revenue by hour of day (0–23), bar chart — shows peak hours |
+| `daily-trend` | Daily Trend | Revenue per calendar day in the period — line/bar chart |
+
+### Future report types (zero code change to add)
+
+- `staff-performance` — orders settled per waiter (unlocks after staff roles)
+- `table-turnover` — orders per table number
+- `void-analysis` — voided orders by reason/actor
+- `category-performance` — revenue/qty by menu category
+- `peak-heatmap` — day-of-week × hour-of-day heatmap
+
+### SQL for each report
+
+**Summary (single query):**
 ```sql
 SELECT
-  COUNT(*) FILTER (WHERE status = 'PAID') AS paidCount,
-  COALESCE(SUM(subtotalPaise) FILTER (WHERE status = 'PAID'), 0) AS revenuePaise,
-  COUNT(*) FILTER (WHERE status = 'OPEN') AS openCount,
-  COUNT(*) FILTER (WHERE status = 'VOID') AS voidCount
-FROM saleOrder
-WHERE restaurantId = $1
-  AND createdAt >= $2   -- start of period
-  AND createdAt <  $3   -- end of period
-  AND ($4::text IS NULL OR outletId = $4)  -- outlet filter (null = all)
+  COUNT(*) FILTER (WHERE status = 'PAID') AS "paidCount",
+  COALESCE(SUM("subtotalPaise") FILTER (WHERE status = 'PAID'), 0) AS "revenuePaise",
+  COUNT(*) FILTER (WHERE status = 'OPEN') AS "openCount",
+  COUNT(*) FILTER (WHERE status = 'VOID') AS "voidCount",
+  COUNT(*) AS "totalCount"
+FROM "saleOrder"
+WHERE "restaurantId" = $1
+  AND "createdAt" >= $2 AND "createdAt" < $3
+  AND ($4::text IS NULL OR "outletId" = $4)
+```
+
+**Hourly (aggregation by hour in IST):**
+```sql
+SELECT
+  EXTRACT(HOUR FROM "createdAt" AT TIME ZONE 'Asia/Kolkata') AS hour,
+  COUNT(*) FILTER (WHERE status = 'PAID') AS "paidCount",
+  COALESCE(SUM("subtotalPaise") FILTER (WHERE status = 'PAID'), 0) AS "revenuePaise"
+FROM "saleOrder"
+WHERE "restaurantId" = $1 AND "createdAt" >= $2 AND "createdAt" < $3
+  AND ($4::text IS NULL OR "outletId" = $4)
+GROUP BY hour ORDER BY hour
+```
+
+**Daily trend:**
+```sql
+SELECT
+  DATE("createdAt" AT TIME ZONE 'Asia/Kolkata') AS day,
+  COUNT(*) FILTER (WHERE status = 'PAID') AS "paidCount",
+  COALESCE(SUM("subtotalPaise") FILTER (WHERE status = 'PAID'), 0) AS "revenuePaise"
+FROM "saleOrder"
+WHERE "restaurantId" = $1 AND "createdAt" >= $2 AND "createdAt" < $3
+  AND ($4::text IS NULL OR "outletId" = $4)
+GROUP BY day ORDER BY day
+```
+
+**Payment methods:**
+```sql
+SELECT
+  COALESCE("paymentMethod", 'Unknown') AS method,
+  COUNT(*) AS "count",
+  COALESCE(SUM("subtotalPaise"), 0) AS "revenuePaise"
+FROM "saleOrder"
+WHERE "restaurantId" = $1 AND status = 'PAID'
+  AND "createdAt" >= $2 AND "createdAt" < $3
+  AND ($4::text IS NULL OR "outletId" = $4)
+GROUP BY method
 ```
 
 ---
@@ -388,10 +468,11 @@ Run via `sudo -u postgres psql -p 5432 -d payment -f migration-v3.sql` before de
 - Typecheck + deploy API
 
 **Task 6 — Reports API**
-- `GET /reports/summary?period=today|week|month&outletId=`
-- `GET /reports/top-items?period=today|week|month&outletId=&limit=10`
-- `GET /reports/orders-by-status?period=today|week|month&outletId=`
-- All outlet-scoped (OWNER = all or filtered; MANAGER = own outlet only)
+- `GET /reports/:type?from=2026-09-18&to=2026-09-18&outletId=` — single handler, switch on `:type`
+- `from`/`to` are YYYY-MM-DD dates; API converts to IST day boundaries (UTC timestamps) for the query
+- Types: `summary`, `top-items`, `orders-by-status`, `payment-methods`, `hourly`, `daily-trend`
+- All outlet-scoped (OWNER = all or filtered; MANAGER = own outlet only, outletId forced from member access)
+- Return shape: `{ type, from, to, outletId, data: any }` — consistent envelope for all types
 - Typecheck + deploy API
 
 **Task 7 — KDS API**
@@ -427,10 +508,16 @@ Run via `sudo -u postgres psql -p 5432 -d payment -f migration-v3.sql` before de
 - Typecheck + deploy web
 
 **Task 12 — Web: Reports page `/reports`**
-- Summary cards (Today / Week / Month) with revenue + order count + avg
-- Top items table (name, qty, revenue)
-- Outlet filter dropdown (OWNER only — MANAGER sees their outlet only)
-- Period toggle: Today / Week / Month
+- Layout: left sidebar (desktop) / horizontal scrollable tabs (mobile) with all 6 report types
+- Shared header: period preset pills (Today / Yesterday / This Week / This Month / This Year / All Time) + "Custom" button → `@mantine/dates` `DatePickerInput` range picker + outlet filter (OWNER only)
+- `summary` panel: 3 stat cards (Revenue / Orders / Avg)
+- `top-items` panel: `BarChart` from `@mantine/charts`
+- `orders-by-status` panel: 3 stat cards (OPEN / PAID / VOID) + `DonutChart`
+- `payment-methods` panel: `DonutChart` + table rows (method, count, revenue)
+- `hourly` panel: `BarChart` — 24 bars (revenue by hour, IST)
+- `daily-trend` panel: `LineChart` — revenue per day in period
+- Each panel calls `GET /reports/:type?from=&to=` on mount and on date range / outlet change
+- New report type = new sidebar entry + new panel component — zero other changes
 - Typecheck + deploy web
 
 **Task 13 — E2E**

@@ -42,6 +42,7 @@ app.post('/restaurant', requireAuth(), async (c) => {
     const outletId = generateId('outlet');
     const memberId = generateId('member');
     const now = new Date();
+    const actorPhone: string | null = user.phoneNumber ?? null;
 
     // Transaction: create restaurant + outlet + member + update user role
     await db.transaction(async (tx) => {
@@ -55,6 +56,8 @@ app.post('/restaurant', requireAuth(), async (c) => {
         ownerUserId: user.id,
         createdAt: now,
         updatedAt: now,
+        createdBy: actorPhone,
+        updatedBy: actorPhone,
       });
 
       await tx.insert(appSchema.restaurantOutlet).values({
@@ -64,14 +67,21 @@ app.post('/restaurant', requireAuth(), async (c) => {
         isDefault: true,
         createdAt: now,
         updatedAt: now,
+        createdBy: actorPhone,
+        updatedBy: actorPhone,
       });
 
       await tx.insert(appSchema.restaurantMember).values({
         id: memberId,
         restaurantId,
         userId: user.id,
+        phone: actorPhone ?? '',
         role: 'OWNER',
+        inviteStatus: 'ACCEPTED',
         createdAt: now,
+        updatedAt: now,
+        createdBy: actorPhone,
+        updatedBy: actorPhone,
       });
 
       await tx

@@ -9,7 +9,10 @@ declare module 'hono' {
       restaurantId: string;
       role: string;
       member: Record<string, unknown> | null;
+      outletId: string | null;
     };
+    /** Phone number of the authenticated actor — used to populate createdBy/updatedBy audit columns. */
+    actorPhone: string | null;
   }
 }
 

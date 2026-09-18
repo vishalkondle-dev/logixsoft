@@ -150,6 +150,48 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
   }
 });
 
+// GET /billing/orders/kitchen — KDS board: OPEN orders for the caller's outlet(s).
+// MUST be registered before GET /orders/:id, or Hono would match "kitchen" as an order ID.
+// KITCHEN role is outlet-scoped, so the web sends X-Outlet-Id; requirePermission
+// already enforces that this outlet is one the caller has access to.
+app.get('/orders/kitchen', requirePermission('order:read'), async (c) => {
+  const { restaurantId, outletId } = c.get('tenant');
+
+  const { db, close } = getDb(c);
+  try {
+    const where = outletId
+      ? and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          eq(appSchema.saleOrder.outletId, outletId),
+          eq(appSchema.saleOrder.status, 'OPEN'),
+        )
+      : and(eq(appSchema.saleOrder.restaurantId, restaurantId), eq(appSchema.saleOrder.status, 'OPEN'));
+
+    const orders = await db
+      .select()
+      .from(appSchema.saleOrder)
+      .where(where)
+      .orderBy(appSchema.saleOrder.createdAt);
+
+    const orderIds = orders.map((o: any) => o.id);
+    const items = orderIds.length
+      ? await db.select().from(appSchema.saleOrderItem).where(sql`${appSchema.saleOrderItem.orderId} IN ${orderIds}`)
+      : [];
+
+    const itemsByOrder = new Map<string, any[]>();
+    for (const item of items) {
+      const list = itemsByOrder.get(item.orderId) ?? [];
+      list.push(item);
+      itemsByOrder.set(item.orderId, list);
+    }
+
+    const result = orders.map((order: any) => toOrderWithItems(order, itemsByOrder.get(order.id) ?? []));
+    return c.json(result);
+  } finally {
+    await close();
+  }
+});
+
 // GET /billing/orders/:id
 app.get('/orders/:id', requirePermission('order:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
@@ -359,6 +401,31 @@ app.patch('/orders/:id/mark-kot-printed', requirePermission('order:create'), asy
         .set({ kotPrintedAt: new Date(), updatedAt: new Date() })
         .where(eq(appSchema.saleOrder.id, orderId));
     }
+
+    const result = await getOrderWithItems(db, orderId, restaurantId);
+    return c.json(result);
+  } finally {
+    await close();
+  }
+});
+
+// PATCH /billing/orders/:id/mark-ready — kitchen marks an order ready for pickup
+app.patch('/orders/:id/mark-ready', requirePermission('order:read'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const orderId = c.req.param('id');
+
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db
+      .select({ id: appSchema.saleOrder.id })
+      .from(appSchema.saleOrder)
+      .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+    if (!order) return c.json({ error: 'Not Found' }, 404);
+
+    await db
+      .update(appSchema.saleOrder)
+      .set({ readyAt: new Date(), updatedAt: new Date() })
+      .where(eq(appSchema.saleOrder.id, orderId));
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
     return c.json(result);

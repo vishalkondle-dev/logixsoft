@@ -8,6 +8,12 @@ export type PlatformRole = (typeof PLATFORM_ROLES)[number];
 /**
  * Restaurant-level roles — stored in restaurantMember.role.
  * Controls what a member can do within a specific restaurant.
+ *
+ * Outlet scope (see memberOutletAccess table):
+ *   OWNER   → all outlets (no access rows needed)
+ *   MANAGER → assigned outlets only, full operational access
+ *   WAITER  → assigned outlets only, order:create + order:settle
+ *   KITCHEN → assigned outlets only, order:read only (KDS)
  */
 export const RESTAURANT_ROLES = [
   'OWNER',
@@ -21,20 +27,24 @@ export type RestaurantRole = (typeof RESTAURANT_ROLES)[number];
 /**
  * All permission strings used across API guards.
  * Routes check permissions — NOT roles — so adding a new role
- * in v2 only requires updating ROLE_PERMISSIONS, not the routes.
+ * only requires updating ROLE_PERMISSIONS, not the routes.
  */
 export const PERMISSIONS = [
   'restaurant:read',
   'restaurant:write',
   'outlet:read',
   'outlet:write',
+  'table:read',
+  'table:write',
   'menu:read',
   'menu:write',
   'order:create',
   'order:read',
   'order:settle',
   'order:void',
+  'member:read',
   'member:write',
+  'report:read',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -46,19 +56,25 @@ export const ROLE_PERMISSIONS: Record<RestaurantRole, readonly Permission[]> = {
   OWNER: [
     'restaurant:read', 'restaurant:write',
     'outlet:read', 'outlet:write',
+    'table:read', 'table:write',
     'menu:read', 'menu:write',
     'order:create', 'order:read', 'order:settle', 'order:void',
-    'member:write',
+    'member:read', 'member:write',
+    'report:read',
   ],
   MANAGER: [
     'restaurant:read',
     'outlet:read', 'outlet:write',
+    'table:read', 'table:write',
     'menu:read', 'menu:write',
     'order:create', 'order:read', 'order:settle', 'order:void',
+    'member:read',
+    'report:read',
   ],
   WAITER: [
+    'table:read',
     'menu:read',
-    'order:create', 'order:read',
+    'order:create', 'order:read', 'order:settle',
   ],
   KITCHEN: [
     'order:read',
@@ -69,4 +85,11 @@ export const ROLE_PERMISSIONS: Record<RestaurantRole, readonly Permission[]> = {
 /** Check if a role has a given permission. */
 export function hasPermission(role: RestaurantRole, permission: Permission): boolean {
   return (ROLE_PERMISSIONS[role] as readonly string[]).includes(permission);
+}
+
+/** Roles that always have access to every outlet (no memberOutletAccess rows needed). */
+export const ALL_OUTLET_ROLES: readonly RestaurantRole[] = ['OWNER'];
+
+export function isAllOutletRole(role: RestaurantRole): boolean {
+  return (ALL_OUTLET_ROLES as readonly string[]).includes(role);
 }

@@ -8,7 +8,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { timing } from 'hono/timing';
 import { trimTrailingSlash } from 'hono/trailing-slash';
 import { createOpenApiDocument, openApi } from 'hono-zod-openapi';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { HealthResponseSchema } from '@logixsoft/logix-dine/schemas/health';
 import {
   SendOtpRequestSchema,
@@ -20,7 +20,10 @@ import {
 import { createAuth, AUTH_BASE_PATH, type AuthEnv } from './lib/auth';
 import { rateLimiter } from './lib/rate-limit';
 import { toAuthSession, toAuthUser } from '@logixsoft/logix-dine/mappers/auth';
+import { createDbWithClient } from './db';
 import { user, verification } from '@logixsoft/logix-dine/schemas/auth-schema';
+import { restaurantMember } from '@logixsoft/logix-dine/schemas/pos-schema';
+import { appSchema } from './db';
 import './types'; // Hono ContextVariableMap declarations
 import { onboardingRoutes } from './routes/onboarding';
 import { restaurantRoutes } from './routes/restaurants';
@@ -28,6 +31,9 @@ import { outletRoutes } from './routes/outlets';
 import { menuRoutes } from './routes/menu';
 import { billingRoutes } from './routes/billing';
 import { adminRoutes } from './routes/admin';
+import { staffRoutes } from './routes/staff';
+import { tableRoutes } from './routes/tables';
+import { reportRoutes } from './routes/reports';
 
 type Bindings = AuthEnv & {
   ENVIRONMENT?: string;
@@ -102,7 +108,7 @@ app.use(
     },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'x-api-key', 'X-Restaurant-Id'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept', 'x-api-key', 'X-Restaurant-Id', 'X-Outlet-Id'],
     exposeHeaders: ['Content-Length', 'Set-Cookie', 'X-Request-Id', 'Server-Timing'],
     maxAge: 86400,
   })
@@ -276,6 +282,28 @@ const handleVerifyOtp = async (c: any) => {
       .where(eq(user.phoneNumber, normalizedPhone))
       .limit(1);
 
+    // Auto-accept any pending staff invites for this phone number.
+    // An owner can invite a phone that has never logged in before; the
+    // member row sits with userId=null, inviteStatus='PENDING' until the
+    // invitee's first successful OTP login, which is exactly now.
+    if (freshUser) {
+      const posDb = createDbWithClient({
+        connectionString: (c.env?.HYPERDRIVE?.connectionString) || c.env?.DATABASE_URL || '',
+        schema: appSchema,
+        maxConnections: 1,
+      });
+      try {
+        await posDb.db
+          .update(restaurantMember)
+          .set({ userId: freshUser.id, inviteStatus: 'ACCEPTED', updatedAt: new Date(), updatedBy: normalizedPhone })
+          .where(and(eq(restaurantMember.phone, normalizedPhone), eq(restaurantMember.inviteStatus, 'PENDING')));
+      } catch (err) {
+        console.warn('[verify-otp] Could not auto-accept pending invites:', err);
+      } finally {
+        await posDb.close();
+      }
+    }
+
     const responseHeaders = new Headers();
     // Forward all Set-Cookie headers from Better Auth
     verifyRes.headers.forEach((val: string, key: string) => {
@@ -390,6 +418,15 @@ app.route('/api/billing', billingRoutes);
 
 app.route('/admin', adminRoutes);
 app.route('/api/admin', adminRoutes);
+
+app.route('/staff', staffRoutes);
+app.route('/api/staff', staffRoutes);
+
+app.route('/tables', tableRoutes);
+app.route('/api/tables', tableRoutes);
+
+app.route('/reports', reportRoutes);
+app.route('/api/reports', reportRoutes);
 
 // Register OpenAPI 3.1 specification at /doc
 createOpenApiDocument(app, {

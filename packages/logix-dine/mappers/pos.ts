@@ -1,14 +1,18 @@
 import type {
   RestaurantRow,
   RestaurantMemberRow,
+  MemberOutletAccessRow,
   RestaurantOutletRow,
+  PosTableRow,
   MenuCategoryRow,
   MenuItemRow,
   SaleOrderRow,
   SaleOrderItemRow,
   JsonRestaurantRow,
   JsonRestaurantMemberRow,
+  JsonMemberOutletAccessRow,
   JsonRestaurantOutletRow,
+  JsonPosTableRow,
   JsonMenuCategoryRow,
   JsonMenuItemRow,
   JsonSaleOrderRow,
@@ -36,6 +40,14 @@ export function toRestaurantMember(m: RestaurantMemberRow): JsonRestaurantMember
   return {
     ...m,
     createdAt: toIsoRequired(m.createdAt),
+    updatedAt: toIsoRequired(m.updatedAt),
+  };
+}
+
+export function toMemberOutletAccess(a: MemberOutletAccessRow): JsonMemberOutletAccessRow {
+  return {
+    ...a,
+    createdAt: toIsoRequired(a.createdAt),
   };
 }
 
@@ -44,6 +56,14 @@ export function toOutlet(o: RestaurantOutletRow): JsonRestaurantOutletRow {
     ...o,
     createdAt: toIsoRequired(o.createdAt),
     updatedAt: toIsoRequired(o.updatedAt),
+  };
+}
+
+export function toPosTable(t: PosTableRow): JsonPosTableRow {
+  return {
+    ...t,
+    createdAt: toIsoRequired(t.createdAt),
+    updatedAt: toIsoRequired(t.updatedAt),
   };
 }
 
@@ -67,6 +87,7 @@ export function toOrder(o: SaleOrderRow): JsonSaleOrderRow {
   return {
     ...o,
     kotPrintedAt: toIso(o.kotPrintedAt),
+    readyAt: toIso(o.readyAt),
     settledAt: toIso(o.settledAt),
     createdAt: toIsoRequired(o.createdAt),
     updatedAt: toIsoRequired(o.updatedAt),

@@ -4,7 +4,9 @@ import { AssertSame } from '../types/utils';
 import type {
   JsonRestaurantRow,
   JsonRestaurantMemberRow,
+  JsonMemberOutletAccessRow,
   JsonRestaurantOutletRow,
+  JsonPosTableRow,
   JsonMenuCategoryRow,
   JsonMenuItemRow,
   JsonSaleOrderRow,
@@ -27,17 +29,33 @@ export const RestaurantSchema = z.object({
   ownerUserId: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
 });
 type _RestaurantAssert = Expect<AssertSame<z.infer<typeof RestaurantSchema>, JsonRestaurantRow>>;
 
 export const RestaurantMemberSchema = z.object({
   id: z.string(),
   restaurantId: z.string(),
-  userId: z.string(),
+  userId: z.string().nullable(),
+  phone: z.string(),
   role: z.string(),
+  inviteStatus: z.string(),
   createdAt: z.string(),
+  updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
 });
 type _MemberAssert = Expect<AssertSame<z.infer<typeof RestaurantMemberSchema>, JsonRestaurantMemberRow>>;
+
+export const MemberOutletAccessSchema = z.object({
+  id: z.string(),
+  memberId: z.string(),
+  outletId: z.string(),
+  createdAt: z.string(),
+  createdBy: z.string().nullable(),
+});
+type _MemberOutletAccessAssert = Expect<AssertSame<z.infer<typeof MemberOutletAccessSchema>, JsonMemberOutletAccessRow>>;
 
 export const RestaurantOutletSchema = z.object({
   id: z.string(),
@@ -48,8 +66,26 @@ export const RestaurantOutletSchema = z.object({
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
 });
 type _OutletAssert = Expect<AssertSame<z.infer<typeof RestaurantOutletSchema>, JsonRestaurantOutletRow>>;
+
+export const PosTableSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  name: z.string(),
+  section: z.string().nullable(),
+  capacity: z.number().int().nullable(),
+  active: z.boolean(),
+  sortOrder: z.number().int(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
+});
+type _PosTableAssert = Expect<AssertSame<z.infer<typeof PosTableSchema>, JsonPosTableRow>>;
 
 export const MenuCategorySchema = z.object({
   id: z.string(),
@@ -60,6 +96,8 @@ export const MenuCategorySchema = z.object({
   active: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
 });
 type _CategoryAssert = Expect<AssertSame<z.infer<typeof MenuCategorySchema>, JsonMenuCategoryRow>>;
 
@@ -74,6 +112,8 @@ export const MenuItemSchema = z.object({
   sortOrder: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
 });
 type _ItemAssert = Expect<AssertSame<z.infer<typeof MenuItemSchema>, JsonMenuItemRow>>;
 
@@ -88,10 +128,13 @@ export const SaleOrderSchema = z.object({
   method: z.string().nullable(),
   note: z.string().nullable(),
   kotPrintedAt: z.string().nullable(),
+  readyAt: z.string().nullable(),
   settledAt: z.string().nullable(),
   settledByUserId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
 });
 type _OrderAssert = Expect<AssertSame<z.infer<typeof SaleOrderSchema>, JsonSaleOrderRow>>;
 
@@ -103,6 +146,8 @@ export const SaleOrderItemSchema = z.object({
   pricePaiseSnapshot: z.number().int(),
   qty: z.number().int(),
   createdAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
 });
 type _OrderItemAssert = Expect<AssertSame<z.infer<typeof SaleOrderItemSchema>, JsonSaleOrderItemRow>>;
 

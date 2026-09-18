@@ -1,0 +1,178 @@
+import { Hono } from 'hono';
+import { eq, and } from 'drizzle-orm';
+import { generateId } from '@logixsoft/helpers/crypto';
+import { createDbWithClient, appSchema } from '../db';
+import { requirePermission } from '../lib/tenancy';
+import { toPosTable } from '@logixsoft/logix-dine/mappers/pos';
+import type { AuthEnv } from '../lib/auth';
+import * as z from 'zod';
+
+const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+
+function getDb(c: any) {
+  const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
+  return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
+}
+
+const CreateTableSchema = z.object({
+  outletId: z.string(),
+  name: z.string().min(1).max(50),
+  section: z.string().max(100).optional(),
+  capacity: z.number().int().positive().optional(),
+  sortOrder: z.number().int().nonnegative().optional().default(0),
+});
+
+const UpdateTableSchema = z.object({
+  name: z.string().min(1).max(50).optional(),
+  section: z.string().max(100).nullable().optional(),
+  capacity: z.number().int().positive().nullable().optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+});
+
+// GET /tables?outletId= — list tables for an outlet (or all outlets if omitted)
+app.get('/', requirePermission('table:read'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const outletId = c.req.query('outletId');
+  const { db, close } = getDb(c);
+  try {
+    const where = outletId
+      ? and(eq(appSchema.posTable.restaurantId, restaurantId), eq(appSchema.posTable.outletId, outletId))
+      : eq(appSchema.posTable.restaurantId, restaurantId);
+    const tables = await db.select().from(appSchema.posTable).where(where);
+    return c.json(tables.map(toPosTable));
+  } finally {
+    await close();
+  }
+});
+
+// POST /tables — create a table
+app.post('/', requirePermission('table:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const actorPhone = c.get('actorPhone');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = CreateTableSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+  }
+
+  const { db, close } = getDb(c);
+  try {
+    const [outlet] = await db
+      .select({ id: appSchema.restaurantOutlet.id })
+      .from(appSchema.restaurantOutlet)
+      .where(and(eq(appSchema.restaurantOutlet.id, parsed.data.outletId), eq(appSchema.restaurantOutlet.restaurantId, restaurantId)));
+    if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+
+    const [dup] = await db
+      .select({ id: appSchema.posTable.id })
+      .from(appSchema.posTable)
+      .where(and(eq(appSchema.posTable.outletId, parsed.data.outletId), eq(appSchema.posTable.name, parsed.data.name)));
+    if (dup) return c.json({ error: 'Conflict', message: 'A table with this name already exists in this outlet' }, 409);
+
+    const id = generateId('table');
+    const now = new Date();
+    await db.insert(appSchema.posTable).values({
+      id,
+      restaurantId,
+      outletId: parsed.data.outletId,
+      name: parsed.data.name,
+      section: parsed.data.section ?? null,
+      capacity: parsed.data.capacity ?? null,
+      sortOrder: parsed.data.sortOrder ?? 0,
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: actorPhone,
+      updatedBy: actorPhone,
+    });
+
+    const [created] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, id));
+    return c.json(toPosTable(created), 201);
+  } finally {
+    await close();
+  }
+});
+
+// PUT /tables/:id — update a table
+app.put('/:id', requirePermission('table:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const actorPhone = c.get('actorPhone');
+  const tableId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateTableSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+  }
+
+  const { db, close } = getDb(c);
+  try {
+    const [existing] = await db
+      .select()
+      .from(appSchema.posTable)
+      .where(and(eq(appSchema.posTable.id, tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found' }, 404);
+
+    await db
+      .update(appSchema.posTable)
+      .set({ ...parsed.data, updatedAt: new Date(), updatedBy: actorPhone })
+      .where(eq(appSchema.posTable.id, tableId));
+
+    const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
+    return c.json(toPosTable(updated));
+  } finally {
+    await close();
+  }
+});
+
+// PATCH /tables/:id/toggle — flip active/inactive
+app.patch('/:id/toggle', requirePermission('table:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const actorPhone = c.get('actorPhone');
+  const tableId = c.req.param('id');
+
+  const { db, close } = getDb(c);
+  try {
+    const [existing] = await db
+      .select()
+      .from(appSchema.posTable)
+      .where(and(eq(appSchema.posTable.id, tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found' }, 404);
+
+    await db
+      .update(appSchema.posTable)
+      .set({ active: !existing.active, updatedAt: new Date(), updatedBy: actorPhone })
+      .where(eq(appSchema.posTable.id, tableId));
+
+    const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
+    return c.json(toPosTable(updated));
+  } finally {
+    await close();
+  }
+});
+
+// DELETE /tables/:id — soft-delete (set active=false, preserves order history)
+app.delete('/:id', requirePermission('table:write'), async (c) => {
+  const { restaurantId } = c.get('tenant');
+  const actorPhone = c.get('actorPhone');
+  const tableId = c.req.param('id');
+
+  const { db, close } = getDb(c);
+  try {
+    const [existing] = await db
+      .select({ id: appSchema.posTable.id })
+      .from(appSchema.posTable)
+      .where(and(eq(appSchema.posTable.id, tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found' }, 404);
+
+    await db
+      .update(appSchema.posTable)
+      .set({ active: false, updatedAt: new Date(), updatedBy: actorPhone })
+      .where(eq(appSchema.posTable.id, tableId));
+
+    return c.json({ success: true });
+  } finally {
+    await close();
+  }
+});
+
+export { app as tableRoutes };

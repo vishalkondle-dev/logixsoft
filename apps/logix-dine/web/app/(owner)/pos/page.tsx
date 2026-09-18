@@ -40,6 +40,194 @@ const DEFAULT_NOTE_CHIPS = [
   "Serve Hot",
 ];
 
+interface CartPanelProps {
+  cartItems: LocalCartItem[];
+  cartCount: number;
+  total: number;
+  tableNo: string;
+  setTableNo: (table: string) => void;
+  customerPhone: string;
+  setCustomerPhone: (phone: string) => void;
+  tableSelectData: { value: string; label: string }[];
+  handleClearCart: () => void;
+  openNoteModal: (item: LocalCartItem) => void;
+  handleUpdateQty: (itemId: string, qty: number) => void;
+  handleRemoveItem: (itemId: string) => void;
+  handleSend: () => void;
+  sending: boolean;
+  setSettleModal: (open: boolean) => void;
+}
+
+function CartPanel({
+  cartItems,
+  cartCount,
+  total,
+  tableNo,
+  setTableNo,
+  customerPhone,
+  setCustomerPhone,
+  tableSelectData,
+  handleClearCart,
+  openNoteModal,
+  handleUpdateQty,
+  handleRemoveItem,
+  handleSend,
+  sending,
+  setSettleModal,
+}: CartPanelProps) {
+  return (
+    <Stack gap="sm" h="100%">
+      <Group justify="space-between">
+        <Group gap="xs">
+          <Title order={4}>Cart</Title>
+          {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
+        </Group>
+        {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
+          <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
+            Clear
+          </Button>
+        )}
+      </Group>
+
+      {/* Cart Selection: Table select (default to Takeaway) + optional Customer Phone */}
+      <Stack gap="xs">
+        <Select
+          label="Table / Order Type"
+          placeholder="Select table"
+          size="sm"
+          value={tableNo}
+          onChange={(v) => setTableNo(v || "Takeaway")}
+          data={tableSelectData}
+          leftSection={<IconTableAlias size={16} />}
+          allowDeselect={false}
+        />
+
+        <TextInput
+          label="Customer Phone (optional)"
+          placeholder="WhatsApp number (e.g. 9876543210)"
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={20}
+          size="sm"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
+          leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
+        />
+      </Stack>
+
+      <Divider />
+      <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }}>
+        <Stack gap="xs">
+          {cartItems.length === 0 && (
+            <Text c="dimmed" size="sm" ta="center" py="xl">Add items from menu to start an order</Text>
+          )}
+          {cartItems.map((item) => (
+            <Paper key={item.itemId} withBorder p="xs" radius="sm">
+              <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
+                  <Group gap={6} align="center" mt={2} wrap="nowrap">
+                    <Text size="xs" c="dimmed">₹{(item.pricePaise / 100).toFixed(0)}</Text>
+                    <Text size="xs" c="dimmed">·</Text>
+                    {item.note ? (
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color="dinePrimary"
+                        style={{ cursor: "pointer", maxWidth: 130 }}
+                        onClick={() => openNoteModal(item)}
+                        title="Click to edit note"
+                        rightSection={<IconEdit size={10} />}
+                      >
+                        {item.note}
+                      </Badge>
+                    ) : (
+                      <Button
+                        variant="subtle"
+                        color="dinePrimary"
+                        size="compact-xs"
+                        px={4}
+                        h={18}
+                        style={{ fontSize: 11, fontWeight: 500 }}
+                        onClick={() => openNoteModal(item)}
+                      >
+                        + Note
+                      </Button>
+                    )}
+                  </Group>
+                </div>
+                <Group gap={6} wrap="nowrap" align="center">
+                  <ActionIcon size={30} variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty - 1)} aria-label="Decrease quantity">
+                    <IconMinus size={15} />
+                  </ActionIcon>
+                  <Text size="sm" fw={600} w={22} ta="center">{item.qty}</Text>
+                  <ActionIcon size={30} variant="light" color="dinePrimary" onClick={() => handleUpdateQty(item.itemId, item.qty + 1)} aria-label="Increase quantity">
+                    <IconPlus size={15} />
+                  </ActionIcon>
+                  <ActionIcon size={30} variant="light" color="red" onClick={() => handleRemoveItem(item.itemId)} aria-label="Remove item">
+                    <IconTrash size={15} />
+                  </ActionIcon>
+                </Group>
+                <Text size="sm" fw={600} w={52} ta="right">₹{((item.pricePaise * item.qty) / 100).toFixed(0)}</Text>
+              </Group>
+            </Paper>
+          ))}
+        </Stack>
+      </ScrollArea>
+
+      <Divider />
+      <Group justify="space-between">
+        <Text fw={700}>Total</Text>
+        <Text fw={700} c="dinePrimary" size="lg">₹{(total / 100).toFixed(0)}</Text>
+      </Group>
+
+      {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
+      <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
+        <Button
+          color="dinePrimary"
+          onClick={handleSend}
+          loading={sending}
+          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
+          disabled={cartItems.length === 0}
+          leftSection={<IconShoppingCart size={16} />}
+        >
+          Send
+        </Button>
+        <Menu position="top-end" withinPortal>
+          <Menu.Target>
+            <ActionIcon
+              color="dinePrimary"
+              variant="filled"
+              size={36}
+              style={{
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderLeft: "1px solid rgba(255,255,255,0.3)",
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+              }}
+              disabled={cartItems.length === 0 || sending}
+              aria-label="More order options"
+            >
+              <IconChevronDown size={16} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<IconCash size={16} />}
+              onClick={() => setSettleModal(true)}
+            >
+              Settle &amp; Send
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
+    </Stack>
+  );
+}
+
 export default function POSPage() {
   const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
@@ -302,157 +490,23 @@ export default function POSPage() {
     })),
   ];
 
-  const CartPanel = () => (
-    <Stack gap="sm" h="100%">
-      <Group justify="space-between">
-        <Group gap="xs">
-          <Title order={4}>Cart</Title>
-          {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
-        </Group>
-        {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
-          <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
-            Clear
-          </Button>
-        )}
-      </Group>
-
-      {/* Cart Selection: Table select (default to Takeaway) + optional Customer Phone */}
-      <Stack gap="xs">
-        <Select
-          label="Table / Order Type"
-          placeholder="Select table"
-          size="sm"
-          value={tableNo}
-          onChange={(v) => setTableNo(v || "Takeaway")}
-          data={tableSelectData}
-          leftSection={<IconTableAlias size={16} />}
-          allowDeselect={false}
-        />
-
-        <TextInput
-          label="Customer Phone (optional)"
-          placeholder="WhatsApp number (e.g. 9876543210)"
-          type="tel"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={20}
-          size="sm"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
-          leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
-        />
-      </Stack>
-
-      <Divider />
-      <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }}>
-        <Stack gap="xs">
-          {cartItems.length === 0 && (
-            <Text c="dimmed" size="sm" ta="center" py="xl">Add items from menu to start an order</Text>
-          )}
-          {cartItems.map((item) => (
-            <Paper key={item.itemId} withBorder p="xs" radius="sm">
-              <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
-                  <Group gap={6} align="center" mt={2} wrap="nowrap">
-                    <Text size="xs" c="dimmed">₹{(item.pricePaise / 100).toFixed(0)}</Text>
-                    <Text size="xs" c="dimmed">·</Text>
-                    {item.note ? (
-                      <Badge
-                        size="xs"
-                        variant="light"
-                        color="dinePrimary"
-                        style={{ cursor: "pointer", maxWidth: 130 }}
-                        onClick={() => openNoteModal(item)}
-                        title="Click to edit note"
-                        rightSection={<IconEdit size={10} />}
-                      >
-                        {item.note}
-                      </Badge>
-                    ) : (
-                      <Button
-                        variant="subtle"
-                        color="dinePrimary"
-                        size="compact-xs"
-                        px={4}
-                        h={18}
-                        style={{ fontSize: 11, fontWeight: 500 }}
-                        onClick={() => openNoteModal(item)}
-                      >
-                        + Note
-                      </Button>
-                    )}
-                  </Group>
-                </div>
-                <Group gap={6} wrap="nowrap" align="center">
-                  <ActionIcon size={30} variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty - 1)} aria-label="Decrease quantity">
-                    <IconMinus size={15} />
-                  </ActionIcon>
-                  <Text size="sm" fw={600} w={22} ta="center">{item.qty}</Text>
-                  <ActionIcon size={30} variant="light" color="dinePrimary" onClick={() => handleUpdateQty(item.itemId, item.qty + 1)} aria-label="Increase quantity">
-                    <IconPlus size={15} />
-                  </ActionIcon>
-                  <ActionIcon size={30} variant="light" color="red" onClick={() => handleRemoveItem(item.itemId)} aria-label="Remove item">
-                    <IconTrash size={15} />
-                  </ActionIcon>
-                </Group>
-                <Text size="sm" fw={600} w={52} ta="right">₹{((item.pricePaise * item.qty) / 100).toFixed(0)}</Text>
-              </Group>
-            </Paper>
-          ))}
-        </Stack>
-      </ScrollArea>
-
-      <Divider />
-      <Group justify="space-between">
-        <Text fw={700}>Total</Text>
-        <Text fw={700} c="dinePrimary" size="lg">₹{(total / 100).toFixed(0)}</Text>
-      </Group>
-
-      {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
-      <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
-        <Button
-          color="dinePrimary"
-          onClick={handleSend}
-          loading={sending}
-          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
-          disabled={cartItems.length === 0}
-          leftSection={<IconShoppingCart size={16} />}
-        >
-          Send
-        </Button>
-        <Menu position="top-end" withinPortal>
-          <Menu.Target>
-            <ActionIcon
-              color="dinePrimary"
-              variant="filled"
-              size={36}
-              style={{
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-                borderLeft: "1px solid rgba(255,255,255,0.3)",
-                flexShrink: 0,
-                width: 36,
-                height: 36,
-              }}
-              disabled={cartItems.length === 0 || sending}
-              aria-label="More order options"
-            >
-              <IconChevronDown size={16} />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<IconCash size={16} />}
-              onClick={() => setSettleModal(true)}
-            >
-              Settle &amp; Send
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      </Group>
-    </Stack>
-  );
+  const cartPanelProps: CartPanelProps = {
+    cartItems,
+    cartCount,
+    total,
+    tableNo,
+    setTableNo,
+    customerPhone,
+    setCustomerPhone,
+    tableSelectData,
+    handleClearCart,
+    openNoteModal,
+    handleUpdateQty,
+    handleRemoveItem,
+    handleSend,
+    sending,
+    setSettleModal,
+  };
 
   return (
     <Box
@@ -558,7 +612,7 @@ export default function POSPage() {
             radius="md"
             style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}
           >
-            <CartPanel />
+            <CartPanel {...cartPanelProps} />
           </Paper>
         </Grid.Col>
       </Grid>
@@ -569,14 +623,23 @@ export default function POSPage() {
         onClose={() => setCartOpen(false)}
         title="Cart"
         position="bottom"
-        size="75%"
+        size="80%"
+        zIndex={1200}
         hiddenFrom="sm"
+        styles={{
+          body: {
+            height: "calc(100% - 60px)",
+            display: "flex",
+            flexDirection: "column",
+            paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+          },
+        }}
       >
-        <CartPanel />
+        <CartPanel {...cartPanelProps} />
       </Drawer>
 
       {/* Settle Modal */}
-      <Modal opened={settleModal} onClose={() => setSettleModal(false)} title="Settle & Send" size="sm">
+      <Modal opened={settleModal} onClose={() => setSettleModal(false)} title="Settle & Send" size="sm" zIndex={1300}>
         <Stack>
           <Group justify="space-between">
             <Text fw={500}>Order Total</Text>
@@ -633,6 +696,7 @@ export default function POSPage() {
           </Group>
         }
         size="sm"
+        zIndex={1300}
       >
         <Stack gap="sm">
           <Text size="xs" c="dimmed">

@@ -58,27 +58,31 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               </Text>
             </Link>
 
-            {!!effectiveRole && outlets.length > 1 && (
-              <Box visibleFrom="sm">
+            <Group gap="xs" wrap="nowrap" align="center">
+              {!!effectiveRole && outlets.length > 1 && (
                 <Select
                   size="xs"
                   value={activeOutlet?.id ?? ""}
                   onChange={(v) => v && setActiveOutlet(v)}
                   data={outlets.map((o) => ({ value: o.id, label: o.name }))}
                   leftSection={<IconBuildingStore size={14} />}
-                  w={160}
+                  w={{ base: 125, xs: 150, sm: 170 }}
+                  aria-label="Switch outlet"
+                  comboboxProps={{ withinPortal: true }}
                 />
-              </Box>
-            )}
-            {!!effectiveRole && restaurant && outlets.length <= 1 && (
-              <Box visibleFrom="sm">
-                <Badge color="dinePrimary" variant="light" size="sm" leftSection={<IconBuildingStore size={12} />}>
-                  {restaurant.name}
+              )}
+              {!!effectiveRole && restaurant && outlets.length <= 1 && (
+                <Badge
+                  color="dinePrimary"
+                  variant="light"
+                  size="sm"
+                  leftSection={<IconBuildingStore size={12} />}
+                  style={{ textTransform: "none" }}
+                >
+                  {activeOutlet?.name || restaurant.name}
                 </Badge>
-              </Box>
-            )}
+              )}
 
-            <Group gap="xs" wrap="nowrap">
               {authLoading ? (
                 <Loader size="sm" color="dinePrimary" />
               ) : isAuthenticated && user ? (
@@ -128,7 +132,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         aria-label="Bottom Navigation"
         style={{
           position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-          zIndex: 1000, maxWidth: "calc(100vw - 32px)",
+          zIndex: 100, maxWidth: "calc(100vw - 32px)",
           background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(175, 115, 215, 0.3)",
           borderRadius: "9999px", padding: "6px 8px",

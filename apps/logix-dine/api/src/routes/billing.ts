@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import { eq, and, sql } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission } from '../lib/tenancy';
+import { requirePermission, hasOutletAccess } from '../lib/tenancy';
+import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
+import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import {
   StartOrderSchema,
   AddOrderItemSchema,
@@ -17,6 +19,18 @@ const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: st
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
+}
+
+/**
+ * Enforce outlet access on a specific outletId regardless of whether the
+ * client bothered to send X-Outlet-Id. OWNER (or any all-outlet role)
+ * always passes. Non-owner roles (MANAGER/WAITER/KITCHEN) must have a
+ * memberOutletAccess row for this exact outlet.
+ */
+async function assertOutletAccess(db: any, tenant: any, outletId: string): Promise<boolean> {
+  if (isAllOutletRole(tenant.role as RestaurantRole)) return true;
+  if (!tenant.member) return false;
+  return hasOutletAccess(db, tenant.member.id, tenant.role, outletId);
 }
 
 async function recomputeTotal(db: any, orderId: string) {
@@ -68,8 +82,9 @@ app.get('/bootstrap', requirePermission('menu:read'), async (c) => {
 
 // POST /billing/orders — start a new OPEN order
 app.post('/orders', requirePermission('order:create'), async (c) => {
-  const { restaurantId } = c.get('tenant');
-  const user = c.get('sessionUser') as any;
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
   const parsed = StartOrderSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
@@ -83,6 +98,11 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
       .where(and(eq(appSchema.restaurantOutlet.id, parsed.data.outletId), eq(appSchema.restaurantOutlet.restaurantId, restaurantId)))
       .limit(1);
     if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+
+    // Non-owner roles may only start orders in an outlet they're assigned to
+    if (!(await assertOutletAccess(db, tenant, parsed.data.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
 
     // Generate orderNo (MAX + 1 per restaurant, in transaction)
     const now = new Date();
@@ -105,6 +125,8 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
         note: parsed.data.note ?? null,
         createdAt: now,
         updatedAt: now,
+        createdBy: actorPhone,
+        updatedBy: actorPhone,
       });
     });
 
@@ -117,13 +139,25 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
 
 // GET /billing/orders
 app.get('/orders', requirePermission('order:read'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const status = c.req.query('status');
   const outletId = c.req.query('outletId');
   const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 100);
 
   const { db, close } = getDb(c);
   try {
+    // Non-owner roles must specify an outlet they're assigned to — never
+    // an implicit "all outlets" view.
+    if (!isAllOutletRole(tenant.role as RestaurantRole)) {
+      if (!outletId) {
+        return c.json({ error: 'Bad Request', message: 'outletId is required for this role' }, 400);
+      }
+      if (!(await assertOutletAccess(db, tenant, outletId))) {
+        return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+      }
+    }
+
     const conditions: any[] = [eq(appSchema.saleOrder.restaurantId, restaurantId)];
     if (status) conditions.push(eq(appSchema.saleOrder.status, status));
     if (outletId) conditions.push(eq(appSchema.saleOrder.outletId, outletId));
@@ -194,10 +228,20 @@ app.get('/orders/kitchen', requirePermission('order:read'), async (c) => {
 
 // GET /billing/orders/:id
 app.get('/orders/:id', requirePermission('order:read'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
+    const [orderRow] = await db
+      .select({ outletId: appSchema.saleOrder.outletId })
+      .from(appSchema.saleOrder)
+      .where(and(eq(appSchema.saleOrder.id, id), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+    if (!orderRow) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, orderRow.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
     const result = await getOrderWithItems(db, id, restaurantId);
     if (!result) return c.json({ error: 'Not Found' }, 404);
     return c.json(result);
@@ -208,7 +252,8 @@ app.get('/orders/:id', requirePermission('order:read'), async (c) => {
 
 // POST /billing/orders/:id/items — add or upsert item
 app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const orderId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const parsed = AddOrderItemSchema.safeParse(body);
@@ -221,6 +266,9 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
     const [menuItem] = await db
@@ -262,7 +310,8 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
 
 // PATCH /billing/orders/:id/items/:orderItemId — update qty
 app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const orderId = c.req.param('id');
   const orderItemId = c.req.param('orderItemId');
   const body = await c.req.json().catch(() => ({}));
@@ -272,10 +321,13 @@ app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), a
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ status: appSchema.saleOrder.status })
+      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
     await db
@@ -293,17 +345,21 @@ app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), a
 
 // DELETE /billing/orders/:id/items/:orderItemId
 app.delete('/orders/:id/items/:orderItemId', requirePermission('order:create'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const orderId = c.req.param('id');
   const orderItemId = c.req.param('orderItemId');
 
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ status: appSchema.saleOrder.status })
+      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
     await db
@@ -320,9 +376,11 @@ app.delete('/orders/:id/items/:orderItemId', requirePermission('order:create'), 
 
 // POST /billing/orders/:id/settle
 app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const orderId = c.req.param('id');
   const user = c.get('sessionUser') as any;
+  const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
   const parsed = SettleOrderSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
@@ -334,6 +392,9 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
     const now = new Date();
@@ -345,6 +406,7 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
         settledAt: now,
         settledByUserId: user.id,
         updatedAt: now,
+        updatedBy: actorPhone,
       })
       .where(eq(appSchema.saleOrder.id, orderId));
 
@@ -357,21 +419,26 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
 
 // POST /billing/orders/:id/void
 app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const orderId = c.req.param('id');
+  const actorPhone = c.get('actorPhone');
 
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ status: appSchema.saleOrder.status })
+      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Only OPEN orders can be voided' }, 409);
 
     await db
       .update(appSchema.saleOrder)
-      .set({ status: 'VOID', updatedAt: new Date() })
+      .set({ status: 'VOID', updatedAt: new Date(), updatedBy: actorPhone })
       .where(eq(appSchema.saleOrder.id, orderId));
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
@@ -383,16 +450,20 @@ app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
 
 // PATCH /billing/orders/:id/mark-kot-printed
 app.patch('/orders/:id/mark-kot-printed', requirePermission('order:create'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const orderId = c.req.param('id');
 
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ id: appSchema.saleOrder.id, kotPrintedAt: appSchema.saleOrder.kotPrintedAt })
+      .select({ id: appSchema.saleOrder.id, kotPrintedAt: appSchema.saleOrder.kotPrintedAt, outletId: appSchema.saleOrder.outletId })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
 
     // Only set if not already marked
     if (!order.kotPrintedAt) {
@@ -411,16 +482,20 @@ app.patch('/orders/:id/mark-kot-printed', requirePermission('order:create'), asy
 
 // PATCH /billing/orders/:id/mark-ready — kitchen marks an order ready for pickup
 app.patch('/orders/:id/mark-ready', requirePermission('order:read'), async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const orderId = c.req.param('id');
 
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ id: appSchema.saleOrder.id })
+      .select({ id: appSchema.saleOrder.id, outletId: appSchema.saleOrder.outletId })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
 
     await db
       .update(appSchema.saleOrder)

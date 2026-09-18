@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, requireAuth } from '../lib/tenancy';
+import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
+import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import { UpdateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
@@ -43,12 +45,44 @@ app.get('/', requireAuth(), async (c) => {
     const restaurantIds = members.map((m: any) => m.restaurantId);
     if (!restaurantIds.length) return c.json([]);
 
-    const restaurants = await db
-      .select()
-      .from(appSchema.restaurant)
-      .where(eq(appSchema.restaurant.ownerUserId, user.id));
+    // Fetch every restaurant this user has a membership row for — NOT just
+    // ones they own. A staff member (MANAGER/WAITER/KITCHEN) is never the
+    // restaurant's ownerUserId, so filtering on ownerUserId here would wrongly
+    // return an empty list for every non-owner login (this was the actual
+    // v1/v2 bug: it happened to work only because every member was also
+    // the owner back then).
+    const restaurants = await Promise.all(
+      restaurantIds.map(async (id: string) => {
+        const [r] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, id)).limit(1);
+        return r;
+      }),
+    );
 
-    return c.json(restaurants.map(toRestaurant));
+    return c.json(restaurants.filter(Boolean).map(toRestaurant));
+  } finally {
+    await close();
+  }
+});
+
+// GET /restaurants/my-role — the caller's role + outlet access in the current restaurant.
+// Used by the web to decide which nav/pages to show (KITCHEN -> /kitchen, etc.)
+// without needing a full /staff list call (which requires member:read, staff-only).
+app.get('/my-role', requirePermission('restaurant:read'), async (c) => {
+  const tenant = c.get('tenant');
+  const { db, close } = getDb(c);
+  try {
+    if (!tenant.member) {
+      // Platform ADMIN impersonation path — treat as OWNER, all outlets.
+      return c.json({ role: tenant.role, outletIds: [] as string[], allOutlets: true });
+    }
+    if (isAllOutletRole(tenant.role as RestaurantRole)) {
+      return c.json({ role: tenant.role, outletIds: [] as string[], allOutlets: true });
+    }
+    const rows = await db
+      .select({ outletId: appSchema.memberOutletAccess.outletId })
+      .from(appSchema.memberOutletAccess)
+      .where(eq(appSchema.memberOutletAccess.memberId, (tenant.member as any).id));
+    return c.json({ role: tenant.role, outletIds: rows.map((r: any) => r.outletId), allOutlets: false });
   } finally {
     await close();
   }

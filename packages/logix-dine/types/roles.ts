@@ -72,11 +72,15 @@ export const ROLE_PERMISSIONS: Record<RestaurantRole, readonly Permission[]> = {
     'report:read',
   ],
   WAITER: [
+    'restaurant:read',
+    'outlet:read',
     'table:read',
     'menu:read',
     'order:create', 'order:read', 'order:settle',
   ],
   KITCHEN: [
+    'restaurant:read',
+    'outlet:read',
     'order:read',
   ],
   CUSTOM_ROLE: [],

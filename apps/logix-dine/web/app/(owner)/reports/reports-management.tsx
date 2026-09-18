@@ -13,6 +13,7 @@ import {
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { getReport, type ReportType } from "@/lib/api-client";
+import dayjs from "dayjs";
 
 // ─── IST-aware preset -> date range translation ─────────────────────────────
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -144,7 +145,9 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
           {preset === "custom" && (
             <DatePickerInput
               type="range"
-              placeholder="Pick date range"
+              placeholder="MMM DD, YY - MMM DD, YY"
+              valueFormat="MMM DD, YY"
+              labelSeparator=" - "
               value={customRange}
               onChange={(v: [string | null, string | null] | null) => {
                 if (!v) { setCustomRange([null, null]); return; }
@@ -152,13 +155,22 @@ export function ReportsManagement({ embedded = false }: { embedded?: boolean }) 
               }}
               leftSection={<IconCalendar size={16} />}
               size="sm"
+              styles={{
+                input: {
+                  fontSize: "13px",
+                  paddingLeft: "32px",
+                  paddingRight: "8px",
+                },
+              }}
               style={{ flex: 1, minWidth: 0 }}
-              maw={{ sm: 260 }}
+              maw={{ sm: 270 }}
             />
           )}
         </Group>
         <Text size="xs" c="dimmed">
-          {range.from === range.to ? range.from : `${range.from} → ${range.to}`}
+          {range.from === range.to
+            ? dayjs(range.from).format("MMM DD, YY")
+            : `${dayjs(range.from).format("MMM DD, YY")} - ${dayjs(range.to).format("MMM DD, YY")}`}
         </Text>
       </Group>
 

@@ -394,53 +394,73 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {isOwner && (
           <Tabs.Panel value="staff">
             <Stack gap="md">
-              <Group justify="space-between">
-                <Text fw={600}>Team Members</Text>
+              <Group justify="space-between" align="center">
+                <div>
+                  <Text fw={600} size="sm">Team Members</Text>
+                  <Text size="xs" c="dimmed">Manage roles and outlet access for each staff member</Text>
+                </div>
                 <Button size="sm" color="dinePrimary" leftSection={<IconPlus size={14} />} onClick={openInvite}>Invite Staff</Button>
               </Group>
               {staffLoading ? (
                 <Loader size="sm" />
               ) : !staff.length ? (
-                <Text size="sm" c="dimmed" ta="center" py="md">
-                  No staff yet — the restaurant works fully with just you as owner. Invite a Manager, Waiter or Kitchen member any time.
-                </Text>
+                <Paper withBorder p="xl" radius="md" ta="center">
+                  <Text size="sm" c="dimmed">
+                    No staff yet. Invite a Manager, Waiter, or Kitchen member to get started.
+                  </Text>
+                  <Button size="xs" variant="light" color="dinePrimary" mt="md" leftSection={<IconPlus size={14} />} onClick={openInvite}>
+                    Invite First Staff Member
+                  </Button>
+                </Paper>
               ) : (
-                <Stack gap="xs">
+                <Stack gap="sm">
                   {staff.map((m) => (
                     <Paper key={m.id} withBorder p="md" radius="md">
-                      <Group justify="space-between" wrap="wrap" gap="sm">
-                        <div>
-                          <Group gap="xs">
-                            <Text fw={600}>{m.phone}</Text>
-                            <Badge size="xs" color={m.inviteStatus === "ACCEPTED" ? "green" : "orange"}>
+                      {/* Row 1 — identity */}
+                      <Group justify="space-between" mb="sm" wrap="nowrap">
+                        <div style={{ minWidth: 0 }}>
+                          <Group gap="xs" wrap="nowrap">
+                            <Text fw={700} size="sm" style={{ fontFamily: "monospace" }}>{m.phone}</Text>
+                            <Badge size="xs" variant="light" color={m.inviteStatus === "ACCEPTED" ? "green" : "orange"}>
                               {m.inviteStatus === "ACCEPTED" ? "Active" : "Pending"}
                             </Badge>
                           </Group>
-                          <Text size="xs" c="dimmed">
-                            {(m.outletIds ?? []).map((id: string) => outlets.find((o) => o.id === id)?.name ?? id).join(", ") || "No outlets assigned"}
-                          </Text>
                         </div>
-                        <Group gap="xs" wrap="wrap">
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          size="sm"
+                          onClick={() => handleRemoveStaff(m)}
+                          title="Remove staff member"
+                        >
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </Group>
+
+                      {/* Row 2 — role + outlet selectors */}
+                      <Grid gap="xs">
+                        <Grid.Col span={{ base: 12, xs: 4, sm: 3 }}>
                           <Select
                             size="xs"
-                            w={110}
+                            label="Role"
                             value={m.role}
                             onChange={(v) => v && handleRoleChange(m, v)}
                             data={STAFF_ROLES.map((r) => ({ value: r.value, label: r.value }))}
+                            allowDeselect={false}
                           />
+                        </Grid.Col>
+                        <Grid.Col span={{ base: 12, xs: 8, sm: 9 }}>
                           <MultiSelect
                             size="xs"
-                            w={200}
-                            placeholder="Outlets"
+                            label="Outlet Access"
+                            placeholder="Select outlet(s)"
                             value={m.outletIds ?? []}
                             onChange={(v) => handleOutletsChange(m, v)}
                             data={outlets.map((o) => ({ value: o.id, label: o.name }))}
+                            maxDropdownHeight={200}
                           />
-                          <ActionIcon variant="light" color="red" size="sm" onClick={() => handleRemoveStaff(m)}>
-                            <IconTrash size={14} />
-                          </ActionIcon>
-                        </Group>
-                      </Group>
+                        </Grid.Col>
+                      </Grid>
                     </Paper>
                   ))}
                 </Stack>

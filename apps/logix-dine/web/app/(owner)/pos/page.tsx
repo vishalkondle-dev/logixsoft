@@ -422,30 +422,29 @@ export default function POSPage() {
       return;
     }
 
-    // Optimistic clear — user can see cart is gone immediately
-    const snapshot = { cartItems: [...cartItems], tableNo, customerPhone };
-    setCartItems([]);
-    setCustomerPhone("");
-    setTableNo("Takeaway");
-    setSettleModal(false);
-    if (cartOpen) setCartOpen(false);
-
     setSettling(true);
     try {
       const result = await createSettledOrder(restaurantId, {
         outletId: activeOutlet.id,
-        tableNo: snapshot.tableNo || "Takeaway",
-        customerPhone: snapshot.customerPhone.trim() || undefined,
+        tableNo: tableNo || "Takeaway",
+        customerPhone: customerPhone.trim() || undefined,
         method: settleMethod,
-        items: snapshot.cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
       });
 
+      // Success — close modal and clear cart
+      setCartItems([]);
+      setCustomerPhone("");
+      setTableNo("Takeaway");
+      setSettleModal(false);
+      if (cartOpen) setCartOpen(false);
+
       // Print KOT + Bill in background
-      const phoneNote = snapshot.customerPhone.trim() ? ` · WA sent` : "";
       printTicket(buildKotPayload(result, restaurant)).then(() => {
         if (restaurant) printTicket(buildBillPayload(result, restaurant)).catch(() => {});
       }).catch(() => {});
 
+      const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
       notifications.show({
         title: "Order settled!",
         message: `#${result.order.orderNo} — ₹${(result.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
@@ -453,11 +452,6 @@ export default function POSPage() {
         icon: <IconCheck size={16} />,
       });
     } catch (err: any) {
-      // Restore cart on error
-      setCartItems(snapshot.cartItems);
-      setTableNo(snapshot.tableNo);
-      setCustomerPhone(snapshot.customerPhone);
-      setSettleModal(true);
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
       setSettling(false);

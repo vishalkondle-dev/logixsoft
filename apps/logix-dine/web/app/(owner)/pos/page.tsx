@@ -13,7 +13,7 @@ import {
   IconNote, IconEdit, IconX,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { useBootstrap, useTables } from "@/lib/queries";
+import { useCategories, useItems, useTables } from "@/lib/queries";
 import {
   startOrder, settleOrder, markKotPrinted,
 } from "@/lib/api-client";
@@ -242,8 +242,10 @@ export default function POSPage() {
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
 
-  // Server data via React Query — shared cache across pages
-  const { data: bootstrap, isLoading: loading } = useBootstrap(restaurantId, outletId);
+  // Server data via React Query — same cache keys as MenuManagement → zero refetch on page switch
+  const { data: categories = [], isLoading: catsLoading } = useCategories(restaurantId, outletId);
+  const { data: items = [], isLoading: itemsLoading } = useItems(restaurantId, outletId);
+  const loading = catsLoading || itemsLoading;
   const { data: tablesData } = useTables(restaurantId, outletId);
   const tables = (tablesData ?? []).filter((t: any) => t.active);
 
@@ -321,12 +323,12 @@ export default function POSPage() {
     if (cartOpen) setCartOpen(false);
   };
 
-  // Auto-select first category when bootstrap loads
+    // Auto-select first category when categories load
   useEffect(() => {
-    if (bootstrap?.categories?.length) {
-      setActiveCatId((prev) => prev ?? bootstrap.categories[0].id);
+    if (categories.length) {
+      setActiveCatId((prev) => prev ?? (categories[0] as any).id);
     }
-  }, [bootstrap]);
+  }, [categories]);
 
   // Handle adding items to local cart
   const handleAddItem = (item: any) => {
@@ -463,9 +465,8 @@ export default function POSPage() {
   };
 
   if (loading) return <Center py={100}><Loader size="lg" color="dinePrimary" /></Center>;
-  if (!bootstrap) return null;
+  if (!categories.length && !loading) return null;
 
-  const { categories, items } = bootstrap;
   const filteredItems = items
     .filter((i: any) => activeCatId ? i.categoryId === activeCatId : true)
     .filter((i: any) => i.available)

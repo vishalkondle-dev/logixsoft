@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, and, or, sql, desc } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, hasOutletAccess } from '../lib/tenancy';
@@ -11,8 +11,14 @@ import {
   CreateSettledSchema,
   AddOrderItemSchema,
   UpdateOrderItemSchema,
+  UpdateOrderItemStatusSchema,
   SettleOrderSchema,
 } from '@logixsoft/logix-dine/schemas/pos';
+import {
+  computeOrderStatus,
+  getNextItemStatus,
+  type OrderItemStatus,
+} from '@logixsoft/logix-dine/types/pos-schema';
 import { toRestaurant, toOutlet, toCategory, toMenuItem, toOrderWithItems, toOrder } from '@logixsoft/logix-dine/mappers/pos';
 import { sendWhatsAppText } from '@logixsoft/wa';
 import type { AuthEnv } from '../lib/auth';
@@ -32,6 +38,7 @@ function formatOrderWhatsAppMessage(
   const totalRupees = ((order.subtotalPaise ?? 0) / 100).toFixed(0);
 
   const itemsList = items
+    .filter((item) => item.status !== 'CANCELLED')
     .map((item) => {
       const name = item.nameSnapshot || item.name || 'Item';
       const noteStr = item.note ? ` (${item.note})` : '';
@@ -73,12 +80,14 @@ async function recomputeTotal(db: any, orderId: string) {
     .select()
     .from(appSchema.saleOrderItem)
     .where(eq(appSchema.saleOrderItem.orderId, orderId));
-  const total = items.reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
+  const activeItems = items.filter((item: any) => item.status !== 'CANCELLED');
+  const total = activeItems.reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
+  const orderStatus = computeOrderStatus(items.map((i: any) => i.status));
   await db
     .update(appSchema.saleOrder)
-    .set({ subtotalPaise: total, updatedAt: new Date() })
+    .set({ subtotalPaise: total, orderStatus, updatedAt: new Date() })
     .where(eq(appSchema.saleOrder.id, orderId));
-  return { items, total };
+  return { items, total, orderStatus };
 }
 
 async function getOrderWithItems(db: any, orderId: string, restaurantId: string) {
@@ -91,7 +100,34 @@ async function getOrderWithItems(db: any, orderId: string, restaurantId: string)
     .select()
     .from(appSchema.saleOrderItem)
     .where(eq(appSchema.saleOrderItem.orderId, orderId));
-  return toOrderWithItems(order, items);
+  const audits = await db
+    .select()
+    .from(appSchema.orderItemAudit)
+    .where(eq(appSchema.orderItemAudit.orderId, orderId))
+    .orderBy(appSchema.orderItemAudit.createdAt);
+
+  const auditsByItem = new Map<string, any[]>();
+  for (const a of audits) {
+    const list = auditsByItem.get(a.orderItemId) ?? [];
+    list.push({
+      id: a.id,
+      orderId: a.orderId,
+      orderItemId: a.orderItemId,
+      fromStatus: a.fromStatus,
+      toStatus: a.toStatus,
+      changedBy: a.changedBy,
+      changedByRole: a.changedByRole,
+      createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+    });
+    auditsByItem.set(a.orderItemId, list);
+  }
+
+  const result = toOrderWithItems(order, items);
+  result.items = result.items.map((item: any) => ({
+    ...item,
+    audits: auditsByItem.get(item.id) ?? [],
+  }));
+  return result;
 }
 
 // GET /billing/bootstrap
@@ -181,8 +217,10 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
             nameSnapshot: menuItem.name,
             pricePaiseSnapshot,
             qty: item.qty,
+            status: 'ORDERED',
             note: item.note ? item.note.trim() : null,
             createdAt: now,
+            updatedAt: now,
             createdBy: actorPhone,
             updatedBy: actorPhone,
           });
@@ -197,6 +235,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
         tableNo: parsed.data.tableNo ?? null,
         customerPhone: parsed.data.customerPhone ?? null,
         status: 'OPEN',
+        orderStatus: 'ORDERED',
         subtotalPaise,
         note: parsed.data.note ?? null,
         createdAt: now,
@@ -207,6 +246,17 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
 
       if (orderItemsToInsert.length > 0) {
         await tx.insert(appSchema.saleOrderItem).values(orderItemsToInsert);
+        const audits = orderItemsToInsert.map((oi) => ({
+          id: generateId('audit'),
+          orderId: id,
+          orderItemId: oi.id,
+          fromStatus: null,
+          toStatus: 'ORDERED',
+          changedBy: actorPhone || 'Staff',
+          changedByRole: tenant.role || 'STAFF',
+          createdAt: now,
+        }));
+        await tx.insert(appSchema.orderItemAudit).values(audits);
       }
     });
 
@@ -219,6 +269,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
       tableNo: parsed.data.tableNo ?? null,
       customerPhone: parsed.data.customerPhone ?? null,
       status: 'OPEN',
+      orderStatus: 'ORDERED',
       subtotalPaise,
       note: parsed.data.note ?? null,
       method: null,
@@ -322,8 +373,8 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
           orderItemsToInsert.push({
             id: generateId('orderItem'), orderId: id, itemId: item.itemId,
             nameSnapshot: menuItem.name, pricePaiseSnapshot: menuItem.pricePaise,
-            qty: item.qty, note: item.note ? item.note.trim() : null,
-            createdAt: now, createdBy: actorPhone, updatedBy: actorPhone,
+            qty: item.qty, status: 'ORDERED', note: item.note ? item.note.trim() : null,
+            createdAt: now, updatedAt: now, createdBy: actorPhone, updatedBy: actorPhone,
           });
         }
       }
@@ -331,13 +382,24 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
       await tx.insert(appSchema.saleOrder).values({
         id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
         tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
-        status: 'PAID', method: parsed.data.method ?? 'Cash', subtotalPaise,
+        status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash', subtotalPaise,
         note: parsed.data.note ?? null, settledAt: now, settledByUserId: user.id,
         kotPrintedAt: now, createdAt: now, updatedAt: now,
         createdBy: actorPhone, updatedBy: actorPhone,
       });
       if (orderItemsToInsert.length > 0) {
         await tx.insert(appSchema.saleOrderItem).values(orderItemsToInsert);
+        const audits = orderItemsToInsert.map((oi) => ({
+          id: generateId('audit'),
+          orderId: id,
+          orderItemId: oi.id,
+          fromStatus: null,
+          toStatus: 'ORDERED',
+          changedBy: actorPhone || 'Staff',
+          changedByRole: tenant.role || 'STAFF',
+          createdAt: now,
+        }));
+        await tx.insert(appSchema.orderItemAudit).values(audits);
       }
     });
 
@@ -349,7 +411,7 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
     const orderRow = {
       id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
       tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
-      status: 'PAID', method: parsed.data.method ?? 'Cash', subtotalPaise,
+      status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash', subtotalPaise,
       note: parsed.data.note ?? null, kotPrintedAt: now, readyAt: null,
       settledAt: now, settledByUserId: user.id, createdAt: now, updatedAt: now,
       createdBy: actorPhone, updatedBy: actorPhone,
@@ -385,6 +447,7 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const status = c.req.query('status');
+  const orderStatus = c.req.query('orderStatus');
   const outletId = c.req.query('outletId');
   const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 100);
 
@@ -403,6 +466,7 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
 
     const conditions: any[] = [eq(appSchema.saleOrder.restaurantId, restaurantId)];
     if (status) conditions.push(eq(appSchema.saleOrder.status, status));
+    if (orderStatus) conditions.push(eq(appSchema.saleOrder.orderStatus, orderStatus));
     if (outletId) conditions.push(eq(appSchema.saleOrder.outletId, outletId));
 
     const orders = await db
@@ -412,23 +476,52 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
       .orderBy(desc(appSchema.saleOrder.createdAt))
       .limit(limit);
 
-    // Fetch items for all orders
-    const results = await Promise.all(
-      orders.map(async (order: any) => {
-        const items = await db
-          .select()
-          .from(appSchema.saleOrderItem)
-          .where(eq(appSchema.saleOrderItem.orderId, order.id));
-        return toOrderWithItems(order, items);
-      }),
-    );
+    const orderIds = orders.map((o: any) => o.id);
+    const allItems = orderIds.length
+      ? await db.select().from(appSchema.saleOrderItem).where(sql`${appSchema.saleOrderItem.orderId} IN ${orderIds}`)
+      : [];
+    const allAudits = orderIds.length
+      ? await db.select().from(appSchema.orderItemAudit).where(sql`${appSchema.orderItemAudit.orderId} IN ${orderIds}`)
+      : [];
+
+    const itemsByOrder = new Map<string, any[]>();
+    for (const item of allItems) {
+      const list = itemsByOrder.get(item.orderId) ?? [];
+      list.push(item);
+      itemsByOrder.set(item.orderId, list);
+    }
+
+    const auditsByItem = new Map<string, any[]>();
+    for (const a of allAudits) {
+      const list = auditsByItem.get(a.orderItemId) ?? [];
+      list.push({
+        id: a.id,
+        orderId: a.orderId,
+        orderItemId: a.orderItemId,
+        fromStatus: a.fromStatus,
+        toStatus: a.toStatus,
+        changedBy: a.changedBy,
+        changedByRole: a.changedByRole,
+        createdAt: a.createdAt instanceof Date ? a.createdAt.toISOString() : String(a.createdAt),
+      });
+      auditsByItem.set(a.orderItemId, list);
+    }
+
+    const results = orders.map((order: any) => {
+      const res = toOrderWithItems(order, itemsByOrder.get(order.id) ?? []);
+      res.items = res.items.map((it: any) => ({
+        ...it,
+        audits: auditsByItem.get(it.id) ?? [],
+      }));
+      return res;
+    });
     return c.json(results);
   } finally {
     await close();
   }
 });
 
-// GET /billing/orders/kitchen — KDS board: OPEN orders for the caller's outlet(s).
+// GET /billing/orders/kitchen — KDS board: OPEN or active PAID orders for the caller's outlet(s).
 // MUST be registered before GET /orders/:id, or Hono would match "kitchen" as an order ID.
 // KITCHEN role is outlet-scoped, so the web sends X-Outlet-Id; requirePermission
 // already enforces that this outlet is one the caller has access to.
@@ -437,13 +530,18 @@ app.get('/orders/kitchen', requirePermission('order:read'), async (c) => {
 
   const { db, close } = getDb(c);
   try {
+    const activeCondition = and(
+      sql`${appSchema.saleOrder.status} != 'VOID'`,
+      sql`${appSchema.saleOrder.orderStatus} NOT IN ('SERVED', 'CANCELLED')`,
+    );
+
     const where = outletId
       ? and(
           eq(appSchema.saleOrder.restaurantId, restaurantId),
           eq(appSchema.saleOrder.outletId, outletId),
-          eq(appSchema.saleOrder.status, 'OPEN'),
+          activeCondition,
         )
-      : and(eq(appSchema.saleOrder.restaurantId, restaurantId), eq(appSchema.saleOrder.status, 'OPEN'));
+      : and(eq(appSchema.saleOrder.restaurantId, restaurantId), activeCondition);
 
     const orders = await db
       .select()
@@ -499,6 +597,7 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
+  const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
   const parsed = AddOrderItemSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
@@ -535,19 +634,152 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
         .set(updateData)
         .where(eq(appSchema.saleOrderItem.id, existing.id));
     } else {
+      const now = new Date();
+      const newOrderItemId = generateId('oi');
       await db.insert(appSchema.saleOrderItem).values({
-        id: generateId('oi'),
+        id: newOrderItemId,
         orderId,
         itemId: menuItem.id,
         nameSnapshot: menuItem.name,
         pricePaiseSnapshot: menuItem.pricePaise,
         qty: parsed.data.qty ?? 1,
+        status: 'ORDERED',
         note: parsed.data.note ? parsed.data.note.trim() : null,
-        createdAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
+        createdBy: actorPhone,
+        updatedBy: actorPhone,
+      });
+      await db.insert(appSchema.orderItemAudit).values({
+        id: generateId('audit'),
+        orderId,
+        orderItemId: newOrderItemId,
+        fromStatus: null,
+        toStatus: 'ORDERED',
+        changedBy: actorPhone || 'Staff',
+        changedByRole: tenant.role || 'STAFF',
+        createdAt: now,
       });
     }
 
     await recomputeTotal(db, orderId);
+    const result = await getOrderWithItems(db, orderId, restaurantId);
+    return c.json(result);
+  } finally {
+    await close();
+  }
+});
+
+// PATCH /billing/orders/:id/items/:orderItemId/status — update status (Next, Close, or direct)
+// "Anyone can do that just audit it. Except customer"
+app.patch('/orders/:id/items/:orderItemId/status', requirePermission('order:read'), async (c) => {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const orderId = c.req.param('id');
+  const orderItemId = c.req.param('orderItemId');
+  const actorPhone = c.get('actorPhone');
+  const sessionUser = c.get('sessionUser') as any;
+
+  if (tenant.role === 'CUSTOMER' || !tenant.member) {
+    return c.json({ error: 'Forbidden', message: 'Customers cannot modify order item status' }, 403);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateOrderItemStatusSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db
+      .select()
+      .from(appSchema.saleOrder)
+      .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+    if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+    if (order.status === 'VOID') {
+      return c.json({ error: 'Conflict', message: 'Cannot modify items in a voided order' }, 409);
+    }
+
+    const [item] = await db
+      .select()
+      .from(appSchema.saleOrderItem)
+      .where(and(eq(appSchema.saleOrderItem.id, orderItemId), eq(appSchema.saleOrderItem.orderId, orderId)));
+    if (!item) return c.json({ error: 'Not Found', message: 'Order item not found' }, 404);
+
+    let targetStatus: OrderItemStatus | null = null;
+    if (parsed.data.action === 'next') {
+      targetStatus = getNextItemStatus(item.status);
+      if (!targetStatus) {
+        return c.json({ error: 'Bad Request', message: `Item has already reached status ${item.status}` }, 400);
+      }
+    } else if (parsed.data.action === 'close' || parsed.data.action === 'cancel') {
+      targetStatus = 'CANCELLED';
+    } else if (parsed.data.status) {
+      targetStatus = parsed.data.status as OrderItemStatus;
+    } else {
+      return c.json({ error: 'Bad Request', message: 'Either status or action is required' }, 400);
+    }
+
+    if (targetStatus === item.status) {
+      const result = await getOrderWithItems(db, orderId, restaurantId);
+      return c.json(result);
+    }
+
+    const now = new Date();
+    const actorIdentity = actorPhone || sessionUser?.name || sessionUser?.phoneNumber || sessionUser?.id || 'Staff';
+    const actorRole = tenant.role || 'STAFF';
+
+    await db.transaction(async (tx: any) => {
+      await tx
+        .update(appSchema.saleOrderItem)
+        .set({
+          status: targetStatus,
+          updatedAt: now,
+          updatedBy: actorIdentity,
+        })
+        .where(eq(appSchema.saleOrderItem.id, orderItemId));
+
+      await tx.insert(appSchema.orderItemAudit).values({
+        id: generateId('audit'),
+        orderId,
+        orderItemId,
+        fromStatus: item.status,
+        toStatus: targetStatus,
+        changedBy: actorIdentity,
+        changedByRole: actorRole,
+        createdAt: now,
+      });
+
+      const allItems = await tx
+        .select()
+        .from(appSchema.saleOrderItem)
+        .where(eq(appSchema.saleOrderItem.orderId, orderId));
+
+      const updatedStatuses = allItems.map((i: any) => i.id === orderItemId ? targetStatus : i.status);
+      const newOrderStatus = computeOrderStatus(updatedStatuses);
+
+      const activeItems = allItems.filter((i: any) => i.id === orderItemId ? targetStatus !== 'CANCELLED' : i.status !== 'CANCELLED');
+      const subtotalPaise = activeItems.reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+
+      const orderUpdates: any = {
+        orderStatus: newOrderStatus,
+        subtotalPaise,
+        updatedAt: now,
+        updatedBy: actorIdentity,
+      };
+
+      if ((newOrderStatus === 'PREPARED' || newOrderStatus === 'SERVED') && !order.readyAt) {
+        orderUpdates.readyAt = now;
+      }
+
+      await tx
+        .update(appSchema.saleOrder)
+        .set(orderUpdates)
+        .where(eq(appSchema.saleOrder.id, orderId));
+    });
+
     const result = await getOrderWithItems(db, orderId, restaurantId);
     return c.json(result);
   } finally {
@@ -787,10 +1019,43 @@ app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
     }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Only OPEN orders can be voided' }, 409);
 
-    await db
-      .update(appSchema.saleOrder)
-      .set({ status: 'VOID', updatedAt: new Date(), updatedBy: actorPhone })
-      .where(eq(appSchema.saleOrder.id, orderId));
+    const now = new Date();
+    const actorIdentity = actorPhone || 'Staff';
+    const actorRole = tenant.role || 'STAFF';
+
+    const items = await db
+      .select()
+      .from(appSchema.saleOrderItem)
+      .where(eq(appSchema.saleOrderItem.orderId, orderId));
+
+    const audits = items
+      .filter((i: any) => i.status !== 'CANCELLED')
+      .map((i: any) => ({
+        id: generateId('audit'),
+        orderId,
+        orderItemId: i.id,
+        fromStatus: i.status,
+        toStatus: 'CANCELLED',
+        changedBy: actorIdentity,
+        changedByRole: actorRole,
+        createdAt: now,
+      }));
+
+    await db.transaction(async (tx: any) => {
+      await tx
+        .update(appSchema.saleOrderItem)
+        .set({ status: 'CANCELLED', updatedAt: now, updatedBy: actorIdentity })
+        .where(eq(appSchema.saleOrderItem.orderId, orderId));
+
+      if (audits.length > 0) {
+        await tx.insert(appSchema.orderItemAudit).values(audits);
+      }
+
+      await tx
+        .update(appSchema.saleOrder)
+        .set({ status: 'VOID', orderStatus: 'CANCELLED', updatedAt: now, updatedBy: actorIdentity })
+        .where(eq(appSchema.saleOrder.id, orderId));
+    });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
     await invalidateReports(kv(c), restaurantId);
@@ -837,6 +1102,7 @@ app.patch('/orders/:id/mark-ready', requirePermission('order:read'), async (c) =
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
+  const actorPhone = c.get('actorPhone');
 
   const { db, close } = getDb(c);
   try {
@@ -849,10 +1115,51 @@ app.patch('/orders/:id/mark-ready', requirePermission('order:read'), async (c) =
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
 
-    await db
-      .update(appSchema.saleOrder)
-      .set({ readyAt: new Date(), updatedAt: new Date() })
-      .where(eq(appSchema.saleOrder.id, orderId));
+    const now = new Date();
+    const actorIdentity = actorPhone || 'Kitchen';
+    const actorRole = tenant.role || 'KITCHEN';
+
+    const items = await db
+      .select()
+      .from(appSchema.saleOrderItem)
+      .where(eq(appSchema.saleOrderItem.orderId, orderId));
+
+    const audits = items
+      .filter((i: any) => i.status === 'ORDERED' || i.status === 'PREPARING')
+      .map((i: any) => ({
+        id: generateId('audit'),
+        orderId,
+        orderItemId: i.id,
+        fromStatus: i.status,
+        toStatus: 'PREPARED',
+        changedBy: actorIdentity,
+        changedByRole: actorRole,
+        createdAt: now,
+      }));
+
+    await db.transaction(async (tx: any) => {
+      await tx
+        .update(appSchema.saleOrderItem)
+        .set({ status: 'PREPARED', updatedAt: now, updatedBy: actorIdentity })
+        .where(
+          and(
+            eq(appSchema.saleOrderItem.orderId, orderId),
+            or(
+              eq(appSchema.saleOrderItem.status, 'ORDERED'),
+              eq(appSchema.saleOrderItem.status, 'PREPARING'),
+            ),
+          ),
+        );
+
+      if (audits.length > 0) {
+        await tx.insert(appSchema.orderItemAudit).values(audits);
+      }
+
+      await tx
+        .update(appSchema.saleOrder)
+        .set({ readyAt: now, orderStatus: 'PREPARED', updatedAt: now, updatedBy: actorIdentity })
+        .where(eq(appSchema.saleOrder.id, orderId));
+    });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
     return c.json(result);

@@ -11,6 +11,7 @@ import type {
   JsonMenuItemRow,
   JsonSaleOrderRow,
   JsonSaleOrderItemRow,
+  JsonOrderItemAuditRow,
 } from '../types/pos-schema';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -127,6 +128,7 @@ export const SaleOrderSchema = z.object({
   tableNo: z.string().nullable(),
   customerPhone: z.string().nullable(),
   status: z.string(),
+  orderStatus: z.string(),
   subtotalPaise: z.number().int(),
   method: z.string().nullable(),
   note: z.string().nullable(),
@@ -148,12 +150,31 @@ export const SaleOrderItemSchema = z.object({
   nameSnapshot: z.string(),
   pricePaiseSnapshot: z.number().int(),
   qty: z.number().int(),
+  status: z.string(),
   note: z.string().nullable(),
   createdAt: z.string(),
+  updatedAt: z.string(),
   createdBy: z.string().nullable(),
   updatedBy: z.string().nullable(),
 });
 type _OrderItemAssert = Expect<AssertSame<z.infer<typeof SaleOrderItemSchema>, JsonSaleOrderItemRow>>;
+
+export const OrderItemAuditSchema = z.object({
+  id: z.string(),
+  orderId: z.string(),
+  orderItemId: z.string(),
+  fromStatus: z.string().nullable(),
+  toStatus: z.string(),
+  changedBy: z.string().nullable(),
+  changedByRole: z.string().nullable(),
+  createdAt: z.string(),
+});
+type _OrderItemAuditAssert = Expect<AssertSame<z.infer<typeof OrderItemAuditSchema>, JsonOrderItemAuditRow>>;
+
+export const UpdateOrderItemStatusSchema = z.object({
+  status: z.enum(['ORDERED', 'PREPARING', 'PREPARED', 'SERVED', 'CANCELLED']).optional(),
+  action: z.enum(['next', 'close', 'cancel']).optional(),
+});
 
 // ─── Request schemas ──────────────────────────────────────────────────────────
 

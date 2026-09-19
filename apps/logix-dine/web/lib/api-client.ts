@@ -42,7 +42,7 @@ export const startOrder = (
 export const getOrder = (restaurantId: string, orderId: string, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}`, restaurantId, {}, outletId);
 
-export const listOrders = (restaurantId: string, params?: { status?: string; outletId?: string; limit?: number }) => {
+export const listOrders = (restaurantId: string, params?: { status?: string; orderStatus?: string; outletId?: string; limit?: number }) => {
   const qs = new URLSearchParams(
     Object.fromEntries(Object.entries(params ?? {}).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))
   ).toString();
@@ -54,6 +54,20 @@ export const addOrderItem = (restaurantId: string, orderId: string, body: { item
 
 export const updateOrderItemQty = (restaurantId: string, orderId: string, orderItemId: string, qty: number, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}/items/${orderItemId}`, restaurantId, { method: "PATCH", body: JSON.stringify({ qty }) }, outletId);
+
+export const updateOrderItemStatus = (
+  restaurantId: string,
+  orderId: string,
+  orderItemId: string,
+  body: { status?: string; action?: "next" | "close" | "cancel" },
+  outletId?: string | null
+) =>
+  apiFetch<any>(
+    `/billing/orders/${orderId}/items/${orderItemId}/status`,
+    restaurantId,
+    { method: "PATCH", body: JSON.stringify(body) },
+    outletId
+  );
 
 export const removeOrderItem = (restaurantId: string, orderId: string, orderItemId: string, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}/items/${orderItemId}`, restaurantId, { method: "DELETE" }, outletId);

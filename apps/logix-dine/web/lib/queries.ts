@@ -77,7 +77,7 @@ export function useBootstrap(restaurantId: string, outletId: string | null) {
 
 export function useOrders(
   restaurantId: string,
-  params: { status?: string; outletId?: string; limit?: number },
+  params: { status?: string; orderStatus?: string; outletId?: string; limit?: number },
   enabled = true,
 ) {
   return useQuery({

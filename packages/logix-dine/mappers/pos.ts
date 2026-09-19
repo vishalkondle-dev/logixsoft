@@ -97,7 +97,9 @@ export function toOrder(o: SaleOrderRow): JsonSaleOrderRow {
 export function toOrderItem(i: SaleOrderItemRow): JsonSaleOrderItemRow {
   return {
     ...i,
+    status: (i.status as any) || 'ORDERED',
     createdAt: toIsoRequired(i.createdAt),
+    updatedAt: toIsoRequired(i.updatedAt),
   };
 }
 

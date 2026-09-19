@@ -1,16 +1,24 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Container, Title, Text, SimpleGrid, Paper, Badge, Button, Group, Stack, Center, Loader, ActionIcon, Select } from "@mantine/core";
+import {
+  Container, Title, Text, SimpleGrid, Paper, Badge, Button, Group, Stack,
+  Center, Loader, ActionIcon, Select, Tooltip,
+} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconClock, IconLogout, IconTableAlias, IconRefresh } from "@tabler/icons-react";
+import {
+  IconCheck, IconClock, IconLogout, IconTableAlias, IconRefresh,
+  IconArrowRight, IconX, IconBan,
+} from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { useKitchenOrders } from "@/lib/queries";
-import { markOrderReady } from "@/lib/api-client";
+import { useKitchenOrders, qk } from "@/lib/queries";
+import { markOrderReady, updateOrderItemStatus } from "@/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
-import { qk } from "@/lib/queries";
-
+import {
+  getStatusVisual,
+  getNextItemStatus,
+} from "@/lib/order-status-ui";
 
 function urgency(createdAt: string): { color: string; label: string; minutes: number } {
   const minutes = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
@@ -27,11 +35,12 @@ export default function KitchenPage() {
   const queryClient = useQueryClient();
 
   const [marking, setMarking] = useState<string | null>(null);
+  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [, forceTick] = useState(0);
 
   // React Query handles auto-refresh every 10s (configured in useKitchenOrders)
   const { data: rawOrders = [], isLoading: loading, refetch } = useKitchenOrders(restaurantId, outletId);
-  const orders = rawOrders.filter((o: any) => !o.order.readyAt);
+  const orders = rawOrders.filter((o: any) => !o.order.readyAt && o.order.orderStatus !== "SERVED" && o.order.orderStatus !== "CANCELLED");
 
   // Re-render every 30s to update elapsed-time badges
   useEffect(() => {
@@ -43,13 +52,37 @@ export default function KitchenPage() {
     setMarking(orderId);
     try {
       await markOrderReady(restaurantId, orderId, outletId);
-      // Invalidate so the query refetches and drops the ready order
       queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
-      notifications.show({ title: "Marked ready", message: "", color: "green", icon: <IconCheck size={16} /> });
+      notifications.show({ title: "Order marked ready", message: "All items set to Prepared", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
       setMarking(null);
+    }
+  };
+
+  const handleUpdateItemStatus = async (
+    orderId: string,
+    item: any,
+    actionPayload: { status?: string; action?: "next" | "close" | "cancel" },
+  ) => {
+    const itemId = item.id;
+    setUpdatingItemId(itemId);
+    try {
+      await updateOrderItemStatus(restaurantId, orderId, itemId, actionPayload, outletId);
+      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
+
+      const isCancel = actionPayload.action === "close" || actionPayload.action === "cancel";
+      notifications.show({
+        title: isCancel ? "Item cancelled" : "Item status updated",
+        message: `${item.nameSnapshot}: ${isCancel ? "Cancelled" : "Advanced to next stage"}`,
+        color: isCancel ? "red" : "green",
+        icon: isCancel ? <IconBan size={16} /> : <IconCheck size={16} />,
+      });
+    } catch (err: any) {
+      notifications.show({ title: "Failed to update item", message: err.message || "Error", color: "red" });
+    } finally {
+      setUpdatingItemId(null);
     }
   };
 
@@ -101,9 +134,9 @@ export default function KitchenPage() {
             <IconRefresh size={18} />
           </ActionIcon>
           {role !== "KITCHEN" && (
-            // Owner/Manager previewing the KDS can navigate back; KITCHEN-only
-            // accounts have nowhere else to go, so we just offer sign out.
-            <Button component="a" href={activeOutlet ? `/pos?outletId=${activeOutlet.id}` : "/pos"} size="sm" variant="light" color="gray">Back to POS</Button>
+            <Button component="a" href={activeOutlet ? `/pos?outletId=${activeOutlet.id}` : "/pos"} size="sm" variant="light" color="gray">
+              Back to POS
+            </Button>
           )}
           <ActionIcon size="lg" variant="light" color="red" onClick={() => signOut()} title="Sign out">
             <IconLogout size={18} />
@@ -125,38 +158,143 @@ export default function KitchenPage() {
           {orders.map((entry: any) => {
             const { order, items } = entry;
             const u = urgency(order.createdAt);
+            const orderStatusVisual = getStatusVisual(order.orderStatus || "ORDERED");
+            const OrderStatusIcon = orderStatusVisual.icon;
+
+            const activeItems = items.filter((i: any) => i.status !== "CANCELLED");
+            const allItemsPrepared = activeItems.length > 0 && activeItems.every((i: any) => i.status === "PREPARED" || i.status === "SERVED");
+
             return (
-              <Paper key={order.id} radius="md" p="md" style={{ background: "#252525", borderLeft: `4px solid ${u.color}` }}>
+              <Paper
+                key={order.id}
+                radius="md"
+                p="md"
+                style={{ background: "#252525", borderLeft: `4px solid ${u.color}` }}
+              >
                 <Group justify="space-between" mb="xs">
                   <div>
                     <Text fw={800} size="xl" c="white">Token #{order.orderNo}</Text>
                     {order.id && <Text size="xs" c="gray.5" ff="monospace">{order.id}</Text>}
                   </div>
-                  <Badge size="lg" style={{ background: u.color, color: "white" }} leftSection={<IconClock size={12} />}>
-                    {u.label}
-                  </Badge>
+                  <Group gap={6}>
+                    <Badge size="xs" color={orderStatusVisual.color} leftSection={<OrderStatusIcon size={10} />}>
+                      {orderStatusVisual.label}
+                    </Badge>
+                    <Badge size="md" style={{ background: u.color, color: "white" }} leftSection={<IconClock size={12} />}>
+                      {u.label}
+                    </Badge>
+                  </Group>
                 </Group>
+
                 {order.tableNo && (
                   <Badge size="sm" variant="light" color="gray" mb="sm" leftSection={<IconTableAlias size={12} />}>
-                    Table {order.tableNo}
+                    {order.tableNo === "Takeaway" ? "Takeaway" : `Table ${order.tableNo}`}
                   </Badge>
                 )}
-                <Stack gap={4} mb="md">
-                  {items.map((item: any) => (
-                    <Group key={item.id} justify="space-between" wrap="nowrap">
-                      <Text size="sm" c="gray.2" style={{ flex: 1 }}>{item.nameSnapshot}</Text>
-                      <Text size="sm" fw={700} c="white">×{item.qty}</Text>
-                    </Group>
-                  ))}
+
+                {/* Items List with Next and Close buttons */}
+                <Stack gap={6} mb="md">
+                  {items.map((item: any) => {
+                    const itemStatus = item.status || "ORDERED";
+                    const isCancelled = itemStatus === "CANCELLED";
+                    const isServed = itemStatus === "SERVED";
+                    const isPrepared = itemStatus === "PREPARED";
+                    const itemVisual = getStatusVisual(itemStatus);
+                    const ItemIcon = itemVisual.icon;
+                    const nextStatus = getNextItemStatus(itemStatus);
+                    const canNext = Boolean(nextStatus);
+                    const canClose = !isCancelled && !isServed;
+
+                    return (
+                      <Paper
+                        key={item.id}
+                        p="xs"
+                        radius="sm"
+                        style={{
+                          background: isCancelled
+                            ? "rgba(224, 49, 49, 0.1)"
+                            : isPrepared
+                            ? "rgba(32, 201, 151, 0.12)"
+                            : "rgba(255, 255, 255, 0.05)",
+                          border: isPrepared ? "1px solid rgba(32, 201, 151, 0.3)" : undefined,
+                        }}
+                      >
+                        <Group justify="space-between" align="center" wrap="nowrap">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <Group gap={6} align="center" wrap="nowrap">
+                              <Text
+                                size="sm"
+                                fw={600}
+                                c={isCancelled ? "gray.6" : "white"}
+                                style={{ textDecoration: isCancelled ? "line-through" : "none" }}
+                                lineClamp={1}
+                              >
+                                {item.nameSnapshot}
+                              </Text>
+                              <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
+                            </Group>
+                            {item.note && (
+                              <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>
+                            )}
+                          </div>
+
+                          {/* Status Badge + Next & Close Buttons */}
+                          <Group gap={4} wrap="nowrap" align="center">
+                            <Badge
+                              size="xs"
+                              variant="light"
+                              color={itemVisual.color}
+                              leftSection={<ItemIcon size={10} />}
+                            >
+                              {itemVisual.label}
+                            </Badge>
+
+                            {/* Next button */}
+                            {canNext && nextStatus && (
+                              <Tooltip label={`Next: ${getStatusVisual(nextStatus).label}`} withArrow position="top">
+                                <ActionIcon
+                                  size="sm"
+                                  color="dinePrimary"
+                                  variant="filled"
+                                  loading={updatingItemId === item.id}
+                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "next" })}
+                                  aria-label={`Advance to ${nextStatus}`}
+                                >
+                                  <IconArrowRight size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
+
+                            {/* Close (Cancel) button */}
+                            {canClose && (
+                              <Tooltip label="Close (Cancel item)" withArrow position="top">
+                                <ActionIcon
+                                  size="sm"
+                                  color="red"
+                                  variant="subtle"
+                                  loading={updatingItemId === item.id}
+                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "close" })}
+                                  aria-label="Cancel item"
+                                >
+                                  <IconX size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
+                          </Group>
+                        </Group>
+                      </Paper>
+                    );
+                  })}
                 </Stack>
+
                 <Button
                   fullWidth
-                  color="green"
+                  color={allItemsPrepared ? "teal" : "green"}
                   leftSection={<IconCheck size={16} />}
                   loading={marking === order.id}
                   onClick={() => handleMarkReady(order.id)}
                 >
-                  Ready
+                  {allItemsPrepared ? "Order Ready ✓" : "Mark All Ready"}
                 </Button>
               </Paper>
             );

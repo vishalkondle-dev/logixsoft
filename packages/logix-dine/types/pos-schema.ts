@@ -9,7 +9,66 @@ import {
   menuItem,
   saleOrder,
   saleOrderItem,
+  orderItemAudit,
 } from '../schemas/pos-schema';
+
+export const ORDER_ITEM_STATUSES = [
+  'ORDERED',
+  'PREPARING',
+  'PREPARED',
+  'SERVED',
+  'CANCELLED',
+] as const;
+export type OrderItemStatus = (typeof ORDER_ITEM_STATUSES)[number];
+
+export const ORDER_STATUSES = [
+  'ORDERED',
+  'PREPARING',
+  'PREPARED',
+  'SERVED',
+  'CANCELLED',
+] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export function computeOrderStatus(itemStatuses: (string | null | undefined)[]): OrderStatus {
+  if (!itemStatuses || itemStatuses.length === 0) return 'ORDERED';
+
+  const statuses = itemStatuses.map((s) => (s ? s.toUpperCase() : 'ORDERED'));
+
+  const allCancelled = statuses.every((s) => s === 'CANCELLED');
+  if (allCancelled) return 'CANCELLED';
+
+  const active = statuses.filter((s) => s !== 'CANCELLED');
+  if (active.length === 0) return 'CANCELLED';
+
+  const allServed = active.every((s) => s === 'SERVED');
+  if (allServed) return 'SERVED';
+
+  const allPreparedOrServed = active.every((s) => s === 'PREPARED' || s === 'SERVED');
+  if (allPreparedOrServed) return 'PREPARED';
+
+  const anyPreparing = active.some((s) => s === 'PREPARING');
+  if (anyPreparing) return 'PREPARING';
+
+  const anyPreparedOrServed = active.some((s) => s === 'PREPARED' || s === 'SERVED');
+  if (anyPreparedOrServed) return 'PREPARED';
+
+  return 'ORDERED';
+}
+
+export function getNextItemStatus(currentStatus: string | null | undefined): OrderItemStatus | null {
+  const upper = currentStatus ? currentStatus.toUpperCase() : 'ORDERED';
+  switch (upper) {
+    case 'ORDERED':
+      return 'PREPARING';
+    case 'PREPARING':
+      return 'PREPARED';
+    case 'PREPARED':
+      return 'SERVED';
+    default:
+      return null;
+  }
+}
 
 export type RestaurantRow = InferSelectModel<typeof restaurant>;
 export type NewRestaurantRow = InferInsertModel<typeof restaurant>;
@@ -74,8 +133,15 @@ export type JsonSaleOrderRow = Omit<
 
 export type SaleOrderItemRow = InferSelectModel<typeof saleOrderItem>;
 export type NewSaleOrderItemRow = InferInsertModel<typeof saleOrderItem>;
-export type JsonSaleOrderItemRow = Omit<SaleOrderItemRow, 'createdAt'> & {
+export type OrderItemAuditRow = InferSelectModel<typeof orderItemAudit>;
+export type NewOrderItemAuditRow = InferInsertModel<typeof orderItemAudit>;
+export type JsonOrderItemAuditRow = Omit<OrderItemAuditRow, 'createdAt'> & {
   createdAt: string;
+};
+
+export type JsonSaleOrderItemRow = Omit<SaleOrderItemRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
 };
 
 /** A sale order with its items — the primary response shape for billing routes. */

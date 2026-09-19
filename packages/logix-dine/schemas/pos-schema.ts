@@ -205,6 +205,7 @@ export const saleOrder = pgTable(
     tableNo: text('tableNo'),
     customerPhone: text('customerPhone'),
     status: text('status').notNull().default('OPEN'), // OPEN | PAID | VOID
+    orderStatus: text('orderStatus').notNull().default('ORDERED'), // ORDERED | PREPARING | PREPARED | SERVED | CANCELLED
     subtotalPaise: integer('subtotalPaise').notNull().default(0),
     method: text('method'), // Cash | UPI | QR
     note: text('note'),
@@ -219,7 +220,9 @@ export const saleOrder = pgTable(
   },
   (t) => [
     index('saleOrder_restaurantId_status_idx').on(t.restaurantId, t.status),
+    index('saleOrder_restaurantId_orderStatus_idx').on(t.restaurantId, t.orderStatus),
     index('saleOrder_outletId_idx').on(t.outletId),
+    index('saleOrder_outletId_orderStatus_idx').on(t.outletId, t.orderStatus),
   ],
 );
 
@@ -238,12 +241,41 @@ export const saleOrderItem = pgTable(
     nameSnapshot: text('nameSnapshot').notNull(),
     pricePaiseSnapshot: integer('pricePaiseSnapshot').notNull(),
     qty: integer('qty').notNull(),
+    status: text('status').notNull().default('ORDERED'), // ORDERED | PREPARING | PREPARED | SERVED | CANCELLED
     note: text('note'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
     updatedBy: text('updatedBy'),
   },
-  (t) => [index('saleOrderItem_orderId_idx').on(t.orderId)],
+  (t) => [
+    index('saleOrderItem_orderId_idx').on(t.orderId),
+    index('saleOrderItem_orderId_status_idx').on(t.orderId, t.status),
+  ],
+);
+
+// ─── Order Item Audit ─────────────────────────────────────────────────────────
+
+export const orderItemAudit = pgTable(
+  'orderItemAudit',
+  {
+    id: text('id').primaryKey(),
+    orderId: text('orderId')
+      .notNull()
+      .references(() => saleOrder.id, { onDelete: 'cascade' }),
+    orderItemId: text('orderItemId')
+      .notNull()
+      .references(() => saleOrderItem.id, { onDelete: 'cascade' }),
+    fromStatus: text('fromStatus'),
+    toStatus: text('toStatus').notNull(),
+    changedBy: text('changedBy'),
+    changedByRole: text('changedByRole'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('orderItemAudit_orderItemId_idx').on(t.orderItemId),
+    index('orderItemAudit_orderId_idx').on(t.orderId),
+  ],
 );
 
 // ─── Combined schema export ───────────────────────────────────────────────────
@@ -258,4 +290,5 @@ export const posSchema = {
   menuItem,
   saleOrder,
   saleOrderItem,
+  orderItemAudit,
 };

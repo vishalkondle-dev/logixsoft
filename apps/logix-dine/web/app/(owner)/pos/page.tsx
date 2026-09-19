@@ -18,7 +18,7 @@ import {
   startOrder, settleOrder, markKotPrinted, createSettledOrder,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
-import { printTicket } from "@/lib/print";
+import { printTicket, printTicketSilent } from "@/lib/print";
 
 interface LocalCartItem {
   itemId: string;
@@ -439,10 +439,9 @@ export default function POSPage() {
       setSettleModal(false);
       if (cartOpen) setCartOpen(false);
 
-      // Print KOT + Bill in background
-      printTicket(buildKotPayload(result, restaurant)).then(() => {
-        if (restaurant) printTicket(buildBillPayload(result, restaurant)).catch(() => {});
-      }).catch(() => {});
+      // Print KOT + Bill silently (BLE only — no browser popup after settle)
+      printTicketSilent(buildKotPayload(result, restaurant)).catch(() => {});
+      printTicketSilent(buildBillPayload(result, restaurant)).catch(() => {});
 
       const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
       notifications.show({

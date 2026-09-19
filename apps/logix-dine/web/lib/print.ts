@@ -27,6 +27,25 @@ export async function printTicket(payload: TicketPayload): Promise<PrintResult> 
   }
 }
 
+/**
+ * Print only if a BLE printer is paired — no browser popup fallback.
+ * Use this for background/silent print where a popup would disrupt UX
+ * (e.g. after Settle & Send, where the modal just closed).
+ */
+export async function printTicketSilent(payload: TicketPayload): Promise<PrintResult> {
+  if (isSupported() && isPaired()) {
+    try {
+      const bytes = encodeTicket(payload);
+      await blePrint(bytes);
+      return "ble";
+    } catch (err) {
+      console.error("[print] BLE silent print failed:", err);
+      return "error";
+    }
+  }
+  return "error"; // No printer paired — skip silently
+}
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

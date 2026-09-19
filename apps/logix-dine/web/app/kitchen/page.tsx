@@ -284,14 +284,16 @@ export default function KitchenPage() {
                           </Group>
                         </Group>
 
-                        {/* Small screens layout: status and actions one by one on next line */}
+                        {/* Small screens layout: 2-row clean card with icons only */}
                         <Stack gap={6} hiddenFrom="sm">
-                          <Group justify="space-between" align="center">
+                          {/* Row 1: Item name & quantity */}
+                          <Group justify="space-between" align="center" wrap="nowrap">
                             <Text
                               size="sm"
                               fw={600}
                               c={isCancelled ? "gray.6" : "white"}
                               style={{ textDecoration: isCancelled ? "line-through" : "none" }}
+                              lineClamp={1}
                             >
                               {item.nameSnapshot}
                             </Text>
@@ -301,8 +303,8 @@ export default function KitchenPage() {
                             <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>
                           )}
 
-                          {/* Line 2: Status */}
-                          <div>
+                          {/* Row 2: Status badge on left, Action icons on right */}
+                          <Group justify="space-between" align="center" mt={2}>
                             <Badge
                               size="xs"
                               variant="light"
@@ -311,38 +313,39 @@ export default function KitchenPage() {
                             >
                               {itemVisual.label}
                             </Badge>
-                          </div>
 
-                          {/* Line 3: Actions */}
-                          {(canNext || canClose) && (
-                            <Group gap="xs" align="center" wrap="wrap">
+                            <Group gap={6} align="center">
                               {canNext && nextStatus && (
-                                <Button
-                                  size="xs"
-                                  color="dinePrimary"
-                                  variant="filled"
-                                  loading={updatingItemId === item.id}
-                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "next" })}
-                                  leftSection={<IconArrowRight size={13} />}
-                                >
-                                  Next: {getStatusVisual(nextStatus).label}
-                                </Button>
+                                <Tooltip label={`Next: ${getStatusVisual(nextStatus).label}`} withArrow position="top">
+                                  <ActionIcon
+                                    size="sm"
+                                    color="dinePrimary"
+                                    variant="filled"
+                                    loading={updatingItemId === item.id}
+                                    onClick={() => handleUpdateItemStatus(order.id, item, { action: "next" })}
+                                    aria-label={`Advance to ${nextStatus}`}
+                                  >
+                                    <IconArrowRight size={13} />
+                                  </ActionIcon>
+                                </Tooltip>
                               )}
 
                               {canClose && (
-                                <Button
-                                  size="xs"
-                                  color="red"
-                                  variant="subtle"
-                                  loading={updatingItemId === item.id}
-                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "close" })}
-                                  leftSection={<IconX size={13} />}
-                                >
-                                  Close (Cancel)
-                                </Button>
+                                <Tooltip label="Close (Cancel item)" withArrow position="top">
+                                  <ActionIcon
+                                    size="sm"
+                                    color="red"
+                                    variant="subtle"
+                                    loading={updatingItemId === item.id}
+                                    onClick={() => handleUpdateItemStatus(order.id, item, { action: "close" })}
+                                    aria-label="Cancel item"
+                                  >
+                                    <IconX size={13} />
+                                  </ActionIcon>
+                                </Tooltip>
                               )}
                             </Group>
-                          )}
+                          </Group>
                         </Stack>
                       </Paper>
                     );

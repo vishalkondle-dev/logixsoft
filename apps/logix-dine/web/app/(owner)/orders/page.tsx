@@ -366,9 +366,9 @@ export default function OrdersPage() {
                       </Group>
                     </Group>
 
-                    {/* Small screens layout: status and actions one by one on next line */}
+                    {/* Small screens layout: 2-row clean card with icons only */}
                     <Stack gap={6} hiddenFrom="sm">
-                      {/* Line 1: Item details */}
+                      {/* Row 1: Item name & quantity on left, price on right */}
                       <Group justify="space-between" align="flex-start" wrap="nowrap">
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <Group gap="xs" align="center" wrap="wrap">
@@ -392,8 +392,8 @@ export default function OrdersPage() {
                         </Text>
                       </Group>
 
-                      {/* Line 2: Status */}
-                      <div>
+                      {/* Row 2: Status badge on left, Action icons on right */}
+                      <Group justify="space-between" align="center" mt={2}>
                         <Badge
                           size="sm"
                           variant="light"
@@ -402,38 +402,39 @@ export default function OrdersPage() {
                         >
                           {itemVisual.label}
                         </Badge>
-                      </div>
 
-                      {/* Line 3: Actions */}
-                      {(canNext || canClose) && (
-                        <Group gap="xs" align="center" wrap="wrap">
+                        <Group gap={6} align="center">
                           {canNext && nextStatus && (
-                            <Button
-                              size="xs"
-                              variant="light"
-                              color="dinePrimary"
-                              loading={updatingItemId === item.id}
-                              onClick={() => handleUpdateItemStatus(item, { action: "next" })}
-                              leftSection={<IconArrowRight size={13} />}
-                            >
-                              Next: {getStatusVisual(nextStatus).label}
-                            </Button>
+                            <Tooltip label={`Next: Mark ${getStatusVisual(nextStatus).label}`} withArrow position="top">
+                              <ActionIcon
+                                size="md"
+                                variant="light"
+                                color="dinePrimary"
+                                loading={updatingItemId === item.id}
+                                onClick={() => handleUpdateItemStatus(item, { action: "next" })}
+                                aria-label={`Advance item to ${nextStatus}`}
+                              >
+                                <IconArrowRight size={15} />
+                              </ActionIcon>
+                            </Tooltip>
                           )}
 
                           {canClose && (
-                            <Button
-                              size="xs"
-                              variant="subtle"
-                              color="red"
-                              loading={updatingItemId === item.id}
-                              onClick={() => handleUpdateItemStatus(item, { action: "close" })}
-                              leftSection={<IconX size={13} />}
-                            >
-                              Close (Cancel)
-                            </Button>
+                            <Tooltip label="Cancel item" withArrow position="top">
+                              <ActionIcon
+                                size="md"
+                                variant="subtle"
+                                color="red"
+                                loading={updatingItemId === item.id}
+                                onClick={() => handleUpdateItemStatus(item, { action: "close" })}
+                                aria-label="Cancel item"
+                              >
+                                <IconX size={15} />
+                              </ActionIcon>
+                            </Tooltip>
                           )}
                         </Group>
-                      )}
+                      </Group>
                     </Stack>
                   </Paper>
                 );

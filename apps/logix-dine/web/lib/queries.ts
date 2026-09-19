@@ -44,8 +44,8 @@ import {
 export const qk = {
   bootstrap: (restaurantId: string, outletId: string | null) =>
     ["bootstrap", restaurantId, outletId] as const,
-  orders: (restaurantId: string, params: Record<string, any>) =>
-    ["orders", restaurantId, params] as const,
+  orders: (restaurantId: string, params?: Record<string, any>) =>
+    ["orders", restaurantId, params ?? {}] as const,
   kitchenOrders: (restaurantId: string, outletId: string | null) =>
     ["kitchenOrders", restaurantId, outletId] as const,
   categories: (restaurantId: string, outletId: string | null) =>
@@ -77,7 +77,7 @@ export function useBootstrap(restaurantId: string, outletId: string | null) {
 
 export function useOrders(
   restaurantId: string,
-  params: { status?: string; orderStatus?: string; outletId?: string; limit?: number },
+  params: { status?: string; orderStatus?: string; outletId?: string; limit?: number } = {},
   enabled = true,
   options?: { refetchInterval?: number; staleTime?: number },
 ) {

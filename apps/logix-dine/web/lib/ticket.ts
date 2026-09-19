@@ -9,10 +9,11 @@ export interface TicketPayload {
   tableNo: string | null;
   date: string;  // "17/09/2026"
   time: string;  // "05:33 PM"
-  items: { name: string; qty: number; pricePaise: number; note?: string | null }[];
+  items: { name: string; qty: number; pricePaise: number; note?: string | null; round?: number }[];
   subtotalPaise: number;
   method: string | null;
   type: "KOT" | "BILL";
+  round?: number;
 }
 
 /** Format an ISO timestamp in IST (UTC+5:30). */
@@ -29,8 +30,13 @@ function formatIST(iso: string): { date: string; time: string } {
   return { date: `${dd}/${mm}/${yyyy}`, time: `${h12}:${min} ${ampm}` };
 }
 
-export function buildKotPayload(order: any, restaurant: any): TicketPayload {
+export function buildKotPayload(
+  order: any,
+  restaurant: any,
+  options?: { round?: number; items?: any[] }
+): TicketPayload {
   const { date, time } = formatIST(order.order.createdAt);
+  const itemsToPrint = options?.items ?? order.items ?? [];
   return {
     orderId: order.order.id,
     restaurantName: restaurant.name,
@@ -39,20 +45,27 @@ export function buildKotPayload(order: any, restaurant: any): TicketPayload {
     tableNo: order.order.tableNo ?? null,
     date,
     time,
-    items: (order.items ?? []).map((i: any) => ({
+    items: itemsToPrint.map((i: any) => ({
       name: i.nameSnapshot ?? i.name,
       qty: i.qty,
       pricePaise: i.pricePaiseSnapshot ?? i.pricePaise ?? 0,
       note: i.note ?? null,
+      round: i.round,
     })),
     subtotalPaise: order.order.subtotalPaise,
     method: null,
     type: "KOT",
+    round: options?.round,
   };
 }
 
-export function buildBillPayload(order: any, restaurant: any): TicketPayload {
+export function buildBillPayload(
+  order: any,
+  restaurant: any,
+  options?: { items?: any[]; subtotalPaise?: number }
+): TicketPayload {
   const { date, time } = formatIST(order.order.createdAt);
+  const itemsToPrint = options?.items ?? order.items ?? [];
   return {
     orderId: order.order.id,
     restaurantName: restaurant.name,
@@ -61,12 +74,13 @@ export function buildBillPayload(order: any, restaurant: any): TicketPayload {
     tableNo: order.order.tableNo ?? null,
     date,
     time,
-    items: (order.items ?? []).map((i: any) => ({
-      name: i.name,
+    items: itemsToPrint.map((i: any) => ({
+      name: i.nameSnapshot ?? i.name,
       qty: i.qty,
       pricePaise: i.pricePaiseSnapshot ?? i.pricePaise ?? 0,
+      round: i.round,
     })),
-    subtotalPaise: order.order.subtotalPaise,
+    subtotalPaise: options?.subtotalPaise ?? order.order.subtotalPaise,
     method: order.order.paymentMethod ?? null,
     type: "BILL",
   };

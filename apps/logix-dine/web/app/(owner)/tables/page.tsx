@@ -40,6 +40,20 @@ function isTableMatch(tableName: string, orderTableNo?: string | null): boolean 
   return normalizeTable(t1) === normalizeTable(t2);
 }
 
+export interface TableSession {
+  table: any;
+  orders: any[];
+  isOccupied: boolean;
+  totalPaise: number;
+  totalItemsCount: number;
+  allItems: any[];
+  roundsCount: number;
+  tokensStr: string;
+  orderStatus: string;
+  oldestCreatedAt: string;
+  elapsedMinutes: number;
+}
+
 export default function TablesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -93,13 +107,12 @@ export default function TablesPage() {
   const [capacity, setCapacity] = useState<number | string>(4);
 
   // ─── Free Table (Settle & Clear) Modal State ─────────────────────────────────
-  const [freeModalTable, setFreeModalTable] = useState<any | null>(null);
-  const [freeModalOrder, setFreeModalOrder] = useState<any | null>(null);
+  const [freeModalSession, setFreeModalSession] = useState<TableSession | null>(null);
   const [settleMethod, setSettleMethod] = useState<string>("Cash");
   const [isFreeing, setIsFreeing] = useState(false);
 
   // ─── View Order Modal State ──────────────────────────────────────────────────
-  const [viewOrderEntry, setViewOrderEntry] = useState<any | null>(null);
+  const [viewSession, setViewSession] = useState<TableSession | null>(null);
   const [isPrintingBill, setIsPrintingBill] = useState(false);
 
   // ─── QR Code Modal State ─────────────────────────────────────────────────────
@@ -110,31 +123,67 @@ export default function TablesPage() {
   const updateTableMut = useUpdateTable(restaurantId, outletId);
   const deleteTableMut = useDeleteTable(restaurantId, outletId);
 
-  // ─── Map Active Open Orders to Tables ─────────────────────────────────────────
-  const tableOccupancyMap = useMemo(() => {
-    const map = new Map<string, any>(); // key: normalized table name -> orderEntry
+  // ─── Multi-Order / Multi-Round Active Orders for Table ────────────────────────
+  const getTableActiveOrders = (table: any): any[] => {
+    const matched: any[] = [];
+    const seenIds = new Set<string>();
     for (const entry of orders) {
-      if (entry.order?.tableNo && entry.order?.tableNo !== "Takeaway") {
-        const norm = normalizeTable(entry.order.tableNo);
-        if (!map.has(norm)) {
-          map.set(norm, entry);
+      if (entry.order?.tableNo && isTableMatch(table.name, entry.order.tableNo)) {
+        if (!seenIds.has(entry.order.id)) {
+          seenIds.add(entry.order.id);
+          matched.push(entry);
         }
       }
     }
-    return map;
-  }, [orders]);
+    return matched;
+  };
 
-  // Helper to get active order for a given table
-  const getTableActiveOrder = (table: any) => {
-    // 1. Direct name match
-    for (const entry of orders) {
-      if (isTableMatch(table.name, entry.order?.tableNo)) {
-        return entry;
-      }
+  const getTableSession = (table: any): TableSession => {
+    const tableOrders = getTableActiveOrders(table);
+    const isOccupied = tableOrders.length > 0;
+    if (!isOccupied) {
+      return {
+        table,
+        orders: [],
+        isOccupied: false,
+        totalPaise: 0,
+        totalItemsCount: 0,
+        allItems: [],
+        roundsCount: 0,
+        tokensStr: "",
+        orderStatus: "FREE",
+        oldestCreatedAt: "",
+        elapsedMinutes: 0,
+      };
     }
-    // 2. Normalized match
-    const norm = normalizeTable(table.name);
-    return tableOccupancyMap.get(norm) ?? null;
+
+    const allItems = tableOrders.flatMap((o: any) => o.items ?? []);
+    const totalPaise = tableOrders.reduce((sum: number, o: any) => sum + (o.order?.subtotalPaise || 0), 0);
+    const maxItemRound = allItems.reduce((m: number, it: any) => Math.max(m, it.round || 1), 1);
+    const roundsCount = Math.max(tableOrders.length, maxItemRound);
+    const tokensStr = tableOrders.map((o: any) => `#${o.order.orderNo}`).join(", ");
+    const oldestCreatedAt = tableOrders.reduce(
+      (oldest: string, o: any) => (!oldest || new Date(o.order.createdAt) < new Date(oldest) ? o.order.createdAt : oldest),
+      ""
+    );
+    const elapsedMinutes = oldestCreatedAt
+      ? Math.max(0, Math.floor((Date.now() - new Date(oldestCreatedAt).getTime()) / 60000))
+      : 0;
+    const orderStatus = tableOrders[0]?.order?.orderStatus || "ORDERED";
+
+    return {
+      table,
+      orders: tableOrders,
+      isOccupied: true,
+      totalPaise,
+      totalItemsCount: allItems.length,
+      allItems,
+      roundsCount,
+      tokensStr,
+      orderStatus,
+      oldestCreatedAt,
+      elapsedMinutes,
+    };
   };
 
   // ─── Unique Sections ─────────────────────────────────────────────────────────
@@ -157,8 +206,8 @@ export default function TablesPage() {
     for (const t of tables) {
       if (t.active) {
         totalSeats += t.capacity || 0;
-        const activeOrder = getTableActiveOrder(t);
-        if (activeOrder) {
+        const session = getTableSession(t);
+        if (session.isOccupied) {
           occupied++;
         } else {
           free++;
@@ -188,11 +237,9 @@ export default function TablesPage() {
       }
 
       // Status filter
-      const activeOrder = getTableActiveOrder(t);
-      const isOccupied = Boolean(activeOrder);
-
-      if (statusFilter === "FREE" && isOccupied) return false;
-      if (statusFilter === "OCCUPIED" && !isOccupied) return false;
+      const session = getTableSession(t);
+      if (statusFilter === "FREE" && session.isOccupied) return false;
+      if (statusFilter === "OCCUPIED" && !session.isOccupied) return false;
 
       return true;
     });
@@ -254,22 +301,25 @@ export default function TablesPage() {
   };
 
   // Open "Free Table" confirmation modal
-  const handleOpenFreeModal = (table: any, orderEntry: any) => {
-    setFreeModalTable(table);
-    setFreeModalOrder(orderEntry);
+  const handleOpenFreeModal = (session: TableSession) => {
+    setFreeModalSession(session);
     setSettleMethod("Cash");
   };
 
-  // Action: Settle order and free table
+  // Action: Settle all active orders for this table and free table
   const handleSettleAndFreeTable = async () => {
-    if (!freeModalOrder?.order?.id) return;
+    if (!freeModalSession || freeModalSession.orders.length === 0) return;
     setIsFreeing(true);
     try {
-      await settleOrder(
-        restaurantId,
-        freeModalOrder.order.id,
-        { method: settleMethod },
-        outletId,
+      await Promise.all(
+        freeModalSession.orders.map((o: any) =>
+          settleOrder(
+            restaurantId,
+            o.order.id,
+            { method: settleMethod },
+            outletId,
+          )
+        )
       );
 
       // Invalidate both orders and tables queries
@@ -278,13 +328,12 @@ export default function TablesPage() {
 
       notifications.show({
         title: "Table Freed",
-        message: `Table "${freeModalTable?.name}" is now Free. Paid via ${settleMethod}.`,
+        message: `Table "${freeModalSession.table.name}" is now Free. Paid via ${settleMethod} (${freeModalSession.roundsCount} round${freeModalSession.roundsCount !== 1 ? "s" : ""}).`,
         color: "teal",
         icon: <IconCheck size={16} />,
       });
 
-      setFreeModalTable(null);
-      setFreeModalOrder(null);
+      setFreeModalSession(null);
     } catch (err: any) {
       notifications.show({ title: "Failed to free table", message: err.message || "Error settling order", color: "red" });
     } finally {
@@ -292,26 +341,29 @@ export default function TablesPage() {
     }
   };
 
-  // Action: Void order and release table immediately
+  // Action: Void order(s) and release table immediately
   const handleVoidAndReleaseTable = async () => {
-    if (!freeModalOrder?.order?.id) return;
-    if (!confirm(`Release table "${freeModalTable?.name}" and void active order #${freeModalOrder.order.orderNo}?`)) return;
+    if (!freeModalSession || freeModalSession.orders.length === 0) return;
+    if (!confirm(`Release table "${freeModalSession.table.name}" and void active orders (${freeModalSession.tokensStr})?`)) return;
     setIsFreeing(true);
     try {
-      await voidOrder(restaurantId, freeModalOrder.order.id, outletId);
+      await Promise.all(
+        freeModalSession.orders.map((o: any) =>
+          voidOrder(restaurantId, o.order.id, outletId)
+        )
+      );
 
       queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId, {}) });
       queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
 
       notifications.show({
         title: "Table Released",
-        message: `Table "${freeModalTable?.name}" is now Free (Order #${freeModalOrder.order.orderNo} cancelled).`,
+        message: `Table "${freeModalSession.table.name}" is now Free.`,
         color: "blue",
         icon: <IconCheck size={16} />,
       });
 
-      setFreeModalTable(null);
-      setFreeModalOrder(null);
+      setFreeModalSession(null);
     } catch (err: any) {
       notifications.show({ title: "Failed to release table", message: err.message || "Error voiding order", color: "red" });
     } finally {
@@ -319,12 +371,16 @@ export default function TablesPage() {
     }
   };
 
-  // Print bill from modal
-  const handlePrintBill = async (orderEntry: any) => {
-    if (!restaurant) return;
+  // Print consolidated bill from modal
+  const handlePrintBill = async (session: TableSession) => {
+    if (!restaurant || !session.orders.length) return;
     setIsPrintingBill(true);
     try {
-      const payload = buildBillPayload(orderEntry, restaurant);
+      const primaryOrder = session.orders[0];
+      const payload = buildBillPayload(primaryOrder, restaurant, {
+        items: session.allItems,
+        subtotalPaise: session.totalPaise,
+      });
       const result = await printTicket(payload);
       notifications.show({
         title: "Bill Printed",
@@ -547,17 +603,11 @@ export default function TablesPage() {
       ) : (
         <SimpleGrid cols={{ base: 1, xs: 2, sm: 3, md: 4, lg: 5 }} spacing="md">
           {filteredTables.map((table: any) => {
-            const activeOrderEntry = getTableActiveOrder(table);
-            const isOccupied = Boolean(activeOrderEntry);
-            const activeOrder = activeOrderEntry?.order;
-            const activeItems = activeOrderEntry?.items ?? [];
+            const session = getTableSession(table);
+            const isOccupied = session.isOccupied;
 
-            const elapsedMinutes = activeOrder?.createdAt
-              ? Math.max(0, Math.floor((Date.now() - new Date(activeOrder.createdAt).getTime()) / 60000))
-              : 0;
-
-            const orderVisual = activeOrder
-              ? getStatusVisual(activeOrder.orderStatus || "ORDERED")
+            const orderVisual = isOccupied
+              ? getStatusVisual(session.orderStatus || "ORDERED")
               : null;
             const OrderIcon = orderVisual?.icon;
 
@@ -648,7 +698,7 @@ export default function TablesPage() {
                   </Group>
 
                   {/* ─── Middle Section: Live Occupancy or Available Status ─────── */}
-                  {isOccupied && activeOrder ? (
+                  {isOccupied ? (
                     <Box
                       p="xs"
                       mb="sm"
@@ -662,7 +712,7 @@ export default function TablesPage() {
                       <Group justify="space-between" align="center" mb={2}>
                         <Group gap={4} align="center">
                           <Text size="xs" fw={800} c="orange.9">
-                            Token #{activeOrder.orderNo}
+                            Token {session.tokensStr}
                           </Text>
                           {orderVisual && OrderIcon && (
                             <Badge size="xs" variant="filled" color={orderVisual.color} leftSection={<OrderIcon size={9} />}>
@@ -671,24 +721,31 @@ export default function TablesPage() {
                           )}
                         </Group>
                         <Text size="sm" fw={800} c="dinePrimary">
-                          ₹{(activeOrder.subtotalPaise / 100).toFixed(0)}
+                          ₹{(session.totalPaise / 100).toFixed(0)}
                         </Text>
                       </Group>
 
                       {/* Seated duration & Items summary */}
                       <Group justify="space-between" align="center" mt={4}>
-                        <Text size="11px" c="dimmed">
-                          {activeItems.length} item{activeItems.length !== 1 ? "s" : ""}
-                        </Text>
+                        <Group gap={6} align="center">
+                          <Text size="11px" c="dimmed">
+                            {session.totalItemsCount} item{session.totalItemsCount !== 1 ? "s" : ""}
+                          </Text>
+                          {session.roundsCount > 1 && (
+                            <Badge size="xs" variant="filled" color="grape" style={{ height: 16, fontSize: 10, padding: "0 5px" }}>
+                              ↻ {session.roundsCount} Rounds
+                            </Badge>
+                          )}
+                        </Group>
                         <Text size="11px" fw={600} c="orange.8">
-                          {elapsedMinutes}m seated
+                          {session.elapsedMinutes}m seated
                         </Text>
                       </Group>
 
                       {/* Brief item preview */}
-                      {activeItems.length > 0 && (
+                      {session.allItems.length > 0 && (
                         <Text size="10px" c="dimmed" lineClamp={1} mt={3}>
-                          {activeItems.map((i: any) => `${i.nameSnapshot || i.name} (${i.qty})`).join(", ")}
+                          {session.allItems.map((i: any) => `${i.nameSnapshot || i.name} (${i.qty})${i.round && i.round > 1 ? ` [R${i.round}]` : ""}`).join(", ")}
                         </Text>
                       )}
                     </Box>
@@ -722,19 +779,19 @@ export default function TablesPage() {
                         color="teal"
                         variant="filled"
                         leftSection={<IconCheck size={14} />}
-                        onClick={() => handleOpenFreeModal(table, activeOrderEntry)}
+                        onClick={() => handleOpenFreeModal(session)}
                       >
                         Free Table
                       </Button>
 
-                      {/* Secondary actions: View Order & + Add Items */}
+                      {/* Secondary actions: View Order & + Add Round */}
                       <Group gap={6} grow>
                         <Button
                           size="xs"
                           variant="light"
                           color="gray"
                           leftSection={<IconEye size={13} />}
-                          onClick={() => setViewOrderEntry(activeOrderEntry)}
+                          onClick={() => setViewSession(session)}
                         >
                           View Bill
                         </Button>
@@ -746,7 +803,7 @@ export default function TablesPage() {
                           leftSection={<IconShoppingCart size={13} />}
                           onClick={() => router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
                         >
-                          + Add
+                          + Add Round
                         </Button>
                       </Group>
                     </Stack>
@@ -771,34 +828,33 @@ export default function TablesPage() {
 
       {/* ─── Free Table (Settle & Clear) Modal ─────────────────────────────────── */}
       <Modal
-        opened={Boolean(freeModalTable && freeModalOrder)}
+        opened={Boolean(freeModalSession)}
         onClose={() => {
           if (!isFreeing) {
-            setFreeModalTable(null);
-            setFreeModalOrder(null);
+            setFreeModalSession(null);
           }
         }}
-        title={`Free Table "${freeModalTable?.name}"`}
+        title={`Free Table "${freeModalSession?.table.name}"`}
         size="md"
       >
-        {freeModalOrder && (
+        {freeModalSession && (
           <Stack gap="md">
             <Paper withBorder p="sm" radius="md" style={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}>
               <Group justify="space-between" align="center" mb="xs">
                 <div>
-                  <Text size="sm" fw={700}>Token #{freeModalOrder.order.orderNo}</Text>
+                  <Text size="sm" fw={700}>Token {freeModalSession.tokensStr}</Text>
                   <Text size="xs" c="dimmed">
-                    Seated {Math.max(0, Math.floor((Date.now() - new Date(freeModalOrder.order.createdAt).getTime()) / 60000))}m ago
+                    Seated {freeModalSession.elapsedMinutes}m ago · {freeModalSession.roundsCount} Round{freeModalSession.roundsCount !== 1 ? "s" : ""}
                   </Text>
                 </div>
-                <Badge size="md" color="dinePrimary" variant="filled">
-                  Total: ₹{(freeModalOrder.order.subtotalPaise / 100).toFixed(0)}
+                <Badge size="lg" color="dinePrimary" variant="filled">
+                  Total: ₹{(freeModalSession.totalPaise / 100).toFixed(0)}
                 </Badge>
               </Group>
 
               {/* Items summary */}
               <Text size="xs" c="dimmed">
-                {freeModalOrder.items?.map((i: any) => `${i.nameSnapshot || i.name} × ${i.qty}`).join(", ")}
+                {freeModalSession.allItems?.map((i: any) => `${i.nameSnapshot || i.name} × ${i.qty}${i.round && i.round > 1 ? ` [R${i.round}]` : ""}`).join(", ")}
               </Text>
             </Paper>
 
@@ -838,10 +894,7 @@ export default function TablesPage() {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => {
-                    setFreeModalTable(null);
-                    setFreeModalOrder(null);
-                  }}
+                  onClick={() => setFreeModalSession(null)}
                   disabled={isFreeing}
                 >
                   Cancel
@@ -855,7 +908,7 @@ export default function TablesPage() {
                   loading={isFreeing}
                   onClick={handleSettleAndFreeTable}
                 >
-                  Settle & Free Table (₹{(freeModalOrder.order.subtotalPaise / 100).toFixed(0)})
+                  Settle & Free Table (₹{(freeModalSession.totalPaise / 100).toFixed(0)})
                 </Button>
               </Group>
             </Group>
@@ -865,108 +918,122 @@ export default function TablesPage() {
 
       {/* ─── Active Order Bill / View Modal ─────────────────────────────────────── */}
       <Modal
-        opened={Boolean(viewOrderEntry)}
-        onClose={() => setViewOrderEntry(null)}
-        title={viewOrderEntry ? `Table ${viewOrderEntry.order.tableNo} · Token #${viewOrderEntry.order.orderNo}` : "Order"}
+        opened={Boolean(viewSession)}
+        onClose={() => setViewSession(null)}
+        title={viewSession ? `Table ${viewSession.table.name} · Bill Preview (${viewSession.roundsCount} Round${viewSession.roundsCount !== 1 ? "s" : ""})` : "Order"}
         size="md"
       >
-        {viewOrderEntry && (
-          <Stack gap="sm">
-            <Group justify="space-between" align="center">
-              <div>
-                <Text size="xs" c="dimmed" ff="monospace">ID: {viewOrderEntry.order.id}</Text>
-                <Text size="xs" c="dimmed">
-                  Placed at {new Date(viewOrderEntry.order.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                </Text>
-              </div>
-              <Group gap="xs">
-                {(() => {
-                  const oVisual = getStatusVisual(viewOrderEntry.order.orderStatus || "ORDERED");
-                  const OIcon = oVisual.icon;
-                  const pVisual = PAYMENT_STATUS_CONFIG[viewOrderEntry.order.status] || { color: "gray", label: viewOrderEntry.order.status };
-                  return (
-                    <>
-                      <Badge size="xs" color={oVisual.color} leftSection={<OIcon size={10} />}>
-                        {oVisual.label}
-                      </Badge>
-                      <Badge size="xs" variant="outline" color={pVisual.color}>
-                        {pVisual.label}
-                      </Badge>
-                    </>
-                  );
-                })()}
+        {viewSession && (() => {
+          // Group items by round number
+          const roundMap = new Map<number, any[]>();
+          for (const item of viewSession.allItems) {
+            const r = item.round || 1;
+            if (!roundMap.has(r)) roundMap.set(r, []);
+            roundMap.get(r)!.push(item);
+          }
+          const roundNumbers = Array.from(roundMap.keys()).sort((a, b) => a - b);
+
+          return (
+            <Stack gap="sm">
+              <Group justify="space-between" align="center">
+                <div>
+                  <Text size="xs" c="dimmed" fw={600}>Tokens: {viewSession.tokensStr}</Text>
+                  <Text size="xs" c="dimmed">
+                    Seated {viewSession.elapsedMinutes}m ago · {viewSession.totalItemsCount} item{viewSession.totalItemsCount !== 1 ? "s" : ""}
+                  </Text>
+                </div>
+                <Badge size="sm" color="orange" variant="light">
+                  {viewSession.roundsCount} Round{viewSession.roundsCount !== 1 ? "s" : ""} Ordered
+                </Badge>
               </Group>
-            </Group>
 
-            <Divider my="xs" />
+              <Divider my="xs" />
 
-            {/* Items list */}
-            <Text size="sm" fw={700}>Order Items ({viewOrderEntry.items?.length ?? 0}):</Text>
-            <Stack gap={6}>
-              {viewOrderEntry.items?.map((item: any) => {
-                const itemVisual = getStatusVisual(item.status || "ORDERED");
-                return (
-                  <Group key={item.id} justify="space-between" align="center">
-                    <Group gap="xs" align="center">
-                      <Text size="sm" fw={600}>{item.nameSnapshot || item.name}</Text>
-                      <Badge size="xs" variant="light" color="gray">×{item.qty}</Badge>
-                      <Badge size="xs" variant="dot" color={itemVisual.color}>{itemVisual.label}</Badge>
-                    </Group>
-                    <Text size="sm" fw={600} c="dimmed">
-                      ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
-                    </Text>
-                  </Group>
-                );
-              })}
+              {/* Grouped items by Round */}
+              <Stack gap="md">
+                {roundNumbers.map((rNum) => {
+                  const items = roundMap.get(rNum) || [];
+                  const roundPaise = items.reduce((sum, it) => sum + ((it.pricePaiseSnapshot ?? it.pricePaise ?? 0) * it.qty), 0);
+                  return (
+                    <Paper key={rNum} withBorder p="xs" radius="sm" style={{ backgroundColor: "rgba(0, 0, 0, 0.01)" }}>
+                      <Group justify="space-between" align="center" mb="xs">
+                        <Badge size="xs" color={rNum === 1 ? "blue" : "grape"} variant="filled">
+                          Round {rNum}
+                        </Badge>
+                        <Text size="xs" fw={700} c="dimmed">
+                          ₹{(roundPaise / 100).toFixed(0)}
+                        </Text>
+                      </Group>
+
+                      <Stack gap={6}>
+                        {items.map((item: any, idx: number) => {
+                          const itemVisual = getStatusVisual(item.status || "ORDERED");
+                          return (
+                            <Group key={item.id || idx} justify="space-between" align="center">
+                              <Group gap="xs" align="center">
+                                <Text size="sm" fw={600}>{item.nameSnapshot || item.name}</Text>
+                                <Badge size="xs" variant="light" color="gray">×{item.qty}</Badge>
+                                <Badge size="xs" variant="dot" color={itemVisual.color}>{itemVisual.label}</Badge>
+                              </Group>
+                              <Text size="sm" fw={600} c="dimmed">
+                                ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
+                              </Text>
+                            </Group>
+                          );
+                        })}
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+
+              <Divider my="xs" />
+
+              <Group justify="space-between" align="center">
+                <Text fw={700} size="md">Grand Total</Text>
+                <Text fw={800} size="xl" c="dinePrimary">
+                  ₹{(viewSession.totalPaise / 100).toFixed(0)}
+                </Text>
+              </Group>
+
+              <Group grow mt="md">
+                <Button
+                  variant="light"
+                  color="gray"
+                  leftSection={<IconPrinter size={15} />}
+                  loading={isPrintingBill}
+                  onClick={() => handlePrintBill(viewSession)}
+                >
+                  Print Bill
+                </Button>
+
+                <Button
+                  variant="light"
+                  color="dinePrimary"
+                  leftSection={<IconShoppingCart size={15} />}
+                  onClick={() => {
+                    router.push(`/pos?table=${encodeURIComponent(viewSession.table.name)}&outletId=${outletId}`);
+                    setViewSession(null);
+                  }}
+                >
+                  + Add Round
+                </Button>
+
+                <Button
+                  color="teal"
+                  leftSection={<IconCheck size={15} />}
+                  onClick={() => {
+                    const sess = viewSession;
+                    setViewSession(null);
+                    handleOpenFreeModal(sess);
+                  }}
+                >
+                  Free Table
+                </Button>
+              </Group>
             </Stack>
-
-            <Divider my="xs" />
-
-            <Group justify="space-between" align="center">
-              <Text fw={700}>Total Amount</Text>
-              <Text fw={800} size="lg" c="dinePrimary">
-                ₹{(viewOrderEntry.order.subtotalPaise / 100).toFixed(0)}
-              </Text>
-            </Group>
-
-            <Group grow mt="md">
-              <Button
-                variant="light"
-                color="gray"
-                leftSection={<IconPrinter size={15} />}
-                loading={isPrintingBill}
-                onClick={() => handlePrintBill(viewOrderEntry)}
-              >
-                Print Bill
-              </Button>
-
-              <Button
-                variant="light"
-                color="dinePrimary"
-                leftSection={<IconShoppingCart size={15} />}
-                onClick={() => {
-                  router.push(`/pos?table=${encodeURIComponent(viewOrderEntry.order.tableNo)}&outletId=${outletId}`);
-                  setViewOrderEntry(null);
-                }}
-              >
-                + Add Items
-              </Button>
-
-              <Button
-                color="teal"
-                leftSection={<IconCheck size={15} />}
-                onClick={() => {
-                  const t = tables.find((tbl: any) => isTableMatch(tbl.name, viewOrderEntry.order.tableNo)) || { name: viewOrderEntry.order.tableNo };
-                  const ord = viewOrderEntry;
-                  setViewOrderEntry(null);
-                  handleOpenFreeModal(t, ord);
-                }}
-              >
-                Free Table
-              </Button>
-            </Group>
-          </Stack>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* ─── Table QR Code Modal ────────────────────────────────────────────────── */}

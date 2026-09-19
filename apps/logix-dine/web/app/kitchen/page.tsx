@@ -240,6 +240,9 @@ export default function KitchenPage() {
                                 {item.nameSnapshot}
                               </Text>
                               <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
+                              {item.round && item.round > 1 && (
+                                <Badge size="xs" color="indigo" variant="light">R{item.round}</Badge>
+                              )}
                             </Group>
                             {item.note && (
                               <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>
@@ -306,7 +309,12 @@ export default function KitchenPage() {
                             >
                               {item.nameSnapshot}
                             </Text>
-                            <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
+                            <Group gap={4} align="center" wrap="nowrap">
+                              {item.round && item.round > 1 && (
+                                <Badge size="xs" color="indigo" variant="light">R{item.round}</Badge>
+                              )}
+                              <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
+                            </Group>
                           </Group>
                           {item.note && (
                             <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>

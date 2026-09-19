@@ -107,10 +107,10 @@ table{width:100%;border-collapse:collapse;font-size:12px}
 <div class="c"><b>${esc(payload.restaurantName.toUpperCase())}</b></div>
 ${payload.restaurantAddress ? `<div class="c" style="font-size:10px">${esc(payload.restaurantAddress)}</div>` : ""}
 <hr class="d"/>
-<div class="c"><b>${isKot ? "KOT – KITCHEN ORDER" : "TAX INVOICE"}</b></div>
+<div class="c"><b>${isKot ? (payload.round && payload.round > 1 ? `KOT – ROUND ${payload.round}` : "KOT – KITCHEN ORDER") : "TAX INVOICE"}</b></div>
 <hr class="d"/>
 <table>
-  <tr><td><b>Token #${payload.orderNo}</b></td><td style="text-align:right">${payload.tableNo ? `Table: ${esc(payload.tableNo)}` : ""}</td></tr>
+  <tr><td><b>Token #${payload.orderNo}${payload.round && payload.round > 1 ? ` (R${payload.round})` : ""}</b></td><td style="text-align:right">${payload.tableNo ? `Table: ${esc(payload.tableNo)}` : ""}</td></tr>
   ${payload.orderId ? `<tr><td colspan="2" style="font-size:10px;color:#555">Order ID: ${esc(payload.orderId)}</td></tr>` : ""}
   <tr><td>${payload.time}</td><td style="text-align:right">${payload.date}</td></tr>
 </table>

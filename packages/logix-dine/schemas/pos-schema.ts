@@ -242,6 +242,7 @@ export const saleOrderItem = pgTable(
     pricePaiseSnapshot: integer('pricePaiseSnapshot').notNull(),
     qty: integer('qty').notNull(),
     status: text('status').notNull().default('ORDERED'), // ORDERED | PREPARING | PREPARED | SERVED | CANCELLED
+    round: integer('round').notNull().default(1),
     note: text('note'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
@@ -251,6 +252,7 @@ export const saleOrderItem = pgTable(
   (t) => [
     index('saleOrderItem_orderId_idx').on(t.orderId),
     index('saleOrderItem_orderId_status_idx').on(t.orderId, t.status),
+    index('saleOrderItem_orderId_round_idx').on(t.orderId, t.round),
   ],
 );
 

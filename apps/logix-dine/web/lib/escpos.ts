@@ -57,14 +57,14 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
 
   // ── Type label ──
   push(BOLD_ON);
-  push(centered(p.type === "KOT" ? "KOT - KITCHEN ORDER" : "TAX INVOICE"));
+  push(centered(p.type === "KOT" ? (p.round && p.round > 1 ? `KOT - ROUND ${p.round}` : "KOT - KITCHEN ORDER") : "TAX INVOICE"));
   push(BOLD_OFF);
   push(equals());
 
   // ── Order meta ──
   push(ALIGN_LEFT);
   const tablePart = p.tableNo ? `Table: ${p.tableNo}` : "";
-  push(twoCol(`Token #: ${p.orderNo}`, tablePart));
+  push(twoCol(`Token #: ${p.orderNo}${p.round && p.round > 1 ? ` (R${p.round})` : ""}`, tablePart));
   if (p.orderId) push(row(`Order ID: ${p.orderId}`));
   push(twoCol(`Time: ${p.time}`, `Date: ${p.date}`));
   push(dashes());

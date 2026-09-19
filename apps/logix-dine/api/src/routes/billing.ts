@@ -10,6 +10,7 @@ import {
   StartOrderSchema,
   CreateSettledSchema,
   AddOrderItemSchema,
+  AddOrderRoundSchema,
   UpdateOrderItemSchema,
   UpdateOrderItemStatusSchema,
   SettleOrderSchema,
@@ -222,6 +223,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
             nameSnapshot: menuItem.name,
             pricePaiseSnapshot,
             qty: item.qty,
+            round: 1,
             status: 'ORDERED',
             note: item.note ? item.note.trim() : null,
             createdAt: now,
@@ -377,7 +379,7 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
           orderItemsToInsert.push({
             id: generateId('orderItem'), orderId: id, itemId: item.itemId,
             nameSnapshot: menuItem.name, pricePaiseSnapshot: menuItem.pricePaise,
-            qty: item.qty, status: 'ORDERED', note: item.note ? item.note.trim() : null,
+            qty: item.qty, round: 1, status: 'ORDERED', note: item.note ? item.note.trim() : null,
             createdAt: now, updatedAt: now, createdBy: actorPhone, updatedBy: actorPhone,
           });
         }
@@ -669,6 +671,120 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
     await recomputeTotal(db, orderId);
     const result = await getOrderWithItems(db, orderId, restaurantId);
     return c.json(result);
+  } finally {
+    await close();
+  }
+});
+
+// POST /billing/orders/:id/round — append a new round of items to an existing OPEN order
+app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const orderId = c.req.param('id');
+  const actorPhone = c.get('actorPhone');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = AddOrderRoundSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db
+      .select()
+      .from(appSchema.saleOrder)
+      .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+    if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+    if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
+
+    // Determine next round number based on existing items
+    const existingItems = await db
+      .select({ round: appSchema.saleOrderItem.round })
+      .from(appSchema.saleOrderItem)
+      .where(eq(appSchema.saleOrderItem.orderId, orderId));
+    const maxRound = existingItems.reduce((max: number, it: any) => Math.max(max, Number(it.round) || 1), 0);
+    const nextRound = (maxRound || 1) + 1;
+
+    const menuItems = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(eq(appSchema.menuItem.restaurantId, restaurantId));
+    const menuMap = new Map(menuItems.map((m: any) => [m.id, m]));
+
+    const now = new Date();
+    const orderItemsToInsert: any[] = [];
+    const auditsToInsert: any[] = [];
+
+    for (const item of parsed.data.items) {
+      const menuItem = menuMap.get(item.itemId) as any;
+      if (!menuItem) continue;
+      const pricePaiseSnapshot = menuItem.pricePaise;
+      const newOrderItemId = generateId('oi');
+      orderItemsToInsert.push({
+        id: newOrderItemId,
+        orderId,
+        itemId: menuItem.id,
+        nameSnapshot: menuItem.name,
+        pricePaiseSnapshot,
+        qty: item.qty,
+        round: nextRound,
+        status: 'ORDERED',
+        note: item.note ? item.note.trim() : null,
+        createdAt: now,
+        updatedAt: now,
+        createdBy: actorPhone,
+        updatedBy: actorPhone,
+      });
+      auditsToInsert.push({
+        id: generateId('audit'),
+        orderId,
+        orderItemId: newOrderItemId,
+        fromStatus: null,
+        toStatus: 'ORDERED',
+        changedBy: actorPhone || 'Staff',
+        changedByRole: tenant.role || 'STAFF',
+        createdAt: now,
+      });
+    }
+
+    if (orderItemsToInsert.length === 0) {
+      return c.json({ error: 'Bad Request', message: 'No valid items found' }, 400);
+    }
+
+    await db.transaction(async (tx: any) => {
+      await tx.insert(appSchema.saleOrderItem).values(orderItemsToInsert);
+      if (auditsToInsert.length > 0) {
+        await tx.insert(appSchema.orderItemAudit).values(auditsToInsert);
+      }
+      // Recompute total paies and derive orderStatus
+      const allItems = await tx
+        .select()
+        .from(appSchema.saleOrderItem)
+        .where(eq(appSchema.saleOrderItem.orderId, orderId));
+      const total = allItems
+        .filter((i: any) => i.status !== 'CANCELLED')
+        .reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+      const newOrderStatus = computeOrderStatus(allItems.map((i: any) => i.status));
+
+      await tx
+        .update(appSchema.saleOrder)
+        .set({
+          subtotalPaise: total,
+          orderStatus: newOrderStatus,
+          readyAt: null, // Clear readyAt so kitchen knows new round is pending
+          updatedAt: now,
+          updatedBy: actorPhone,
+        })
+        .where(eq(appSchema.saleOrder.id, orderId));
+    });
+
+    const result = await getOrderWithItems(db, orderId, restaurantId);
+    return c.json({
+      ...result,
+      round: nextRound,
+      addedItems: orderItemsToInsert,
+    });
   } finally {
     await close();
   }

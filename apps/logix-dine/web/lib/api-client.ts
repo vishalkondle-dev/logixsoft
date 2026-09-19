@@ -52,6 +52,14 @@ export const listOrders = (restaurantId: string, params?: { status?: string; ord
 export const addOrderItem = (restaurantId: string, orderId: string, body: { itemId: string; qty?: number }, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}/items`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
 
+export const addOrderRound = (
+  restaurantId: string,
+  orderId: string,
+  body: { items: Array<{ itemId: string; qty: number; note?: string }> },
+  outletId?: string | null
+) =>
+  apiFetch<any>(`/billing/orders/${orderId}/round`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
 export const updateOrderItemQty = (restaurantId: string, orderId: string, orderItemId: string, qty: number, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}/items/${orderItemId}`, restaurantId, { method: "PATCH", body: JSON.stringify({ qty }) }, outletId);
 

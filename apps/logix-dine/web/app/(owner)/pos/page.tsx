@@ -1,21 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   IconPlus, IconMinus, IconTrash, IconChevronDown,
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
-  IconNote, IconEdit, IconX,
+  IconNote, IconEdit, IconX, IconClock,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { useCategories, useItems, useTables } from "@/lib/queries";
+import { useCategories, useItems, useTables, useOrders, qk } from "@/lib/queries";
 import {
-  startOrder, settleOrder, markKotPrinted, createSettledOrder,
+  startOrder, settleOrder, markKotPrinted, createSettledOrder, addOrderRound,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
@@ -41,6 +42,19 @@ const DEFAULT_NOTE_CHIPS = [
   "Serve Hot",
 ];
 
+function normalizeTable(val?: string | null) {
+  if (!val) return "";
+  return val.toLowerCase().replace(/^(table|tbl|t)[\s\-_]*/i, "").trim();
+}
+
+function isTableMatch(name1?: string | null, name2?: string | null) {
+  if (!name1 || !name2) return false;
+  if (name1.trim().toLowerCase() === name2.trim().toLowerCase()) return true;
+  const n1 = normalizeTable(name1);
+  const n2 = normalizeTable(name2);
+  return n1.length > 0 && n1 === n2;
+}
+
 interface CartPanelProps {
   cartItems: LocalCartItem[];
   cartCount: number;
@@ -58,6 +72,10 @@ interface CartPanelProps {
   sending: boolean;
   setSettleModal: (open: boolean) => void;
   onClose?: () => void;
+  activeTableOrder?: any;
+  nextRound?: number;
+  currentRound?: number;
+  onViewExistingItems?: () => void;
 }
 
 function CartPanel({
@@ -77,6 +95,10 @@ function CartPanel({
   sending,
   setSettleModal,
   onClose,
+  activeTableOrder,
+  nextRound = 2,
+  currentRound = 1,
+  onViewExistingItems,
 }: CartPanelProps) {
   return (
     <Stack gap="sm" h="100%">
@@ -123,6 +145,42 @@ function CartPanel({
           onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
           leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
         />
+
+        {activeTableOrder && (
+          <Paper
+            withBorder
+            p="xs"
+            radius="sm"
+            style={{
+              backgroundColor: "rgba(253, 126, 20, 0.08)",
+              borderColor: "rgba(253, 126, 20, 0.35)",
+            }}
+          >
+            <Group justify="space-between" align="center" mb={2}>
+              <Badge size="xs" color="orange" variant="filled" leftSection={<IconClock size={10} />}>
+                Round {currentRound} Active
+              </Badge>
+              <Text size="xs" fw={800} c="orange.9">
+                Token #{activeTableOrder.order.orderNo}
+              </Text>
+            </Group>
+            <Group justify="space-between" align="center" mt={4}>
+              <Text size="11px" c="dimmed">
+                Current Bill: ₹{(activeTableOrder.order.subtotalPaise / 100).toFixed(0)} ({activeTableOrder.items?.length || 0} items)
+              </Text>
+              {onViewExistingItems && (
+                <Button
+                  variant="subtle"
+                  color="dinePrimary"
+                  size="compact-xs"
+                  onClick={onViewExistingItems}
+                >
+                  View Items
+                </Button>
+              )}
+            </Group>
+          </Paper>
+        )}
       </Stack>
 
       <Divider />
@@ -194,19 +252,19 @@ function CartPanel({
       {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
       <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
         <Button
-          color="dinePrimary"
+          color={activeTableOrder ? "orange" : "dinePrimary"}
           onClick={handleSend}
           loading={sending}
           style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
           disabled={cartItems.length === 0}
-          leftSection={<IconShoppingCart size={16} />}
+          leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
         >
-          Send
+          {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
         </Button>
         <Menu position="top-end" withinPortal zIndex={1500}>
           <Menu.Target>
             <ActionIcon
-              color="dinePrimary"
+              color={activeTableOrder ? "orange" : "dinePrimary"}
               variant="filled"
               size={36}
               style={{
@@ -241,6 +299,7 @@ export default function POSPage() {
   const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
+  const queryClient = useQueryClient();
 
   // Server data via React Query — same cache keys as MenuManagement → zero refetch on page switch
   const { data: categories = [], isLoading: catsLoading } = useCategories(restaurantId, outletId);
@@ -248,6 +307,14 @@ export default function POSPage() {
   const loading = catsLoading || itemsLoading;
   const { data: tablesData } = useTables(restaurantId, outletId);
   const tables = (tablesData ?? []).filter((t: any) => t.active);
+
+  // Poll open orders to detect occupied tables and rounds dynamically
+  const { data: openOrders = [] } = useOrders(
+    restaurantId,
+    { status: "OPEN", outletId: outletId ?? undefined },
+    Boolean(restaurantId && outletId),
+    { refetchInterval: 4_000 }
+  );
 
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -257,6 +324,21 @@ export default function POSPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [tableNo, setTableNo] = useState<string>("Takeaway");
   const [customerPhone, setCustomerPhone] = useState<string>("");
+
+  // Active table order matching & round computation
+  const activeTableOrder = useMemo(() => {
+    if (!tableNo || tableNo === "Takeaway") return null;
+    return openOrders.find((entry: any) => isTableMatch(tableNo, entry.order?.tableNo)) ?? null;
+  }, [openOrders, tableNo]);
+
+  const currentRound = useMemo(() => {
+    if (!activeTableOrder) return 1;
+    const activeItems = activeTableOrder.items ?? [];
+    return activeItems.reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
+  }, [activeTableOrder]);
+
+  const nextRound = currentRound + 1;
+  const [showExistingItemsModal, setShowExistingItemsModal] = useState(false);
 
   // Sync table from URL if provided (e.g. from Tables page)
   useEffect(() => {
@@ -386,39 +468,89 @@ export default function POSPage() {
 
     setSending(true);
     try {
-      const created = await startOrder(restaurantId, {
-        outletId: activeOutlet.id,
-        tableNo: tableNo || "Takeaway",
-        customerPhone: customerPhone.trim() || undefined,
-        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
-      });
+      if (activeTableOrder) {
+        // MULTIPLE ROUNDS: Append new round of items to active table order
+        const roundRes = await addOrderRound(
+          restaurantId,
+          activeTableOrder.order.id,
+          {
+            items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+          },
+          activeOutlet.id
+        );
 
-      // Reset cart immediately — don't wait for print
-      setCartItems([]);
-      setCustomerPhone("");
-      setTableNo("Takeaway");
-      if (cartOpen) setCartOpen(false);
+        const currentRoundNum = roundRes.round || nextRound;
 
-      // Print KOT + mark printed in background (non-blocking)
-      const kotPayload = buildKotPayload(created, restaurant);
-      // Print KOT silently (BLE only — no browser popup)
-      printTicketSilent(kotPayload).then((printResult) => {
-        markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
-        const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
-        notifications.show({
-          title: `Order #${created.order.orderNo} sent to kitchen`,
-          message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
-          color: "dinePrimary",
-          icon: <IconCheck size={16} />,
+        // Reset cart immediately — don't wait for print
+        setCartItems([]);
+        if (cartOpen) setCartOpen(false);
+
+        // Print KOT for ONLY newly added items in this round
+        const kotPayload = buildKotPayload(
+          { order: activeTableOrder.order, items: roundRes.addedItems || cartItems },
+          restaurant,
+          { round: currentRoundNum }
+        );
+
+        printTicketSilent(kotPayload)
+          .then((printResult) => {
+            notifications.show({
+              title: `Round ${currentRoundNum} sent to kitchen!`,
+              message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "KOT dispatched"}`,
+              color: "dinePrimary",
+              icon: <IconCheck size={16} />,
+            });
+          })
+          .catch(() => {
+            notifications.show({
+              title: `Round ${currentRoundNum} sent to kitchen!`,
+              message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo})`,
+              color: "dinePrimary",
+              icon: <IconCheck size={16} />,
+            });
+          });
+
+        queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+        queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
+        queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+      } else {
+        const created = await startOrder(restaurantId, {
+          outletId: activeOutlet.id,
+          tableNo: tableNo || "Takeaway",
+          customerPhone: customerPhone.trim() || undefined,
+          items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
         });
-      }).catch(() => {
-        notifications.show({
-          title: `Order #${created.order.orderNo} sent`,
-          message: `${created.order.tableNo || "Takeaway"} — KOT print skipped`,
-          color: "dinePrimary",
-          icon: <IconCheck size={16} />,
+
+        // Reset cart immediately — don't wait for print
+        setCartItems([]);
+        setCustomerPhone("");
+        setTableNo("Takeaway");
+        if (cartOpen) setCartOpen(false);
+
+        // Print KOT + mark printed in background (non-blocking)
+        const kotPayload = buildKotPayload(created, restaurant, { round: 1 });
+        printTicketSilent(kotPayload).then((printResult) => {
+          markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
+          const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
+          notifications.show({
+            title: `Order #${created.order.orderNo} sent to kitchen`,
+            message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
+            color: "dinePrimary",
+            icon: <IconCheck size={16} />,
+          });
+        }).catch(() => {
+          notifications.show({
+            title: `Order #${created.order.orderNo} sent`,
+            message: `${created.order.tableNo || "Takeaway"} — KOT print skipped`,
+            color: "dinePrimary",
+            icon: <IconCheck size={16} />,
+          });
         });
-      });
+
+        queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+        queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
+        queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+      }
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
@@ -436,32 +568,75 @@ export default function POSPage() {
 
     setSettling(true);
     try {
-      const result = await createSettledOrder(restaurantId, {
-        outletId: activeOutlet.id,
-        tableNo: tableNo || "Takeaway",
-        customerPhone: customerPhone.trim() || undefined,
-        method: settleMethod,
-        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
-      });
+      if (activeTableOrder) {
+        if (cartItems.length > 0) {
+          await addOrderRound(
+            restaurantId,
+            activeTableOrder.order.id,
+            { items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })) },
+            activeOutlet.id
+          );
+        }
+        const settled = await settleOrder(
+          restaurantId,
+          activeTableOrder.order.id,
+          {
+            method: settleMethod,
+            customerPhone: customerPhone.trim() || undefined,
+          },
+          activeOutlet.id
+        );
 
-      // Success — close modal and clear cart
-      setCartItems([]);
-      setCustomerPhone("");
-      setTableNo("Takeaway");
-      setSettleModal(false);
-      if (cartOpen) setCartOpen(false);
+        setCartItems([]);
+        setCustomerPhone("");
+        setTableNo("Takeaway");
+        setSettleModal(false);
+        if (cartOpen) setCartOpen(false);
 
-      // Print KOT + Bill silently (BLE only — no browser popup after settle)
-      printTicketSilent(buildKotPayload(result, restaurant)).catch(() => {});
-      printTicketSilent(buildBillPayload(result, restaurant)).catch(() => {});
+        printTicketSilent(buildBillPayload(settled, restaurant)).catch(() => {});
 
-      const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
-      notifications.show({
-        title: "Order settled!",
-        message: `#${result.order.orderNo} — ₹${(result.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
+        notifications.show({
+          title: "Table Settled & Freed!",
+          message: `#${settled.order.orderNo} (${settled.order.tableNo}) — ₹${(settled.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}`,
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+
+        queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+        queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
+        queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+      } else {
+        const result = await createSettledOrder(restaurantId, {
+          outletId: activeOutlet.id,
+          tableNo: tableNo || "Takeaway",
+          customerPhone: customerPhone.trim() || undefined,
+          method: settleMethod,
+          items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+        });
+
+        // Success — close modal and clear cart
+        setCartItems([]);
+        setCustomerPhone("");
+        setTableNo("Takeaway");
+        setSettleModal(false);
+        if (cartOpen) setCartOpen(false);
+
+        // Print KOT + Bill silently (BLE only — no browser popup after settle)
+        printTicketSilent(buildKotPayload(result, restaurant, { round: 1 })).catch(() => {});
+        printTicketSilent(buildBillPayload(result, restaurant)).catch(() => {});
+
+        const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
+        notifications.show({
+          title: "Order settled!",
+          message: `#${result.order.orderNo} — ₹${(result.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
+          color: "green",
+          icon: <IconCheck size={16} />,
+        });
+
+        queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+        queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
+        queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+      }
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
@@ -482,10 +657,15 @@ export default function POSPage() {
 
   const tableSelectData = [
     { value: "Takeaway", label: "Takeaway" },
-    ...tables.map((t) => ({
-      value: t.name,
-      label: t.section ? `${t.name} · ${t.section}` : t.name,
-    })),
+    ...tables.map((t: any) => {
+      const occ = openOrders.find((entry: any) => isTableMatch(t.name, entry.order?.tableNo));
+      let label = t.section ? `${t.name} · ${t.section}` : t.name;
+      if (occ) {
+        const r = (occ.items ?? []).reduce((m: number, i: any) => Math.max(m, i.round || 1), 1);
+        label += ` (Occupied · Round ${r})`;
+      }
+      return { value: t.name, label };
+    }),
   ];
 
   const cartPanelProps: CartPanelProps = {
@@ -504,6 +684,10 @@ export default function POSPage() {
     handleSend,
     sending,
     setSettleModal,
+    activeTableOrder,
+    nextRound,
+    currentRound,
+    onViewExistingItems: () => setShowExistingItemsModal(true),
   };
 
   return (
@@ -758,6 +942,83 @@ export default function POSPage() {
             </Group>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* ─── Existing Order Items Modal ────────────────────────────────────── */}
+      <Modal
+        opened={showExistingItemsModal}
+        onClose={() => setShowExistingItemsModal(false)}
+        title={activeTableOrder ? `Table ${activeTableOrder.order.tableNo} · Token #${activeTableOrder.order.orderNo}` : "Active Order"}
+        size="md"
+      >
+        {activeTableOrder && (
+          <Stack gap="sm">
+            <Group justify="space-between" align="center">
+              <Badge color="orange" variant="light" size="sm" leftSection={<IconClock size={12} />}>
+                Round {currentRound} Active
+              </Badge>
+              <Text size="xs" c="dimmed">
+                Ordered at {new Date(activeTableOrder.order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </Text>
+            </Group>
+
+            <Divider />
+
+            <ScrollArea.Autosize mah={320}>
+              <Stack gap="xs">
+                {(activeTableOrder.items ?? []).map((item: any) => {
+                  return (
+                    <Paper key={item.id} withBorder p="xs" radius="sm">
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <Group gap={6} align="center" wrap="nowrap">
+                            <Text size="sm" fw={600} lineClamp={1}>
+                              {item.nameSnapshot}
+                            </Text>
+                            <Badge size="xs" color="dark" variant="filled">
+                              ×{item.qty}
+                            </Badge>
+                            {item.round && item.round > 1 && (
+                              <Badge size="xs" color="indigo" variant="light">
+                                R{item.round}
+                              </Badge>
+                            )}
+                          </Group>
+                          {item.note && (
+                            <Text size="xs" c="dimmed" fs="italic">
+                              Note: {item.note}
+                            </Text>
+                          )}
+                        </div>
+                        <Group gap="xs" align="center">
+                          <Badge size="xs" color={item.status === "SERVED" ? "green" : item.status === "PREPARED" ? "teal" : item.status === "PREPARING" ? "yellow" : item.status === "CANCELLED" ? "red" : "blue"} variant="light">
+                            {item.status || "ORDERED"}
+                          </Badge>
+                          <Text size="sm" fw={600} w={60} ta="right">
+                            ₹{((item.pricePaiseSnapshot * item.qty) / 100).toFixed(0)}
+                          </Text>
+                        </Group>
+                      </Group>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            </ScrollArea.Autosize>
+
+            <Divider />
+
+            <Group justify="space-between" align="center">
+              <Text fw={700}>Current Total</Text>
+              <Text fw={800} size="lg" c="dinePrimary">
+                ₹{(activeTableOrder.order.subtotalPaise / 100).toFixed(0)}
+              </Text>
+            </Group>
+
+            <Button fullWidth variant="default" onClick={() => setShowExistingItemsModal(false)}>
+              Close
+            </Button>
+          </Stack>
+        )}
       </Modal>
     </Box>
   );

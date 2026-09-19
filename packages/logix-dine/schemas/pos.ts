@@ -150,6 +150,7 @@ export const SaleOrderItemSchema = z.object({
   nameSnapshot: z.string(),
   pricePaiseSnapshot: z.number().int(),
   qty: z.number().int(),
+  round: z.number().int(),
   status: z.string(),
   note: z.string().nullable(),
   createdAt: z.string(),
@@ -257,6 +258,16 @@ export const AddOrderItemSchema = z.object({
   itemId: z.string(),
   qty: z.number().int().positive().default(1),
   note: z.string().max(255).optional(),
+});
+
+export const AddOrderRoundSchema = z.object({
+  items: z.array(
+    z.object({
+      itemId: z.string(),
+      qty: z.number().int().positive(),
+      note: z.string().max(255).optional(),
+    })
+  ).min(1),
 });
 
 export const UpdateOrderItemSchema = z.object({

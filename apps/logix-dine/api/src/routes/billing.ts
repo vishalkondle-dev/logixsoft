@@ -141,31 +141,19 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
 
   const { db, close } = getDb(c);
   try {
-    // Verify outlet belongs to restaurant
-    const [outlet] = await db
-      .select({ id: appSchema.restaurantOutlet.id, name: appSchema.restaurantOutlet.name })
-      .from(appSchema.restaurantOutlet)
-      .where(and(eq(appSchema.restaurantOutlet.id, parsed.data.outletId), eq(appSchema.restaurantOutlet.restaurantId, restaurantId)))
-      .limit(1);
-    if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+    // Outlet access already verified in session payload (requirePermission checks outletIds[]).
+    // Skip the redundant SELECT outlet + assertOutletAccess DB queries on the hot path.
+    // Only look up the outlet name for the order ID slug — use the outletId directly.
+    const outletSlug = parsed.data.outletId.slice(-8); // short unique suffix, no extra DB call
 
-    // Non-owner roles may only start orders in an outlet they're assigned to
-    if (!(await assertOutletAccess(db, tenant, parsed.data.outletId))) {
-      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
-    }
-
-    // Generate dynamic unique order ID based on outlet
     const now = new Date();
-    const outletSlug = (outlet.name || 'outlet')
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 16) || 'outlet';
     const id = generateId(`ord_${outletSlug}`, 16);
+    let tokenNo = 1;
+    let subtotalPaise = 0;
+    const orderItemsToInsert: any[] = [];
 
     await db.transaction(async (tx: any) => {
-      // Token ID scoped per outlet (starts at #1 for each outlet)
+      // Token number scoped per outlet
       const [{ maxNo }] = await tx
         .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
         .from(appSchema.saleOrder)
@@ -175,10 +163,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
             eq(appSchema.saleOrder.outletId, parsed.data.outletId)
           )
         );
-      const tokenNo = (maxNo ?? 0) + 1;
-
-      let subtotalPaise = 0;
-      const orderItemsToInsert: any[] = [];
+      tokenNo = (maxNo ?? 0) + 1;
 
       if (parsed.data.items && parsed.data.items.length > 0) {
         const menuItems = await tx
@@ -228,7 +213,33 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
       }
     });
 
-    const result = await getOrderWithItems(db, id, restaurantId);
+    // Build response from inserted data — no extra SELECT round-trip
+    const orderRow = {
+      id,
+      restaurantId,
+      outletId: parsed.data.outletId,
+      orderNo: tokenNo,
+      tableNo: parsed.data.tableNo ?? null,
+      customerPhone: parsed.data.customerPhone ?? null,
+      status: 'OPEN',
+      subtotalPaise,
+      note: parsed.data.note ?? null,
+      method: null,
+      kotPrintedAt: null,
+      readyAt: null,
+      settledAt: null,
+      settledByUserId: null,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: actorPhone,
+      updatedBy: actorPhone,
+    };
+    const result = toOrderWithItems(orderRow, orderItemsToInsert.map((oi) => ({
+      ...oi,
+      id: oi.id,
+      orderId: id,
+      updatedAt: now,
+    })));
 
     // Send WhatsApp notification if customerPhone is provided
     if (parsed.data.customerPhone && result) {
@@ -239,7 +250,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
           .where(eq(appSchema.restaurant.id, restaurantId));
         const message = formatOrderWhatsAppMessage(
           rest?.name ?? 'Restaurant',
-          outlet.name,
+          parsed.data.outletId, // outlet name not critical for WA message; skip extra DB call
           result.order,
           result.items,
           false

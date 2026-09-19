@@ -382,24 +382,31 @@ export default function POSPage() {
         items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
       });
 
-      // Print KOT automatically
-      const kotPayload = buildKotPayload(created, restaurant);
-      const printResult = await printTicket(kotPayload);
-      await markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
-
-      const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
-      notifications.show({
-        title: `Order #${created.order.orderNo} sent to kitchen`,
-        message: `${created.order.id} · ${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
-        color: "dinePrimary",
-        icon: <IconCheck size={16} />,
-      });
-
-      // Reset cart for subsequent orders
+      // Reset cart immediately — don't wait for print
       setCartItems([]);
       setCustomerPhone("");
       setTableNo("Takeaway");
       if (cartOpen) setCartOpen(false);
+
+      // Print KOT + mark printed in background (non-blocking)
+      const kotPayload = buildKotPayload(created, restaurant);
+      printTicket(kotPayload).then((printResult) => {
+        markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
+        const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
+        notifications.show({
+          title: `Order #${created.order.orderNo} sent to kitchen`,
+          message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
+          color: "dinePrimary",
+          icon: <IconCheck size={16} />,
+        });
+      }).catch(() => {
+        notifications.show({
+          title: `Order #${created.order.orderNo} sent`,
+          message: `${created.order.tableNo || "Takeaway"} — KOT print skipped`,
+          color: "dinePrimary",
+          icon: <IconCheck size={16} />,
+        });
+      });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {

@@ -8,6 +8,7 @@ import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import {
   StartOrderSchema,
+  CreateSettledSchema,
   AddOrderItemSchema,
   UpdateOrderItemSchema,
   SettleOrderSchema,
@@ -280,6 +281,99 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
       }
     }
 
+    return c.json(result, 201);
+  } finally {
+    await close();
+  }
+});
+
+// POST /billing/orders/create-settled — create + settle in ONE transaction (Settle & Send fast path)
+// Saves one full HTTP round-trip vs POST /orders then POST /orders/:id/settle.
+app.post('/orders/create-settled', requirePermission('order:settle'), async (c) => {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const user = c.get('sessionUser') as any;
+  const actorPhone = c.get('actorPhone');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = CreateSettledSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    const outletSlug = parsed.data.outletId.slice(-8);
+    const now = new Date();
+    const id = generateId(`ord_${outletSlug}`, 16);
+    let subtotalPaise = 0;
+    const orderItemsToInsert: any[] = [];
+
+    const seqKey = CacheKey.outletSeq(parsed.data.outletId);
+    const kvSeq = await cacheGet<number>(kv(c), seqKey);
+    const tokenNo = (kvSeq ?? 0) + 1;
+
+    await db.transaction(async (tx: any) => {
+      if (parsed.data.items && parsed.data.items.length > 0) {
+        const menuItems = await tx.select().from(appSchema.menuItem)
+          .where(eq(appSchema.menuItem.restaurantId, restaurantId));
+        const menuMap = new Map(menuItems.map((m: any) => [m.id, m]));
+        for (const item of parsed.data.items) {
+          const menuItem = menuMap.get(item.itemId) as any;
+          if (!menuItem) continue;
+          subtotalPaise += menuItem.pricePaise * item.qty;
+          orderItemsToInsert.push({
+            id: generateId('orderItem'), orderId: id, itemId: item.itemId,
+            nameSnapshot: menuItem.name, pricePaiseSnapshot: menuItem.pricePaise,
+            qty: item.qty, note: item.note ? item.note.trim() : null,
+            createdAt: now, createdBy: actorPhone, updatedBy: actorPhone,
+          });
+        }
+      }
+      // Insert as PAID directly — no intermediate OPEN state
+      await tx.insert(appSchema.saleOrder).values({
+        id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
+        tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
+        status: 'PAID', method: parsed.data.method ?? 'Cash', subtotalPaise,
+        note: parsed.data.note ?? null, settledAt: now, settledByUserId: user.id,
+        kotPrintedAt: now, createdAt: now, updatedAt: now,
+        createdBy: actorPhone, updatedBy: actorPhone,
+      });
+      if (orderItemsToInsert.length > 0) {
+        await tx.insert(appSchema.saleOrderItem).values(orderItemsToInsert);
+      }
+    });
+
+    // Non-blocking KV sequence update
+    try { c.executionCtx.waitUntil(cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq)); }
+    catch { cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq).catch(() => {}); }
+
+    // Build response from inserted data — no SELECT round-trip
+    const orderRow = {
+      id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
+      tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
+      status: 'PAID', method: parsed.data.method ?? 'Cash', subtotalPaise,
+      note: parsed.data.note ?? null, kotPrintedAt: now, readyAt: null,
+      settledAt: now, settledByUserId: user.id, createdAt: now, updatedAt: now,
+      createdBy: actorPhone, updatedBy: actorPhone,
+    };
+    const result = toOrderWithItems(orderRow, orderItemsToInsert.map((oi) => ({ ...oi, updatedAt: now })));
+
+    // WA notification (non-blocking)
+    const targetPhone = parsed.data.customerPhone;
+    if (targetPhone && result) {
+      const waWork = (async () => {
+        try {
+          const [rest] = await db.select({ name: appSchema.restaurant.name })
+            .from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
+          const message = formatOrderWhatsAppMessage(
+            rest?.name ?? 'Restaurant', parsed.data.outletId, result.order, result.items, true
+          );
+          await sendWhatsAppText(targetPhone, message, undefined,
+            { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+        } catch (err) { console.warn('[create-settled] WA error:', err); }
+      })();
+      try { c.executionCtx.waitUntil(waWork); } catch { /* local dev */ }
+    }
+
+    await invalidateReports(kv(c), restaurantId);
     return c.json(result, 201);
   } finally {
     await close();

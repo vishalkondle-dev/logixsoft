@@ -65,6 +65,19 @@ export const settleOrder = (
   outletId?: string | null
 ) => apiFetch<any>(`/billing/orders/${orderId}/settle`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
 
+/** Create + settle in a single API call — faster Settle & Send. */
+export const createSettledOrder = (
+  restaurantId: string,
+  body: {
+    outletId: string;
+    tableNo?: string;
+    customerPhone?: string;
+    note?: string;
+    method?: string;
+    items?: Array<{ itemId: string; qty: number; note?: string }>;
+  }
+) => apiFetch<any>("/billing/orders/create-settled", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
+
 export const sendOrderWhatsApp = (
   restaurantId: string,
   orderId: string,

@@ -248,6 +248,22 @@ export const SettleOrderSchema = z.object({
   customerPhone: z.string().max(25).optional(),
 });
 
+/** Create an order and settle it immediately — single round-trip for Settle & Send. */
+export const CreateSettledSchema = z.object({
+  outletId: z.string(),
+  tableNo: z.string().max(50).optional(),
+  customerPhone: z.string().max(25).optional(),
+  note: z.string().max(255).optional(),
+  method: z.enum(['Cash', 'UPI', 'QR']).optional(),
+  items: z.array(
+    z.object({
+      itemId: z.string(),
+      qty: z.number().int().positive(),
+      note: z.string().max(255).optional(),
+    })
+  ).optional(),
+});
+
 // ─── Response schemas ─────────────────────────────────────────────────────────
 
 export const BillingBootstrapSchema = z.object({

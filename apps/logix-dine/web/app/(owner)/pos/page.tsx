@@ -15,7 +15,7 @@ import {
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useCategories, useItems, useTables } from "@/lib/queries";
 import {
-  startOrder, settleOrder, markKotPrinted,
+  startOrder, settleOrder, markKotPrinted, createSettledOrder,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
@@ -414,7 +414,7 @@ export default function POSPage() {
     }
   };
 
-  // Settle & Send: create order, settle immediately, and dispatch receipt
+  // Settle & Send: single API call creates + settles in one transaction
   const handleSettleAndSend = async () => {
     if (cartItems.length === 0) return;
     if (!activeOutlet) {
@@ -422,49 +422,42 @@ export default function POSPage() {
       return;
     }
 
+    // Optimistic clear — user can see cart is gone immediately
+    const snapshot = { cartItems: [...cartItems], tableNo, customerPhone };
+    setCartItems([]);
+    setCustomerPhone("");
+    setTableNo("Takeaway");
+    setSettleModal(false);
+    if (cartOpen) setCartOpen(false);
+
     setSettling(true);
     try {
-      // 1. Create order
-      const created = await startOrder(restaurantId, {
+      const result = await createSettledOrder(restaurantId, {
         outletId: activeOutlet.id,
-        tableNo: tableNo || "Takeaway",
-        customerPhone: customerPhone.trim() || undefined,
-        items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+        tableNo: snapshot.tableNo || "Takeaway",
+        customerPhone: snapshot.customerPhone.trim() || undefined,
+        method: settleMethod,
+        items: snapshot.cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
       });
 
-      // 2. Settle order
-      const settled = await settleOrder(
-        restaurantId,
-        created.order.id,
-        { method: settleMethod, customerPhone: customerPhone.trim() || undefined },
-        activeOutlet.id
-      );
+      // Print KOT + Bill in background
+      const phoneNote = snapshot.customerPhone.trim() ? ` · WA sent` : "";
+      printTicket(buildKotPayload(result, restaurant)).then(() => {
+        if (restaurant) printTicket(buildBillPayload(result, restaurant)).catch(() => {});
+      }).catch(() => {});
 
-      // 3. Print KOT & Bill
-      const kotPayload = buildKotPayload(settled, restaurant);
-      await printTicket(kotPayload);
-      await markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
-
-      if (restaurant) {
-        const billPayload = buildBillPayload(settled, restaurant);
-        await printTicket(billPayload);
-      }
-
-      const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
       notifications.show({
         title: "Order settled!",
-        message: `#${settled.order.orderNo} (${settled.order.id}) — ₹${(settled.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
+        message: `#${result.order.orderNo} — ₹${(result.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
         color: "green",
         icon: <IconCheck size={16} />,
       });
-
-      // Reset cart and modal
-      setCartItems([]);
-      setCustomerPhone("");
-      setTableNo("Takeaway");
-      setSettleModal(false);
-      if (cartOpen) setCartOpen(false);
     } catch (err: any) {
+      // Restore cart on error
+      setCartItems(snapshot.cartItems);
+      setTableNo(snapshot.tableNo);
+      setCustomerPhone(snapshot.customerPhone);
+      setSettleModal(true);
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
       setSettling(false);

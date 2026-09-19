@@ -151,28 +151,13 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
     let subtotalPaise = 0;
     const orderItemsToInsert: any[] = [];
 
-    // ── Order number: read from KV sequence, fall back to MAX query once ──────
-    // KV stores the last used orderNo per outlet. On hit: increment in-memory,
-    // write updated value back via waitUntil (non-blocking). On miss (first
-    // order or KV eviction): fetch MAX from DB once, seed the counter.
-    let tokenNo: number;
+    // ── Order number from KV sequence ─────────────────────────────────────────
+    // KV key seq:<outletId> stores the last used orderNo. Always up-to-date
+    // because we write it back via waitUntil after every order. No DB query needed.
+    // On the very first order (KV miss), start at 1.
     const seqKey = CacheKey.outletSeq(parsed.data.outletId);
     const kvSeq = await cacheGet<number>(kv(c), seqKey);
-
-    if (kvSeq !== null) {
-      // Cache hit — no DB query needed for the counter
-      tokenNo = kvSeq + 1;
-    } else {
-      // Cache miss — query DB once to seed the sequence
-      const [{ maxNo }] = await db
-        .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
-        .from(appSchema.saleOrder)
-        .where(and(
-          eq(appSchema.saleOrder.restaurantId, restaurantId),
-          eq(appSchema.saleOrder.outletId, parsed.data.outletId)
-        ));
-      tokenNo = (maxNo ?? 0) + 1;
-    }
+    const tokenNo = (kvSeq ?? 0) + 1;
 
     await db.transaction(async (tx: any) => {
 

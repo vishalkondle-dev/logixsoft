@@ -76,7 +76,7 @@ export const CacheKey = {
 
 export const TTL = {
   session:    604800,  // 7 days — same as better-auth session lifetime
-  outletSeq:  604800,  // 7 days — reset if outlet goes unused for a week
+  outletSeq:  0,  // no expiry — sequence integers are tiny and must never reset
   menu:       60,
   restaurant: 300,
   staff:      60,
@@ -104,7 +104,8 @@ export async function cacheSet(
   ttl: number,
 ): Promise<void> {
   try {
-    await kv.put(key, JSON.stringify(value), { expirationTtl: ttl });
+    const opts = ttl > 0 ? { expirationTtl: ttl } : {};
+    await kv.put(key, JSON.stringify(value), opts);
   } catch {
     // Never let cache write failure break the request
   }

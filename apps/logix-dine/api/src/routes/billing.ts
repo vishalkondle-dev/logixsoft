@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, or, sql, desc } from 'drizzle-orm';
+import { eq, ne, and, or, sql, desc } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, hasOutletAccess } from '../lib/tenancy';
@@ -14,6 +14,7 @@ import {
   UpdateOrderItemSchema,
   UpdateOrderItemStatusSchema,
   SettleOrderSchema,
+  FreeTableSchema,
 } from '@logixsoft/logix-dine/schemas/pos';
 import {
   computeOrderStatus,
@@ -83,12 +84,28 @@ async function recomputeTotal(db: any, orderId: string) {
     .where(eq(appSchema.saleOrderItem.orderId, orderId));
   const activeItems = items.filter((item: any) => item.status !== 'CANCELLED');
   const total = activeItems.reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
+  const paidTotal = activeItems
+    .filter((item: any) => item.paymentStatus === 'PAID')
+    .reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
   const orderStatus = computeOrderStatus(items.map((i: any) => i.status));
+
+  const [existingOrder] = await db
+    .select({ status: appSchema.saleOrder.status })
+    .from(appSchema.saleOrder)
+    .where(eq(appSchema.saleOrder.id, orderId));
+
+  let status = existingOrder?.status;
+  if (status !== 'VOID') {
+    if (paidTotal >= total && total > 0) status = 'PAID';
+    else if (paidTotal > 0) status = 'PARTIAL';
+    else status = 'OPEN';
+  }
+
   await db
     .update(appSchema.saleOrder)
-    .set({ subtotalPaise: total, orderStatus, updatedAt: new Date() })
+    .set({ subtotalPaise: total, paidPaise: paidTotal, status, orderStatus, updatedAt: new Date() })
     .where(eq(appSchema.saleOrder.id, orderId));
-  return { items, total, orderStatus };
+  return { items, total, paidTotal, orderStatus };
 }
 
 async function getOrderWithItems(db: any, orderId: string, restaurantId: string) {
@@ -225,6 +242,9 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
             qty: item.qty,
             round: 1,
             status: 'ORDERED',
+            paymentStatus: 'UNPAID',
+            settledMethod: null,
+            settledAt: null,
             note: item.note ? item.note.trim() : null,
             createdAt: now,
             updatedAt: now,
@@ -234,6 +254,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
         }
       }
 
+      const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
       await tx.insert(appSchema.saleOrder).values({
         id,
         restaurantId,
@@ -244,7 +265,9 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
         status: 'OPEN',
         orderStatus: 'ORDERED',
         subtotalPaise,
+        paidPaise: 0,
         note: parsed.data.note ?? null,
+        tableFreedAt: isTableOrder ? null : now,
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,
@@ -268,6 +291,7 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
     });
 
     // Build response from inserted data — no extra SELECT round-trip
+    const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
     const orderRow = {
       id,
       restaurantId,
@@ -278,12 +302,14 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
       status: 'OPEN',
       orderStatus: 'ORDERED',
       subtotalPaise,
+      paidPaise: 0,
       note: parsed.data.note ?? null,
       method: null,
       kotPrintedAt: null,
       readyAt: null,
       settledAt: null,
       settledByUserId: null,
+      tableFreedAt: isTableOrder ? null : now,
       createdAt: now,
       updatedAt: now,
       createdBy: actorPhone,
@@ -379,17 +405,22 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
           orderItemsToInsert.push({
             id: generateId('orderItem'), orderId: id, itemId: item.itemId,
             nameSnapshot: menuItem.name, pricePaiseSnapshot: menuItem.pricePaise,
-            qty: item.qty, round: 1, status: 'ORDERED', note: item.note ? item.note.trim() : null,
+            qty: item.qty, round: 1, status: 'ORDERED',
+            paymentStatus: 'PAID', settledMethod: parsed.data.method ?? 'Cash', settledAt: now,
+            note: item.note ? item.note.trim() : null,
             createdAt: now, updatedAt: now, createdBy: actorPhone, updatedBy: actorPhone,
           });
         }
       }
+      const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
       // Insert as PAID directly — no intermediate OPEN state
       await tx.insert(appSchema.saleOrder).values({
         id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
         tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
-        status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash', subtotalPaise,
+        status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash',
+        subtotalPaise, paidPaise: subtotalPaise,
         note: parsed.data.note ?? null, settledAt: now, settledByUserId: user.id,
+        tableFreedAt: isTableOrder ? null : now,
         kotPrintedAt: now, createdAt: now, updatedAt: now,
         createdBy: actorPhone, updatedBy: actorPhone,
       });
@@ -414,12 +445,16 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
     catch { cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq).catch(() => {}); }
 
     // Build response from inserted data — no SELECT round-trip
+    const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
     const orderRow = {
       id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
       tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
-      status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash', subtotalPaise,
+      status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash',
+      subtotalPaise, paidPaise: subtotalPaise,
       note: parsed.data.note ?? null, kotPrintedAt: now, readyAt: null,
-      settledAt: now, settledByUserId: user.id, createdAt: now, updatedAt: now,
+      settledAt: now, settledByUserId: user.id,
+      tableFreedAt: isTableOrder ? null : now,
+      createdAt: now, updatedAt: now,
       createdBy: actorPhone, updatedBy: actorPhone,
     };
     const result = toOrderWithItems(orderRow, orderItemsToInsert.map((oi) => ({ ...oi, updatedAt: now })));
@@ -453,6 +488,7 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const status = c.req.query('status');
+  const tableOccupied = c.req.query('tableOccupied');
   const orderStatus = c.req.query('orderStatus');
   const outletId = c.req.query('outletId');
   const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 100);
@@ -471,7 +507,16 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
     }
 
     const conditions: any[] = [eq(appSchema.saleOrder.restaurantId, restaurantId)];
-    if (status) conditions.push(eq(appSchema.saleOrder.status, status));
+    if (tableOccupied === 'true') {
+      conditions.push(
+        sql`${appSchema.saleOrder.tableFreedAt} IS NULL`,
+        sql`${appSchema.saleOrder.tableNo} IS NOT NULL`,
+        sql`${appSchema.saleOrder.tableNo} != 'Takeaway'`,
+        sql`${appSchema.saleOrder.status} != 'VOID'`
+      );
+    } else if (status) {
+      conditions.push(eq(appSchema.saleOrder.status, status));
+    }
     if (orderStatus) conditions.push(eq(appSchema.saleOrder.orderStatus, orderStatus));
     if (outletId) conditions.push(eq(appSchema.saleOrder.outletId, outletId));
 
@@ -696,7 +741,17 @@ app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
     if (!(await assertOutletAccess(db, tenant, order.outletId))) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
-    if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
+    if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Order is voided' }, 409);
+    const isTableOrder = Boolean(order.tableNo && order.tableNo.trim() && order.tableNo !== 'Takeaway');
+    if (isTableOrder) {
+      if (order.tableFreedAt !== null) {
+        return c.json({ error: 'Conflict', message: 'Table has already been freed' }, 409);
+      }
+    } else {
+      if (order.status !== 'OPEN') {
+        return c.json({ error: 'Conflict', message: 'Takeaway order is not open' }, 409);
+      }
+    }
 
     // Determine next round number based on existing items
     const existingItems = await db
@@ -713,6 +768,8 @@ app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
     const menuMap = new Map(menuItems.map((m: any) => [m.id, m]));
 
     const now = new Date();
+    const isRoundSettled = Boolean(parsed.data.settle);
+    const roundSettleMethod = parsed.data.settle?.method || 'Cash';
     const orderItemsToInsert: any[] = [];
     const auditsToInsert: any[] = [];
 
@@ -730,6 +787,9 @@ app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
         qty: item.qty,
         round: nextRound,
         status: 'ORDERED',
+        paymentStatus: isRoundSettled ? 'PAID' : 'UNPAID',
+        settledMethod: isRoundSettled ? roundSettleMethod : null,
+        settledAt: isRoundSettled ? now : null,
         note: item.note ? item.note.trim() : null,
         createdAt: now,
         updatedAt: now,
@@ -757,7 +817,7 @@ app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
       if (auditsToInsert.length > 0) {
         await tx.insert(appSchema.orderItemAudit).values(auditsToInsert);
       }
-      // Recompute total paies and derive orderStatus
+      // Recompute total paise and derive orderStatus & financial status
       const allItems = await tx
         .select()
         .from(appSchema.saleOrderItem)
@@ -765,12 +825,23 @@ app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
       const total = allItems
         .filter((i: any) => i.status !== 'CANCELLED')
         .reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+      const paidTotal = allItems
+        .filter((i: any) => i.status !== 'CANCELLED' && i.paymentStatus === 'PAID')
+        .reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+
       const newOrderStatus = computeOrderStatus(allItems.map((i: any) => i.status));
+      const financialStatus = paidTotal >= total && total > 0
+        ? 'PAID'
+        : paidTotal > 0
+        ? 'PARTIAL'
+        : 'OPEN';
 
       await tx
         .update(appSchema.saleOrder)
         .set({
           subtotalPaise: total,
+          paidPaise: paidTotal,
+          status: financialStatus,
           orderStatus: newOrderStatus,
           readyAt: null, // Clear readyAt so kitchen knows new round is pending
           updatedAt: now,
@@ -927,7 +998,7 @@ app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), a
     if (!(await assertOutletAccess(db, tenant, order.outletId))) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
-    if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
+    if (order.status !== 'OPEN' && order.status !== 'PARTIAL') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
     const updateData: any = {};
     if (parsed.data.qty !== undefined) updateData.qty = Math.max(1, parsed.data.qty);
@@ -963,7 +1034,7 @@ app.delete('/orders/:id/items/:orderItemId', requirePermission('order:create'), 
     if (!(await assertOutletAccess(db, tenant, order.outletId))) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
-    if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
+    if (order.status !== 'OPEN' && order.status !== 'PARTIAL') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
 
     await db
       .delete(appSchema.saleOrderItem)
@@ -998,22 +1069,53 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
     if (!(await assertOutletAccess(db, tenant, order.outletId))) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
-    if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
+    if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Order is voided' }, 409);
 
     const now = new Date();
     const targetPhone = parsed.data.customerPhone || order.customerPhone;
-    await db
-      .update(appSchema.saleOrder)
-      .set({
-        status: 'PAID',
-        method: parsed.data.method ?? null,
-        customerPhone: targetPhone ?? null,
-        settledAt: now,
-        settledByUserId: user.id,
-        updatedAt: now,
-        updatedBy: actorPhone,
-      })
-      .where(eq(appSchema.saleOrder.id, orderId));
+    const settleMethod = parsed.data.method || order.method || 'Cash';
+
+    await db.transaction(async (tx: any) => {
+      // Mark all unpaid items as PAID
+      await tx
+        .update(appSchema.saleOrderItem)
+        .set({
+          paymentStatus: 'PAID',
+          settledMethod: settleMethod,
+          settledAt: now,
+          updatedAt: now,
+          updatedBy: actorPhone,
+        })
+        .where(
+          and(
+            eq(appSchema.saleOrderItem.orderId, orderId),
+            ne(appSchema.saleOrderItem.paymentStatus, 'PAID')
+          )
+        );
+
+      const allItems = await tx
+        .select()
+        .from(appSchema.saleOrderItem)
+        .where(eq(appSchema.saleOrderItem.orderId, orderId));
+      const total = allItems
+        .filter((i: any) => i.status !== 'CANCELLED')
+        .reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+
+      await tx
+        .update(appSchema.saleOrder)
+        .set({
+          status: 'PAID',
+          subtotalPaise: total,
+          paidPaise: total,
+          method: settleMethod,
+          customerPhone: targetPhone ?? null,
+          settledAt: order.settledAt || now,
+          settledByUserId: order.settledByUserId || user?.id || null,
+          updatedAt: now,
+          updatedBy: actorPhone,
+        })
+        .where(eq(appSchema.saleOrder.id, orderId));
+    });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
 
@@ -1048,6 +1150,82 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
       try { c.executionCtx.waitUntil(waSettle); } catch { /* local dev */ }
     }
 
+    await invalidateReports(kv(c), restaurantId);
+    return c.json(result);
+  } finally {
+    await close();
+  }
+});
+
+// POST /billing/orders/:id/free-table — settle remaining unpaid items (if any) and free/vacate table
+app.post('/orders/:id/free-table', requirePermission('order:settle'), async (c) => {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const orderId = c.req.param('id');
+  const user = c.get('sessionUser') as any;
+  const actorPhone = c.get('actorPhone');
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = FreeTableSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db
+      .select()
+      .from(appSchema.saleOrder)
+      .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+    if (!order) return c.json({ error: 'Not Found' }, 404);
+    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+    if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Cannot free a voided order' }, 409);
+
+    const now = new Date();
+    const settleMethod = parsed.data.method || order.method || 'Cash';
+
+    await db.transaction(async (tx: any) => {
+      // Mark any unpaid items as PAID
+      await tx
+        .update(appSchema.saleOrderItem)
+        .set({
+          paymentStatus: 'PAID',
+          settledMethod: settleMethod,
+          settledAt: now,
+          updatedAt: now,
+          updatedBy: actorPhone,
+        })
+        .where(
+          and(
+            eq(appSchema.saleOrderItem.orderId, orderId),
+            ne(appSchema.saleOrderItem.paymentStatus, 'PAID')
+          )
+        );
+
+      const allItems = await tx
+        .select()
+        .from(appSchema.saleOrderItem)
+        .where(eq(appSchema.saleOrderItem.orderId, orderId));
+      const total = allItems
+        .filter((i: any) => i.status !== 'CANCELLED')
+        .reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+
+      await tx
+        .update(appSchema.saleOrder)
+        .set({
+          subtotalPaise: total,
+          paidPaise: total,
+          status: 'PAID',
+          method: settleMethod,
+          settledAt: order.settledAt || now,
+          settledByUserId: order.settledByUserId || user?.id || null,
+          tableFreedAt: now,
+          updatedAt: now,
+          updatedBy: actorPhone,
+        })
+        .where(eq(appSchema.saleOrder.id, orderId));
+    });
+
+    const result = await getOrderWithItems(db, orderId, restaurantId);
     await invalidateReports(kv(c), restaurantId);
     return c.json(result);
   } finally {
@@ -1137,7 +1315,7 @@ app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
     if (!(await assertOutletAccess(db, tenant, order.outletId))) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
-    if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Only OPEN orders can be voided' }, 409);
+    if (order.status !== 'OPEN' && order.status !== 'PARTIAL') return c.json({ error: 'Conflict', message: 'Only OPEN or PARTIAL orders can be voided' }, 409);
 
     const now = new Date();
     const actorIdentity = actorPhone || 'Staff';
@@ -1173,7 +1351,7 @@ app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
 
       await tx
         .update(appSchema.saleOrder)
-        .set({ status: 'VOID', orderStatus: 'CANCELLED', updatedAt: now, updatedBy: actorIdentity })
+        .set({ status: 'VOID', orderStatus: 'CANCELLED', tableFreedAt: now, updatedAt: now, updatedBy: actorIdentity })
         .where(eq(appSchema.saleOrder.id, orderId));
     });
 

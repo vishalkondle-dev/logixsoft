@@ -42,7 +42,7 @@ export const startOrder = (
 export const getOrder = (restaurantId: string, orderId: string, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}`, restaurantId, {}, outletId);
 
-export const listOrders = (restaurantId: string, params?: { status?: string; orderStatus?: string; outletId?: string; limit?: number }) => {
+export const listOrders = (restaurantId: string, params?: { status?: string; orderStatus?: string; outletId?: string; limit?: number; tableOccupied?: boolean }) => {
   const qs = new URLSearchParams(
     Object.fromEntries(Object.entries(params ?? {}).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))
   ).toString();
@@ -55,10 +55,21 @@ export const addOrderItem = (restaurantId: string, orderId: string, body: { item
 export const addOrderRound = (
   restaurantId: string,
   orderId: string,
-  body: { items: Array<{ itemId: string; qty: number; note?: string }> },
+  body: {
+    items: Array<{ itemId: string; qty: number; note?: string }>;
+    settle?: { method: string };
+  },
   outletId?: string | null
 ) =>
   apiFetch<any>(`/billing/orders/${orderId}/round`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
+export const freeTableOrder = (
+  restaurantId: string,
+  orderId: string,
+  body?: { method?: string },
+  outletId?: string | null
+) =>
+  apiFetch<any>(`/billing/orders/${orderId}/free-table`, restaurantId, { method: "POST", body: JSON.stringify(body ?? {}) }, outletId);
 
 export const updateOrderItemQty = (restaurantId: string, orderId: string, orderItemId: string, qty: number, outletId?: string | null) =>
   apiFetch<any>(`/billing/orders/${orderId}/items/${orderItemId}`, restaurantId, { method: "PATCH", body: JSON.stringify({ qty }) }, outletId);

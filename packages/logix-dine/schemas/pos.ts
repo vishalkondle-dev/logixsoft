@@ -130,12 +130,14 @@ export const SaleOrderSchema = z.object({
   status: z.string(),
   orderStatus: z.string(),
   subtotalPaise: z.number().int(),
+  paidPaise: z.number().int(),
   method: z.string().nullable(),
   note: z.string().nullable(),
   kotPrintedAt: z.string().nullable(),
   readyAt: z.string().nullable(),
   settledAt: z.string().nullable(),
   settledByUserId: z.string().nullable(),
+  tableFreedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),
@@ -150,8 +152,11 @@ export const SaleOrderItemSchema = z.object({
   nameSnapshot: z.string(),
   pricePaiseSnapshot: z.number().int(),
   qty: z.number().int(),
-  round: z.number().int(),
   status: z.string(),
+  round: z.number().int(),
+  paymentStatus: z.string(),
+  settledMethod: z.string().nullable(),
+  settledAt: z.string().nullable(),
   note: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -268,6 +273,9 @@ export const AddOrderRoundSchema = z.object({
       note: z.string().max(255).optional(),
     })
   ).min(1),
+  settle: z.object({
+    method: z.string().min(1),
+  }).optional(),
 });
 
 export const UpdateOrderItemSchema = z.object({
@@ -276,7 +284,13 @@ export const UpdateOrderItemSchema = z.object({
 });
 
 export const SettleOrderSchema = z.object({
-  method: z.enum(['Cash', 'UPI', 'QR']).optional(),
+  method: z.string().optional(),
+  customerPhone: z.string().max(25).optional(),
+  freeTable: z.boolean().optional(),
+});
+
+export const FreeTableSchema = z.object({
+  method: z.string().optional(),
   customerPhone: z.string().max(25).optional(),
 });
 

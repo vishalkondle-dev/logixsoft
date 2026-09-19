@@ -89,6 +89,7 @@ export function toOrder(o: SaleOrderRow): JsonSaleOrderRow {
     kotPrintedAt: toIso(o.kotPrintedAt),
     readyAt: toIso(o.readyAt),
     settledAt: toIso(o.settledAt),
+    tableFreedAt: toIso(o.tableFreedAt),
     createdAt: toIsoRequired(o.createdAt),
     updatedAt: toIsoRequired(o.updatedAt),
   };
@@ -98,6 +99,7 @@ export function toOrderItem(i: SaleOrderItemRow): JsonSaleOrderItemRow {
   return {
     ...i,
     status: (i.status as any) || 'ORDERED',
+    settledAt: toIso(i.settledAt),
     createdAt: toIsoRequired(i.createdAt),
     updatedAt: toIsoRequired(i.updatedAt),
   };

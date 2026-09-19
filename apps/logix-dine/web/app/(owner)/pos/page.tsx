@@ -146,41 +146,53 @@ function CartPanel({
           leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
         />
 
-        {activeTableOrder && (
-          <Paper
-            withBorder
-            p="xs"
-            radius="sm"
-            style={{
-              backgroundColor: "rgba(253, 126, 20, 0.08)",
-              borderColor: "rgba(253, 126, 20, 0.35)",
-            }}
-          >
-            <Group justify="space-between" align="center" mb={2}>
-              <Badge size="xs" color="orange" variant="filled" leftSection={<IconClock size={10} />}>
-                Round {currentRound} Active
-              </Badge>
-              <Text size="xs" fw={800} c="orange.9">
-                Token #{activeTableOrder.order.orderNo}
-              </Text>
-            </Group>
-            <Group justify="space-between" align="center" mt={4}>
-              <Text size="11px" c="dimmed">
-                Current Bill: ₹{(activeTableOrder.order.subtotalPaise / 100).toFixed(0)} ({activeTableOrder.items?.length || 0} items)
-              </Text>
-              {onViewExistingItems && (
-                <Button
-                  variant="subtle"
-                  color="dinePrimary"
-                  size="compact-xs"
-                  onClick={onViewExistingItems}
+        {activeTableOrder && (() => {
+          const paidPaise = activeTableOrder.order.paidPaise || 0;
+          const totalPaise = activeTableOrder.order.subtotalPaise || 0;
+          const duePaise = Math.max(0, totalPaise - paidPaise);
+          const isAllPaid = duePaise === 0 && totalPaise > 0;
+
+          return (
+            <Paper
+              withBorder
+              p="xs"
+              radius="sm"
+              style={{
+                backgroundColor: isAllPaid ? "rgba(32, 201, 151, 0.08)" : "rgba(253, 126, 20, 0.08)",
+                borderColor: isAllPaid ? "rgba(32, 201, 151, 0.35)" : "rgba(253, 126, 20, 0.35)",
+              }}
+            >
+              <Group justify="space-between" align="center" mb={2}>
+                <Badge
+                  size="xs"
+                  color={isAllPaid ? "teal" : "orange"}
+                  variant="filled"
+                  leftSection={isAllPaid ? <IconCheck size={10} /> : <IconClock size={10} />}
                 >
-                  View Items
-                </Button>
-              )}
-            </Group>
-          </Paper>
-        )}
+                  Round {currentRound} Active {isAllPaid ? "· All Paid" : ""}
+                </Badge>
+                <Text size="xs" fw={800} c={isAllPaid ? "teal.9" : "orange.9"}>
+                  Token #{activeTableOrder.order.orderNo}
+                </Text>
+              </Group>
+              <Group justify="space-between" align="center" mt={4}>
+                <Text size="11px" c="dimmed">
+                  Bill: ₹{(totalPaise / 100).toFixed(0)} · Paid: ₹{(paidPaise / 100).toFixed(0)} · Due: ₹{(duePaise / 100).toFixed(0)}
+                </Text>
+                {onViewExistingItems && (
+                  <Button
+                    variant="subtle"
+                    color="dinePrimary"
+                    size="compact-xs"
+                    onClick={onViewExistingItems}
+                  >
+                    View Items
+                  </Button>
+                )}
+              </Group>
+            </Paper>
+          );
+        })()}
       </Stack>
 
       <Divider />
@@ -286,7 +298,7 @@ function CartPanel({
               leftSection={<IconCash size={16} />}
               onClick={() => setSettleModal(true)}
             >
-              Settle &amp; Send
+              {activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
@@ -308,10 +320,10 @@ export default function POSPage() {
   const { data: tablesData } = useTables(restaurantId, outletId);
   const tables = (tablesData ?? []).filter((t: any) => t.active);
 
-  // Poll open orders to detect occupied tables and rounds dynamically
+  // Poll occupied table orders to detect occupied tables and rounds dynamically
   const { data: openOrders = [] } = useOrders(
     restaurantId,
-    { status: "OPEN", outletId: outletId ?? undefined },
+    { tableOccupied: true, outletId: outletId ?? undefined },
     Boolean(restaurantId && outletId),
     { refetchInterval: 4_000 }
   );
@@ -569,35 +581,34 @@ export default function POSPage() {
     setSettling(true);
     try {
       if (activeTableOrder) {
-        if (cartItems.length > 0) {
-          await addOrderRound(
-            restaurantId,
-            activeTableOrder.order.id,
-            { items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })) },
-            activeOutlet.id
-          );
-        }
-        const settled = await settleOrder(
+        const addedRound = await addOrderRound(
           restaurantId,
           activeTableOrder.order.id,
           {
-            method: settleMethod,
-            customerPhone: customerPhone.trim() || undefined,
+            items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+            settle: { method: settleMethod },
           },
           activeOutlet.id
         );
 
+        const currentRoundNum = addedRound.round || nextRound;
+
         setCartItems([]);
         setCustomerPhone("");
-        setTableNo("Takeaway");
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
 
-        printTicketSilent(buildBillPayload(settled, restaurant)).catch(() => {});
+        // Print KOT for newly added round
+        const kotPayload = buildKotPayload(
+          { order: activeTableOrder.order, items: addedRound.addedItems || cartItems },
+          restaurant,
+          { round: currentRoundNum }
+        );
+        printTicketSilent(kotPayload).catch(() => {});
 
         notifications.show({
-          title: "Table Settled & Freed!",
-          message: `#${settled.order.orderNo} (${settled.order.tableNo}) — ₹${(settled.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}`,
+          title: `Round ${currentRoundNum} Settled & Sent!`,
+          message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) — ₹${(total / 100).toFixed(0)} paid via ${settleMethod}. Table remains occupied.`,
           color: "green",
           icon: <IconCheck size={16} />,
         });
@@ -835,13 +846,21 @@ export default function POSPage() {
       </Drawer>
 
       {/* Settle Modal */}
-      <Modal opened={settleModal} onClose={() => setSettleModal(false)} title="Settle & Send" size="sm" zIndex={1300}>
+      <Modal
+        opened={settleModal}
+        onClose={() => setSettleModal(false)}
+        title={activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
+        size="sm"
+        zIndex={1300}
+      >
         <Stack>
           <Group justify="space-between">
-            <Text fw={500}>Order Total</Text>
+            <Text fw={500}>{activeTableOrder ? `Round ${nextRound} Total` : "Order Total"}</Text>
             <Text fw={700} c="dinePrimary" size="xl">₹{(total / 100).toFixed(0)}</Text>
           </Group>
-          <Text size="xs" c="dimmed">Table: {tableNo || "Takeaway"}</Text>
+          <Text size="xs" c="dimmed">
+            Table: {tableNo || "Takeaway"}{activeTableOrder ? " · Table remains occupied after round payment" : ""}
+          </Text>
           <TextInput
             label="Customer Phone (WhatsApp)"
             placeholder="WhatsApp number (e.g. 9876543210)"
@@ -872,7 +891,7 @@ export default function POSPage() {
             loading={settling}
             leftSection={<IconCheck size={16} />}
           >
-            Confirm Settlement &amp; Send
+            {activeTableOrder ? `Confirm Settlement & Send Round ${nextRound}` : "Confirm Settlement & Send"}
           </Button>
         </Stack>
       </Modal>

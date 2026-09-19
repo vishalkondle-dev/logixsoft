@@ -6,7 +6,7 @@ import {
   Container, Title, Text, Group, Stack, SimpleGrid, Paper, Badge,
   Button, ActionIcon, TextInput, NumberInput, Modal, Menu,
   ThemeIcon, Loader, Center, Box, Divider, SegmentedControl,
-  Radio,
+  Radio, Alert,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -22,7 +22,7 @@ import {
   useDeleteTable, qk,
 } from "@/lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
-import { settleOrder, voidOrder } from "@/lib/api-client";
+import { freeTableOrder, voidOrder } from "@/lib/api-client";
 import { getStatusVisual, PAYMENT_STATUS_CONFIG } from "@/lib/order-status-ui";
 import { buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
@@ -45,6 +45,8 @@ export interface TableSession {
   orders: any[];
   isOccupied: boolean;
   totalPaise: number;
+  paidPaise: number;
+  duePaise: number;
   totalItemsCount: number;
   allItems: any[];
   roundsCount: number;
@@ -78,7 +80,7 @@ export default function TablesPage() {
     refetch: refetchTables,
   } = useTables(restaurantId, outletId, { refetchInterval: 6_000 });
 
-  // Open Orders: polling every 4s for instant table occupancy updates
+  // Occupied Table Orders: polling every 4s for instant table occupancy updates
   const {
     data: orders = [],
     isLoading: ordersLoading,
@@ -86,7 +88,7 @@ export default function TablesPage() {
   } = useOrders(
     restaurantId,
     {
-      status: "OPEN",
+      tableOccupied: true,
       outletId: outletId || undefined,
       limit: 100,
     },
@@ -147,6 +149,8 @@ export default function TablesPage() {
         orders: [],
         isOccupied: false,
         totalPaise: 0,
+        paidPaise: 0,
+        duePaise: 0,
         totalItemsCount: 0,
         allItems: [],
         roundsCount: 0,
@@ -159,6 +163,8 @@ export default function TablesPage() {
 
     const allItems = tableOrders.flatMap((o: any) => o.items ?? []);
     const totalPaise = tableOrders.reduce((sum: number, o: any) => sum + (o.order?.subtotalPaise || 0), 0);
+    const paidPaise = tableOrders.reduce((sum: number, o: any) => sum + (o.order?.paidPaise || 0), 0);
+    const duePaise = Math.max(0, totalPaise - paidPaise);
     const maxItemRound = allItems.reduce((m: number, it: any) => Math.max(m, it.round || 1), 1);
     const roundsCount = Math.max(tableOrders.length, maxItemRound);
     const tokensStr = tableOrders.map((o: any) => `#${o.order.orderNo}`).join(", ");
@@ -176,6 +182,8 @@ export default function TablesPage() {
       orders: tableOrders,
       isOccupied: true,
       totalPaise,
+      paidPaise,
+      duePaise,
       totalItemsCount: allItems.length,
       allItems,
       roundsCount,
@@ -306,36 +314,37 @@ export default function TablesPage() {
     setSettleMethod("Cash");
   };
 
-  // Action: Settle all active orders for this table and free table
+  // Action: Settle any remaining unpaid due and free table
   const handleSettleAndFreeTable = async () => {
     if (!freeModalSession || freeModalSession.orders.length === 0) return;
     setIsFreeing(true);
     try {
       await Promise.all(
         freeModalSession.orders.map((o: any) =>
-          settleOrder(
+          freeTableOrder(
             restaurantId,
             o.order.id,
-            { method: settleMethod },
+            freeModalSession.duePaise > 0 ? { method: settleMethod } : {},
             outletId,
           )
         )
       );
 
-      // Invalidate both orders and tables queries
-      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId, {}) });
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
       queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
 
       notifications.show({
         title: "Table Freed",
-        message: `Table "${freeModalSession.table.name}" is now Free. Paid via ${settleMethod} (${freeModalSession.roundsCount} round${freeModalSession.roundsCount !== 1 ? "s" : ""}).`,
+        message: `Table "${freeModalSession.table.name}" is now Free.${freeModalSession.duePaise > 0 ? ` Settled ₹${(freeModalSession.duePaise / 100).toFixed(0)} via ${settleMethod}.` : " All rounds were paid."}`,
         color: "teal",
         icon: <IconCheck size={16} />,
       });
 
       setFreeModalSession(null);
     } catch (err: any) {
-      notifications.show({ title: "Failed to free table", message: err.message || "Error settling order", color: "red" });
+      notifications.show({ title: "Failed to free table", message: err.message || "Error freeing table", color: "red" });
     } finally {
       setIsFreeing(false);
     }
@@ -353,7 +362,8 @@ export default function TablesPage() {
         )
       );
 
-      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId, {}) });
+      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
       queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
 
       notifications.show({
@@ -621,9 +631,9 @@ export default function TablesPage() {
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
-                  borderColor: isOccupied ? "rgba(253, 126, 20, 0.45)" : "rgba(32, 201, 151, 0.3)",
-                  backgroundColor: isOccupied ? "rgba(253, 126, 20, 0.02)" : "rgba(32, 201, 151, 0.01)",
-                  boxShadow: isOccupied ? "0 4px 14px rgba(253, 126, 20, 0.08)" : "0 2px 8px rgba(0, 0, 0, 0.04)",
+                  borderColor: !isOccupied ? "rgba(32, 201, 151, 0.3)" : session.duePaise === 0 ? "rgba(32, 201, 151, 0.45)" : "rgba(253, 126, 20, 0.45)",
+                  backgroundColor: !isOccupied ? "rgba(32, 201, 151, 0.01)" : session.duePaise === 0 ? "rgba(32, 201, 151, 0.02)" : "rgba(253, 126, 20, 0.02)",
+                  boxShadow: !isOccupied ? "0 2px 8px rgba(0, 0, 0, 0.04)" : session.duePaise === 0 ? "0 4px 14px rgba(32, 201, 151, 0.08)" : "0 4px 14px rgba(253, 126, 20, 0.08)",
                   transition: "all 0.2s ease",
                 }}
               >
@@ -650,14 +660,14 @@ export default function TablesPage() {
                     </div>
 
                     <Group gap={4} align="center">
-                      {/* Status Badge: Free vs Occupied */}
+                      {/* Status Badge: Free vs Occupied (Paid or Due) */}
                       <Badge
                         size="sm"
                         variant="light"
-                        color={isOccupied ? "orange" : "teal"}
-                        leftSection={isOccupied ? <IconClock size={11} /> : <IconCheck size={11} />}
+                        color={!isOccupied ? "teal" : session.duePaise === 0 ? "teal" : "orange"}
+                        leftSection={!isOccupied ? <IconCheck size={11} /> : session.duePaise === 0 ? <IconCheck size={11} /> : <IconClock size={11} />}
                       >
-                        {isOccupied ? "Occupied" : "Free"}
+                        {!isOccupied ? "Free" : session.duePaise === 0 ? "Occupied · Paid" : `Occupied · Due ₹${(session.duePaise / 100).toFixed(0)}`}
                       </Badge>
 
                       {/* Management & Actions Menu */}
@@ -703,15 +713,15 @@ export default function TablesPage() {
                       p="xs"
                       mb="sm"
                       style={{
-                        backgroundColor: "rgba(253, 126, 20, 0.08)",
+                        backgroundColor: session.duePaise === 0 ? "rgba(32, 201, 151, 0.08)" : "rgba(253, 126, 20, 0.08)",
                         borderRadius: "6px",
-                        border: "1px dashed rgba(253, 126, 20, 0.35)",
+                        border: session.duePaise === 0 ? "1px dashed rgba(32, 201, 151, 0.35)" : "1px dashed rgba(253, 126, 20, 0.35)",
                       }}
                     >
                       {/* Token No & Amount */}
                       <Group justify="space-between" align="center" mb={2}>
                         <Group gap={4} align="center">
-                          <Text size="xs" fw={800} c="orange.9">
+                          <Text size="xs" fw={800} c={session.duePaise === 0 ? "teal.9" : "orange.9"}>
                             Token {session.tokensStr}
                           </Text>
                           {orderVisual && OrderIcon && (
@@ -737,8 +747,8 @@ export default function TablesPage() {
                             </Badge>
                           )}
                         </Group>
-                        <Text size="11px" fw={600} c="orange.8">
-                          {session.elapsedMinutes}m seated
+                        <Text size="11px" fw={700} c={session.duePaise === 0 ? "teal.8" : "orange.8"}>
+                          {session.duePaise === 0 ? "All Paid" : `Due: ₹${(session.duePaise / 100).toFixed(0)}`}
                         </Text>
                       </Group>
 
@@ -777,11 +787,11 @@ export default function TablesPage() {
                         fullWidth
                         size="xs"
                         color="teal"
-                        variant="filled"
+                        variant={session.duePaise === 0 ? "filled" : "light"}
                         leftSection={<IconCheck size={14} />}
                         onClick={() => handleOpenFreeModal(session)}
                       >
-                        Free Table
+                        {session.duePaise === 0 ? "Free Table" : `Settle & Free (Due: ₹${(session.duePaise / 100).toFixed(0)})`}
                       </Button>
 
                       {/* Secondary actions: View Order & + Add Round */}
@@ -847,32 +857,46 @@ export default function TablesPage() {
                     Seated {freeModalSession.elapsedMinutes}m ago · {freeModalSession.roundsCount} Round{freeModalSession.roundsCount !== 1 ? "s" : ""}
                   </Text>
                 </div>
-                <Badge size="lg" color="dinePrimary" variant="filled">
-                  Total: ₹{(freeModalSession.totalPaise / 100).toFixed(0)}
+                <Badge size="lg" color={freeModalSession.duePaise === 0 ? "teal" : "orange"} variant="filled">
+                  {freeModalSession.duePaise === 0 ? `Paid: ₹${(freeModalSession.totalPaise / 100).toFixed(0)}` : `Due: ₹${(freeModalSession.duePaise / 100).toFixed(0)}`}
                 </Badge>
               </Group>
 
+              <Group justify="space-between" align="center" mt={4}>
+                <Text size="xs" c="dimmed">
+                  Total Bill: ₹{(freeModalSession.totalPaise / 100).toFixed(0)} · Paid: ₹{(freeModalSession.paidPaise / 100).toFixed(0)}
+                </Text>
+              </Group>
+
               {/* Items summary */}
-              <Text size="xs" c="dimmed">
+              <Text size="xs" c="dimmed" mt={6}>
                 {freeModalSession.allItems?.map((i: any) => `${i.nameSnapshot || i.name} × ${i.qty}${i.round && i.round > 1 ? ` [R${i.round}]` : ""}`).join(", ")}
               </Text>
             </Paper>
 
-            {/* Payment Method Selector */}
-            <div>
-              <Text size="sm" fw={600} mb={6}>Choose Payment Method to Settle & Free:</Text>
-              <Radio.Group
-                value={settleMethod}
-                onChange={setSettleMethod}
-              >
-                <Group gap="sm">
-                  <Radio value="Cash" label="Cash" />
-                  <Radio value="UPI" label="UPI / QR" />
-                  <Radio value="Card" label="Card" />
-                  <Radio value="Other" label="Other" />
-                </Group>
-              </Radio.Group>
-            </div>
+            {/* Payment Method Selector — only needed if there is unpaid due */}
+            {freeModalSession.duePaise > 0 ? (
+              <div>
+                <Text size="sm" fw={600} mb={6}>
+                  Choose Payment Method to Settle Remaining Due (₹{(freeModalSession.duePaise / 100).toFixed(0)}):
+                </Text>
+                <Radio.Group
+                  value={settleMethod}
+                  onChange={setSettleMethod}
+                >
+                  <Group gap="sm">
+                    <Radio value="Cash" label="💵 Cash" />
+                    <Radio value="UPI" label="📱 UPI" />
+                    <Radio value="Card" label="💳 Card" />
+                    <Radio value="Other" label="Other" />
+                  </Group>
+                </Radio.Group>
+              </div>
+            ) : (
+              <Alert color="teal" icon={<IconCheck size={16} />}>
+                All rounds on this table have already been settled. Confirming will vacate the table and make it free for new guests.
+              </Alert>
+            )}
 
             <Divider />
 
@@ -900,7 +924,7 @@ export default function TablesPage() {
                   Cancel
                 </Button>
 
-                {/* Settle & Free Table Primary Action */}
+                {/* Free Table Primary Action */}
                 <Button
                   color="teal"
                   size="sm"
@@ -908,7 +932,9 @@ export default function TablesPage() {
                   loading={isFreeing}
                   onClick={handleSettleAndFreeTable}
                 >
-                  Settle & Free Table (₹{(freeModalSession.totalPaise / 100).toFixed(0)})
+                  {freeModalSession.duePaise > 0
+                    ? `Settle ₹${(freeModalSession.duePaise / 100).toFixed(0)} & Free Table`
+                    : "Free Table"}
                 </Button>
               </Group>
             </Group>
@@ -953,14 +979,20 @@ export default function TablesPage() {
               <Stack gap="md">
                 {roundNumbers.map((rNum) => {
                   const items = roundMap.get(rNum) || [];
+                  const isRoundPaid = items.every((it: any) => it.paymentStatus === 'PAID');
                   const roundPaise = items.reduce((sum, it) => sum + ((it.pricePaiseSnapshot ?? it.pricePaise ?? 0) * it.qty), 0);
                   return (
                     <Paper key={rNum} withBorder p="xs" radius="sm" style={{ backgroundColor: "rgba(0, 0, 0, 0.01)" }}>
                       <Group justify="space-between" align="center" mb="xs">
-                        <Badge size="xs" color={rNum === 1 ? "blue" : "grape"} variant="filled">
-                          Round {rNum}
-                        </Badge>
-                        <Text size="xs" fw={700} c="dimmed">
+                        <Group gap="xs">
+                          <Badge size="xs" color={rNum === 1 ? "blue" : "grape"} variant="filled">
+                            Round {rNum}
+                          </Badge>
+                          <Badge size="xs" color={isRoundPaid ? "teal" : "orange"} variant="light">
+                            {isRoundPaid ? "Paid" : "Unpaid"}
+                          </Badge>
+                        </Group>
+                        <Text size="xs" fw={700} c={isRoundPaid ? "teal.8" : "dimmed"}>
                           ₹{(roundPaise / 100).toFixed(0)}
                         </Text>
                       </Group>
@@ -994,6 +1026,15 @@ export default function TablesPage() {
                 <Text fw={800} size="xl" c="dinePrimary">
                   ₹{(viewSession.totalPaise / 100).toFixed(0)}
                 </Text>
+              </Group>
+
+              <Group justify="space-between" align="center">
+                <Text size="sm" c="dimmed">
+                  Paid: ₹{(viewSession.paidPaise / 100).toFixed(0)}
+                </Text>
+                <Badge size="md" color={viewSession.duePaise === 0 ? "teal" : "orange"} variant="light">
+                  {viewSession.duePaise === 0 ? "All Paid" : `Due: ₹${(viewSession.duePaise / 100).toFixed(0)}`}
+                </Badge>
               </Group>
 
               <Group grow mt="md">

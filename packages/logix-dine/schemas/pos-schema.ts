@@ -207,12 +207,14 @@ export const saleOrder = pgTable(
     status: text('status').notNull().default('OPEN'), // OPEN | PAID | VOID
     orderStatus: text('orderStatus').notNull().default('ORDERED'), // ORDERED | PREPARING | PREPARED | SERVED | CANCELLED
     subtotalPaise: integer('subtotalPaise').notNull().default(0),
+    paidPaise: integer('paidPaise').notNull().default(0),
     method: text('method'), // Cash | UPI | QR
     note: text('note'),
     kotPrintedAt: timestamp('kotPrintedAt'),
     readyAt: timestamp('readyAt'), // KDS: set when kitchen marks the order ready
     settledAt: timestamp('settledAt'),
     settledByUserId: text('settledByUserId').references(() => user.id),
+    tableFreedAt: timestamp('tableFreedAt'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
@@ -223,6 +225,7 @@ export const saleOrder = pgTable(
     index('saleOrder_restaurantId_orderStatus_idx').on(t.restaurantId, t.orderStatus),
     index('saleOrder_outletId_idx').on(t.outletId),
     index('saleOrder_outletId_orderStatus_idx').on(t.outletId, t.orderStatus),
+    index('saleOrder_tableFreedAt_idx').on(t.tableFreedAt),
   ],
 );
 
@@ -243,6 +246,9 @@ export const saleOrderItem = pgTable(
     qty: integer('qty').notNull(),
     status: text('status').notNull().default('ORDERED'), // ORDERED | PREPARING | PREPARED | SERVED | CANCELLED
     round: integer('round').notNull().default(1),
+    paymentStatus: text('paymentStatus').notNull().default('UNPAID'), // UNPAID | PAID
+    settledMethod: text('settledMethod'),
+    settledAt: timestamp('settledAt'),
     note: text('note'),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
@@ -253,6 +259,7 @@ export const saleOrderItem = pgTable(
     index('saleOrderItem_orderId_idx').on(t.orderId),
     index('saleOrderItem_orderId_status_idx').on(t.orderId, t.status),
     index('saleOrderItem_orderId_round_idx').on(t.orderId, t.round),
+    index('saleOrderItem_paymentStatus_idx').on(t.paymentStatus),
   ],
 );
 

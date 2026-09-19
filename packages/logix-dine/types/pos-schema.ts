@@ -122,13 +122,14 @@ export type SaleOrderRow = InferSelectModel<typeof saleOrder>;
 export type NewSaleOrderRow = InferInsertModel<typeof saleOrder>;
 export type JsonSaleOrderRow = Omit<
   SaleOrderRow,
-  'createdAt' | 'updatedAt' | 'kotPrintedAt' | 'readyAt' | 'settledAt'
+  'createdAt' | 'updatedAt' | 'kotPrintedAt' | 'readyAt' | 'settledAt' | 'tableFreedAt'
 > & {
   createdAt: string;
   updatedAt: string;
   kotPrintedAt: string | null;
   readyAt: string | null;
   settledAt: string | null;
+  tableFreedAt: string | null;
 };
 
 export type SaleOrderItemRow = InferSelectModel<typeof saleOrderItem>;
@@ -139,9 +140,10 @@ export type JsonOrderItemAuditRow = Omit<OrderItemAuditRow, 'createdAt'> & {
   createdAt: string;
 };
 
-export type JsonSaleOrderItemRow = Omit<SaleOrderItemRow, 'createdAt' | 'updatedAt'> & {
+export type JsonSaleOrderItemRow = Omit<SaleOrderItemRow, 'createdAt' | 'updatedAt' | 'settledAt'> & {
   createdAt: string;
   updatedAt: string;
+  settledAt: string | null;
 };
 
 /** A sale order with its items — the primary response shape for billing routes. */

@@ -7,13 +7,16 @@ import { RESTAURANT_ROLES } from '@logixsoft/logix-dine/types/roles';
 import { toRestaurantMember } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
+import { cacheGet, cacheSet, invalidateStaff, CacheKey, TTL } from '../lib/cache';
 
-const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+const app = new Hono<{ Bindings: AuthEnv }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
+
+function kv(c: any) { return c.env?.CACHE; }
 
 function normalizePhone(input: string): string {
   const cleaned = input.trim();
@@ -60,11 +63,16 @@ async function memberWithOutlets(db: any, restaurantId: string, memberId?: strin
 // GET /staff — list all members (with outlet access) for the current restaurant
 app.get('/', requirePermission('member:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
+
+  const cached = await cacheGet<any[]>(kv(c), CacheKey.staff(restaurantId));
+  if (cached) return c.json(cached);
+
   const { db, close } = getDb(c);
   try {
     const result = await memberWithOutlets(db, restaurantId);
-    // Exclude OWNER from the staff list — owner manages staff, isn't "staff"
-    return c.json(result.filter((m: any) => m.role !== 'OWNER'));
+    const filtered = result.filter((m: any) => m.role !== 'OWNER');
+    await cacheSet(kv(c), CacheKey.staff(restaurantId), filtered, TTL.staff);
+    return c.json(filtered);
   } finally {
     await close();
   }
@@ -162,6 +170,7 @@ app.post('/invite', requirePermission('member:write'), async (c) => {
     }
 
     const [created] = await memberWithOutlets(db, restaurantId, memberId);
+    await invalidateStaff(kv(c), restaurantId);
     return c.json(created, 201);
   } finally {
     await close();
@@ -212,6 +221,7 @@ app.put('/:id', requirePermission('member:write'), async (c) => {
     });
 
     const [updated] = await memberWithOutlets(db, restaurantId, memberId);
+    await invalidateStaff(kv(c), restaurantId);
     return c.json(updated);
   } finally {
     await close();
@@ -233,6 +243,7 @@ app.delete('/:id', requirePermission('member:write'), async (c) => {
     if (existing.role === 'OWNER') return c.json({ error: 'Forbidden', message: 'Cannot remove the owner' }, 403);
 
     await db.delete(appSchema.restaurantMember).where(eq(appSchema.restaurantMember.id, memberId));
+    await invalidateStaff(kv(c), restaurantId);
     return c.json({ success: true });
   } finally {
     await close();

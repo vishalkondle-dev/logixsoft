@@ -12,29 +12,36 @@ import {
 } from '@logixsoft/logix-dine/schemas/pos';
 import { toCategory, toMenuItem } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
+import { cacheGet, cacheSet, invalidateMenu, CacheKey, TTL } from '../lib/cache';
 
-const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+const app = new Hono<{ Bindings: AuthEnv }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
 
+function kv(c: any) { return c.env?.CACHE; }
+
 // ─── Categories ───────────────────────────────────────────────────────────────
 
 app.get('/categories', requirePermission('menu:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
-  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id');
+  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
+
+  const cacheKey = CacheKey.categories(restaurantId, outletId);
+  const cached = await cacheGet<any[]>(kv(c), cacheKey);
+  if (cached) return c.json(cached);
+
   const { db, close } = getDb(c);
   try {
     const where = outletId
       ? and(eq(appSchema.menuCategory.restaurantId, restaurantId), eq(appSchema.menuCategory.outletId, outletId))
       : eq(appSchema.menuCategory.restaurantId, restaurantId);
-    const cats = await db
-      .select()
-      .from(appSchema.menuCategory)
-      .where(where);
-    return c.json(cats.map(toCategory));
+    const cats = await db.select().from(appSchema.menuCategory).where(where);
+    const result = cats.map(toCategory);
+    await cacheSet(kv(c), cacheKey, result, TTL.menu);
+    return c.json(result);
   } finally {
     await close();
   }
@@ -54,17 +61,14 @@ app.post('/categories', requirePermission('menu:write'), async (c) => {
     const now = new Date();
     const id = generateId('cat');
     await db.insert(appSchema.menuCategory).values({
-      id,
-      restaurantId,
-      outletId,
+      id, restaurantId, outletId,
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       sortOrder: parsed.data.sortOrder ?? 0,
-      active: true,
-      createdAt: now,
-      updatedAt: now,
+      active: true, createdAt: now, updatedAt: now,
     });
     const [cat] = await db.select().from(appSchema.menuCategory).where(eq(appSchema.menuCategory.id, id));
+    await invalidateMenu(kv(c), restaurantId);
     return c.json(toCategory(cat), 201);
   } finally {
     await close();
@@ -86,6 +90,7 @@ app.put('/categories/:id', requirePermission('menu:write'), async (c) => {
       .where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
     const [cat] = await db.select().from(appSchema.menuCategory).where(eq(appSchema.menuCategory.id, id));
     if (!cat) return c.json({ error: 'Not Found' }, 404);
+    await invalidateMenu(kv(c), restaurantId);
     return c.json(toCategory(cat));
   } finally {
     await close();
@@ -97,7 +102,6 @@ app.delete('/categories/:id', requirePermission('menu:write'), async (c) => {
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
-    // Check if any items exist in this category
     const items = await db
       .select({ id: appSchema.menuItem.id })
       .from(appSchema.menuItem)
@@ -109,6 +113,7 @@ app.delete('/categories/:id', requirePermission('menu:write'), async (c) => {
     await db
       .delete(appSchema.menuCategory)
       .where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
+    await invalidateMenu(kv(c), restaurantId);
     return c.json({ success: true });
   } finally {
     await close();
@@ -131,6 +136,7 @@ app.patch('/categories/reorder', requirePermission('menu:write'), async (c) => {
           .where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
       }
     });
+    await invalidateMenu(kv(c), restaurantId);
     return c.json({ success: true });
   } finally {
     await close();
@@ -142,18 +148,25 @@ app.patch('/categories/reorder', requirePermission('menu:write'), async (c) => {
 app.get('/items', requirePermission('menu:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
   const categoryId = c.req.query('categoryId');
-  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id');
+  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
+
+  // Cache only full-outlet item lists (no categoryId filter) — that is what the web uses
+  const cacheKey = !categoryId ? CacheKey.items(restaurantId, outletId) : null;
+  if (cacheKey) {
+    const cached = await cacheGet<any[]>(kv(c), cacheKey);
+    if (cached) return c.json(cached);
+  }
+
   const { db, close } = getDb(c);
   try {
     const conditions = [eq(appSchema.menuItem.restaurantId, restaurantId)];
     if (categoryId) conditions.push(eq(appSchema.menuItem.categoryId, categoryId));
     if (outletId) conditions.push(eq(appSchema.menuItem.outletId, outletId));
 
-    const items = await db
-      .select()
-      .from(appSchema.menuItem)
-      .where(and(...conditions));
-    return c.json(items.map(toMenuItem));
+    const items = await db.select().from(appSchema.menuItem).where(and(...conditions));
+    const result = items.map(toMenuItem);
+    if (cacheKey) await cacheSet(kv(c), cacheKey, result, TTL.menu);
+    return c.json(result);
   } finally {
     await close();
   }
@@ -168,7 +181,6 @@ app.post('/items', requirePermission('menu:write'), async (c) => {
 
   const { db, close } = getDb(c);
   try {
-    // Verify category belongs to this restaurant
     const [cat] = await db
       .select({ id: appSchema.menuCategory.id, outletId: appSchema.menuCategory.outletId })
       .from(appSchema.menuCategory)
@@ -177,23 +189,20 @@ app.post('/items', requirePermission('menu:write'), async (c) => {
     if (!cat) return c.json({ error: 'Not Found', message: 'Category not found' }, 404);
 
     const outletId = parsed.data.outletId || headerOutletId || cat.outletId || null;
-
     const now = new Date();
     const id = generateId('item');
     await db.insert(appSchema.menuItem).values({
-      id,
-      restaurantId,
-      outletId,
+      id, restaurantId, outletId,
       categoryId: parsed.data.categoryId,
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       pricePaise: parsed.data.pricePaise,
       available: true,
       sortOrder: parsed.data.sortOrder ?? 0,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: now, updatedAt: now,
     });
     const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
+    await invalidateMenu(kv(c), restaurantId);
     return c.json(toMenuItem(item), 201);
   } finally {
     await close();
@@ -215,6 +224,7 @@ app.put('/items/:id', requirePermission('menu:write'), async (c) => {
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
     const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
     if (!item) return c.json({ error: 'Not Found' }, 404);
+    await invalidateMenu(kv(c), restaurantId);
     return c.json(toMenuItem(item));
   } finally {
     await close();
@@ -229,6 +239,7 @@ app.delete('/items/:id', requirePermission('menu:write'), async (c) => {
     await db
       .delete(appSchema.menuItem)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    await invalidateMenu(kv(c), restaurantId);
     return c.json({ success: true });
   } finally {
     await close();
@@ -250,6 +261,7 @@ app.patch('/items/:id/toggle', requirePermission('menu:write'), async (c) => {
       .set({ available: !item.available, updatedAt: new Date() })
       .where(eq(appSchema.menuItem.id, id));
     const [updated] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
+    await invalidateMenu(kv(c), restaurantId);
     return c.json(toMenuItem(updated));
   } finally {
     await close();
@@ -272,6 +284,7 @@ app.patch('/items/reorder', requirePermission('menu:write'), async (c) => {
           .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
       }
     });
+    await invalidateMenu(kv(c), restaurantId);
     return c.json({ success: true });
   } finally {
     await close();

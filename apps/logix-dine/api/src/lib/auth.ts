@@ -16,6 +16,12 @@ export interface AuthEnv {
   HYPERDRIVE?: {
     connectionString: string;
   };
+  CACHE?: {
+    get(key: string, options?: { type?: string }): Promise<string | null>;
+    put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+    delete(key: string): Promise<void>;
+    list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string }[]; list_complete: boolean; cursor?: string }>;
+  };
   /** DEV ONLY: when 'true', skips WhatsApp send and accepts OTP 123456 for any number. */
   DEV_OTP_BYPASS?: string;
 }

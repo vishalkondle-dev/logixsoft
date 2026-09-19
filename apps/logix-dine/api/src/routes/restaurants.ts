@@ -7,13 +7,16 @@ import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import { UpdateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
+import { invalidateRestaurant } from '../lib/cache';
 
-const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+const app = new Hono<{ Bindings: AuthEnv }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
+
+function kv(c: any) { return c.env?.CACHE; }
 
 // GET /restaurants/me
 app.get('/me', requirePermission('restaurant:read'), async (c) => {
@@ -106,6 +109,7 @@ app.put('/:id', requirePermission('restaurant:write'), async (c) => {
       .select()
       .from(appSchema.restaurant)
       .where(eq(appSchema.restaurant.id, restaurantId));
+    await invalidateRestaurant(kv(c), restaurantId);
     return c.json(toRestaurant(updated));
   } finally {
     await close();

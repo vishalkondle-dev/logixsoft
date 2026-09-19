@@ -3,6 +3,7 @@ import { eq, and, sql, desc } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, hasOutletAccess } from '../lib/tenancy';
+import { cacheGet, cacheSet, invalidateReports, CacheKey, TTL } from '../lib/cache';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import {
@@ -45,12 +46,14 @@ function formatOrderWhatsAppMessage(
   return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}\n\n*Items:*\n${itemsList}\n\n*Total:* ₹${totalRupees}\n\nThank you for dining with us!`;
 }
 
-const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+const app = new Hono<{ Bindings: AuthEnv }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
+
+function kv(c: any) { return c.env?.CACHE; }
 
 /**
  * Enforce outlet access on a specific outletId regardless of whether the
@@ -93,7 +96,12 @@ async function getOrderWithItems(db: any, orderId: string, restaurantId: string)
 // GET /billing/bootstrap
 app.get('/bootstrap', requirePermission('menu:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
-  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id');
+  const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
+
+  const cacheKey = CacheKey.bootstrap(restaurantId, outletId);
+  const cachedBs = await cacheGet<any>(kv(c), cacheKey);
+  if (cachedBs) return c.json(cachedBs);
+
   const { db, close } = getDb(c);
   try {
     const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
@@ -109,12 +117,14 @@ app.get('/bootstrap', requirePermission('menu:read'), async (c) => {
       : eq(appSchema.menuItem.restaurantId, restaurantId);
     const items = await db.select().from(appSchema.menuItem).where(itemWhere);
 
-    return c.json({
+    const bsResult = {
       restaurant: toRestaurant(rest),
       outlets: outlets.map(toOutlet),
       categories: categories.map(toCategory),
       items: items.map(toMenuItem),
-    });
+    };
+    await cacheSet(kv(c), CacheKey.bootstrap(restaurantId, outletId), bsResult, TTL.menu);
+    return c.json(bsResult);
   } finally {
     await close();
   }
@@ -564,6 +574,7 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
       }
     }
 
+    await invalidateReports(kv(c), restaurantId);
     return c.json(result);
   } finally {
     await close();
@@ -660,6 +671,7 @@ app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
       .where(eq(appSchema.saleOrder.id, orderId));
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
+    await invalidateReports(kv(c), restaurantId);
     return c.json(result);
   } finally {
     await close();

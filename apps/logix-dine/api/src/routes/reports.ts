@@ -5,13 +5,16 @@ import { requirePermission, hasOutletAccess } from '../lib/tenancy';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import type { AuthEnv } from '../lib/auth';
+import { cacheGet, cacheSet, CacheKey, TTL } from '../lib/cache';
 
-const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+const app = new Hono<{ Bindings: AuthEnv }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
+
+function kv(c: any) { return c.env?.CACHE; }
 
 const REPORT_TYPES = [
   'summary',
@@ -80,6 +83,10 @@ app.get('/:type', requirePermission('report:read'), async (c) => {
     return c.json({ error: 'Bad Request', message: 'outletId is required for this role' }, 400);
   }
 
+  const cacheKey = CacheKey.report(restaurantId, type, fromStr, toStr, outletId);
+  const cached = await cacheGet<any>(kv(c), cacheKey);
+  if (cached) return c.json(cached);
+
   const { db, close } = getDb(c);
   try {
     if (!roleIsAllOutlet && outletId && member) {
@@ -90,7 +97,9 @@ app.get('/:type', requirePermission('report:read'), async (c) => {
     }
 
     const data = await runReport(db, type, restaurantId, fromDate, toDate, outletId);
-    return c.json({ type, from: fromStr, to: toStr, outletId, data });
+    const result = { type, from: fromStr, to: toStr, outletId, data };
+    await cacheSet(kv(c), cacheKey, result, TTL.report);
+    return c.json(result);
   } catch (err: any) {
     console.error('[reports] query failed:', err?.message, err?.cause?.message);
     return c.json({ error: 'Internal Server Error', message: 'Report query failed' }, 500);

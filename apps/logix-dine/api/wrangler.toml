@@ -11,6 +11,10 @@ routes = [
 binding = "HYPERDRIVE"
 id = "21d770a176254310990534eb1f814faf"
 
+[[kv_namespaces]]
+binding = "CACHE"
+id = "0608234ee338413fa88f2e3feb0de283"
+
 [vars]
 NODE_ENV = "production"
 API_URL = "https://dine-api.logixsoft.in"

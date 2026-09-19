@@ -6,13 +6,16 @@ import { requirePermission } from '../lib/tenancy';
 import { toPosTable } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
+import { cacheGet, cacheSet, invalidateTables, CacheKey, TTL } from '../lib/cache';
 
-const app = new Hono<{ Bindings: AuthEnv & { HYPERDRIVE?: { connectionString: string } } }>();
+const app = new Hono<{ Bindings: AuthEnv }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
+
+function kv(c: any) { return c.env?.CACHE; }
 
 const CreateTableSchema = z.object({
   outletId: z.string(),
@@ -32,14 +35,21 @@ const UpdateTableSchema = z.object({
 // GET /tables?outletId= — list tables for an outlet (or all outlets if omitted)
 app.get('/', requirePermission('table:read'), async (c) => {
   const { restaurantId } = c.get('tenant');
-  const outletId = c.req.query('outletId');
+  const outletId = c.req.query('outletId') || '';
+
+  const cacheKey = CacheKey.tables(restaurantId, outletId ? outletId : null);
+  const cached = await cacheGet<any[]>(kv(c), cacheKey);
+  if (cached) return c.json(cached);
+
   const { db, close } = getDb(c);
   try {
     const where = outletId
       ? and(eq(appSchema.posTable.restaurantId, restaurantId), eq(appSchema.posTable.outletId, outletId))
       : eq(appSchema.posTable.restaurantId, restaurantId);
     const tables = await db.select().from(appSchema.posTable).where(where);
-    return c.json(tables.map(toPosTable));
+    const result = tables.map(toPosTable);
+    await cacheSet(kv(c), cacheKey, result, TTL.tables);
+    return c.json(result);
   } finally {
     await close();
   }
@@ -87,6 +97,7 @@ app.post('/', requirePermission('table:write'), async (c) => {
     });
 
     const [created] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, id));
+    await invalidateTables(kv(c), restaurantId);
     return c.json(toPosTable(created), 201);
   } finally {
     await close();
@@ -118,6 +129,7 @@ app.put('/:id', requirePermission('table:write'), async (c) => {
       .where(eq(appSchema.posTable.id, tableId));
 
     const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
+    await invalidateTables(kv(c), restaurantId);
     return c.json(toPosTable(updated));
   } finally {
     await close();
@@ -144,6 +156,7 @@ app.patch('/:id/toggle', requirePermission('table:write'), async (c) => {
       .where(eq(appSchema.posTable.id, tableId));
 
     const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
+    await invalidateTables(kv(c), restaurantId);
     return c.json(toPosTable(updated));
   } finally {
     await close();
@@ -169,6 +182,7 @@ app.delete('/:id', requirePermission('table:write'), async (c) => {
       .set({ active: false, updatedAt: new Date(), updatedBy: actorPhone })
       .where(eq(appSchema.posTable.id, tableId));
 
+    await invalidateTables(kv(c), restaurantId);
     return c.json({ success: true });
   } finally {
     await close();

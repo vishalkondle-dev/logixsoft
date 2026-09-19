@@ -34,6 +34,8 @@ import { adminRoutes } from './routes/admin';
 import { staffRoutes } from './routes/staff';
 import { tableRoutes } from './routes/tables';
 import { reportRoutes } from './routes/reports';
+import { storeSessionPayload } from './lib/tenancy';
+import { extractSessionToken } from './lib/cache';
 
 type Bindings = AuthEnv & {
   ENVIRONMENT?: string;
@@ -317,6 +319,20 @@ const handleVerifyOtp = async (c: any) => {
       name: parsed.name,
       phoneNumber: normalizedPhone,
     }), sessionData?.session);
+
+    // Store session payload in KV synchronously before responding —
+    // this ensures the very next request from the client hits the cache.
+    const sessionToken = extractSessionToken(
+      [...verifyRes.headers.entries()]
+        .filter(([k]) => k.toLowerCase() === 'set-cookie')
+        .map(([, v]) => v)
+        .join('; ')
+    );
+    if (sessionToken) {
+      await storeSessionPayload(c, sessionToken).catch((err) =>
+        console.warn('[verify-otp] storeSessionPayload failed:', err)
+      );
+    }
 
     return new Response(JSON.stringify(responseBody), {
       status: 200,

@@ -3,12 +3,12 @@
 import React, { useState } from "react";
 import {
   Container, Title, Stack, Paper, Group, Text, Badge, Select, Button,
-  Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip, Collapse,
+  Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconReceipt, IconRefresh, IconPrinter, IconArrowRight, IconX,
-  IconHistory, IconBan, IconCheck, IconChevronDown, IconChevronUp,
+  IconBan, IconCheck,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useOrders } from "@/lib/queries";
@@ -32,7 +32,6 @@ export default function OrdersPage() {
   const [selected, setSelected] = useState<any>(null);
   const [reprinting, setReprinting] = useState<"KOT" | "BILL" | null>(null);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
-  const [expandedAudits, setExpandedAudits] = useState<Record<string, boolean>>({});
 
   const enabled = !!restaurantId && (allOutlets || !!outletId);
 
@@ -100,10 +99,6 @@ export default function OrdersPage() {
     } finally {
       setUpdatingItemId(null);
     }
-  };
-
-  const toggleAuditHistory = (itemId: string) => {
-    setExpandedAudits((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
   };
 
   if (!restaurant) return null;
@@ -290,11 +285,6 @@ export default function OrdersPage() {
                 const canNext = Boolean(nextStatus);
                 const canClose = !isCancelled && !isServed;
 
-                const audits = item.audits || [];
-                const hasAudits = audits.length > 0;
-                const isAuditOpen = !!expandedAudits[item.id];
-                const latestAudit = hasAudits ? audits[audits.length - 1] : null;
-
                 return (
                   <Paper
                     key={item.id}
@@ -306,7 +296,7 @@ export default function OrdersPage() {
                       opacity: isCancelled ? 0.7 : 1,
                     }}
                   >
-                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                    <Group justify="space-between" align="center" wrap="nowrap">
                       {/* Left side: item details */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Group gap="xs" align="center">
@@ -326,15 +316,6 @@ export default function OrdersPage() {
                         {item.note && (
                           <Text size="xs" c="dinePrimary" fs="italic" mt={2}>
                             Note: {item.note}
-                          </Text>
-                        )}
-
-                        {/* Audit summary */}
-                        {latestAudit && (
-                          <Text size="11px" c="dimmed" mt={3}>
-                            Audit: {latestAudit.toStatus} by {latestAudit.changedBy || "Staff"}
-                            {latestAudit.changedByRole ? ` (${latestAudit.changedByRole})` : ""} ·{" "}
-                            {new Date(latestAudit.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         )}
                       </div>
@@ -381,39 +362,8 @@ export default function OrdersPage() {
                             </ActionIcon>
                           </Tooltip>
                         )}
-
-                        {/* Audit history toggle if multiple records exist */}
-                        {hasAudits && audits.length > 1 && (
-                          <Tooltip label="View status history" withArrow position="top">
-                            <ActionIcon
-                              size="sm"
-                              variant="subtle"
-                              color="gray"
-                              onClick={() => toggleAuditHistory(item.id)}
-                            >
-                              {isAuditOpen ? <IconChevronUp size={14} /> : <IconHistory size={14} />}
-                            </ActionIcon>
-                          </Tooltip>
-                        )}
                       </Group>
                     </Group>
-
-                    {/* Audit trail collapse */}
-                    {hasAudits && (
-                      <Collapse expanded={isAuditOpen}>
-                        <Box mt="xs" pt="xs" style={{ borderTop: "1px dashed #eee" }}>
-                          <Text size="11px" fw={600} c="dimmed" mb={4}>Status History:</Text>
-                          <Stack gap={2}>
-                            {audits.map((a: any) => (
-                              <Text key={a.id} size="10px" c="dimmed">
-                                • {a.fromStatus ? `${a.fromStatus} → ` : ""}{a.toStatus} by {a.changedBy || "Staff"}
-                                {a.changedByRole ? ` (${a.changedByRole})` : ""} at {new Date(a.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                              </Text>
-                            ))}
-                          </Stack>
-                        </Box>
-                      </Collapse>
-                    )}
                   </Paper>
                 );
               })}

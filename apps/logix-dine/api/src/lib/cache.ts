@@ -47,8 +47,11 @@ export interface SessionPayload {
 // ─── Key builders ─────────────────────────────────────────────────────────────
 
 export const CacheKey = {
-  // Session → full payload (user + all memberships). Key = last 40 chars of token.
-  session: (token: string) => `s:${token.slice(-40)}`,
+  // ─── Tenancy / auth lookups
+  session:      (token: string) => `s:${token.slice(-40)}`,
+
+  // ─── Per-outlet order sequence counter
+  outletSeq:    (outletId: string) => `seq:${outletId}`,
 
   // Data caches — keyed by restaurantId + outletId
   bootstrap:  (r: string, o: string) => `bs:${r}:${o}`,
@@ -73,6 +76,7 @@ export const CacheKey = {
 
 export const TTL = {
   session:    604800,  // 7 days — same as better-auth session lifetime
+  outletSeq:  604800,  // 7 days — reset if outlet goes unused for a week
   menu:       60,
   restaurant: 300,
   staff:      60,

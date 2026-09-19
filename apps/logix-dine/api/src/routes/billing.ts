@@ -148,22 +148,33 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
 
     const now = new Date();
     const id = generateId(`ord_${outletSlug}`, 16);
-    let tokenNo = 1;
     let subtotalPaise = 0;
     const orderItemsToInsert: any[] = [];
 
-    await db.transaction(async (tx: any) => {
-      // Token number scoped per outlet
-      const [{ maxNo }] = await tx
+    // ── Order number: read from KV sequence, fall back to MAX query once ──────
+    // KV stores the last used orderNo per outlet. On hit: increment in-memory,
+    // write updated value back via waitUntil (non-blocking). On miss (first
+    // order or KV eviction): fetch MAX from DB once, seed the counter.
+    let tokenNo: number;
+    const seqKey = CacheKey.outletSeq(parsed.data.outletId);
+    const kvSeq = await cacheGet<number>(kv(c), seqKey);
+
+    if (kvSeq !== null) {
+      // Cache hit — no DB query needed for the counter
+      tokenNo = kvSeq + 1;
+    } else {
+      // Cache miss — query DB once to seed the sequence
+      const [{ maxNo }] = await db
         .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
         .from(appSchema.saleOrder)
-        .where(
-          and(
-            eq(appSchema.saleOrder.restaurantId, restaurantId),
-            eq(appSchema.saleOrder.outletId, parsed.data.outletId)
-          )
-        );
+        .where(and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          eq(appSchema.saleOrder.outletId, parsed.data.outletId)
+        ));
       tokenNo = (maxNo ?? 0) + 1;
+    }
+
+    await db.transaction(async (tx: any) => {
 
       if (parsed.data.items && parsed.data.items.length > 0) {
         const menuItems = await tx
@@ -241,28 +252,46 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
       updatedAt: now,
     })));
 
-    // Send WhatsApp notification if customerPhone is provided
+    // ── Update KV sequence (non-blocking) ────────────────────────────────────
+    // Use waitUntil so the write finishes even after the response is sent.
+    try {
+      c.executionCtx.waitUntil(
+        cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq)
+      );
+    } catch {
+      // executionCtx not available in local dev
+      cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq).catch(() => {});
+    }
+
+    // ── WhatsApp notification (non-blocking) ──────────────────────────────────
     if (parsed.data.customerPhone && result) {
+      const waWork = (async () => {
+        try {
+          const [rest] = await db
+            .select({ name: appSchema.restaurant.name })
+            .from(appSchema.restaurant)
+            .where(eq(appSchema.restaurant.id, restaurantId));
+          const message = formatOrderWhatsAppMessage(
+            rest?.name ?? 'Restaurant',
+            parsed.data.outletId,
+            result.order,
+            result.items,
+            false
+          );
+          await sendWhatsAppText(
+            parsed.data.customerPhone!,
+            message,
+            undefined,
+            { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
+          );
+        } catch (waErr) {
+          console.warn('[billing/order] WhatsApp send error:', waErr);
+        }
+      })();
       try {
-        const [rest] = await db
-          .select({ name: appSchema.restaurant.name })
-          .from(appSchema.restaurant)
-          .where(eq(appSchema.restaurant.id, restaurantId));
-        const message = formatOrderWhatsAppMessage(
-          rest?.name ?? 'Restaurant',
-          parsed.data.outletId, // outlet name not critical for WA message; skip extra DB call
-          result.order,
-          result.items,
-          false
-        );
-        await sendWhatsAppText(
-          parsed.data.customerPhone,
-          message,
-          undefined,
-          { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
-        ).catch((err) => console.warn('[billing/order] sendWhatsAppText error:', err));
-      } catch (waErr) {
-        console.warn('[billing/order] WhatsApp send error:', waErr);
+        c.executionCtx.waitUntil(waWork);
+      } catch {
+        // local dev — let it run and forget
       }
     }
 
@@ -558,31 +587,34 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
     const result = await getOrderWithItems(db, orderId, restaurantId);
 
     if (targetPhone && result) {
-      try {
-        const [rest] = await db
-          .select({ name: appSchema.restaurant.name })
-          .from(appSchema.restaurant)
-          .where(eq(appSchema.restaurant.id, restaurantId));
-        const [outlet] = await db
-          .select({ name: appSchema.restaurantOutlet.name })
-          .from(appSchema.restaurantOutlet)
-          .where(eq(appSchema.restaurantOutlet.id, order.outletId));
-        const message = formatOrderWhatsAppMessage(
-          rest?.name ?? 'Restaurant',
-          outlet?.name,
-          result.order,
-          result.items,
-          true
-        );
-        await sendWhatsAppText(
-          targetPhone,
-          message,
-          undefined,
-          { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
-        ).catch((err) => console.warn('[billing/settle] sendWhatsAppText error:', err));
-      } catch (waErr) {
-        console.warn('[billing/settle] WhatsApp send error:', waErr);
-      }
+      const waSettle = (async () => {
+        try {
+          const [rest] = await db
+            .select({ name: appSchema.restaurant.name })
+            .from(appSchema.restaurant)
+            .where(eq(appSchema.restaurant.id, restaurantId));
+          const [outlet] = await db
+            .select({ name: appSchema.restaurantOutlet.name })
+            .from(appSchema.restaurantOutlet)
+            .where(eq(appSchema.restaurantOutlet.id, order.outletId));
+          const message = formatOrderWhatsAppMessage(
+            rest?.name ?? 'Restaurant',
+            outlet?.name,
+            result.order,
+            result.items,
+            true
+          );
+          await sendWhatsAppText(
+            targetPhone,
+            message,
+            undefined,
+            { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
+          );
+        } catch (waErr) {
+          console.warn('[billing/settle] WhatsApp send error:', waErr);
+        }
+      })();
+      try { c.executionCtx.waitUntil(waSettle); } catch { /* local dev */ }
     }
 
     await invalidateReports(kv(c), restaurantId);

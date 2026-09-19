@@ -343,10 +343,10 @@ function StatCard({ label, value, color }: { label: string; value: string; color
 function SummaryPanel({ data }: { data: any }) {
   return (
     <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="md">
-      <StatCard label="Revenue" value={rupees(data?.revenuePaise ?? 0)} />
+      <StatCard label="Collected Revenue" value={rupees(data?.revenuePaise ?? 0)} />
       <StatCard label="Paid Orders" value={String(data?.paidCount ?? 0)} />
-      <StatCard label="Avg Order" value={rupees(data?.avgOrderPaise ?? 0)} />
-      <StatCard label="Open" value={String(data?.openCount ?? 0)} color="blue" />
+      <StatCard label="Avg Order Value" value={rupees(data?.avgOrderPaise ?? 0)} />
+      <StatCard label="Pending (Open)" value={`${data?.openCount ?? 0} · ${rupees(data?.openRevenuePaise ?? 0)}`} color="blue" />
       <StatCard label="Void" value={String(data?.voidCount ?? 0)} color="gray" />
     </SimpleGrid>
   );

@@ -141,6 +141,7 @@ async function runSummary(db: any, restaurantId: string, from: Date, to: Date, o
       COUNT(*) FILTER (WHERE status = 'PAID') AS "paidCount",
       COALESCE(SUM("subtotalPaise") FILTER (WHERE status = 'PAID'), 0) AS "revenuePaise",
       COUNT(*) FILTER (WHERE status = 'OPEN') AS "openCount",
+      COALESCE(SUM("subtotalPaise") FILTER (WHERE status = 'OPEN'), 0) AS "openRevenuePaise",
       COUNT(*) FILTER (WHERE status = 'VOID') AS "voidCount",
       COUNT(*) AS "totalCount"
     FROM "saleOrder"
@@ -156,6 +157,7 @@ async function runSummary(db: any, restaurantId: string, from: Date, to: Date, o
     revenuePaise,
     avgOrderPaise: paidCount > 0 ? Math.round(revenuePaise / paidCount) : 0,
     openCount: Number(row.openCount ?? 0),
+    openRevenuePaise: Number(row.openRevenuePaise ?? 0),
     voidCount: Number(row.voidCount ?? 0),
     totalCount: Number(row.totalCount ?? 0),
   };

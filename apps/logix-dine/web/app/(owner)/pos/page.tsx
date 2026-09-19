@@ -390,7 +390,8 @@ export default function POSPage() {
 
       // Print KOT + mark printed in background (non-blocking)
       const kotPayload = buildKotPayload(created, restaurant);
-      printTicket(kotPayload).then((printResult) => {
+      // Print KOT silently (BLE only — no browser popup)
+      printTicketSilent(kotPayload).then((printResult) => {
         markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
         const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
         notifications.show({

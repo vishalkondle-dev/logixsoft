@@ -219,7 +219,8 @@ export default function KitchenPage() {
                           border: isPrepared ? "1px solid rgba(32, 201, 151, 0.3)" : undefined,
                         }}
                       >
-                        <Group justify="space-between" align="center" wrap="nowrap">
+                        {/* Desktop layout: item on left, status + actions on right */}
+                        <Group justify="space-between" align="center" wrap="nowrap" visibleFrom="sm">
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <Group gap={6} align="center" wrap="nowrap">
                               <Text
@@ -282,6 +283,67 @@ export default function KitchenPage() {
                             )}
                           </Group>
                         </Group>
+
+                        {/* Small screens layout: status and actions one by one on next line */}
+                        <Stack gap={6} hiddenFrom="sm">
+                          <Group justify="space-between" align="center">
+                            <Text
+                              size="sm"
+                              fw={600}
+                              c={isCancelled ? "gray.6" : "white"}
+                              style={{ textDecoration: isCancelled ? "line-through" : "none" }}
+                            >
+                              {item.nameSnapshot}
+                            </Text>
+                            <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
+                          </Group>
+                          {item.note && (
+                            <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>
+                          )}
+
+                          {/* Line 2: Status */}
+                          <div>
+                            <Badge
+                              size="xs"
+                              variant="light"
+                              color={itemVisual.color}
+                              leftSection={<ItemIcon size={10} />}
+                            >
+                              {itemVisual.label}
+                            </Badge>
+                          </div>
+
+                          {/* Line 3: Actions */}
+                          {(canNext || canClose) && (
+                            <Group gap="xs" align="center" wrap="wrap">
+                              {canNext && nextStatus && (
+                                <Button
+                                  size="xs"
+                                  color="dinePrimary"
+                                  variant="filled"
+                                  loading={updatingItemId === item.id}
+                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "next" })}
+                                  leftSection={<IconArrowRight size={13} />}
+                                >
+                                  Next: {getStatusVisual(nextStatus).label}
+                                </Button>
+                              )}
+
+                              {canClose && (
+                                <Button
+                                  size="xs"
+                                  color="red"
+                                  variant="subtle"
+                                  loading={updatingItemId === item.id}
+                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "close" })}
+                                  leftSection={<IconX size={13} />}
+                                >
+                                  Close (Cancel)
+                                </Button>
+                              )}
+                            </Group>
+                          )}
+                        </Stack>
                       </Paper>
                     );
                   })}

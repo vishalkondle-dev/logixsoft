@@ -296,7 +296,8 @@ export default function OrdersPage() {
                       opacity: isCancelled ? 0.7 : 1,
                     }}
                   >
-                    <Group justify="space-between" align="center" wrap="nowrap">
+                    {/* Desktop layout: item on left, status + actions on right */}
+                    <Group justify="space-between" align="center" wrap="nowrap" visibleFrom="sm">
                       {/* Left side: item details */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Group gap="xs" align="center">
@@ -364,6 +365,76 @@ export default function OrdersPage() {
                         )}
                       </Group>
                     </Group>
+
+                    {/* Small screens layout: status and actions one by one on next line */}
+                    <Stack gap={6} hiddenFrom="sm">
+                      {/* Line 1: Item details */}
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <Group gap="xs" align="center" wrap="wrap">
+                            <Text
+                              size="sm"
+                              fw={600}
+                              style={{ textDecoration: isCancelled ? "line-through" : "none" }}
+                            >
+                              {item.nameSnapshot || item.name}
+                            </Text>
+                            <Badge size="xs" variant="light" color="gray">× {item.qty}</Badge>
+                          </Group>
+                          {item.note && (
+                            <Text size="xs" c="dinePrimary" fs="italic" mt={2}>
+                              Note: {item.note}
+                            </Text>
+                          )}
+                        </div>
+                        <Text size="sm" fw={600} c="dimmed">
+                          ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
+                        </Text>
+                      </Group>
+
+                      {/* Line 2: Status */}
+                      <div>
+                        <Badge
+                          size="sm"
+                          variant="light"
+                          color={itemVisual.color}
+                          leftSection={<ItemIcon size={12} />}
+                        >
+                          {itemVisual.label}
+                        </Badge>
+                      </div>
+
+                      {/* Line 3: Actions */}
+                      {(canNext || canClose) && (
+                        <Group gap="xs" align="center" wrap="wrap">
+                          {canNext && nextStatus && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              color="dinePrimary"
+                              loading={updatingItemId === item.id}
+                              onClick={() => handleUpdateItemStatus(item, { action: "next" })}
+                              leftSection={<IconArrowRight size={13} />}
+                            >
+                              Next: {getStatusVisual(nextStatus).label}
+                            </Button>
+                          )}
+
+                          {canClose && (
+                            <Button
+                              size="xs"
+                              variant="subtle"
+                              color="red"
+                              loading={updatingItemId === item.id}
+                              onClick={() => handleUpdateItemStatus(item, { action: "close" })}
+                              leftSection={<IconX size={13} />}
+                            >
+                              Close (Cancel)
+                            </Button>
+                          )}
+                        </Group>
+                      )}
+                    </Stack>
                   </Paper>
                 );
               })}

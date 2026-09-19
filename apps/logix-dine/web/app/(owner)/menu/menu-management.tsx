@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container, Title, Tabs, Stack, Group, Text, Paper, Badge, ActionIcon,
   Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box, ScrollArea,
@@ -8,75 +8,78 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconEdit, IconTrash, IconCheck } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  getCategories, createCategory, updateCategory, deleteCategory,
-  getItems, createItem, updateItem, deleteItem, toggleItem,
-} from "@/lib/api-client";
+  useCategories, useItems,
+  useCreateCategory, useUpdateCategory, useDeleteCategory,
+  useCreateItem, useUpdateItem, useDeleteItem, useToggleItem,
+  qk,
+} from "@/lib/queries";
+import { updateCategory } from "@/lib/api-client";
 
 export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
+  const queryClient = useQueryClient();
 
-  const [categories, setCategories] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
+
+  // Server data via React Query — shared cache with POS page
+  const { data: categories = [] } = useCategories(restaurantId, outletId);
+  const { data: items = [] } = useItems(restaurantId, outletId);
+
+  // Auto-select first category when data loads
+  useEffect(() => {
+    setActiveCatId((prev) => (categories.some((c: any) => c.id === prev) ? prev : (categories[0] as any)?.id ?? null));
+  }, [categories]);
 
   const [catModal, setCatModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [catForm, setCatForm] = useState({ name: "", description: "" });
-  const [catSaving, setCatSaving] = useState(false);
 
   const [itemModal, setItemModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [itemForm, setItemForm] = useState({ categoryId: "", name: "", description: "", pricePaise: 0 });
-  const [itemSaving, setItemSaving] = useState(false);
 
-  const loadCategories = useCallback(async () => {
-    if (!restaurantId || !outletId) {
-      setCategories([]);
-      setActiveCatId(null);
-      return;
-    }
-    const cats = await getCategories(restaurantId, outletId);
-    setCategories(cats);
-    setActiveCatId((prev) => (cats.some((c) => c.id === prev) ? prev : cats[0]?.id ?? null));
-  }, [restaurantId, outletId]);
+  // Mutations
+  const createCat = useCreateCategory(restaurantId, outletId);
+  const updateCat = useUpdateCategory(restaurantId, outletId);
+  const deleteCat = useDeleteCategory(restaurantId, outletId);
+  const createItm = useCreateItem(restaurantId, outletId);
+  const updateItm = useUpdateItem(restaurantId, outletId);
+  const deleteItm = useDeleteItem(restaurantId, outletId);
+  const toggleItm = useToggleItem(restaurantId, outletId);
 
-  const loadItems = useCallback(async () => {
-    if (!restaurantId || !outletId) {
-      setItems([]);
-      return;
-    }
-    const all = await getItems(restaurantId, undefined, outletId);
-    setItems(all);
-  }, [restaurantId, outletId]);
-
-  useEffect(() => { loadCategories(); }, [loadCategories]);
-  useEffect(() => { loadItems(); }, [loadItems]);
+  const catSaving = createCat.isPending || updateCat.isPending;
+  const itemSaving = createItm.isPending || updateItm.isPending;
 
   const saveCategory = async () => {
     if (!outletId) return;
-    setCatSaving(true);
     try {
       if (catModal.editing) {
-        await updateCategory(restaurantId, catModal.editing.id, { name: catForm.name, description: catForm.description || null }, outletId);
+        await updateCat.mutateAsync({ id: catModal.editing.id, body: { name: catForm.name, description: catForm.description || null } });
       } else {
-        await createCategory(restaurantId, { name: catForm.name, description: catForm.description || undefined, outletId }, outletId);
+        await createCat.mutateAsync({ name: catForm.name, description: catForm.description || undefined, outletId });
       }
-      await loadCategories();
       setCatModal({ open: false, editing: null });
       notifications.show({ title: "Saved", message: "Category saved", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
-    } finally {
-      setCatSaving(false);
     }
   };
 
   const handleDeleteCat = async (cat: any) => {
     if (!confirm(`Delete category "${cat.name}"?`)) return;
     try {
-      await deleteCategory(restaurantId, cat.id, outletId ?? undefined);
-      await loadCategories();
+      await deleteCat.mutateAsync(cat.id);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
+  };
+
+  const handleToggleActive = async (cat: any) => {
+    try {
+      await updateCategory(restaurantId, cat.id, { active: !cat.active });
+      queryClient.invalidateQueries({ queryKey: qk.categories(restaurantId, outletId) });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     }
@@ -84,39 +87,34 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
   const saveItem = async () => {
     if (!outletId) return;
-    setItemSaving(true);
     try {
       if (itemModal.editing) {
-        await updateItem(restaurantId, itemModal.editing.id, {
+        await updateItm.mutateAsync({ id: itemModal.editing.id, body: {
           categoryId: itemForm.categoryId,
           name: itemForm.name,
           description: itemForm.description || null,
           pricePaise: itemForm.pricePaise,
-        }, outletId);
+        }});
       } else {
-        await createItem(restaurantId, {
+        await createItm.mutateAsync({
           categoryId: itemForm.categoryId,
           name: itemForm.name,
           description: itemForm.description || undefined,
           pricePaise: itemForm.pricePaise,
           outletId,
-        }, outletId);
+        });
       }
-      await loadItems();
       setItemModal({ open: false, editing: null });
       notifications.show({ title: "Saved", message: "Item saved", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
-    } finally {
-      setItemSaving(false);
     }
   };
 
   const handleDeleteItem = async (item: any) => {
     if (!confirm(`Delete item "${item.name}"?`)) return;
     try {
-      await deleteItem(restaurantId, item.id, outletId ?? undefined);
-      await loadItems();
+      await deleteItm.mutateAsync(item.id);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     }
@@ -124,14 +122,13 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
   const handleToggle = async (item: any) => {
     try {
-      await toggleItem(restaurantId, item.id, outletId ?? undefined);
-      await loadItems();
+      await toggleItm.mutateAsync(item.id);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     }
   };
 
-  const itemsForCat = activeCatId ? items.filter((i) => i.categoryId === activeCatId) : items;
+  const itemsForCat = activeCatId ? items.filter((i: any) => i.categoryId === activeCatId) : items;
 
   if (!restaurant) return null;
 
@@ -207,7 +204,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
               <Group justify="space-between">
                 <Text size="sm" fw={600}>{cat.name}</Text>
                 <Group gap="xs">
-                  <Switch size="xs" checked={cat.active} onChange={() => updateCategory(restaurantId, cat.id, { active: !cat.active }).then(loadCategories)}
+                  <Switch size="xs" checked={cat.active} onChange={() => handleToggleActive(cat)}
                     label={cat.active ? "Visible" : "Hidden"} />
                   <ActionIcon size="sm" variant="light" onClick={() => { setCatForm({ name: cat.name, description: cat.description ?? "" }); setCatModal({ open: true, editing: cat }); }}>
                     <IconEdit size={14} />

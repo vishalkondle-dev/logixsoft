@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Container, Title, Text, Group, Stack, Paper, SimpleGrid, Loader, Center,
@@ -13,7 +13,8 @@ import {
   IconClockHour4, IconTrendingUp, IconCalendar, IconArrowLeft, IconChevronRight,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { getReport, type ReportType } from "@/lib/api-client";
+import { useReport } from "@/lib/queries";
+import type { ReportType } from "@/lib/api-client";
 import dayjs from "dayjs";
 
 // ─── IST-aware preset -> date range translation ─────────────────────────────
@@ -181,8 +182,6 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
 
   const [preset, setPreset] = useState<Preset>("today");
   const [customRange, setCustomRange] = useState<[Date | null, Date | null]>([null, null]);
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [range, setRange] = useState(() => presetToRange("today"));
 
   const cardMeta = REPORT_CARDS.find((c) => c.id === reportType) || REPORT_CARDS[0];
@@ -197,20 +196,16 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
     }
   }, [preset, customRange]);
 
-  const load = useCallback(async () => {
-    if (!restaurantId || !range.from || !range.to || !outletId) return;
-    setLoading(true);
-    try {
-      const result = await getReport(restaurantId, reportType, range.from, range.to, outletId);
-      setData(result.data);
-    } catch {
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [restaurantId, reportType, range, outletId]);
-
-  useEffect(() => { load(); }, [load]);
+  // React Query — cached per (restaurant, type, from, to, outlet)
+  const { data: reportResult, isLoading: loading } = useReport(
+    restaurantId,
+    reportType,
+    range.from,
+    range.to,
+    outletId,
+    !!restaurantId && !!outletId,
+  );
+  const data = reportResult?.data ?? null;
 
   if (!restaurant) return null;
   if (!activeOutlet) {

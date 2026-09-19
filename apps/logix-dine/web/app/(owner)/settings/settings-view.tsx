@@ -14,9 +14,13 @@ import {
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
-  updateRestaurant, getOutlets, createOutlet, updateOutlet, deleteOutlet, setDefaultOutlet,
-  listStaff, inviteStaff, updateStaff, removeStaff,
-  getTables, createTable, updateTable, toggleTable, deleteTable,
+  useStaff, useTables,
+  useInviteStaff, useUpdateStaff, useRemoveStaff,
+  useCreateTable, useUpdateTable, useToggleTable, useDeleteTable,
+  useCreateOutlet, useUpdateOutlet, useDeleteOutlet, useSetDefaultOutlet,
+} from "@/lib/queries";
+import {
+  updateRestaurant,
 } from "@/lib/api-client";
 import { PrinterButton } from "@/components/print/printer-button";
 import { MenuManagement } from "../menu/menu-management";
@@ -83,57 +87,44 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   const [restForm, setRestForm] = useState({ name: "", address: "", phone: "" });
   const [restSaving, setRestSaving] = useState(false);
-  const [outlets, setOutlets] = useState<any[]>([]);
   const [outletModal, setOutletModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [outletForm, setOutletForm] = useState({ name: "", address: "", phone: "" });
   const [outletSaving, setOutletSaving] = useState(false);
 
-  // Staff state
-  const [staff, setStaff] = useState<any[]>([]);
-  const [staffLoading, setStaffLoading] = useState(false);
+  // Staff — React Query
+  const { data: staff = [], isLoading: staffLoading } = useStaff(restaurantId, isOwner);
   const [inviteModal, setInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({ phone: "", role: "WAITER", outletIds: [] as string[] });
-  const [inviteSaving, setInviteSaving] = useState(false);
 
-  // Table state
+  // Table — React Query (shared cache with POS page)
   const tableOutletId = activeOutlet?.id ?? (ctxOutlets[0]?.id || null);
-  const [tables, setTables] = useState<any[]>([]);
-  const [tablesLoading, setTablesLoading] = useState(false);
+  const { data: tables = [], isLoading: tablesLoading } = useTables(restaurantId, tableOutletId);
   const [tableModal, setTableModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [tableForm, setTableForm] = useState({ name: "", section: "", capacity: "" });
-  const [tableSaving, setTableSaving] = useState(false);
+
+  // Outlet mutations
+  const createOutletMut = useCreateOutlet(restaurantId);
+  const updateOutletMut = useUpdateOutlet(restaurantId);
+  const deleteOutletMut = useDeleteOutlet(restaurantId);
+  const setDefaultMut = useSetDefaultOutlet(restaurantId);
+
+  // Staff mutations
+  const inviteStaffMut = useInviteStaff(restaurantId);
+  const updateStaffMut = useUpdateStaff(restaurantId);
+  const removeStaffMut = useRemoveStaff(restaurantId);
+
+  // Table mutations
+  const createTableMut = useCreateTable(restaurantId, tableOutletId);
+  const updateTableMut = useUpdateTable(restaurantId, tableOutletId);
+  const toggleTableMut = useToggleTable(restaurantId, tableOutletId);
+  const deleteTableMut = useDeleteTable(restaurantId, tableOutletId);
+
+  // Outlets from context (still managed there for the header switcher)
+  const outlets = ctxOutlets;
 
   useEffect(() => {
     if (restaurant) setRestForm({ name: restaurant.name, address: restaurant.address, phone: restaurant.phone ?? "" });
   }, [restaurant]);
-
-  useEffect(() => { setOutlets(ctxOutlets); }, [ctxOutlets]);
-
-  const loadStaff = async () => {
-    if (!restaurantId || !isOwner) return;
-    setStaffLoading(true);
-    try {
-      setStaff(await listStaff(restaurantId));
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    } finally {
-      setStaffLoading(false);
-    }
-  };
-  useEffect(() => { loadStaff(); }, [restaurantId, isOwner]);
-
-  const loadTables = async () => {
-    if (!restaurantId || !tableOutletId) return;
-    setTablesLoading(true);
-    try {
-      setTables(await getTables(restaurantId, tableOutletId));
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    } finally {
-      setTablesLoading(false);
-    }
-  };
-  useEffect(() => { loadTables(); }, [restaurantId, tableOutletId]);
 
   const saveRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,12 +145,10 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     setOutletSaving(true);
     try {
       if (outletModal.editing) {
-        await updateOutlet(restaurantId, outletModal.editing.id, { name: outletForm.name, address: outletForm.address || null, phone: outletForm.phone || null });
+        await updateOutletMut.mutateAsync({ id: outletModal.editing.id, body: { name: outletForm.name, address: outletForm.address || null, phone: outletForm.phone || null } });
       } else {
-        await createOutlet(restaurantId, { name: outletForm.name, address: outletForm.address || undefined, phone: outletForm.phone || undefined });
+        await createOutletMut.mutateAsync({ name: outletForm.name, address: outletForm.address || undefined, phone: outletForm.phone || undefined });
       }
-      const updated = await getOutlets(restaurantId);
-      setOutlets(updated);
       await refresh();
       setOutletModal({ open: false, editing: null });
       notifications.show({ title: "Saved", message: "Outlet saved", color: "green", icon: <IconCheck size={16} /> });
@@ -171,16 +160,14 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const handleDeleteOutlet = async (outlet: any) => {
     if (!confirm(`Delete outlet "${outlet.name}"?`)) return;
     try {
-      await deleteOutlet(restaurantId, outlet.id);
-      setOutlets((o) => o.filter((x) => x.id !== outlet.id));
+      await deleteOutletMut.mutateAsync(outlet.id);
       await refresh();
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
 
   const handleSetDefault = async (outlet: any) => {
     try {
-      await setDefaultOutlet(restaurantId, outlet.id);
-      setOutlets(await getOutlets(restaurantId));
+      await setDefaultMut.mutateAsync(outlet.id);
       await refresh();
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
@@ -197,38 +184,31 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       notifications.show({ title: "Missing info", message: "Phone and at least one outlet are required", color: "orange" });
       return;
     }
-    setInviteSaving(true);
     try {
-      await inviteStaff(restaurantId, inviteForm);
-      await loadStaff();
+      await inviteStaffMut.mutateAsync(inviteForm);
       setInviteModal(false);
       notifications.show({ title: "Invited", message: "Staff member invited — they can now sign in to access it", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
-    } finally {
-      setInviteSaving(false);
     }
   };
 
   const handleRoleChange = async (member: any, newRole: string) => {
     try {
-      await updateStaff(restaurantId, member.id, { role: newRole });
-      await loadStaff();
+      await updateStaffMut.mutateAsync({ id: member.id, body: { role: newRole } });
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
 
   const handleOutletsChange = async (member: any, outletIds: string[]) => {
     try {
-      await updateStaff(restaurantId, member.id, { outletIds });
-      await loadStaff();
+      await updateStaffMut.mutateAsync({ id: member.id, body: { outletIds } });
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
 
   const handleRemoveStaff = async (member: any) => {
     if (!confirm(`Remove ${member.phone} from staff?`)) return;
     try {
-      await removeStaff(restaurantId, member.id);
-      setStaff((s) => s.filter((m) => m.id !== member.id));
+      await removeStaffMut.mutateAsync(member.id);
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
 
@@ -239,7 +219,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   const saveTable = async () => {
     if (!tableOutletId || !tableForm.name.trim()) return;
-    setTableSaving(true);
     try {
       const body = {
         name: tableForm.name,
@@ -247,34 +226,32 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         capacity: tableForm.capacity ? Number(tableForm.capacity) : undefined,
       };
       if (tableModal.editing) {
-        await updateTable(restaurantId, tableModal.editing.id, body, tableOutletId);
+        await updateTableMut.mutateAsync({ id: tableModal.editing.id, body });
       } else {
-        await createTable(restaurantId, { outletId: tableOutletId, ...body });
+        await createTableMut.mutateAsync({ outletId: tableOutletId, ...body });
       }
-      await loadTables();
       setTableModal({ open: false, editing: null });
       notifications.show({ title: "Saved", message: "Table saved", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
-    } finally {
-      setTableSaving(false);
     }
   };
 
   const handleToggleTable = async (t: any) => {
     try {
-      await toggleTable(restaurantId, t.id, tableOutletId ?? undefined);
-      await loadTables();
+      await toggleTableMut.mutateAsync(t.id);
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
 
   const handleDeleteTable = async (t: any) => {
     if (!confirm(`Remove table "${t.name}"?`)) return;
     try {
-      await deleteTable(restaurantId, t.id, tableOutletId ?? undefined);
-      await loadTables();
+      await deleteTableMut.mutateAsync(t.id);
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
+
+  const tableSaving = createTableMut.isPending || updateTableMut.isPending;
+  const inviteSaving = inviteStaffMut.isPending;
 
   const OutletCard = ({ outlet }: { outlet: any }) => (
     <Paper key={outlet.id} withBorder p="md" radius="md">

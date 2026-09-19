@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
@@ -13,8 +13,9 @@ import {
   IconNote, IconEdit, IconX,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useBootstrap, useTables } from "@/lib/queries";
 import {
-  getBootstrap, startOrder, settleOrder, markKotPrinted, getTables,
+  startOrder, settleOrder, markKotPrinted,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
@@ -241,8 +242,11 @@ export default function POSPage() {
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
 
-  const [bootstrap, setBootstrap] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // Server data via React Query — shared cache across pages
+  const { data: bootstrap, isLoading: loading } = useBootstrap(restaurantId, outletId);
+  const { data: tablesData } = useTables(restaurantId, outletId);
+  const tables = (tablesData ?? []).filter((t: any) => t.active);
+
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -251,7 +255,6 @@ export default function POSPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [tableNo, setTableNo] = useState<string>("Takeaway");
   const [customerPhone, setCustomerPhone] = useState<string>("");
-  const [tables, setTables] = useState<any[]>([]);
 
   // Settle modal state
   const [settleModal, setSettleModal] = useState(false);
@@ -318,37 +321,12 @@ export default function POSPage() {
     if (cartOpen) setCartOpen(false);
   };
 
-  const loadBootstrap = useCallback(async () => {
-    if (!restaurantId || !outletId) {
-      setBootstrap(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const data = await getBootstrap(restaurantId, outletId);
-      setBootstrap(data);
-      if (data.categories?.length) setActiveCatId(data.categories[0].id);
-      else setActiveCatId(null);
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: "Failed to load menu", color: "red" });
-    } finally {
-      setLoading(false);
-    }
-  }, [restaurantId, outletId]);
-
-  useEffect(() => { loadBootstrap(); }, [loadBootstrap]);
-
-  // Load the outlet's table registry
+  // Auto-select first category when bootstrap loads
   useEffect(() => {
-    if (!restaurantId || !outletId) {
-      setTables([]);
-      return;
+    if (bootstrap?.categories?.length) {
+      setActiveCatId((prev) => prev ?? bootstrap.categories[0].id);
     }
-    getTables(restaurantId, outletId)
-      .then((rows) => setTables(rows.filter((t: any) => t.active)))
-      .catch(() => setTables([]));
-  }, [restaurantId, outletId]);
+  }, [bootstrap]);
 
   // Handle adding items to local cart
   const handleAddItem = (item: any) => {

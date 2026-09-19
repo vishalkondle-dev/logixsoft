@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Container, Title, Text, SimpleGrid, Paper, Badge, Button, Group, Stack, Center, Loader, ActionIcon, Select } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconClock, IconLogout, IconTableAlias, IconRefresh } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { getKitchenOrders, markOrderReady } from "@/lib/api-client";
+import { useKitchenOrders } from "@/lib/queries";
+import { markOrderReady } from "@/lib/api-client";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/queries";
 
-const REFRESH_MS = 10_000;
 
 function urgency(createdAt: string): { color: string; label: string; minutes: number } {
   const minutes = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
@@ -22,42 +24,27 @@ export default function KitchenPage() {
   const { restaurant, outlets, activeOutlet, setActiveOutlet, isLoading: restLoading, role } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
+  const queryClient = useQueryClient();
 
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState<string | null>(null);
   const [, forceTick] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const load = useCallback(async () => {
-    if (!restaurantId) return;
-    try {
-      const data = await getKitchenOrders(restaurantId, outletId);
-      setOrders(data.filter((o: any) => !o.order.readyAt));
-    } catch {
-      // stay on last known list; auto-refresh will retry
-    } finally {
-      setLoading(false);
-    }
-  }, [restaurantId, outletId]);
+  // React Query handles auto-refresh every 10s (configured in useKitchenOrders)
+  const { data: rawOrders = [], isLoading: loading, refetch } = useKitchenOrders(restaurantId, outletId);
+  const orders = rawOrders.filter((o: any) => !o.order.readyAt);
 
-  useEffect(() => { load(); }, [load]);
-
-  // Auto-refresh every 10s + re-render every 30s to update elapsed-time badges
+  // Re-render every 30s to update elapsed-time badges
   useEffect(() => {
-    intervalRef.current = setInterval(load, REFRESH_MS);
     const tick = setInterval(() => forceTick((n) => n + 1), 30_000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      clearInterval(tick);
-    };
-  }, [load]);
+    return () => clearInterval(tick);
+  }, []);
 
   const handleMarkReady = async (orderId: string) => {
     setMarking(orderId);
     try {
       await markOrderReady(restaurantId, orderId, outletId);
-      setOrders((prev) => prev.filter((o) => o.order.id !== orderId));
+      // Invalidate so the query refetches and drops the ready order
+      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
       notifications.show({ title: "Marked ready", message: "", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -110,7 +97,7 @@ export default function KitchenPage() {
               w={140}
             />
           )}
-          <ActionIcon size="lg" variant="light" color="gray" onClick={load} title="Refresh now">
+          <ActionIcon size="lg" variant="light" color="gray" onClick={() => refetch()} title="Refresh now">
             <IconRefresh size={18} />
           </ActionIcon>
           {role !== "KITCHEN" && (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import {
   Container, Title, Stack, Paper, Group, Text, Badge, Select, Button,
   Loader, Center, Modal, Divider, Box,
@@ -8,7 +8,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { IconReceipt, IconRefresh, IconPrinter } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { listOrders } from "@/lib/api-client";
+import { useOrders } from "@/lib/queries";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
 
@@ -18,32 +18,20 @@ export default function OrdersPage() {
   const { restaurant, activeOutlet, allOutlets } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<any>(null);
   const [reprinting, setReprinting] = useState<"KOT" | "BILL" | null>(null);
 
-  const load = useCallback(async () => {
-    if (!restaurantId) return;
-    // Non-owner/manager roles are outlet-scoped — the API requires an
-    // explicit outletId for them (400 without it). Owner/manager may omit
-    // it to see all outlets, or pass activeOutlet to filter.
-    if (!allOutlets && !outletId) return;
-    setLoading(true);
-    try {
-      const data = await listOrders(restaurantId, {
-        status: statusFilter ?? undefined,
-        outletId: outletId ?? undefined,
-        limit: 100,
-      });
-      setOrders(data);
-    } finally {
-      setLoading(false);
-    }
-  }, [restaurantId, statusFilter, outletId, allOutlets]);
-
-  useEffect(() => { load(); }, [load]);
+  const enabled = !!restaurantId && (allOutlets || !!outletId);
+  const { data: orders = [], isLoading: loading, refetch } = useOrders(
+    restaurantId,
+    {
+      status: statusFilter ?? undefined,
+      outletId: outletId ?? undefined,
+      limit: 100,
+    },
+    enabled,
+  );
 
   const handleReprint = async (type: "KOT" | "BILL") => {
     if (!selected || !restaurant) return;
@@ -83,7 +71,7 @@ export default function OrdersPage() {
             ]}
             w={140}
           />
-          <Button size="sm" variant="light" leftSection={<IconRefresh size={14} />} onClick={load}>Refresh</Button>
+          <Button size="sm" variant="light" leftSection={<IconRefresh size={14} />} onClick={() => refetch()}>Refresh</Button>
         </Group>
       </Group>
 

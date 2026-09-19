@@ -31,7 +31,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<any>(null);
   const [reprinting, setReprinting] = useState<"KOT" | "BILL" | null>(null);
-  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+  const [updatingAction, setUpdatingAction] = useState<{ itemId: string; action: "next" | "close" } | null>(null);
 
   const enabled = !!restaurantId && (allOutlets || !!outletId);
 
@@ -69,7 +69,8 @@ export default function OrdersPage() {
   const handleUpdateItemStatus = async (item: any, actionPayload: { status?: string; action?: "next" | "close" | "cancel" }) => {
     if (!selected) return;
     const itemId = item.id;
-    setUpdatingItemId(itemId);
+    const actionType = actionPayload.action === "close" || actionPayload.action === "cancel" ? "close" : "next";
+    setUpdatingAction({ itemId, action: actionType });
     try {
       const updatedOrderWithItems = await updateOrderItemStatus(
         restaurantId,
@@ -97,7 +98,7 @@ export default function OrdersPage() {
         color: "red",
       });
     } finally {
-      setUpdatingItemId(null);
+      setUpdatingAction(null);
     }
   };
 
@@ -285,6 +286,12 @@ export default function OrdersPage() {
                 const canNext = Boolean(nextStatus);
                 const canClose = !isCancelled && !isServed;
 
+                const isThisItemUpdating = updatingAction?.itemId === item.id;
+                const isNextLoading = isThisItemUpdating && updatingAction?.action === "next";
+                const isCloseLoading = isThisItemUpdating && updatingAction?.action === "close";
+                const isNextDisabled = isThisItemUpdating && !isNextLoading;
+                const isCloseDisabled = isThisItemUpdating && !isCloseLoading;
+
                 return (
                   <Paper
                     key={item.id}
@@ -339,7 +346,8 @@ export default function OrdersPage() {
                               size="md"
                               variant="light"
                               color="dinePrimary"
-                              loading={updatingItemId === item.id}
+                              loading={isNextLoading}
+                              disabled={isNextDisabled}
                               onClick={() => handleUpdateItemStatus(item, { action: "next" })}
                               aria-label={`Advance item to ${nextStatus}`}
                             >
@@ -355,7 +363,8 @@ export default function OrdersPage() {
                               size="md"
                               variant="subtle"
                               color="red"
-                              loading={updatingItemId === item.id}
+                              loading={isCloseLoading}
+                              disabled={isCloseDisabled}
                               onClick={() => handleUpdateItemStatus(item, { action: "close" })}
                               aria-label="Cancel item"
                             >
@@ -410,7 +419,8 @@ export default function OrdersPage() {
                                 size="md"
                                 variant="light"
                                 color="dinePrimary"
-                                loading={updatingItemId === item.id}
+                                loading={isNextLoading}
+                                disabled={isNextDisabled}
                                 onClick={() => handleUpdateItemStatus(item, { action: "next" })}
                                 aria-label={`Advance item to ${nextStatus}`}
                               >
@@ -425,7 +435,8 @@ export default function OrdersPage() {
                                 size="md"
                                 variant="subtle"
                                 color="red"
-                                loading={updatingItemId === item.id}
+                                loading={isCloseLoading}
+                                disabled={isCloseDisabled}
                                 onClick={() => handleUpdateItemStatus(item, { action: "close" })}
                                 aria-label="Cancel item"
                               >

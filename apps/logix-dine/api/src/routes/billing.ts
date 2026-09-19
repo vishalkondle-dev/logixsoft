@@ -167,6 +167,16 @@ app.get('/bootstrap', requirePermission('menu:read'), async (c) => {
   }
 });
 
+let lastOrderTime = 0;
+function generateOrderId(outletId: string): string {
+  let now = Date.now();
+  if (now <= lastOrderTime) {
+    now = lastOrderTime + 1;
+  }
+  lastOrderTime = now;
+  return `ord_${outletId}_${now}`;
+}
+
 // POST /billing/orders — start a new OPEN order
 app.post('/orders', requirePermission('order:create'), async (c) => {
   const tenant = c.get('tenant');
@@ -178,13 +188,8 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
 
   const { db, close } = getDb(c);
   try {
-    // Outlet access already verified in session payload (requirePermission checks outletIds[]).
-    // Skip the redundant SELECT outlet + assertOutletAccess DB queries on the hot path.
-    // Only look up the outlet name for the order ID slug — use the outletId directly.
-    const outletSlug = parsed.data.outletId.slice(-8); // short unique suffix, no extra DB call
-
+    const id = generateOrderId(parsed.data.outletId);
     const now = new Date();
-    const id = generateId(`ord_${outletSlug}`, 16);
     let subtotalPaise = 0;
     const orderItemsToInsert: any[] = [];
 
@@ -351,9 +356,8 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
 
   const { db, close } = getDb(c);
   try {
-    const outletSlug = parsed.data.outletId.slice(-8);
+    const id = generateOrderId(parsed.data.outletId);
     const now = new Date();
-    const id = generateId(`ord_${outletSlug}`, 16);
     let subtotalPaise = 0;
     const orderItemsToInsert: any[] = [];
 

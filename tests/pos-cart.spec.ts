@@ -429,9 +429,8 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     const created = await res.json();
     console.log(`Created order in ${outlet2.name}:`, created.order.id, 'Token #:', created.order.orderNo);
 
-    // 3. Verify order ID is dynamic string based on outlet (e.g. ord_<slug>_<base62>)
-    const expectedSlug = outlet2.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 16);
-    expect(created.order.id).toMatch(new RegExp(`^ord_${expectedSlug}_[A-Za-z0-9]{16}$`));
+    // 3. Verify order ID format: ord_outletId_dateNow
+    expect(created.order.id).toMatch(new RegExp(`^ord_${outlet2.id}_\\d+$`));
 
     // 4. Verify token ID is positive number
     expect(created.order.orderNo).toBeGreaterThanOrEqual(1);
@@ -453,7 +452,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     expect(res2.ok).toBe(true);
     const created2 = await res2.json();
     expect(created2.order.orderNo).toBe(created.order.orderNo + 1);
-    expect(created2.order.id).toMatch(new RegExp(`^ord_${expectedSlug}_[A-Za-z0-9]{16}$`));
+    expect(created2.order.id).toMatch(new RegExp(`^ord_${outlet2.id}_\\d+$`));
     expect(created2.order.id).not.toBe(created.order.id);
   });
 });

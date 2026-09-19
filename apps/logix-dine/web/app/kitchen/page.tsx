@@ -35,7 +35,7 @@ export default function KitchenPage() {
   const queryClient = useQueryClient();
 
   const [marking, setMarking] = useState<string | null>(null);
-  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+  const [updatingAction, setUpdatingAction] = useState<{ itemId: string; action: "next" | "close" } | null>(null);
   const [, forceTick] = useState(0);
 
   // React Query handles auto-refresh every 10s (configured in useKitchenOrders)
@@ -67,7 +67,8 @@ export default function KitchenPage() {
     actionPayload: { status?: string; action?: "next" | "close" | "cancel" },
   ) => {
     const itemId = item.id;
-    setUpdatingItemId(itemId);
+    const actionType = actionPayload.action === "close" || actionPayload.action === "cancel" ? "close" : "next";
+    setUpdatingAction({ itemId, action: actionType });
     try {
       await updateOrderItemStatus(restaurantId, orderId, itemId, actionPayload, outletId);
       queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
@@ -82,7 +83,7 @@ export default function KitchenPage() {
     } catch (err: any) {
       notifications.show({ title: "Failed to update item", message: err.message || "Error", color: "red" });
     } finally {
-      setUpdatingItemId(null);
+      setUpdatingAction(null);
     }
   };
 
@@ -205,6 +206,12 @@ export default function KitchenPage() {
                     const canNext = Boolean(nextStatus);
                     const canClose = !isCancelled && !isServed;
 
+                    const isThisItemUpdating = updatingAction?.itemId === item.id;
+                    const isNextLoading = isThisItemUpdating && updatingAction?.action === "next";
+                    const isCloseLoading = isThisItemUpdating && updatingAction?.action === "close";
+                    const isNextDisabled = isThisItemUpdating && !isNextLoading;
+                    const isCloseDisabled = isThisItemUpdating && !isCloseLoading;
+
                     return (
                       <Paper
                         key={item.id}
@@ -257,7 +264,8 @@ export default function KitchenPage() {
                                   size="sm"
                                   color="dinePrimary"
                                   variant="filled"
-                                  loading={updatingItemId === item.id}
+                                  loading={isNextLoading}
+                                  disabled={isNextDisabled}
                                   onClick={() => handleUpdateItemStatus(order.id, item, { action: "next" })}
                                   aria-label={`Advance to ${nextStatus}`}
                                 >
@@ -273,7 +281,8 @@ export default function KitchenPage() {
                                   size="sm"
                                   color="red"
                                   variant="subtle"
-                                  loading={updatingItemId === item.id}
+                                  loading={isCloseLoading}
+                                  disabled={isCloseDisabled}
                                   onClick={() => handleUpdateItemStatus(order.id, item, { action: "close" })}
                                   aria-label="Cancel item"
                                 >
@@ -321,7 +330,8 @@ export default function KitchenPage() {
                                     size="sm"
                                     color="dinePrimary"
                                     variant="filled"
-                                    loading={updatingItemId === item.id}
+                                    loading={isNextLoading}
+                                    disabled={isNextDisabled}
                                     onClick={() => handleUpdateItemStatus(order.id, item, { action: "next" })}
                                     aria-label={`Advance to ${nextStatus}`}
                                   >
@@ -336,7 +346,8 @@ export default function KitchenPage() {
                                     size="sm"
                                     color="red"
                                     variant="subtle"
-                                    loading={updatingItemId === item.id}
+                                    loading={isCloseLoading}
+                                    disabled={isCloseDisabled}
                                     onClick={() => handleUpdateItemStatus(order.id, item, { action: "close" })}
                                     aria-label="Cancel item"
                                   >

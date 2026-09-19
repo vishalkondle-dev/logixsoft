@@ -258,6 +258,17 @@ export default function POSPage() {
   const [tableNo, setTableNo] = useState<string>("Takeaway");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
+  // Sync table from URL if provided (e.g. from Tables page)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tableParam = params.get("table");
+      if (tableParam) {
+        setTableNo(tableParam);
+      }
+    }
+  }, []);
+
   // Settle modal state
   const [settleModal, setSettleModal] = useState(false);
   const [settleMethod, setSettleMethod] = useState<string>("Cash");

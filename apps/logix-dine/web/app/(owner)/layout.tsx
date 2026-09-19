@@ -35,8 +35,8 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
       router.replace("/kitchen");
       return;
     }
-    // WAITER role can only access /pos and /orders
-    if (restaurant && role === "WAITER" && !redirected.current && !pathname.startsWith("/pos") && !pathname.startsWith("/orders")) {
+    // WAITER role can access /pos, /orders, and /tables
+    if (restaurant && role === "WAITER" && !redirected.current && !pathname.startsWith("/pos") && !pathname.startsWith("/orders") && !pathname.startsWith("/tables")) {
       redirected.current = true;
       router.replace("/pos");
       return;
@@ -73,7 +73,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
   }
 
   // Authenticated but no restaurant yet, or KITCHEN/WAITER restricted role being redirected — show loader
-  const isRestrictedRole = role === "KITCHEN" || (role === "WAITER" && !pathname.startsWith("/pos") && !pathname.startsWith("/orders"));
+  const isRestrictedRole = role === "KITCHEN" || (role === "WAITER" && !pathname.startsWith("/pos") && !pathname.startsWith("/orders") && !pathname.startsWith("/tables"));
   if (!restaurant || isRestrictedRole) {
     return (
       <Center py={100}>

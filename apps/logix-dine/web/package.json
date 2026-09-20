@@ -11,6 +11,7 @@
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
+    "@gfazioli/mantine-qr-code": "^2.0.10",
     "@logixsoft/logix-dine": "workspace:*",
     "@mantine/charts": "^9.6.1",
     "@mantine/core": "9.6.0",

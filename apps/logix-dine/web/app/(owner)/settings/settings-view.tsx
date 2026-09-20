@@ -88,7 +88,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const [restForm, setRestForm] = useState({ name: "", address: "", phone: "" });
   const [restSaving, setRestSaving] = useState(false);
   const [outletModal, setOutletModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
-  const [outletForm, setOutletForm] = useState({ name: "", address: "", phone: "" });
+  const [outletForm, setOutletForm] = useState({ name: "", address: "", phone: "", upiId: "" });
   const [outletSaving, setOutletSaving] = useState(false);
 
   // Staff — React Query
@@ -126,6 +126,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     if (restaurant) setRestForm({ name: restaurant.name, address: restaurant.address, phone: restaurant.phone ?? "" });
   }, [restaurant]);
 
+  // ─── Save / Update restaurant ────────────────────────────────────────────
   const saveRestaurant = async (e: React.FormEvent) => {
     e.preventDefault();
     setRestSaving(true);
@@ -138,16 +139,29 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     } finally { setRestSaving(false); }
   };
 
-  const openCreateOutlet = () => { setOutletForm({ name: "", address: "", phone: "" }); setOutletModal({ open: true, editing: null }); };
-  const openEditOutlet = (o: any) => { setOutletForm({ name: o.name, address: o.address ?? "", phone: o.phone ?? "" }); setOutletModal({ open: true, editing: o }); };
+  const openCreateOutlet = () => { setOutletForm({ name: "", address: "", phone: "", upiId: "" }); setOutletModal({ open: true, editing: null }); };
+  const openEditOutlet = (o: any) => { setOutletForm({ name: o.name, address: o.address ?? "", phone: o.phone ?? "", upiId: o.upiId ?? "" }); setOutletModal({ open: true, editing: o }); };
 
   const saveOutlet = async () => {
     setOutletSaving(true);
     try {
       if (outletModal.editing) {
-        await updateOutletMut.mutateAsync({ id: outletModal.editing.id, body: { name: outletForm.name, address: outletForm.address || null, phone: outletForm.phone || null } });
+        await updateOutletMut.mutateAsync({
+          id: outletModal.editing.id,
+          body: {
+            name: outletForm.name,
+            address: outletForm.address || null,
+            phone: outletForm.phone || null,
+            upiId: outletForm.upiId.trim() || null,
+          },
+        });
       } else {
-        await createOutletMut.mutateAsync({ name: outletForm.name, address: outletForm.address || undefined, phone: outletForm.phone || undefined });
+        await createOutletMut.mutateAsync({
+          name: outletForm.name,
+          address: outletForm.address || undefined,
+          phone: outletForm.phone || undefined,
+          upiId: outletForm.upiId.trim() || undefined,
+        });
       }
       await refresh();
       setOutletModal({ open: false, editing: null });
@@ -263,6 +277,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           </Group>
           {outlet.address && <Text size="xs" c="dimmed">{outlet.address}</Text>}
           {outlet.phone && <Text size="xs" c="dimmed">{outlet.phone}</Text>}
+          {outlet.upiId && <Text size="xs" c="teal" fw={500}>UPI: {outlet.upiId}</Text>}
         </div>
         <Group gap="xs">
           {!outlet.isDefault && (
@@ -489,6 +504,13 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           <TextInput label="Name" required value={outletForm.name} onChange={(e) => setOutletForm((f) => ({ ...f, name: e.target.value }))} />
           <TextInput label="Address" value={outletForm.address} onChange={(e) => setOutletForm((f) => ({ ...f, address: e.target.value }))} />
           <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={outletForm.phone} onChange={(e) => setOutletForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
+          <TextInput
+            label="UPI ID (VPA)"
+            placeholder="e.g. restaurant@okaxis or 9876543210@paytm"
+            description="Used to display dynamic QR code with amount and order reference when UPI is selected during settlement"
+            value={outletForm.upiId}
+            onChange={(e) => setOutletForm((f) => ({ ...f, upiId: e.target.value.trim() }))}
+          />
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setOutletModal({ open: false, editing: null })}>Cancel</Button>
             <Button color="dinePrimary" onClick={saveOutlet} loading={outletSaving}>Save</Button>

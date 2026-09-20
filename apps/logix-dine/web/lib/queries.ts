@@ -360,7 +360,7 @@ export function useRemoveStaff(restaurantId: string) {
 export function useCreateOutlet(restaurantId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; address?: string; phone?: string }) =>
+    mutationFn: (body: { name: string; address?: string; phone?: string; upiId?: string }) =>
       createOutlet(restaurantId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.outlets(restaurantId) });

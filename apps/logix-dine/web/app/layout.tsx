@@ -3,6 +3,7 @@ import "@mantine/dates/styles.css";
 import "@mantine/charts/styles.css";
 import "@mantine/notifications/styles.css";
 import "@mantine/nprogress/styles.css";
+import "@gfazioli/mantine-qr-code/styles.css";
 import "./globals.css";
 import React from "react";
 import type { Metadata, Viewport } from "next";

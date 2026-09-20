@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
-  Drawer, Box, ScrollArea, CloseButton,
+  Drawer, Box, ScrollArea, CloseButton, SegmentedControl,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,6 +20,7 @@ import {
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
+import { UpiQrCode } from "@/components/common/upi-qr-code";
 
 interface LocalCartItem {
   itemId: string;
@@ -884,17 +885,34 @@ export default function POSPage() {
             onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
             leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
           />
-          <Select
-            label="Payment Method"
-            value={settleMethod}
-            onChange={(v) => v && setSettleMethod(v)}
-            data={[
-              { value: "Cash", label: "💵 Cash" },
-              { value: "UPI", label: "📱 UPI" },
-              { value: "QR", label: "🔲 QR Code" },
-            ]}
-            comboboxProps={{ withinPortal: true, zIndex: 1500 }}
-          />
+          <div>
+            <Text size="sm" fw={600} mb={6}>
+              Payment Method
+            </Text>
+            <SegmentedControl
+              fullWidth
+              value={settleMethod}
+              onChange={setSettleMethod}
+              data={[
+                { value: "Cash", label: "💵 Cash" },
+                { value: "UPI", label: "📱 UPI" },
+                { value: "QR", label: "🔲 QR Code" },
+              ]}
+              color="dinePrimary"
+            />
+          </div>
+          {(settleMethod === "UPI" || settleMethod === "QR") && activeOutlet?.upiId && (
+            <UpiQrCode
+              upiId={activeOutlet.upiId}
+              payeeName={activeOutlet.name || restaurant?.name}
+              amount={total / 100}
+              transactionId={
+                activeTableOrder?.order?.orderNo
+                  ? `Ord-${activeTableOrder.order.orderNo}-R${nextRound}`
+                  : (tableNo && tableNo !== "Takeaway" ? `Table-${tableNo}` : `POS-${Date.now().toString().slice(-4)}`)
+              }
+            />
+          )}
           <Button
             fullWidth
             color="dinePrimary"

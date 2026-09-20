@@ -74,6 +74,7 @@ app.post(
       name: parsed.data.name,
       address: parsed.data.address ?? null,
       phone: parsed.data.phone ?? null,
+      upiId: parsed.data.upiId ?? null,
       isDefault: false,
       createdAt: now,
       updatedAt: now,
@@ -94,7 +95,7 @@ app.put(
   apiDoc({
     tags: ['Outlets'],
     summary: 'Update Restaurant Outlet',
-    description: 'Updates outlet name, address, or phone number.',
+    description: 'Updates outlet name, address, phone number, or upiId.',
     params: z.object({ id: z.string() }),
     body: UpdateOutletSchema,
     responses: {

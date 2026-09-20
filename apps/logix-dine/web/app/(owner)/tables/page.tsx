@@ -26,6 +26,7 @@ import { freeTableOrder, voidOrder } from "@/lib/api-client";
 import { getStatusVisual, PAYMENT_STATUS_CONFIG } from "@/lib/order-status-ui";
 import { buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
+import { UpiQrCode } from "@/components/common/upi-qr-code";
 
 /** Helper to match table numbers flexibly (e.g. "T1" === "Table 1" === "t1" === "1") */
 function normalizeTable(str: string): string {
@@ -896,6 +897,16 @@ export default function TablesPage() {
                     <Radio value="Other" label="Other" />
                   </Group>
                 </Radio.Group>
+                {settleMethod === "UPI" && activeOutlet?.upiId && (
+                  <Box mt="sm">
+                    <UpiQrCode
+                      upiId={activeOutlet.upiId}
+                      payeeName={activeOutlet.name || restaurant?.name}
+                      amount={freeModalSession.duePaise / 100}
+                      transactionId={`Table-${freeModalSession.table.name}`}
+                    />
+                  </Box>
+                )}
               </div>
             ) : (
               <Alert color="teal" icon={<IconCheck size={16} />}>

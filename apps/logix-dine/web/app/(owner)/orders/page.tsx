@@ -15,6 +15,7 @@ import { useRestaurant } from "@/lib/restaurant-context";
 import { useOrders } from "@/lib/queries";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
+import { UpiQrCode } from "@/components/common/upi-qr-code";
 import {
   updateOrderItemStatus,
   voidOrder,
@@ -30,7 +31,7 @@ import {
 } from "@/lib/order-status-ui";
 
 export default function OrdersPage() {
-  const { restaurant, activeOutlet, allOutlets } = useRestaurant();
+  const { restaurant, activeOutlet, allOutlets, outlets } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
 
@@ -827,6 +828,19 @@ export default function OrdersPage() {
                     <Radio value="Other" label="Other" />
                   </Group>
                 </Radio.Group>
+                {settleMethod === "UPI" && (() => {
+                  const outlet = outlets.find((o) => o.id === selected.order.outletId) || activeOutlet;
+                  return outlet?.upiId ? (
+                    <Box mt="sm">
+                      <UpiQrCode
+                        upiId={outlet.upiId}
+                        payeeName={outlet.name || restaurant?.name}
+                        amount={duePaise / 100}
+                        transactionId={`Ord-${selected.order.orderNo}`}
+                      />
+                    </Box>
+                  ) : null;
+                })()}
               </div>
 
               <Divider />
@@ -876,6 +890,19 @@ export default function OrdersPage() {
                         <Radio value="Other" label="Other" />
                       </Group>
                     </Radio.Group>
+                    {settleMethod === "UPI" && (() => {
+                      const outlet = outlets.find((o) => o.id === selected.order.outletId) || activeOutlet;
+                      return outlet?.upiId ? (
+                        <Box mt="sm">
+                          <UpiQrCode
+                            upiId={outlet.upiId}
+                            payeeName={outlet.name || restaurant?.name}
+                            amount={duePaise / 100}
+                            transactionId={`Table-${selected.order.tableNo}`}
+                          />
+                        </Box>
+                      ) : null;
+                    })()}
                   </div>
                 </>
               ) : (

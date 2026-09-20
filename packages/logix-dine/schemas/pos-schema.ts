@@ -93,6 +93,7 @@ export const restaurantOutlet = pgTable(
     name: text('name').notNull(),
     address: text('address'),
     phone: text('phone'),
+    upiId: text('upiId'),
     isDefault: boolean('isDefault').notNull().default(false),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),

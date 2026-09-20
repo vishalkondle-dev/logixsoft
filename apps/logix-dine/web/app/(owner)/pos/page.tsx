@@ -969,75 +969,100 @@ export default function POSPage() {
         onClose={() => setShowExistingItemsModal(false)}
         title={activeTableOrder ? `Table ${activeTableOrder.order.tableNo} · Token #${activeTableOrder.order.orderNo}` : "Active Order"}
         size="md"
+        zIndex={1400}
       >
-        {activeTableOrder && (
-          <Stack gap="sm">
-            <Group justify="space-between" align="center">
-              <Badge color="orange" variant="light" size="sm" leftSection={<IconClock size={12} />}>
-                Round {currentRound} Active
-              </Badge>
-              <Text size="xs" c="dimmed">
-                Ordered at {new Date(activeTableOrder.order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </Text>
-            </Group>
+        {activeTableOrder && (() => {
+          const paidPaise = activeTableOrder.order.paidPaise || 0;
+          const totalPaise = activeTableOrder.order.subtotalPaise || 0;
+          const duePaise = Math.max(0, totalPaise - paidPaise);
 
-            <Divider />
+          return (
+            <Stack gap="sm">
+              <Group justify="space-between" align="center">
+                <Badge color={duePaise === 0 ? "teal" : "orange"} variant="light" size="sm" leftSection={<IconClock size={12} />}>
+                  Round {currentRound} Active {duePaise === 0 ? "· All Paid" : ""}
+                </Badge>
+                <Text size="xs" c="dimmed">
+                  Ordered at {new Date(activeTableOrder.order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </Text>
+              </Group>
 
-            <ScrollArea.Autosize mah={320}>
-              <Stack gap="xs">
-                {(activeTableOrder.items ?? []).map((item: any) => {
-                  return (
-                    <Paper key={item.id} withBorder p="xs" radius="sm">
-                      <Group justify="space-between" align="center" wrap="nowrap">
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <Group gap={6} align="center" wrap="nowrap">
-                            <Text size="sm" fw={600} lineClamp={1}>
-                              {item.nameSnapshot}
-                            </Text>
-                            <Badge size="xs" color="dark" variant="filled">
-                              ×{item.qty}
-                            </Badge>
-                            {item.round && item.round > 1 && (
-                              <Badge size="xs" color="indigo" variant="light">
-                                R{item.round}
+              <Divider />
+
+              <ScrollArea.Autosize mah={320}>
+                <Stack gap="xs">
+                  {(activeTableOrder.items ?? []).map((item: any) => {
+                    return (
+                      <Paper key={item.id} withBorder p="xs" radius="sm">
+                        <Group justify="space-between" align="center" wrap="nowrap">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <Group gap={6} align="center" wrap="nowrap">
+                              <Text size="sm" fw={600} lineClamp={1}>
+                                {item.nameSnapshot}
+                              </Text>
+                              <Badge size="xs" color="dark" variant="filled">
+                                ×{item.qty}
                               </Badge>
+                              {item.round && item.round > 1 && (
+                                <Badge size="xs" color="grape" variant="light">
+                                  R{item.round}
+                                </Badge>
+                              )}
+                              <Badge
+                                size="xs"
+                                color={item.paymentStatus === "PAID" ? "teal" : "orange"}
+                                variant="light"
+                              >
+                                {item.paymentStatus === "PAID" ? "Paid" : "Unpaid"}
+                              </Badge>
+                            </Group>
+                            {item.note && (
+                              <Text size="xs" c="dimmed" fs="italic">
+                                Note: {item.note}
+                              </Text>
                             )}
-                          </Group>
-                          {item.note && (
-                            <Text size="xs" c="dimmed" fs="italic">
-                              Note: {item.note}
+                          </div>
+                          <Group gap="xs" align="center">
+                            <Badge size="xs" color={item.status === "SERVED" ? "green" : item.status === "PREPARED" ? "teal" : item.status === "PREPARING" ? "yellow" : item.status === "CANCELLED" ? "red" : "blue"} variant="light">
+                              {item.status || "ORDERED"}
+                            </Badge>
+                            <Text size="sm" fw={600} w={60} ta="right">
+                              ₹{((item.pricePaiseSnapshot * item.qty) / 100).toFixed(0)}
                             </Text>
-                          )}
-                        </div>
-                        <Group gap="xs" align="center">
-                          <Badge size="xs" color={item.status === "SERVED" ? "green" : item.status === "PREPARED" ? "teal" : item.status === "PREPARING" ? "yellow" : item.status === "CANCELLED" ? "red" : "blue"} variant="light">
-                            {item.status || "ORDERED"}
-                          </Badge>
-                          <Text size="sm" fw={600} w={60} ta="right">
-                            ₹{((item.pricePaiseSnapshot * item.qty) / 100).toFixed(0)}
-                          </Text>
+                          </Group>
                         </Group>
-                      </Group>
-                    </Paper>
-                  );
-                })}
-              </Stack>
-            </ScrollArea.Autosize>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              </ScrollArea.Autosize>
 
-            <Divider />
+              <Divider />
 
-            <Group justify="space-between" align="center">
-              <Text fw={700}>Current Total</Text>
-              <Text fw={800} size="lg" c="dinePrimary">
-                ₹{(activeTableOrder.order.subtotalPaise / 100).toFixed(0)}
-              </Text>
-            </Group>
+              <Group justify="space-between" align="center">
+                <Text fw={700}>Total Bill</Text>
+                <Text fw={800} size="lg" c="dinePrimary">
+                  ₹{(totalPaise / 100).toFixed(0)}
+                </Text>
+              </Group>
 
-            <Button fullWidth variant="default" onClick={() => setShowExistingItemsModal(false)}>
-              Close
-            </Button>
-          </Stack>
-        )}
+              <Group justify="space-between" align="center">
+                <Text size="sm" c="dimmed">Paid: ₹{(paidPaise / 100).toFixed(0)}</Text>
+                <Badge
+                  size="md"
+                  color={duePaise === 0 ? "teal" : "orange"}
+                  variant="light"
+                >
+                  {duePaise === 0 ? "All Paid" : `Due: ₹${(duePaise / 100).toFixed(0)}`}
+                </Badge>
+              </Group>
+
+              <Button fullWidth variant="default" onClick={() => setShowExistingItemsModal(false)}>
+                Close
+              </Button>
+            </Stack>
+          );
+        })()}
       </Modal>
     </Box>
   );

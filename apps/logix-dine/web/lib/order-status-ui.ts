@@ -42,6 +42,7 @@ export const ORDER_STATUS_CONFIG: Record<string, StatusVisual> = {
 
 export const PAYMENT_STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   OPEN: { color: "blue", label: "Unpaid" },
+  PARTIAL: { color: "orange", label: "Partially Paid" },
   PAID: { color: "green", label: "Paid" },
   VOID: { color: "gray", label: "Void" },
 };

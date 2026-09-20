@@ -3,18 +3,24 @@
 import React, { useState } from "react";
 import {
   Container, Title, Stack, Paper, Group, Text, Badge, Select, Button,
-  Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip,
+  Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip, Radio,
+  SimpleGrid, Alert,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconReceipt, IconRefresh, IconPrinter, IconArrowRight, IconX,
-  IconBan, IconCheck,
+  IconBan, IconCheck, IconCash, IconDoorExit, IconAlertCircle,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useOrders } from "@/lib/queries";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
-import { updateOrderItemStatus, voidOrder } from "@/lib/api-client";
+import {
+  updateOrderItemStatus,
+  voidOrder,
+  settleOrder,
+  freeTableOrder,
+} from "@/lib/api-client";
 import {
   getStatusVisual,
   ORDER_STATUS_CONFIG,
@@ -33,10 +39,24 @@ export default function OrdersPage() {
   const [reprinting, setReprinting] = useState<"KOT" | "BILL" | null>(null);
   const [updatingAction, setUpdatingAction] = useState<{ itemId: string; action: "next" | "close" } | null>(null);
 
+  // Settle / Free / Void modals & action state
+  const [settleModalOpen, setSettleModalOpen] = useState(false);
+  const [settleMethod, setSettleMethod] = useState<string>("Cash");
+  const [isSettling, setIsSettling] = useState(false);
+
+  const [freeModalOpen, setFreeModalOpen] = useState(false);
+  const [isFreeing, setIsFreeing] = useState(false);
+
+  const [isVoiding, setIsVoiding] = useState(false);
+
   const enabled = !!restaurantId && (allOutlets || !!outletId);
 
-  // Distinguish whether statusFilter is an orderStatus (ORDERED, PREPARING, etc.) or a billing status (OPEN, PAID, VOID)
-  const isBillingStatus = statusFilter === "OPEN" || statusFilter === "PAID" || statusFilter === "VOID";
+  // Distinguish whether statusFilter is an orderStatus (ORDERED, PREPARING, etc.) or a billing status (OPEN, PARTIAL, PAID, VOID)
+  const isBillingStatus =
+    statusFilter === "OPEN" ||
+    statusFilter === "PARTIAL" ||
+    statusFilter === "PAID" ||
+    statusFilter === "VOID";
   const { data: orders = [], isLoading: loading, refetch } = useOrders(
     restaurantId,
     {
@@ -63,6 +83,100 @@ export default function OrdersPage() {
       });
     } finally {
       setReprinting(null);
+    }
+  };
+
+  const handleSettle = async () => {
+    if (!selected || !restaurant) return;
+    setIsSettling(true);
+    try {
+      const res = await settleOrder(
+        restaurantId,
+        selected.order.id,
+        { method: settleMethod },
+        outletId,
+      );
+      notifications.show({
+        title: "Order Settled",
+        message: `Order #${selected.order.orderNo} marked as paid via ${settleMethod}`,
+        color: "green",
+      });
+      setSettleModalOpen(false);
+      if (res?.order) {
+        setSelected({ ...selected, order: res.order, items: res.items ?? selected.items });
+      } else {
+        setSelected(null);
+      }
+      refetch();
+    } catch (err: any) {
+      notifications.show({
+        title: "Failed to settle order",
+        message: err.message || "An error occurred",
+        color: "red",
+      });
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  const handleFreeTable = async () => {
+    if (!selected || !restaurant) return;
+    setIsFreeing(true);
+    try {
+      const paidPaise = selected.order.paidPaise ?? (selected.order.status === "PAID" ? selected.order.subtotalPaise : 0);
+      const duePaise = Math.max(0, (selected.order.subtotalPaise || 0) - paidPaise);
+      const res = await freeTableOrder(
+        restaurantId,
+        selected.order.id,
+        { method: settleMethod },
+        outletId,
+      );
+      notifications.show({
+        title: "Table Freed",
+        message: `Table ${selected.order.tableNo} is now vacant and ready for new guests`,
+        color: "green",
+      });
+      setFreeModalOpen(false);
+      if (res?.order) {
+        setSelected({ ...selected, order: res.order, items: res.items ?? selected.items });
+      } else {
+        setSelected(null);
+      }
+      refetch();
+    } catch (err: any) {
+      notifications.show({
+        title: "Failed to free table",
+        message: err.message || "An error occurred",
+        color: "red",
+      });
+    } finally {
+      setIsFreeing(false);
+    }
+  };
+
+  const handleVoid = async () => {
+    if (!selected || !restaurant) return;
+    if (!window.confirm(`Are you sure you want to void order #${selected.order.orderNo}? This action cannot be undone.`)) {
+      return;
+    }
+    setIsVoiding(true);
+    try {
+      await voidOrder(restaurantId, selected.order.id, outletId);
+      notifications.show({
+        title: "Order Voided",
+        message: `Order #${selected.order.orderNo} has been voided`,
+        color: "orange",
+      });
+      setSelected(null);
+      refetch();
+    } catch (err: any) {
+      notifications.show({
+        title: "Failed to void order",
+        message: err.message || "An error occurred",
+        color: "red",
+      });
+    } finally {
+      setIsVoiding(false);
     }
   };
 
@@ -128,6 +242,7 @@ export default function OrdersPage() {
               ]},
               { group: "Payment Status", items: [
                 { value: "OPEN", label: "Unpaid (Open)" },
+                { value: "PARTIAL", label: "Partially Paid" },
                 { value: "PAID", label: "Paid" },
                 { value: "VOID", label: "Void" },
               ]},
@@ -153,6 +268,11 @@ export default function OrdersPage() {
             const orderStatusVisual = getStatusVisual(order.orderStatus || "ORDERED");
             const OrderStatusIcon = orderStatusVisual.icon;
             const paymentVisual = PAYMENT_STATUS_CONFIG[order.status] || { color: "gray", label: order.status };
+            const paidPaise = order.paidPaise ?? (order.status === "PAID" ? order.subtotalPaise : 0);
+            const duePaise = Math.max(0, (order.subtotalPaise || 0) - paidPaise);
+            const maxRound = (items || []).reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
+            const isTable = Boolean(order.tableNo && order.tableNo !== "Takeaway");
+            const isTableFreed = Boolean(order.tableFreedAt);
 
             return (
               <Paper
@@ -176,6 +296,20 @@ export default function OrdersPage() {
                         {order.tableNo === "Takeaway" ? "Takeaway" : `T: ${order.tableNo}`}
                       </Badge>
                     )}
+                    {isTable && (
+                      <Badge
+                        size="xs"
+                        variant={isTableFreed ? "light" : "filled"}
+                        color={isTableFreed ? "gray" : order.status === "PAID" ? "teal" : "red"}
+                      >
+                        {isTableFreed ? "Table Freed" : "Occupied"}
+                      </Badge>
+                    )}
+                    {maxRound > 1 && (
+                      <Badge size="xs" variant="filled" color="grape">
+                        ↻ {maxRound} Rounds
+                      </Badge>
+                    )}
                     {order.customerPhone && <Badge size="xs" variant="outline" color="teal">WA</Badge>}
 
                     {/* Order Fulfillment Status Badge */}
@@ -190,15 +324,27 @@ export default function OrdersPage() {
                     {/* Payment Status Badge */}
                     <Badge
                       size="xs"
-                      variant="outline"
+                      variant={order.status === "PAID" ? "filled" : "outline"}
                       color={paymentVisual.color}
                     >
                       {paymentVisual.label}
                     </Badge>
                   </Group>
 
-                  <Group gap="xs">
-                    <Text fw={600} c="dinePrimary">₹{(order.subtotalPaise / 100).toFixed(0)}</Text>
+                  <Group gap="xs" align="baseline">
+                    {order.status === "PARTIAL" && duePaise > 0 ? (
+                      <Group gap={6} align="baseline">
+                        <Text size="xs" c="teal" fw={500}>Paid: ₹{(paidPaise / 100).toFixed(0)}</Text>
+                        <Text fw={700} c="orange">Due: ₹{(duePaise / 100).toFixed(0)}</Text>
+                      </Group>
+                    ) : order.status === "OPEN" ? (
+                      <Group gap={6} align="baseline">
+                        <Text size="xs" c="dimmed">Unpaid</Text>
+                        <Text fw={700} c="red">₹{((order.subtotalPaise || 0) / 100).toFixed(0)}</Text>
+                      </Group>
+                    ) : (
+                      <Text fw={600} c="dinePrimary">₹{((order.subtotalPaise || 0) / 100).toFixed(0)}</Text>
+                    )}
                     <Text size="xs" c="dimmed">
                       {new Date(order.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                     </Text>
@@ -210,6 +356,7 @@ export default function OrdersPage() {
                     {items.length} item{items.length !== 1 ? "s" : ""}
                     {order.method ? ` · ${order.method}` : ""}
                     {order.kotPrintedAt ? " · KOT ✓" : ""}
+                    {order.readyAt ? " · Ready ✓" : ""}
                   </Text>
                   {/* Summary of active items progress */}
                   <Group gap={4}>
@@ -217,7 +364,7 @@ export default function OrdersPage() {
                       const itVisual = getStatusVisual(it.status || "ORDERED");
                       return (
                         <Badge key={it.id} size="xs" variant="dot" color={itVisual.color}>
-                          {it.nameSnapshot || it.name}
+                          {it.round && it.round > 1 ? `[R${it.round}] ` : ""}{it.nameSnapshot || it.name}
                         </Badge>
                       );
                     })}
@@ -236,149 +383,104 @@ export default function OrdersPage() {
       <Modal
         opened={!!selected}
         onClose={() => setSelected(null)}
-        title={`Order #${selected?.order?.orderNo} (${selected?.order?.id})`}
+        title={
+          selected ? (
+            <Group gap="xs" align="center">
+              <Text fw={700}>Order #{selected.order.orderNo}</Text>
+              <Badge size="xs" variant="light" color="gray" style={{ textTransform: "none", fontFamily: "monospace" }}>
+                {selected.order.id}
+              </Badge>
+            </Group>
+          ) : "Order"
+        }
         size="lg"
       >
-        {selected && (
-          <Stack gap="sm">
-            <Group justify="space-between" align="center">
-              <Text size="xs" c="dimmed" ff="monospace">ID: {selected.order.id}</Text>
-              <Group gap="xs">
-                {(() => {
-                  const oVisual = getStatusVisual(selected.order.orderStatus || "ORDERED");
-                  const OIcon = oVisual.icon;
-                  const pVisual = PAYMENT_STATUS_CONFIG[selected.order.status] || { color: "gray", label: selected.order.status };
-                  return (
-                    <>
-                      <Badge color={oVisual.color} leftSection={<OIcon size={12} />}>
-                        {oVisual.label}
-                      </Badge>
-                      <Badge variant="outline" color={pVisual.color}>
-                        {pVisual.label}
-                      </Badge>
-                    </>
-                  );
-                })()}
+        {selected && (() => {
+          const { order, items } = selected;
+          const orderStatusVisual = getStatusVisual(order.orderStatus || "ORDERED");
+          const OrderStatusIcon = orderStatusVisual.icon;
+          const paymentVisual = PAYMENT_STATUS_CONFIG[order.status] || { color: "gray", label: order.status };
+          const paidPaise = order.paidPaise ?? (order.status === "PAID" ? order.subtotalPaise : 0);
+          const duePaise = Math.max(0, (order.subtotalPaise || 0) - paidPaise);
+          const maxRound = (items || []).reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
+          const isTable = Boolean(order.tableNo && order.tableNo !== "Takeaway");
+          const isTableFreed = Boolean(order.tableFreedAt);
+
+          return (
+            <Stack gap="sm">
+              {/* Header Badges & Table Occupancy */}
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Group gap="xs" align="center">
+                  {order.tableNo && (
+                    <Badge size="sm" variant="outline">
+                      {order.tableNo === "Takeaway" ? "Takeaway" : `Table: ${order.tableNo}`}
+                    </Badge>
+                  )}
+                  {isTable && (
+                    <Badge
+                      size="sm"
+                      variant={isTableFreed ? "light" : "filled"}
+                      color={isTableFreed ? "gray" : order.status === "PAID" ? "teal" : "red"}
+                      leftSection={isTableFreed ? <IconDoorExit size={12} /> : undefined}
+                    >
+                      {isTableFreed ? "Table Freed" : "Occupied"}
+                    </Badge>
+                  )}
+                  {maxRound > 1 && (
+                    <Badge size="sm" variant="filled" color="grape">
+                      ↻ {maxRound} Rounds
+                    </Badge>
+                  )}
+                </Group>
+
+                <Group gap="xs">
+                  <Badge color={orderStatusVisual.color} leftSection={<OrderStatusIcon size={12} />}>
+                    {orderStatusVisual.label}
+                  </Badge>
+                  <Badge variant="filled" color={paymentVisual.color}>
+                    {paymentVisual.label}
+                  </Badge>
+                </Group>
               </Group>
-            </Group>
 
-            <Group gap="md">
-              {selected.order.tableNo && (
-                <Text size="sm" fw={500}>
-                  {selected.order.tableNo === "Takeaway" ? "Takeaway" : `Table: ${selected.order.tableNo}`}
-                </Text>
+              {order.customerPhone && (
+                <Text size="xs" c="dimmed">Customer: {order.customerPhone}</Text>
               )}
-              {selected.order.customerPhone && (
-                <Text size="xs" c="dimmed">Customer: {selected.order.customerPhone}</Text>
-              )}
-            </Group>
 
-            <Divider my="xs" label="Order Items" labelPosition="center" />
+              <Divider my="xs" label={`Order Items (${items.length})`} labelPosition="center" />
 
-            <Stack gap="xs">
-              {selected.items.map((item: any) => {
-                const itemStatus = item.status || "ORDERED";
-                const isCancelled = itemStatus === "CANCELLED";
-                const isServed = itemStatus === "SERVED";
-                const itemVisual = getStatusVisual(itemStatus);
-                const ItemIcon = itemVisual.icon;
-                const nextStatus = getNextItemStatus(itemStatus);
-                const canNext = Boolean(nextStatus);
-                const canClose = !isCancelled && !isServed;
+              <Stack gap="xs">
+                {items.map((item: any) => {
+                  const itemStatus = item.status || "ORDERED";
+                  const isCancelled = itemStatus === "CANCELLED";
+                  const isServed = itemStatus === "SERVED";
+                  const itemVisual = getStatusVisual(itemStatus);
+                  const ItemIcon = itemVisual.icon;
+                  const nextStatus = getNextItemStatus(itemStatus);
+                  const canNext = Boolean(nextStatus);
+                  const canClose = !isCancelled && !isServed;
+                  const itemIsPaid = item.paymentStatus === "PAID" || order.status === "PAID";
 
-                const isThisItemUpdating = updatingAction?.itemId === item.id;
-                const isNextLoading = isThisItemUpdating && updatingAction?.action === "next";
-                const isCloseLoading = isThisItemUpdating && updatingAction?.action === "close";
-                const isNextDisabled = isThisItemUpdating && !isNextLoading;
-                const isCloseDisabled = isThisItemUpdating && !isCloseLoading;
+                  const isThisItemUpdating = updatingAction?.itemId === item.id;
+                  const isNextLoading = isThisItemUpdating && updatingAction?.action === "next";
+                  const isCloseLoading = isThisItemUpdating && updatingAction?.action === "close";
+                  const isNextDisabled = isThisItemUpdating && !isNextLoading;
+                  const isCloseDisabled = isThisItemUpdating && !isCloseLoading;
 
-                return (
-                  <Paper
-                    key={item.id}
-                    withBorder
-                    p="xs"
-                    radius="sm"
-                    style={{
-                      backgroundColor: isCancelled ? "rgba(255, 0, 0, 0.03)" : undefined,
-                      opacity: isCancelled ? 0.7 : 1,
-                    }}
-                  >
-                    {/* Desktop layout: item on left, status + actions on right */}
-                    <Group justify="space-between" align="center" wrap="nowrap" visibleFrom="sm">
-                      {/* Left side: item details */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <Group gap="xs" align="center">
-                          <Text
-                            size="sm"
-                            fw={600}
-                            style={{ textDecoration: isCancelled ? "line-through" : "none" }}
-                          >
-                            {item.nameSnapshot || item.name}
-                          </Text>
-                          <Badge size="xs" variant="light" color="gray">× {item.qty}</Badge>
-                          <Text size="sm" c="dimmed">
-                            ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
-                          </Text>
-                        </Group>
-
-                        {item.note && (
-                          <Text size="xs" c="dinePrimary" fs="italic" mt={2}>
-                            Note: {item.note}
-                          </Text>
-                        )}
-                      </div>
-
-                      {/* Right side: Status badge, Next button, Close button */}
-                      <Group gap={6} align="center" wrap="nowrap">
-                        <Badge
-                          size="sm"
-                          variant="light"
-                          color={itemVisual.color}
-                          leftSection={<ItemIcon size={12} />}
-                        >
-                          {itemVisual.label}
-                        </Badge>
-
-                        {/* Next Button */}
-                        {canNext && nextStatus && (
-                          <Tooltip label={`Next: Mark ${getStatusVisual(nextStatus).label}`} withArrow position="top">
-                            <ActionIcon
-                              size="md"
-                              variant="light"
-                              color="dinePrimary"
-                              loading={isNextLoading}
-                              disabled={isNextDisabled}
-                              onClick={() => handleUpdateItemStatus(item, { action: "next" })}
-                              aria-label={`Advance item to ${nextStatus}`}
-                            >
-                              <IconArrowRight size={15} />
-                            </ActionIcon>
-                          </Tooltip>
-                        )}
-
-                        {/* Close / Cancel Button */}
-                        {canClose && (
-                          <Tooltip label="Close (Cancel item)" withArrow position="top">
-                            <ActionIcon
-                              size="md"
-                              variant="subtle"
-                              color="red"
-                              loading={isCloseLoading}
-                              disabled={isCloseDisabled}
-                              onClick={() => handleUpdateItemStatus(item, { action: "close" })}
-                              aria-label="Cancel item"
-                            >
-                              <IconX size={15} />
-                            </ActionIcon>
-                          </Tooltip>
-                        )}
-                      </Group>
-                    </Group>
-
-                    {/* Small screens layout: 2-row clean card with icons only */}
-                    <Stack gap={6} hiddenFrom="sm">
-                      {/* Row 1: Item name & quantity on left, price on right */}
-                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  return (
+                    <Paper
+                      key={item.id}
+                      withBorder
+                      p="xs"
+                      radius="sm"
+                      style={{
+                        backgroundColor: isCancelled ? "rgba(255, 0, 0, 0.03)" : undefined,
+                        opacity: isCancelled ? 0.7 : 1,
+                      }}
+                    >
+                      {/* Desktop layout: item on left, status + actions on right */}
+                      <Group justify="space-between" align="center" wrap="nowrap" visibleFrom="sm">
+                        {/* Left side: item details */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <Group gap="xs" align="center" wrap="wrap">
                             <Text
@@ -389,30 +491,42 @@ export default function OrdersPage() {
                               {item.nameSnapshot || item.name}
                             </Text>
                             <Badge size="xs" variant="light" color="gray">× {item.qty}</Badge>
+                            {maxRound > 1 && (
+                              <Badge size="xs" variant="light" color="grape">
+                                Round {item.round || 1}
+                              </Badge>
+                            )}
+                            <Badge
+                              size="xs"
+                              variant="light"
+                              color={itemIsPaid ? "teal" : "orange"}
+                            >
+                              {itemIsPaid ? "Paid" : "Unpaid"}
+                            </Badge>
+                            <Text size="sm" c="dimmed">
+                              ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
+                            </Text>
                           </Group>
+
                           {item.note && (
                             <Text size="xs" c="dinePrimary" fs="italic" mt={2}>
                               Note: {item.note}
                             </Text>
                           )}
                         </div>
-                        <Text size="sm" fw={600} c="dimmed">
-                          ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
-                        </Text>
-                      </Group>
 
-                      {/* Row 2: Status badge on left, Action icons on right */}
-                      <Group justify="space-between" align="center" mt={2}>
-                        <Badge
-                          size="sm"
-                          variant="light"
-                          color={itemVisual.color}
-                          leftSection={<ItemIcon size={12} />}
-                        >
-                          {itemVisual.label}
-                        </Badge>
+                        {/* Right side: Status badge, Next button, Close button */}
+                        <Group gap={6} align="center" wrap="nowrap">
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            color={itemVisual.color}
+                            leftSection={<ItemIcon size={12} />}
+                          >
+                            {itemVisual.label}
+                          </Badge>
 
-                        <Group gap={6} align="center">
+                          {/* Next Button */}
                           {canNext && nextStatus && (
                             <Tooltip label={`Next: Mark ${getStatusVisual(nextStatus).label}`} withArrow position="top">
                               <ActionIcon
@@ -429,8 +543,9 @@ export default function OrdersPage() {
                             </Tooltip>
                           )}
 
+                          {/* Close / Cancel Button */}
                           {canClose && (
-                            <Tooltip label="Cancel item" withArrow position="top">
+                            <Tooltip label="Close (Cancel item)" withArrow position="top">
                               <ActionIcon
                                 size="md"
                                 variant="subtle"
@@ -446,61 +561,340 @@ export default function OrdersPage() {
                           )}
                         </Group>
                       </Group>
-                    </Stack>
-                  </Paper>
-                );
-              })}
+
+                      {/* Small screens layout: 2-row clean card with icons only */}
+                      <Stack gap={6} hiddenFrom="sm">
+                        {/* Row 1: Item name & quantity & round badges on left, price on right */}
+                        <Group justify="space-between" align="flex-start" wrap="nowrap">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <Group gap="xs" align="center" wrap="wrap">
+                              <Text
+                                size="sm"
+                                fw={600}
+                                style={{ textDecoration: isCancelled ? "line-through" : "none" }}
+                              >
+                                {item.nameSnapshot || item.name}
+                              </Text>
+                              <Badge size="xs" variant="light" color="gray">× {item.qty}</Badge>
+                              {maxRound > 1 && (
+                                <Badge size="xs" variant="light" color="grape">
+                                  R{item.round || 1}
+                                </Badge>
+                              )}
+                              <Badge
+                                size="xs"
+                                variant="light"
+                                color={itemIsPaid ? "teal" : "orange"}
+                              >
+                                {itemIsPaid ? "Paid" : "Unpaid"}
+                              </Badge>
+                            </Group>
+                            {item.note && (
+                              <Text size="xs" c="dinePrimary" fs="italic" mt={2}>
+                                Note: {item.note}
+                              </Text>
+                            )}
+                          </div>
+                          <Text size="sm" fw={600} c="dimmed">
+                            ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
+                          </Text>
+                        </Group>
+
+                        {/* Row 2: Status badge on left, Action icons on right */}
+                        <Group justify="space-between" align="center" mt={2}>
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            color={itemVisual.color}
+                            leftSection={<ItemIcon size={12} />}
+                          >
+                            {itemVisual.label}
+                          </Badge>
+
+                          <Group gap={6} align="center">
+                            {canNext && nextStatus && (
+                              <Tooltip label={`Next: Mark ${getStatusVisual(nextStatus).label}`} withArrow position="top">
+                                <ActionIcon
+                                  size="md"
+                                  variant="light"
+                                  color="dinePrimary"
+                                  loading={isNextLoading}
+                                  disabled={isNextDisabled}
+                                  onClick={() => handleUpdateItemStatus(item, { action: "next" })}
+                                  aria-label={`Advance item to ${nextStatus}`}
+                                >
+                                  <IconArrowRight size={15} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
+
+                            {canClose && (
+                              <Tooltip label="Cancel item" withArrow position="top">
+                                <ActionIcon
+                                  size="md"
+                                  variant="subtle"
+                                  color="red"
+                                  loading={isCloseLoading}
+                                  disabled={isCloseDisabled}
+                                  onClick={() => handleUpdateItemStatus(item, { action: "close" })}
+                                  aria-label="Cancel item"
+                                >
+                                  <IconX size={15} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
+                          </Group>
+                        </Group>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+
+              <Divider my="xs" />
+
+              {/* Financial Breakdown Summary Box */}
+              <Paper withBorder p="sm" radius="md" style={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}>
+                <Group justify="space-between" align="center" mb={8}>
+                  <Text size="sm" fw={700}>Financial Summary</Text>
+                  <Badge
+                    size="md"
+                    color={duePaise === 0 ? "teal" : order.status === "PARTIAL" ? "orange" : "red"}
+                    variant="filled"
+                  >
+                    {duePaise === 0 ? "PAID IN FULL" : `DUE BALANCE: ₹${(duePaise / 100).toFixed(0)}`}
+                  </Badge>
+                </Group>
+
+                <SimpleGrid cols={{ base: 3, sm: 3 }} spacing="xs">
+                  <div>
+                    <Text size="xs" c="dimmed">Total Bill</Text>
+                    <Text size="md" fw={700} c="dark">₹{((order.subtotalPaise || 0) / 100).toFixed(0)}</Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">Total Paid</Text>
+                    <Text size="md" fw={700} c="teal">₹{(paidPaise / 100).toFixed(0)}</Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">Balance Due</Text>
+                    <Text size="md" fw={700} c={duePaise > 0 ? "orange" : "gray"}>
+                      ₹{(duePaise / 100).toFixed(0)}
+                    </Text>
+                  </div>
+                </SimpleGrid>
+
+                {(order.method || order.kotPrintedAt || order.readyAt || order.settledAt || order.tableFreedAt) && (
+                  <Group gap="md" mt="xs" pt="xs" style={{ borderTop: "1px dashed #e0e0e0" }} wrap="wrap">
+                    {order.method && (
+                      <Text size="xs" c="dimmed">
+                        Payment: <Text span fw={600} c="dark">{order.method}</Text>
+                      </Text>
+                    )}
+                    {order.kotPrintedAt && (
+                      <Text size="xs" c="dimmed">
+                        KOT: {new Date(order.kotPrintedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </Text>
+                    )}
+                    {order.readyAt && (
+                      <Text size="xs" c="teal">
+                        Ready: {new Date(order.readyAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </Text>
+                    )}
+                    {order.settledAt && (
+                      <Text size="xs" c="dimmed">
+                        Settled: {new Date(order.settledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </Text>
+                    )}
+                    {order.tableFreedAt && (
+                      <Text size="xs" c="dimmed">
+                        Table Freed: {new Date(order.tableFreedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </Text>
+                    )}
+                  </Group>
+                )}
+              </Paper>
+
+              <Divider />
+
+              {/* Action Buttons: Reprint, Settle, Free Table, Void */}
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Group gap="xs">
+                  <Button
+                    size="xs"
+                    variant="light"
+                    leftSection={<IconPrinter size={14} />}
+                    loading={reprinting === "KOT"}
+                    onClick={() => handleReprint("KOT")}
+                  >
+                    Reprint KOT
+                  </Button>
+                  {(order.status === "PAID" || order.status === "PARTIAL") && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="green"
+                      leftSection={<IconReceipt size={14} />}
+                      loading={reprinting === "BILL"}
+                      onClick={() => handleReprint("BILL")}
+                    >
+                      Reprint Bill
+                    </Button>
+                  )}
+                </Group>
+
+                <Group gap="xs">
+                  {/* Settle Balance Button */}
+                  {duePaise > 0 && order.status !== "VOID" && (
+                    <Button
+                      size="xs"
+                      color="teal"
+                      leftSection={<IconCash size={14} />}
+                      onClick={() => setSettleModalOpen(true)}
+                    >
+                      Settle ₹{(duePaise / 100).toFixed(0)}
+                    </Button>
+                  )}
+
+                  {/* Free Table Button */}
+                  {isTable && !isTableFreed && order.status !== "VOID" && (
+                    <Button
+                      size="xs"
+                      color="blue"
+                      variant="light"
+                      leftSection={<IconDoorExit size={14} />}
+                      onClick={() => setFreeModalOpen(true)}
+                    >
+                      Free Table
+                    </Button>
+                  )}
+
+                  {/* Void Order Button */}
+                  {(order.status === "OPEN" || order.status === "PARTIAL") && (
+                    <Button
+                      size="xs"
+                      color="red"
+                      variant="subtle"
+                      leftSection={<IconBan size={14} />}
+                      loading={isVoiding}
+                      onClick={handleVoid}
+                    >
+                      Void Order
+                    </Button>
+                  )}
+                </Group>
+              </Group>
             </Stack>
+          );
+        })()}
+      </Modal>
 
-            <Divider my="xs" />
+      {/* Settle Balance Sub-Modal */}
+      <Modal
+        opened={settleModalOpen}
+        onClose={() => {
+          if (!isSettling) setSettleModalOpen(false);
+        }}
+        title={`Settle Order #${selected?.order?.orderNo}`}
+        size="sm"
+        zIndex={1300}
+      >
+        {selected && (() => {
+          const paidPaise = selected.order.paidPaise ?? (selected.order.status === "PAID" ? selected.order.subtotalPaise : 0);
+          const duePaise = Math.max(0, (selected.order.subtotalPaise || 0) - paidPaise);
+          return (
+            <Stack gap="md">
+              <Paper withBorder p="sm" radius="md" style={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Balance Due:</Text>
+                  <Text size="lg" fw={700} c="orange">₹{(duePaise / 100).toFixed(0)}</Text>
+                </Group>
+                <Group justify="space-between" mt={4}>
+                  <Text size="xs" c="dimmed">Total Bill: ₹{((selected.order.subtotalPaise || 0) / 100).toFixed(0)}</Text>
+                  <Text size="xs" c="teal">Paid: ₹{(paidPaise / 100).toFixed(0)}</Text>
+                </Group>
+              </Paper>
 
-            <Group justify="space-between">
-              <Text fw={700}>Total</Text>
-              <Text fw={700} c="dinePrimary" size="lg">₹{(selected.order.subtotalPaise / 100).toFixed(0)}</Text>
-            </Group>
+              <div>
+                <Text size="sm" fw={600} mb={6}>Payment Method:</Text>
+                <Radio.Group value={settleMethod} onChange={setSettleMethod}>
+                  <Group gap="sm">
+                    <Radio value="Cash" label="💵 Cash" />
+                    <Radio value="UPI" label="📱 UPI" />
+                    <Radio value="Card" label="💳 Card" />
+                    <Radio value="Other" label="Other" />
+                  </Group>
+                </Radio.Group>
+              </div>
 
-            {selected.order.method && <Text size="xs" c="dimmed">Payment: {selected.order.method}</Text>}
-            {selected.order.kotPrintedAt && (
-              <Text size="xs" c="dimmed">
-                KOT printed: {new Date(selected.order.kotPrintedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-              </Text>
-            )}
-            {selected.order.readyAt && (
-              <Text size="xs" c="teal">
-                Kitchen ready: {new Date(selected.order.readyAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-              </Text>
-            )}
-            {selected.order.settledAt && (
-              <Text size="xs" c="dimmed">Settled: {new Date(selected.order.settledAt).toLocaleString("en-IN")}</Text>
-            )}
+              <Divider />
 
-            <Divider />
-
-            <Group gap="xs">
-              <Button
-                size="xs"
-                variant="light"
-                leftSection={<IconPrinter size={14} />}
-                loading={reprinting === "KOT"}
-                onClick={() => handleReprint("KOT")}
-              >
-                Reprint KOT
-              </Button>
-              {selected.order.status === "PAID" && (
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="green"
-                  leftSection={<IconReceipt size={14} />}
-                  loading={reprinting === "BILL"}
-                  onClick={() => handleReprint("BILL")}
-                >
-                  Reprint Bill
+              <Group justify="flex-end" gap="xs">
+                <Button variant="default" size="sm" onClick={() => setSettleModalOpen(false)} disabled={isSettling}>
+                  Cancel
                 </Button>
+                <Button color="teal" size="sm" loading={isSettling} onClick={handleSettle} leftSection={<IconCheck size={16} />}>
+                  Confirm Payment
+                </Button>
+              </Group>
+            </Stack>
+          );
+        })()}
+      </Modal>
+
+      {/* Free Table Sub-Modal */}
+      <Modal
+        opened={freeModalOpen}
+        onClose={() => {
+          if (!isFreeing) setFreeModalOpen(false);
+        }}
+        title={`Free Table ${selected?.order?.tableNo}`}
+        size="sm"
+        zIndex={1300}
+      >
+        {selected && (() => {
+          const paidPaise = selected.order.paidPaise ?? (selected.order.status === "PAID" ? selected.order.subtotalPaise : 0);
+          const duePaise = Math.max(0, (selected.order.subtotalPaise || 0) - paidPaise);
+          return (
+            <Stack gap="md">
+              {duePaise > 0 ? (
+                <>
+                  <Alert color="orange" icon={<IconAlertCircle size={16} />}>
+                    This table has an unpaid balance of <Text span fw={700}>₹{(duePaise / 100).toFixed(0)}</Text>.
+                    Freeing the table will settle this balance and vacate the table.
+                  </Alert>
+
+                  <div>
+                    <Text size="sm" fw={600} mb={6}>Payment Method for remaining balance:</Text>
+                    <Radio.Group value={settleMethod} onChange={setSettleMethod}>
+                      <Group gap="sm">
+                        <Radio value="Cash" label="💵 Cash" />
+                        <Radio value="UPI" label="📱 UPI" />
+                        <Radio value="Card" label="💳 Card" />
+                        <Radio value="Other" label="Other" />
+                      </Group>
+                    </Radio.Group>
+                  </div>
+                </>
+              ) : (
+                <Alert color="teal" icon={<IconCheck size={16} />}>
+                  All orders for Table {selected.order.tableNo} have been settled.
+                  Confirming will vacate the table and mark it available for new guests.
+                </Alert>
               )}
-            </Group>
-          </Stack>
-        )}
+
+              <Divider />
+
+              <Group justify="flex-end" gap="xs">
+                <Button variant="default" size="sm" onClick={() => setFreeModalOpen(false)} disabled={isFreeing}>
+                  Cancel
+                </Button>
+                <Button color="teal" size="sm" loading={isFreeing} onClick={handleFreeTable} leftSection={<IconDoorExit size={16} />}>
+                  {duePaise > 0 ? `Settle ₹${(duePaise / 100).toFixed(0)} & Free Table` : "Free Table"}
+                </Button>
+              </Group>
+            </Stack>
+          );
+        })()}
       </Modal>
     </Container>
   );

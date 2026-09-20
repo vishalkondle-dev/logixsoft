@@ -564,52 +564,55 @@ export default function OrdersPage() {
 
                       {/* Small screens layout: 2-row clean card with icons only */}
                       <Stack gap={6} hiddenFrom="sm">
-                        {/* Row 1: Item name & quantity & round badges on left, price on right */}
+                        {/* Row 1: Item name & quantity on left, price on right */}
                         <Group justify="space-between" align="flex-start" wrap="nowrap">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <Group gap="xs" align="center" wrap="wrap">
-                              <Text
-                                size="sm"
-                                fw={600}
-                                style={{ textDecoration: isCancelled ? "line-through" : "none" }}
-                              >
-                                {item.nameSnapshot || item.name}
-                              </Text>
-                              <Badge size="xs" variant="light" color="gray">× {item.qty}</Badge>
-                              {maxRound > 1 && (
-                                <Badge size="xs" variant="light" color="grape">
-                                  R{item.round || 1}
-                                </Badge>
-                              )}
-                              <Badge
-                                size="xs"
-                                variant="light"
-                                color={itemIsPaid ? "teal" : "orange"}
-                              >
-                                {itemIsPaid ? "Paid" : "Unpaid"}
-                              </Badge>
-                            </Group>
-                            {item.note && (
-                              <Text size="xs" c="dinePrimary" fs="italic" mt={2}>
-                                Note: {item.note}
-                              </Text>
-                            )}
-                          </div>
-                          <Text size="sm" fw={600} c="dimmed">
+                          <Group gap="xs" align="center" style={{ flex: 1, minWidth: 0 }}>
+                            <Text
+                              size="sm"
+                              fw={600}
+                              style={{ textDecoration: isCancelled ? "line-through" : "none", wordBreak: "break-word" }}
+                            >
+                              {item.nameSnapshot || item.name}
+                            </Text>
+                            <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0 }}>× {item.qty}</Badge>
+                          </Group>
+                          <Text size="sm" fw={700} c="dimmed" style={{ flexShrink: 0, marginLeft: 8 }}>
                             ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
                           </Text>
                         </Group>
 
-                        {/* Row 2: Status badge on left, Action icons on right */}
-                        <Group justify="space-between" align="center" mt={2}>
-                          <Badge
-                            size="sm"
-                            variant="light"
-                            color={itemVisual.color}
-                            leftSection={<ItemIcon size={12} />}
-                          >
-                            {itemVisual.label}
-                          </Badge>
+                        {item.note && (
+                          <Text size="xs" c="dinePrimary" fs="italic">
+                            Note: {item.note}
+                          </Text>
+                        )}
+
+                        {/* Row 2: Badges on left (Rounds, Payment, Status), Action icons on right */}
+                        <Group justify="space-between" align="center" mt={2} wrap="wrap">
+                          <Group gap={6} align="center" wrap="wrap">
+                            {maxRound > 1 && (
+                              <Badge size="xs" variant="light" color="grape" style={{ flexShrink: 0 }}>
+                                R{item.round || 1}
+                              </Badge>
+                            )}
+                            <Badge
+                              size="xs"
+                              variant="light"
+                              color={itemIsPaid ? "teal" : "orange"}
+                              style={{ flexShrink: 0 }}
+                            >
+                              {itemIsPaid ? "Paid" : "Unpaid"}
+                            </Badge>
+                            <Badge
+                              size="sm"
+                              variant="light"
+                              color={itemVisual.color}
+                              leftSection={<ItemIcon size={12} />}
+                              style={{ flexShrink: 0 }}
+                            >
+                              {itemVisual.label}
+                            </Badge>
+                          </Group>
 
                           <Group gap={6} align="center">
                             {canNext && nextStatus && (

@@ -1001,13 +1001,13 @@ export default function TablesPage() {
                         {items.map((item: any, idx: number) => {
                           const itemVisual = getStatusVisual(item.status || "ORDERED");
                           return (
-                            <Group key={item.id || idx} justify="space-between" align="center">
-                              <Group gap="xs" align="center">
-                                <Text size="sm" fw={600}>{item.nameSnapshot || item.name}</Text>
-                                <Badge size="xs" variant="light" color="gray">×{item.qty}</Badge>
-                                <Badge size="xs" variant="dot" color={itemVisual.color}>{itemVisual.label}</Badge>
+                            <Group key={item.id || idx} justify="space-between" align="flex-start" wrap="nowrap">
+                              <Group gap="xs" align="center" wrap="wrap" style={{ flex: 1, minWidth: 0 }}>
+                                <Text size="sm" fw={600} style={{ wordBreak: "break-word" }}>{item.nameSnapshot || item.name}</Text>
+                                <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0 }}>×{item.qty}</Badge>
+                                <Badge size="xs" variant="dot" color={itemVisual.color} style={{ flexShrink: 0 }}>{itemVisual.label}</Badge>
                               </Group>
-                              <Text size="sm" fw={600} c="dimmed">
+                              <Text size="sm" fw={600} c="dimmed" style={{ flexShrink: 0, marginLeft: 8 }}>
                                 ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
                               </Text>
                             </Group>

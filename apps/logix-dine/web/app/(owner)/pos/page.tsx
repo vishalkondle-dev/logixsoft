@@ -978,7 +978,7 @@ export default function POSPage() {
 
           return (
             <Stack gap="sm">
-              <Group justify="space-between" align="center">
+              <Group justify="space-between" align="center" wrap="wrap">
                 <Badge color={duePaise === 0 ? "teal" : "orange"} variant="light" size="sm" leftSection={<IconClock size={12} />}>
                   Round {currentRound} Active {duePaise === 0 ? "· All Paid" : ""}
                 </Badge>
@@ -989,48 +989,71 @@ export default function POSPage() {
 
               <Divider />
 
-              <ScrollArea.Autosize mah={320}>
+              <ScrollArea.Autosize mah={360}>
                 <Stack gap="xs">
                   {(activeTableOrder.items ?? []).map((item: any) => {
+                    const priceTotal = (((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0);
+                    const isPaid = item.paymentStatus === "PAID" || activeTableOrder.order.status === "PAID";
+                    const statusColor =
+                      item.status === "SERVED"
+                        ? "green"
+                        : item.status === "PREPARED"
+                        ? "teal"
+                        : item.status === "PREPARING"
+                        ? "yellow"
+                        : item.status === "CANCELLED"
+                        ? "red"
+                        : "blue";
+
                     return (
                       <Paper key={item.id} withBorder p="xs" radius="sm">
-                        <Group justify="space-between" align="center" wrap="nowrap">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <Group gap={6} align="center" wrap="nowrap">
-                              <Text size="sm" fw={600} lineClamp={1}>
-                                {item.nameSnapshot}
+                        <Stack gap={4}>
+                          {/* Row 1: Item Name & Qty on left, Price on right */}
+                          <Group justify="space-between" align="flex-start" wrap="nowrap">
+                            <Group gap={6} align="center" style={{ flex: 1, minWidth: 0 }}>
+                              <Text size="sm" fw={600} style={{ wordBreak: "break-word" }}>
+                                {item.nameSnapshot || item.name}
                               </Text>
-                              <Badge size="xs" color="dark" variant="filled">
+                              <Badge size="xs" color="dark" variant="filled" style={{ flexShrink: 0 }}>
                                 ×{item.qty}
                               </Badge>
-                              {item.round && item.round > 1 && (
-                                <Badge size="xs" color="grape" variant="light">
-                                  R{item.round}
-                                </Badge>
-                              )}
-                              <Badge
-                                size="xs"
-                                color={item.paymentStatus === "PAID" ? "teal" : "orange"}
-                                variant="light"
-                              >
-                                {item.paymentStatus === "PAID" ? "Paid" : "Unpaid"}
-                              </Badge>
                             </Group>
-                            {item.note && (
-                              <Text size="xs" c="dimmed" fs="italic">
-                                Note: {item.note}
-                              </Text>
-                            )}
-                          </div>
-                          <Group gap="xs" align="center">
-                            <Badge size="xs" color={item.status === "SERVED" ? "green" : item.status === "PREPARED" ? "teal" : item.status === "PREPARING" ? "yellow" : item.status === "CANCELLED" ? "red" : "blue"} variant="light">
-                              {item.status || "ORDERED"}
-                            </Badge>
-                            <Text size="sm" fw={600} w={60} ta="right">
-                              ₹{((item.pricePaiseSnapshot * item.qty) / 100).toFixed(0)}
+                            <Text size="sm" fw={700} c="dark" style={{ flexShrink: 0, marginLeft: 8 }}>
+                              ₹{priceTotal}
                             </Text>
                           </Group>
-                        </Group>
+
+                          {/* Row 2: Badges & Tags (wrap to next line if screen is narrow, flexShrink: 0 prevents any truncation/ellipsis) */}
+                          <Group gap={6} align="center" wrap="wrap" mt={2}>
+                            {item.round && item.round > 1 && (
+                              <Badge size="xs" color="grape" variant="light" style={{ flexShrink: 0 }}>
+                                Round {item.round}
+                              </Badge>
+                            )}
+                            <Badge
+                              size="xs"
+                              color={isPaid ? "teal" : "orange"}
+                              variant="light"
+                              style={{ flexShrink: 0 }}
+                            >
+                              {isPaid ? "Paid" : "Unpaid"}
+                            </Badge>
+                            <Badge
+                              size="xs"
+                              color={statusColor}
+                              variant="light"
+                              style={{ flexShrink: 0 }}
+                            >
+                              {item.status || "ORDERED"}
+                            </Badge>
+                          </Group>
+
+                          {item.note && (
+                            <Text size="xs" c="dinePrimary" fs="italic" mt={1}>
+                              Note: {item.note}
+                            </Text>
+                          )}
+                        </Stack>
                       </Paper>
                     );
                   })}

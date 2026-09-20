@@ -224,11 +224,6 @@ export function SettingsOverview() {
               Manage your outlet configuration, team, menu, billing, and integrations.
             </Text>
           </div>
-          {activeOutlet && (
-            <Badge variant="light" color="dinePrimary" size="md">
-              {activeOutlet.name}
-            </Badge>
-          )}
         </Group>
       </Box>
 

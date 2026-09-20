@@ -9,7 +9,6 @@ import {
   Button,
   Switch,
   TextInput,
-  Select,
   Badge,
   Loader,
   Box,
@@ -68,20 +67,7 @@ export function StoreHoursManagement() {
   const { restaurant, outlets, activeOutlet, refresh } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
 
-  // Selected outlet state
-  const [selectedOutletId, setSelectedOutletId] = useState<string>(() => {
-    return activeOutlet?.id || outlets[0]?.id || "";
-  });
-
-  useEffect(() => {
-    if (activeOutlet?.id) {
-      setSelectedOutletId(activeOutlet.id);
-    } else if (outlets.length > 0 && !selectedOutletId) {
-      setSelectedOutletId(outlets[0].id);
-    }
-  }, [activeOutlet, outlets]);
-
-  const currentOutlet = outlets.find((o) => o.id === selectedOutletId) || outlets[0];
+  const currentOutlet = activeOutlet || outlets[0];
 
   const [hoursConfig, setHoursConfig] = useState<StoreHoursConfig>(DEFAULT_SCHEDULE);
   const [saving, setSaving] = useState(false);
@@ -269,18 +255,6 @@ export function StoreHoursManagement() {
               Set daily opening, closing, and break shifts. Orders will reflect these operating times.
             </Text>
           </div>
-
-          {outlets.length > 1 && (
-            <Select
-              size="xs"
-              label="Outlet"
-              placeholder="Select outlet"
-              value={selectedOutletId}
-              onChange={(val) => val && setSelectedOutletId(val)}
-              data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-              style={{ minWidth: 180 }}
-            />
-          )}
         </Group>
       </Paper>
 

@@ -391,53 +391,12 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
   const content = (
     <>
-      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="xs">
-        <Group gap="xs" align="center">
-          {!embedded && <Title order={2}>Menu Catalog</Title>}
-          {activeOutlet && (
-            <Badge variant="light" color="dinePrimary" size="md">
-              {activeOutlet.name}
-            </Badge>
-          )}
-        </Group>
-        <Group gap="xs">
-          <Button
-            variant="light"
-            color="dinePrimary"
-            size="sm"
-            leftSection={<IconPlus size={14} />}
-            onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-            disabled={!outletId}
-          >
-            Category
-          </Button>
-          <Button
-            color="dinePrimary"
-            size="sm"
-            leftSection={<IconPlus size={14} />}
-            onClick={() => {
-              setItemForm({
-                categoryId: activeCatId ?? "",
-                name: "",
-                description: "",
-                pricePaise: 0,
-                variants: [],
-                addons: [],
-              });
-              setItemImageFile(null);
-              setItemModal({ open: true, editing: null });
-            }}
-            disabled={!outletId || !categories.length}
-          >
-            Add Item
-          </Button>
-        </Group>
-      </Group>
+      {!embedded && <Title order={2} mb="md">Menu Catalog</Title>}
 
       {!categories.length ? (
         <Paper p="xl" radius="md" ta="center" my="md">
           <Text size="sm" c="dimmed">
-            No menu categories yet for {activeOutlet?.name || "this outlet"}.
+            No menu categories yet. Create one to get started.
           </Text>
           <Button
             size="xs"
@@ -451,228 +410,294 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
             Create Category
           </Button>
         </Paper>
-      ) : (
-        <Box style={{ display: "flex", gap: 0, alignItems: "flex-start", width: "100%" }}>
-          {/* ── Left Category Sidebar (desktop) / Top pill row (mobile) ── */}
-          <Box
-            visibleFrom="md"
-            style={{
-              width: 200,
-              minWidth: 200,
-              flexShrink: 0,
-              marginRight: 16,
-              position: "sticky",
-              top: 72,
-              alignSelf: "flex-start",
-              maxHeight: "calc(100vh - 100px)",
-              overflowY: "auto",
-            }}
-          >
-            <Group justify="space-between" align="center" mb={8}>
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.5px" }}>
-                Categories
-              </Text>
-              <ActionIcon
-                size="xs"
-                variant="light"
-                color="dinePrimary"
-                onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-                title="Add Category"
-              >
-                <IconPlus size={12} />
-              </ActionIcon>
-            </Group>
+      ) : (() => {
+        // Active category always first
+        const sortedCategories = activeCatId
+          ? [
+              ...categories.filter((c) => c.id === activeCatId),
+              ...categories.filter((c) => c.id !== activeCatId),
+            ]
+          : categories;
+        const activeCat = categories.find((c) => c.id === activeCatId) ?? null;
+        const catItems = activeCat ? items.filter((i: any) => i.categoryId === activeCat.id) : [];
 
-            <Stack gap={2}>
-              {categories.map((cat) => {
-                const catCount = items.filter((i: any) => i.categoryId === cat.id).length;
-                const isActive = activeCatId === cat.id;
-                return (
-                  <Box
-                    key={cat.id}
-                    onClick={() => setActiveCatId(cat.id)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      cursor: "pointer",
-                      backgroundColor: isActive ? "var(--mantine-color-dinePrimary-0)" : "transparent",
-                      color: isActive ? "var(--mantine-color-dinePrimary-7)" : "inherit",
-                      transition: "background-color 120ms ease",
-                    }}
-                  >
-                    <Text
-                      size="sm"
-                      fw={isActive ? 600 : 400}
-                      style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                    >
-                      {cat.name}
-                    </Text>
-                    <Badge
-                      size="xs"
-                      ml={6}
-                      variant={isActive ? "filled" : "light"}
-                      color={isActive ? "dinePrimary" : "gray"}
-                      style={{ flexShrink: 0 }}
-                    >
-                      {catCount}
-                    </Badge>
-                  </Box>
-                );
-              })}
-
-              <Box
-                onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "7px 10px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  color: "var(--mantine-color-dinePrimary-6)",
-                  marginTop: 4,
-                  opacity: outletId ? 1 : 0.4,
-                  pointerEvents: outletId ? "auto" : "none",
-                }}
-              >
-                <IconPlus size={13} />
-                <Text size="sm">New Category</Text>
-              </Box>
-            </Stack>
-          </Box>
-
-          {/* ── Horizontal scrollable category pills (mobile only) + Content ── */}
-          <Box style={{ flex: 1, minWidth: 0 }}>
-            {/* Mobile category pills */}
+        return (
+          <Box style={{ display: "flex", gap: 0, alignItems: "flex-start", width: "100%" }}>
+            {/* ── Left Category Sidebar (desktop only) ── */}
             <Box
-              hiddenFrom="md"
+              visibleFrom="md"
               style={{
-                overflowX: "auto",
-                display: "flex",
-                gap: 8,
-                paddingBottom: 12,
-                scrollbarWidth: "none",
+                width: 196,
+                minWidth: 196,
+                flexShrink: 0,
+                marginRight: 16,
+                position: "sticky",
+                top: 72,
+                alignSelf: "flex-start",
+                maxHeight: "calc(100vh - 100px)",
+                overflowY: "auto",
               }}
             >
-              {categories.map((cat) => {
-                const isActive = activeCatId === cat.id;
-                const catCount = items.filter((i: any) => i.categoryId === cat.id).length;
-                return (
-                  <Box
-                    key={cat.id}
-                    onClick={() => setActiveCatId(cat.id)}
-                    style={{
-                      flexShrink: 0,
-                      padding: "6px 14px",
-                      borderRadius: 20,
-                      cursor: "pointer",
-                      border: `1.5px solid ${isActive ? "var(--mantine-color-dinePrimary-6)" : "var(--mantine-color-gray-3)"}`,
-                      backgroundColor: isActive ? "var(--mantine-color-dinePrimary-6)" : "transparent",
-                      color: isActive ? "#fff" : "var(--mantine-color-gray-7)",
-                      fontSize: 13,
-                      fontWeight: isActive ? 600 : 400,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      transition: "all 120ms ease",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {cat.name}
-                    <span
+              <Group justify="space-between" align="center" mb={8}>
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.5px" }}>
+                  Categories
+                </Text>
+                <ActionIcon
+                  size="xs"
+                  variant="light"
+                  color="dinePrimary"
+                  onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+                  title="Add Category"
+                >
+                  <IconPlus size={12} />
+                </ActionIcon>
+              </Group>
+
+              <Stack gap={2}>
+                {sortedCategories.map((cat) => {
+                  const catCount = items.filter((i: any) => i.categoryId === cat.id).length;
+                  const isActive = activeCatId === cat.id;
+                  return (
+                    <Box
+                      key={cat.id}
+                      onClick={() => setActiveCatId(cat.id)}
                       style={{
-                        fontSize: 11,
-                        opacity: 0.8,
-                        background: isActive ? "rgba(255,255,255,0.25)" : "var(--mantine-color-gray-1)",
-                        borderRadius: 10,
-                        padding: "1px 6px",
-                        color: isActive ? "#fff" : "var(--mantine-color-gray-6)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        backgroundColor: isActive ? "var(--mantine-color-dinePrimary-0)" : "transparent",
+                        color: isActive ? "var(--mantine-color-dinePrimary-7)" : "inherit",
+                        transition: "background-color 120ms ease",
                       }}
                     >
-                      {catCount}
-                    </span>
-                  </Box>
-                );
-              })}
-              <Box
-                onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-                style={{
-                  flexShrink: 0,
-                  padding: "6px 14px",
-                  borderRadius: 20,
-                  cursor: "pointer",
-                  border: "1.5px dashed var(--mantine-color-gray-3)",
-                  color: "var(--mantine-color-dinePrimary-6)",
-                  fontSize: 13,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <IconPlus size={13} /> Category
-              </Box>
+                      <Text
+                        size="sm"
+                        fw={isActive ? 600 : 400}
+                        style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      >
+                        {cat.name}
+                      </Text>
+                      <Badge
+                        size="xs"
+                        ml={6}
+                        variant={isActive ? "filled" : "light"}
+                        color={isActive ? "dinePrimary" : "gray"}
+                        style={{ flexShrink: 0 }}
+                      >
+                        {catCount}
+                      </Badge>
+                    </Box>
+                  );
+                })}
+
+                <Box
+                  onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "7px 10px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    color: "var(--mantine-color-dinePrimary-6)",
+                    marginTop: 4,
+                    opacity: outletId ? 1 : 0.4,
+                    pointerEvents: outletId ? "auto" : "none",
+                  }}
+                >
+                  <IconPlus size={13} />
+                  <Text size="sm">New Category</Text>
+                </Box>
+              </Stack>
             </Box>
 
-            {/* Active category content */}
-            {(() => {
-              const cat = categories.find((c) => c.id === activeCatId);
-              if (!cat) return null;
-              const catItems = items.filter((i: any) => i.categoryId === cat.id);
-              return (
-                <>
-                  {/* Category Header */}
-                  <Paper p="sm" mb="md" radius="md">
-                    <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                      <div>
-                        <Group gap="xs" align="center">
-                          <Text size="md" fw={700}>{cat.name}</Text>
-                          <Badge size="xs" variant="light" color={cat.active ? "teal" : "gray"}>
-                            {cat.active ? "Visible" : "Hidden"}
-                          </Badge>
-                          <Badge size="xs" variant="outline" color="gray">
-                            {catItems.length} {catItems.length === 1 ? "dish" : "dishes"}
-                          </Badge>
-                        </Group>
-                        {cat.description && (
-                          <Text size="xs" c="dimmed" mt={2}>{cat.description}</Text>
-                        )}
-                      </div>
+            {/* ── Content panel (mobile pill row + category content) ── */}
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              {/* Mobile: horizontal scrollable pill row */}
+              <Box
+                hiddenFrom="md"
+                style={{
+                  overflowX: "auto",
+                  display: "flex",
+                  gap: 8,
+                  paddingBottom: 12,
+                  scrollbarWidth: "none",
+                }}
+              >
+                {sortedCategories.map((cat) => {
+                  const isActive = activeCatId === cat.id;
+                  const catCount = items.filter((i: any) => i.categoryId === cat.id).length;
+                  return (
+                    <Box
+                      key={cat.id}
+                      onClick={() => setActiveCatId(cat.id)}
+                      style={{
+                        flexShrink: 0,
+                        padding: "6px 14px",
+                        borderRadius: 20,
+                        cursor: "pointer",
+                        border: `1.5px solid ${isActive ? "var(--mantine-color-dinePrimary-6)" : "var(--mantine-color-gray-3)"}`,
+                        backgroundColor: isActive ? "var(--mantine-color-dinePrimary-6)" : "transparent",
+                        color: isActive ? "#fff" : "var(--mantine-color-gray-7)",
+                        fontSize: 13,
+                        fontWeight: isActive ? 600 : 400,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        transition: "all 120ms ease",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {cat.name}
+                      <span
+                        style={{
+                          fontSize: 11,
+                          background: isActive ? "rgba(255,255,255,0.25)" : "var(--mantine-color-gray-1)",
+                          borderRadius: 10,
+                          padding: "1px 6px",
+                          color: isActive ? "#fff" : "var(--mantine-color-gray-6)",
+                        }}
+                      >
+                        {catCount}
+                      </span>
+                    </Box>
+                  );
+                })}
+                <Box
+                  onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+                  style={{
+                    flexShrink: 0,
+                    padding: "6px 14px",
+                    borderRadius: 20,
+                    cursor: "pointer",
+                    border: "1.5px dashed var(--mantine-color-gray-3)",
+                    color: "var(--mantine-color-dinePrimary-6)",
+                    fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <IconPlus size={13} /> Category
+                </Box>
+              </Box>
 
-                      <Group gap="xs">
-                        <Switch
-                          size="xs"
-                          checked={cat.active}
-                          onChange={() => handleToggleActive(cat)}
-                          label={cat.active ? "Visible" : "Hidden"}
+              {/* Active category content */}
+              {activeCat && (() => {
+                return (
+                  <>
+                    {/* ── Redesigned Category Header ── */}
+                    <Box
+                      mb="md"
+                      style={{
+                        borderRadius: 10,
+                        overflow: "hidden",
+                        border: "1px solid var(--mantine-color-dinePrimary-2)",
+                        backgroundColor: "var(--mantine-color-dinePrimary-0)",
+                      }}
+                    >
+                      {/* Accent bar */}
+                      <Box
+                        style={{
+                          height: 3,
+                          background: "linear-gradient(90deg, var(--mantine-color-dinePrimary-5), var(--mantine-color-dinePrimary-3))",
+                        }}
+                      />
+                      <Group justify="space-between" align="center" wrap="wrap" gap="xs" p="sm">
+                        <div>
+                          <Group gap={8} align="center">
+                            <Text fw={700} size="md" c="dinePrimary">
+                              {activeCat.name}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              {catItems.length} {catItems.length === 1 ? "dish" : "dishes"}
+                            </Text>
+                          </Group>
+                          {activeCat.description && (
+                            <Text size="xs" c="dimmed" mt={2}>{activeCat.description}</Text>
+                          )}
+                        </div>
+
+                        <Group gap="xs">
+                          <Switch
+                            size="xs"
+                            checked={activeCat.active}
+                            onChange={() => handleToggleActive(activeCat)}
+                            label={activeCat.active ? "Visible" : "Hidden"}
+                            color="dinePrimary"
+                          />
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="dinePrimary"
+                            onClick={() => { setCatForm({ name: activeCat.name, description: activeCat.description ?? "" }); setCatModal({ open: true, editing: activeCat }); }}
+                            title="Edit category"
+                          >
+                            <IconEdit size={14} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="red"
+                            onClick={() => handleDeleteCat(activeCat)}
+                            title="Delete category"
+                          >
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                          <Button
+                            size="xs"
+                            color="dinePrimary"
+                            leftSection={<IconPlus size={13} />}
+                            onClick={() => {
+                              setItemForm({
+                                categoryId: activeCat.id,
+                                name: "",
+                                description: "",
+                                pricePaise: 0,
+                                variants: [],
+                                addons: [],
+                              });
+                              setItemImageFile(null);
+                              setItemModal({ open: true, editing: null });
+                            }}
+                          >
+                            Add Dish
+                          </Button>
+                        </Group>
+                      </Group>
+                    </Box>
+
+                    {/* Dish Cards Grid */}
+                    <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                      {catItems.map((item) => (
+                        <MenuItemCard
+                          key={item.id}
+                          item={item}
+                          restaurantId={restaurantId}
+                          outletId={outletId}
+                          onToggle={handleToggle}
+                          onDelete={handleDeleteItem}
                         />
-                        <ActionIcon
-                          size="sm"
-                          variant="light"
-                          onClick={() => { setCatForm({ name: cat.name, description: cat.description ?? "" }); setCatModal({ open: true, editing: cat }); }}
-                          title="Edit category"
-                        >
-                          <IconEdit size={14} />
-                        </ActionIcon>
-                        <ActionIcon
-                          size="sm"
-                          variant="light"
-                          color="red"
-                          onClick={() => handleDeleteCat(cat)}
-                          title="Delete category"
-                        >
-                          <IconTrash size={14} />
-                        </ActionIcon>
+                      ))}
+                    </SimpleGrid>
+
+                    {!catItems.length && (
+                      <Paper p="xl" radius="md" ta="center" my="md">
+                        <IconPhoto size={36} color="var(--mantine-color-gray-4)" style={{ margin: "0 auto 8px" }} />
+                        <Text c="dimmed" size="sm">No dishes in {activeCat.name} yet.</Text>
                         <Button
                           size="xs"
+                          variant="light"
                           color="dinePrimary"
-                          leftSection={<IconPlus size={13} />}
+                          mt="sm"
+                          leftSection={<IconPlus size={14} />}
                           onClick={() => {
                             setItemForm({
-                              categoryId: cat.id,
+                              categoryId: activeCat.id,
                               name: "",
                               description: "",
                               pricePaise: 0,
@@ -683,59 +708,18 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                             setItemModal({ open: true, editing: null });
                           }}
                         >
-                          Add Dish
+                          Add First Dish
                         </Button>
-                      </Group>
-                    </Group>
-                  </Paper>
-
-                  {/* Dish Cards Grid */}
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-                    {catItems.map((item) => (
-                      <MenuItemCard
-                        key={item.id}
-                        item={item}
-                        restaurantId={restaurantId}
-                        outletId={outletId}
-                        onToggle={handleToggle}
-                        onDelete={handleDeleteItem}
-                      />
-                    ))}
-                  </SimpleGrid>
-
-                  {!catItems.length && (
-                    <Paper p="xl" radius="md" ta="center" my="md">
-                      <IconPhoto size={36} color="var(--mantine-color-gray-4)" style={{ margin: "0 auto 8px" }} />
-                      <Text c="dimmed" size="sm">No dishes in {cat.name} yet.</Text>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        color="dinePrimary"
-                        mt="sm"
-                        leftSection={<IconPlus size={14} />}
-                        onClick={() => {
-                          setItemForm({
-                            categoryId: cat.id,
-                            name: "",
-                            description: "",
-                            pricePaise: 0,
-                            variants: [],
-                            addons: [],
-                          });
-                          setItemImageFile(null);
-                          setItemModal({ open: true, editing: null });
-                        }}
-                      >
-                        Add First Dish
-                      </Button>
-                    </Paper>
-                  )}
-                </>
-              );
-            })()}
+                      </Paper>
+                    )}
+                  </>
+                );
+              })()}
+            </Box>
           </Box>
-        </Box>
-      )}
+        );
+      })()}
+
 
       {/* Category Modal */}
       <Modal opened={catModal.open} onClose={() => setCatModal({ open: false, editing: null })} title={catModal.editing ? "Edit Category" : "Add Category"}>

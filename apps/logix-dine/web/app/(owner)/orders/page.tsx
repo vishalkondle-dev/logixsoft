@@ -290,9 +290,8 @@ export default function OrdersPage() {
                 key={order.id}
                 p="md"
                 radius="md"
-                bg="white"
                 onClick={() => setSelected(entry)}
-                style={{ cursor: "pointer", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)" }}
+                style={{ cursor: "pointer" }}
               >
                 <Group justify="space-between">
                   <Group gap="xs" align="center" wrap="wrap">
@@ -483,9 +482,8 @@ export default function OrdersPage() {
                       key={item.id}
                       p="xs"
                       radius="sm"
-                      bg="white"
                       style={{
-                        backgroundColor: isCancelled ? "rgba(255, 0, 0, 0.03)" : "#ffffff",
+                        backgroundColor: isCancelled ? "rgba(255, 0, 0, 0.03)" : undefined,
                         opacity: isCancelled ? 0.7 : 1,
                       }}
                     >
@@ -668,7 +666,7 @@ export default function OrdersPage() {
               <Divider my="xs" />
 
               {/* Financial Breakdown Summary Box */}
-              <Paper p="sm" radius="md" bg="white">
+              <Paper p="sm" radius="md">
                 <Group justify="space-between" align="center" mb={8}>
                   <Text size="sm" fw={700}>Financial Summary</Text>
                   <Badge
@@ -817,7 +815,7 @@ export default function OrdersPage() {
           const duePaise = Math.max(0, (selected.order.subtotalPaise || 0) - paidPaise);
           return (
             <Stack gap="md">
-              <Paper p="sm" radius="md" bg="white">
+              <Paper p="sm" radius="md">
                 <Group justify="space-between">
                   <Text size="sm" c="dimmed">Balance Due:</Text>
                   <Text size="lg" fw={700} c="orange">₹{(duePaise / 100).toFixed(0)}</Text>

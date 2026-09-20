@@ -268,7 +268,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const inviteSaving = inviteStaffMut.isPending;
 
   const OutletCard = ({ outlet }: { outlet: any }) => (
-    <Paper key={outlet.id} p="md" radius="md" bg="white" shadow="xs">
+    <Paper key={outlet.id} p="md" radius="md">
       <Group justify="space-between">
         <div>
           <Group gap="xs">
@@ -326,7 +326,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         <Tabs.Panel value="restaurant">
           <Grid gap="md">
             <Grid.Col span={{ base: 12, md: 6 }}>
-              <Paper p="xl" radius="md" bg="white" shadow="xs">
+              <Paper p="xl" radius="md">
                 <form onSubmit={saveRestaurant}>
                   <Stack gap="md">
                     <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
@@ -375,7 +375,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               <Grid gap="sm">
                 {tables.map((t) => (
                   <Grid.Col key={t.id} span={{ base: 12, sm: 6, md: 4 }}>
-                    <Paper p="md" radius="md" bg="white" shadow="xs">
+                    <Paper p="md" radius="md">
                       <Group justify="space-between">
                         <div>
                           <Group gap="xs">
@@ -426,7 +426,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               {staffLoading ? (
                 <Loader size="sm" />
               ) : !staff.length ? (
-                <Paper p="xl" radius="md" ta="center" bg="white" shadow="xs">
+                <Paper p="xl" radius="md" ta="center">
                   <Text size="sm" c="dimmed">
                     No staff yet. Invite a Manager, Waiter, or Kitchen member to get started.
                   </Text>
@@ -437,7 +437,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               ) : (
                 <Stack gap="sm">
                   {staff.map((m) => (
-                    <Paper key={m.id} p="md" radius="md" bg="white" shadow="xs">
+                    <Paper key={m.id} p="md" radius="md">
                       {/* Row 1 — identity */}
                       <Group justify="space-between" mb="sm" wrap="nowrap">
                         <div style={{ minWidth: 0 }}>
@@ -493,7 +493,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
         {/* Printing tab */}
         <Tabs.Panel value="printing">
-          <Paper p="xl" radius="md" maw={{ base: "100%", md: 560 }} bg="white" shadow="xs">
+          <Paper p="xl" radius="md" maw={{ base: "100%", md: 560 }}>
             <Stack gap="md">
               <Text fw={600}>Bluetooth Printer</Text>
               <Text size="sm" c="dimmed">

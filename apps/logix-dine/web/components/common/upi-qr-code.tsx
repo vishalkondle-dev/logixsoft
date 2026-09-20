@@ -76,8 +76,6 @@ export function UpiQrCode({
     <Paper
       p="sm"
       radius="md"
-      bg="white"
-      shadow="xs"
     >
       <Stack align="center" gap="xs">
         <Group justify="space-between" w="100%">
@@ -94,8 +92,6 @@ export function UpiQrCode({
             background: "#ffffff",
             padding: 10,
             borderRadius: 12,
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
             display: "inline-flex",
             justifyContent: "center",
             alignItems: "center",

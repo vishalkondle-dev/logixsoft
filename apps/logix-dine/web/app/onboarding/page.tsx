@@ -53,7 +53,7 @@ export default function OnboardingPage() {
 
   return (
     <Container size="sm" py={60}>
-      <Paper p="xl" radius="lg" bg="white" shadow="sm">
+      <Paper p="xl" radius="lg">
         <Stack gap="lg">
           <Group>
             <ThemeIcon size={48} radius="md" color="dinePrimary" variant="light">

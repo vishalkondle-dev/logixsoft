@@ -18,6 +18,13 @@
   --mantine-color-body: #F3F5F8;
 }
 
+/* Remove all shadows everywhere */
+*,
+*::before,
+*::after {
+  box-shadow: none !important;
+}
+
 /* Whole page background */
 html,
 body {
@@ -34,23 +41,28 @@ body {
 
 header.mantine-AppShell-header {
   background-color: #ffffff;
+  border-bottom: none !important;
+  box-shadow: none !important;
 }
 
-/* White background for cards */
+/* White background by default for cards with no border and no shadow */
 .mantine-Card-root,
 .mantine-Paper-root {
   background-color: #ffffff;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-/* Remove borders on cards */
+/* Remove borders and shadows on cards */
 :not(main[style*="#1a1a1a"]) .mantine-Card-root,
 :not(main[style*="#1a1a1a"]) .mantine-Paper-root,
 :not(main[style*="#1a1a1a"]) .mantine-Card-root[data-with-border],
 :not(main[style*="#1a1a1a"]) .mantine-Paper-root[data-with-border] {
   border: none !important;
+  box-shadow: none !important;
 }
 
-/* White background for input */
+/* White background for input with no shadow */
 input,
 select,
 textarea,
@@ -64,6 +76,7 @@ textarea,
 .mantine-PinInput-input,
 .mantine-Textarea-input {
   background-color: #ffffff !important;
+  box-shadow: none !important;
 }
 
 /* Modals, drawers, and dropdowns */
@@ -73,4 +86,6 @@ textarea,
 .mantine-Drawer-header,
 .mantine-Menu-dropdown {
   background-color: #ffffff;
+  border: none !important;
+  box-shadow: none !important;
 }

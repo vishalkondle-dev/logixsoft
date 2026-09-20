@@ -45,7 +45,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0}>
-      <AppShell.Header>
+      <AppShell.Header withBorder={false}>
         <Container size="xl" h="100%" px={{ base: "md", sm: "lg" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
             <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
@@ -85,7 +85,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               {authLoading ? (
                 <Loader size="sm" color="dinePrimary" />
               ) : isAuthenticated && user ? (
-                <Menu shadow="md" width={220} position="bottom-end">
+                <Menu width={220} position="bottom-end">
                   <Menu.Target>
                     <UnstyledButton style={{ padding: "4px 8px", borderRadius: "8px" }}>
                       <Group gap="xs" wrap="nowrap">
@@ -132,10 +132,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         style={{
           position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
           zIndex: 100, maxWidth: "calc(100vw - 32px)",
-          background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(175, 115, 215, 0.3)",
+          background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
           borderRadius: "9999px", padding: "6px 8px",
-          boxShadow: "0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)",
           overflowX: "auto",
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",

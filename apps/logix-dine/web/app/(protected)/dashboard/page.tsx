@@ -59,7 +59,7 @@ export default function ProtectedDashboardPage() {
 
         {/* Overview Stats */}
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
-          <Card padding="lg" radius="md" bg="white" shadow="xs">
+          <Card padding="lg" radius="md">
             <Group justify="space-between">
               <Text size="xs" c="dimmed" fw={700} tt="uppercase">
                 Phone Number
@@ -76,7 +76,7 @@ export default function ProtectedDashboardPage() {
             </Text>
           </Card>
 
-          <Card padding="lg" radius="md" bg="white" shadow="xs">
+          <Card padding="lg" radius="md">
             <Group justify="space-between">
               <Text size="xs" c="dimmed" fw={700} tt="uppercase">
                 Account Role
@@ -93,7 +93,7 @@ export default function ProtectedDashboardPage() {
             </Text>
           </Card>
 
-          <Card padding="lg" radius="md" bg="white" shadow="xs">
+          <Card padding="lg" radius="md">
             <Group justify="space-between">
               <Text size="xs" c="dimmed" fw={700} tt="uppercase">
                 Session Storage
@@ -114,7 +114,7 @@ export default function ProtectedDashboardPage() {
         {/* User Details & Security Card */}
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
           <div>
-            <Paper p="xl" radius="md" h="100%" bg="white" shadow="xs">
+            <Paper p="xl" radius="md" h="100%">
               <Title order={3} mb="md">
                 Profile Information
               </Title>
@@ -161,14 +161,14 @@ export default function ProtectedDashboardPage() {
           </div>
 
           <div>
-            <Paper p="xl" radius="md" h="100%" bg="white" shadow="xs">
+            <Paper p="xl" radius="md" h="100%">
               <Title order={3} mb="md">
                 Dining Quick Actions
               </Title>
               <Divider mb="md" />
 
               <SimpleGrid cols={2} spacing="md">
-                <Card padding="md" radius="md" bg="white" shadow="xs" style={{ cursor: "pointer" }}>
+                <Card padding="md" radius="md" style={{ cursor: "pointer" }}>
                   <ThemeIcon color="dinePrimary" variant="light" size="lg" mb="xs">
                     <IconArmchair size={22} />
                   </ThemeIcon>
@@ -180,7 +180,7 @@ export default function ProtectedDashboardPage() {
                   </Text>
                 </Card>
 
-                <Card padding="md" radius="md" bg="white" shadow="xs" style={{ cursor: "pointer" }}>
+                <Card padding="md" radius="md" style={{ cursor: "pointer" }}>
                   <ThemeIcon color="dinePrimary" variant="light" size="lg" mb="xs">
                     <IconReceipt size={22} />
                   </ThemeIcon>

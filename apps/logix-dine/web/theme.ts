@@ -30,6 +30,13 @@ export const theme = createTheme({
     fontWeight: "700",
   },
   defaultRadius: "md",
+  shadows: {
+    xs: "none",
+    sm: "none",
+    md: "none",
+    lg: "none",
+    xl: "none",
+  },
   components: {
     Button: {
       defaultProps: {
@@ -54,11 +61,13 @@ export const theme = createTheme({
       defaultProps: {
         withBorder: false,
         radius: "md",
+        shadow: undefined,
       },
       styles: {
         root: {
           backgroundColor: "#ffffff",
           border: "none",
+          boxShadow: "none",
         },
       },
     },
@@ -66,11 +75,13 @@ export const theme = createTheme({
       defaultProps: {
         withBorder: false,
         radius: "md",
+        shadow: undefined,
       },
       styles: {
         root: {
           backgroundColor: "#ffffff",
           border: "none",
+          boxShadow: "none",
         },
       },
     },

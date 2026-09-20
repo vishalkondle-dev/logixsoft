@@ -158,7 +158,6 @@ function CartPanel({
             <Paper
               p="xs"
               radius="sm"
-              bg="white"
             >
               <Group justify="space-between" align="center" mb={2}>
                 <Badge
@@ -200,7 +199,7 @@ function CartPanel({
             <Text c="dimmed" size="sm" ta="center" py="xl">Add items from menu to start an order</Text>
           )}
           {cartItems.map((item) => (
-            <Paper key={item.itemId} p="xs" radius="sm" bg="white">
+            <Paper key={item.itemId} p="xs" radius="sm">
               <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
@@ -765,12 +764,10 @@ export default function POSPage() {
                       <Paper
                         p="sm"
                         radius="md"
-                        bg="white"
                         onClick={() => handleAddItem(item)}
                         style={{
                           cursor: "pointer",
                           position: "relative",
-                          boxShadow: inCart ? "0 0 0 2px #af73d7" : "0 1px 3px rgba(0, 0, 0, 0.05)",
                         }}
                       >
                         {inCart && (
@@ -803,13 +800,11 @@ export default function POSPage() {
           <Paper
             p="md"
             radius="md"
-            bg="white"
             style={{
               height: "100%",
               display: "flex",
               flexDirection: "column",
               position: "relative",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
             <CartPanel {...cartPanelProps} />
@@ -836,7 +831,6 @@ export default function POSPage() {
             onClick={() => setCartOpen(true)}
             leftSection={<IconShoppingCart size={20} />}
             style={{
-              boxShadow: "0 6px 20px rgba(175, 115, 215, 0.45), 0 2px 8px rgba(0, 0, 0, 0.15)",
               fontWeight: 600,
             }}
           >
@@ -1045,7 +1039,7 @@ export default function POSPage() {
                         : "blue";
 
                     return (
-                      <Paper key={item.id} p="xs" radius="sm" bg="white">
+                      <Paper key={item.id} p="xs" radius="sm">
                         <Stack gap={4}>
                           {/* Row 1: Item Name & Qty on left, Price on right */}
                           <Group justify="space-between" align="flex-start" wrap="nowrap">

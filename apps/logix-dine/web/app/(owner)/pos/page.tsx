@@ -258,33 +258,47 @@ function CartPanel({
         <Text fw={700} c="dinePrimary" size="lg">₹{(total / 100).toFixed(0)}</Text>
       </Group>
 
-      {/* Cart Action Buttons: Send & Settle and Send */}
-      <Group gap="xs" grow wrap="nowrap" style={{ width: "100%" }}>
+      {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
+      <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
         <Button
           color={activeTableOrder ? "orange" : "dinePrimary"}
           onClick={handleSend}
           loading={sending}
+          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
           disabled={cartItems.length === 0}
-          leftSection={activeTableOrder ? <IconPlus size={15} /> : <IconShoppingCart size={15} />}
-          size="sm"
+          leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
         >
-          {activeTableOrder ? `Send Round ${nextRound}` : "Send"}
+          {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
         </Button>
-        <Button
-          variant="outline"
-          color={activeTableOrder ? "orange" : "dinePrimary"}
-          onClick={() => setSettleModal(true)}
-          disabled={cartItems.length === 0 || sending}
-          leftSection={<IconCash size={15} />}
-          size="sm"
-          style={{
-            border: activeTableOrder ? "1.5px solid #fd7e14" : "1.5px solid #af73d7",
-            backgroundColor: "#ffffff",
-            fontWeight: 600,
-          }}
-        >
-          {activeTableOrder ? `Settle & Send R${nextRound}` : "Settle and Send"}
-        </Button>
+        <Menu position="top-end" withinPortal zIndex={1500}>
+          <Menu.Target>
+            <ActionIcon
+              color={activeTableOrder ? "orange" : "dinePrimary"}
+              variant="filled"
+              size={36}
+              style={{
+                borderTopLeftRadius: 0,
+                borderBottomLeftRadius: 0,
+                borderLeft: "1px solid rgba(255,255,255,0.3)",
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+              }}
+              disabled={cartItems.length === 0 || sending}
+              aria-label="More order options"
+            >
+              <IconChevronDown size={16} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<IconCash size={16} />}
+              onClick={() => setSettleModal(true)}
+            >
+              {activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
     </Stack>
   );
@@ -909,7 +923,6 @@ export default function POSPage() {
             onClick={handleSettleAndSend}
             loading={settling}
             leftSection={<IconCheck size={16} />}
-            style={{ border: "1.5px solid #af73d7" }}
           >
             {activeTableOrder ? `Confirm Settlement & Send Round ${nextRound}` : "Confirm Settlement & Send"}
           </Button>

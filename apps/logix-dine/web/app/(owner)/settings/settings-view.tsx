@@ -17,6 +17,7 @@ import {
   useStaff, useTables,
   useInviteStaff, useUpdateStaff, useRemoveStaff,
   useCreateTable, useUpdateTable, useToggleTable, useDeleteTable,
+  useCreateOutlet, useUpdateOutlet, useDeleteOutlet, useSetDefaultOutlet,
 } from "@/lib/queries";
 import {
   updateRestaurant,
@@ -86,6 +87,9 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   const [restForm, setRestForm] = useState({ name: "", address: "", phone: "" });
   const [restSaving, setRestSaving] = useState(false);
+  const [outletModal, setOutletModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
+  const [outletForm, setOutletForm] = useState({ name: "", address: "", phone: "", upiId: "" });
+  const [outletSaving, setOutletSaving] = useState(false);
 
   // Staff — React Query
   const { data: staff = [], isLoading: staffLoading } = useStaff(restaurantId, isOwner);
@@ -97,6 +101,12 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const { data: tables = [], isLoading: tablesLoading } = useTables(restaurantId, tableOutletId);
   const [tableModal, setTableModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [tableForm, setTableForm] = useState({ name: "", section: "", capacity: "" });
+
+  // Outlet mutations
+  const createOutletMut = useCreateOutlet(restaurantId);
+  const updateOutletMut = useUpdateOutlet(restaurantId);
+  const deleteOutletMut = useDeleteOutlet(restaurantId);
+  const setDefaultMut = useSetDefaultOutlet(restaurantId);
 
   // Staff mutations
   const inviteStaffMut = useInviteStaff(restaurantId);
@@ -127,6 +137,75 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally { setRestSaving(false); }
+  };
+
+  // ─── Outlet handlers ────────────────────────────────────────────────────
+  const openCreateOutlet = () => {
+    setOutletForm({ name: "", address: "", phone: "", upiId: "" });
+    setOutletModal({ open: true, editing: null });
+  };
+
+  const openEditOutlet = (o: any) => {
+    setOutletForm({
+      name: o.name,
+      address: o.address ?? "",
+      phone: o.phone ?? "",
+      upiId: o.upiId ?? "",
+    });
+    setOutletModal({ open: true, editing: o });
+  };
+
+  const saveOutlet = async () => {
+    if (!outletForm.name.trim()) return;
+    setOutletSaving(true);
+    try {
+      if (outletModal.editing) {
+        await updateOutletMut.mutateAsync({
+          id: outletModal.editing.id,
+          body: {
+            name: outletForm.name.trim(),
+            address: outletForm.address?.trim() || null,
+            phone: outletForm.phone?.trim() || null,
+            upiId: outletForm.upiId?.trim() || null,
+          },
+        });
+      } else {
+        await createOutletMut.mutateAsync({
+          name: outletForm.name.trim(),
+          address: outletForm.address?.trim() || undefined,
+          phone: outletForm.phone?.trim() || undefined,
+          upiId: outletForm.upiId?.trim() || undefined,
+        });
+      }
+      await refresh();
+      setOutletModal({ open: false, editing: null });
+      notifications.show({ title: "Saved", message: "Outlet saved", color: "green", icon: <IconCheck size={16} /> });
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setOutletSaving(false);
+    }
+  };
+
+  const handleSetDefault = async (outlet: any) => {
+    try {
+      await setDefaultMut.mutateAsync(outlet.id);
+      await refresh();
+      notifications.show({ title: "Updated", message: `Default outlet set to ${outlet.name}`, color: "green", icon: <IconCheck size={16} /> });
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
+  };
+
+  const handleDeleteOutlet = async (outlet: any) => {
+    if (!confirm(`Delete outlet "${outlet.name}"?`)) return;
+    try {
+      await deleteOutletMut.mutateAsync(outlet.id);
+      await refresh();
+      notifications.show({ title: "Deleted", message: `Outlet ${outlet.name} removed`, color: "green", icon: <IconCheck size={16} /> });
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
   };
 
   // ─── Staff handlers ─────────────────────────────────────────────────────
@@ -210,6 +289,37 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const tableSaving = createTableMut.isPending || updateTableMut.isPending;
   const inviteSaving = inviteStaffMut.isPending;
 
+  const OutletCard = ({ outlet }: { outlet: any }) => (
+    <Paper key={outlet.id} p="md" radius="md">
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <div style={{ minWidth: 0 }}>
+          <Group gap="xs" wrap="nowrap">
+            <Text fw={600} truncate>{outlet.name}</Text>
+            {outlet.isDefault && <Badge size="xs" color="dinePrimary">Default</Badge>}
+          </Group>
+          {outlet.address && <Text size="xs" c="dimmed" truncate>{outlet.address}</Text>}
+          {outlet.phone && <Text size="xs" c="dimmed">{outlet.phone}</Text>}
+          {outlet.upiId && <Text size="xs" c="teal" fw={500} truncate>UPI: {outlet.upiId}</Text>}
+        </div>
+        <Group gap="xs" wrap="nowrap">
+          {!outlet.isDefault && (
+            <ActionIcon variant="light" color="yellow" size="sm" onClick={() => handleSetDefault(outlet)} title="Set as default">
+              <IconStar size={14} />
+            </ActionIcon>
+          )}
+          <ActionIcon variant="light" size="sm" onClick={() => openEditOutlet(outlet)} title="Edit outlet">
+            <IconEdit size={14} />
+          </ActionIcon>
+          {!outlet.isDefault && (
+            <ActionIcon variant="light" color="red" size="sm" onClick={() => handleDeleteOutlet(outlet)} title="Delete outlet">
+              <IconTrash size={14} />
+            </ActionIcon>
+          )}
+        </Group>
+      </Group>
+    </Paper>
+  );
+
   if (!restaurant) return <Loader />;
 
   return (
@@ -217,7 +327,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       <Group justify="space-between" mb="lg">
         <div>
           <Title order={2}>Restaurant Settings</Title>
-          <Text size="sm" c="dimmed">{restaurant.name} · Restaurant & Dining Configuration</Text>
+          <Text size="sm" c="dimmed">{restaurant.name} · Multi-Outlet & Dining Configuration</Text>
         </div>
       </Group>
 
@@ -235,16 +345,39 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
         {/* Restaurant tab */}
         <Tabs.Panel value="restaurant">
-          <Paper p="md" radius="md" maw={{ base: "100%", sm: 540 }}>
-            <form onSubmit={saveRestaurant}>
-              <Stack gap="sm">
-                <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
-                <TextInput label="Address" required value={restForm.address} onChange={(e) => setRestForm((f) => ({ ...f, address: e.target.value }))} />
-                <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={restForm.phone} onChange={(e) => setRestForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
-                <Button type="submit" color="dinePrimary" loading={restSaving} leftSection={<IconCheck size={16} />} mt="xs">Save Changes</Button>
+          <Grid gap="md">
+            {/* Outlets on the left */}
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Stack gap="md">
+                <Group justify="space-between" align="center">
+                  <div>
+                    <Text fw={600}>Outlets</Text>
+                    <Text size="xs" c="dimmed">Manage outlets, billing address, and UPI IDs</Text>
+                  </div>
+                  <Button size="xs" variant="light" color="dinePrimary" leftSection={<IconPlus size={12} />} onClick={openCreateOutlet}>
+                    Add Outlet
+                  </Button>
+                </Group>
+                {outlets.map((o) => <OutletCard key={o.id} outlet={o} />)}
+                {!outlets.length && <Text size="sm" c="dimmed">No outlets yet.</Text>}
               </Stack>
-            </form>
-          </Paper>
+            </Grid.Col>
+
+            {/* Restaurant Details on the right */}
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Paper p="md" radius="md">
+                <form onSubmit={saveRestaurant}>
+                  <Stack gap="sm">
+                    <Text fw={600}>Restaurant Details</Text>
+                    <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
+                    <TextInput label="Address" required value={restForm.address} onChange={(e) => setRestForm((f) => ({ ...f, address: e.target.value }))} />
+                    <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={restForm.phone} onChange={(e) => setRestForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
+                    <Button type="submit" color="dinePrimary" loading={restSaving} leftSection={<IconCheck size={16} />} mt="xs">Save Changes</Button>
+                  </Stack>
+                </form>
+              </Paper>
+            </Grid.Col>
+          </Grid>
         </Tabs.Panel>
 
         {/* Menu tab */}
@@ -402,6 +535,25 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           </Paper>
         </Tabs.Panel>
       </Tabs>
+
+      <Modal opened={outletModal.open} onClose={() => setOutletModal({ open: false, editing: null })} title={outletModal.editing ? "Edit Outlet" : "Add Outlet"}>
+        <Stack gap="md">
+          <TextInput label="Name" required value={outletForm.name} onChange={(e) => setOutletForm((f) => ({ ...f, name: e.target.value }))} />
+          <TextInput label="Address" value={outletForm.address} onChange={(e) => setOutletForm((f) => ({ ...f, address: e.target.value }))} />
+          <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={outletForm.phone} onChange={(e) => setOutletForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
+          <TextInput
+            label="UPI ID (VPA)"
+            placeholder="e.g. restaurant@okaxis or 9876543210@paytm"
+            description="Used to display dynamic QR code with amount and order reference when UPI is selected during settlement"
+            value={outletForm.upiId}
+            onChange={(e) => setOutletForm((f) => ({ ...f, upiId: e.target.value.trim() }))}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setOutletModal({ open: false, editing: null })}>Cancel</Button>
+            <Button color="dinePrimary" onClick={saveOutlet} loading={outletSaving}>Save</Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       <Modal opened={inviteModal} onClose={() => setInviteModal(false)} title="Invite Staff">
         <Stack gap="md">

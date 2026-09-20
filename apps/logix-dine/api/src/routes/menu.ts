@@ -316,22 +316,45 @@ app.post(
   }
 });
 
-app.put(
-  '/:id',
+const handleGetItem = async (c: any) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [item] = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    if (!item) return c.json({ error: 'Not Found', message: 'Menu item not found' }, 404);
+    return c.json(toMenuItem(item));
+  } finally {
+    await close();
+  }
+};
+
+app.get(
+  '/items/:id',
   apiDoc({
     tags: ['Menu'],
-    summary: 'Update Menu Item',
-    description: 'Updates menu item details, price, category, or sort order.',
+    summary: 'Get Menu Item by ID',
+    description: 'Fetches details of a specific menu item.',
     params: z.object({ id: z.string() }),
-    body: UpdateItemSchema,
     responses: {
       200: MenuItemSchema,
-      400: ErrorResponseSchema,
       404: ErrorResponseSchema,
     },
   }),
-  requirePermission('menu:write'),
-  async (c) => {
+  requirePermission('menu:read'),
+  handleGetItem
+);
+
+app.get(
+  '/:id',
+  requirePermission('menu:read'),
+  handleGetItem
+);
+
+const handleUpdateItem = async (c: any) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
@@ -366,22 +389,33 @@ app.put(
   } finally {
     await close();
   }
-});
+};
 
-app.delete(
-  '/:id',
+app.put(
+  '/items/:id',
   apiDoc({
     tags: ['Menu'],
-    summary: 'Delete Menu Item',
-    description: 'Deletes a menu item from the restaurant catalog.',
+    summary: 'Update Menu Item',
+    description: 'Updates menu item details, price, category, or sort order.',
     params: z.object({ id: z.string() }),
+    body: UpdateItemSchema,
     responses: {
-      200: SuccessResponseSchema,
+      200: MenuItemSchema,
+      400: ErrorResponseSchema,
       404: ErrorResponseSchema,
     },
   }),
   requirePermission('menu:write'),
-  async (c) => {
+  handleUpdateItem
+);
+
+app.put(
+  '/:id',
+  requirePermission('menu:write'),
+  handleUpdateItem
+);
+
+const handleDeleteItem = async (c: any) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const { db, close } = getDb(c);
@@ -394,22 +428,31 @@ app.delete(
   } finally {
     await close();
   }
-});
+};
 
-app.patch(
-  '/:id/toggle',
+app.delete(
+  '/items/:id',
   apiDoc({
     tags: ['Menu'],
-    summary: 'Toggle Menu Item Availability',
-    description: 'Flips availability of a menu item on or off.',
+    summary: 'Delete Menu Item',
+    description: 'Deletes a menu item from the restaurant catalog.',
     params: z.object({ id: z.string() }),
     responses: {
-      200: MenuItemSchema,
+      200: SuccessResponseSchema,
       404: ErrorResponseSchema,
     },
   }),
   requirePermission('menu:write'),
-  async (c) => {
+  handleDeleteItem
+);
+
+app.delete(
+  '/:id',
+  requirePermission('menu:write'),
+  handleDeleteItem
+);
+
+const handleToggleItem = async (c: any) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const { db, close } = getDb(c);
@@ -429,7 +472,29 @@ app.patch(
   } finally {
     await close();
   }
-});
+};
+
+app.patch(
+  '/items/:id/toggle',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Toggle Menu Item Availability',
+    description: 'Flips availability of a menu item on or off.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: MenuItemSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  handleToggleItem
+);
+
+app.patch(
+  '/:id/toggle',
+  requirePermission('menu:write'),
+  handleToggleItem
+);
 
 app.patch(
   '/items/reorder',

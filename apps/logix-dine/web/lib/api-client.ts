@@ -162,6 +162,9 @@ export const getItems = (restaurantId: string, categoryId?: string, outletId?: s
   return apiFetch<any[]>(`/menu/items${qs ? `?${qs}` : ""}`, restaurantId, {}, outletId);
 };
 
+export const getItem = (restaurantId: string, id: string, outletId?: string | null) =>
+  apiFetch<any>(`/menu/items/${id}`, restaurantId, {}, outletId);
+
 export const createItem = (
   restaurantId: string,
   body: {

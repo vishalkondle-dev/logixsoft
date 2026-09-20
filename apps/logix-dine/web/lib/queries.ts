@@ -13,6 +13,7 @@ import {
   getKitchenOrders,
   getCategories,
   getItems,
+  getItem,
   getTables,
   listStaff,
   getOutlets,
@@ -52,6 +53,8 @@ export const qk = {
     ["categories", restaurantId, outletId] as const,
   items: (restaurantId: string, outletId: string | null, categoryId?: string) =>
     ["items", restaurantId, outletId, categoryId ?? null] as const,
+  item: (restaurantId: string, id: string) =>
+    ["item", restaurantId, id] as const,
   tables: (restaurantId: string, outletId: string | null | undefined) =>
     ["tables", restaurantId, outletId ?? null] as const,
   staff: (restaurantId: string) =>
@@ -129,6 +132,19 @@ export function useItems(
     queryFn: () => getItems(restaurantId, categoryId, outletId),
     enabled: !!restaurantId,
     staleTime: 60_000,
+  });
+}
+
+export function useItem(
+  restaurantId: string,
+  id: string,
+  outletId?: string | null,
+) {
+  return useQuery({
+    queryKey: qk.item(restaurantId, id),
+    queryFn: () => getItem(restaurantId, id, outletId),
+    enabled: !!restaurantId && !!id,
+    staleTime: 30_000,
   });
 }
 
@@ -255,8 +271,9 @@ export function useUpdateItem(restaurantId: string, outletId: string | null) {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: any }) =>
       updateItem(restaurantId, id, body, outletId),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["items", restaurantId] });
+      qc.invalidateQueries({ queryKey: qk.item(restaurantId, variables.id) });
       qc.invalidateQueries({ queryKey: qk.bootstrap(restaurantId, outletId) });
     },
   });
@@ -266,8 +283,9 @@ export function useDeleteItem(restaurantId: string, outletId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteItem(restaurantId, id, outletId),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ["items", restaurantId] });
+      qc.invalidateQueries({ queryKey: qk.item(restaurantId, id) });
       qc.invalidateQueries({ queryKey: qk.bootstrap(restaurantId, outletId) });
     },
   });
@@ -277,8 +295,9 @@ export function useToggleItem(restaurantId: string, outletId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => toggleItem(restaurantId, id, outletId),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ["items", restaurantId] });
+      qc.invalidateQueries({ queryKey: qk.item(restaurantId, id) });
       qc.invalidateQueries({ queryKey: qk.bootstrap(restaurantId, outletId) });
     },
   });

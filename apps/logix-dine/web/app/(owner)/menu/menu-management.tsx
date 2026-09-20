@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Container, Title, Tabs, Stack, Group, Text, Paper, Badge, ActionIcon,
-  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box, ScrollArea, Divider,
+  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box, ScrollArea, Divider, Anchor,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconEdit, IconTrash, IconCheck } from "@tabler/icons-react";
@@ -267,8 +268,16 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                 <Paper key={item.id} p="md" radius="md">
                   <Group justify="space-between" align="flex-start">
                     <div>
-                      <Group gap="xs">
-                        <Text fw={500}>{item.name}</Text>
+                      <Group gap="xs" align="center">
+                        <Anchor
+                          component={Link}
+                          href={`/settings/menu/${item.id}`}
+                          fw={600}
+                          c="inherit"
+                          underline="hover"
+                        >
+                          {item.name}
+                        </Anchor>
                         {!item.available && <Badge size="xs" color="red">Unavailable</Badge>}
                       </Group>
                       {item.description && <Text size="xs" c="dimmed">{item.description}</Text>}
@@ -292,21 +301,13 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                           : `₹${(item.pricePaise / 100).toFixed(0)}`}
                       </Text>
                       <Switch size="xs" checked={item.available} onChange={() => handleToggle(item)} />
-                      <ActionIcon size="sm" variant="light" onClick={() => {
-                        setItemForm({
-                          categoryId: item.categoryId,
-                          name: item.name,
-                          description: item.description ?? "",
-                          pricePaise: item.pricePaise,
-                          variants: Array.isArray(item.variants)
-                            ? item.variants.map((v: any) => ({ id: v.id, name: v.name, pricePaise: v.pricePaise ?? 0 }))
-                            : [],
-                          addons: Array.isArray(item.addons)
-                            ? item.addons.map((a: any) => ({ id: a.id, name: a.name, pricePaise: a.pricePaise ?? 0 }))
-                            : [],
-                        });
-                        setItemModal({ open: true, editing: item });
-                      }}>
+                      <ActionIcon
+                        component={Link}
+                        href={`/settings/menu/${item.id}`}
+                        size="sm"
+                        variant="light"
+                        title="Edit item details"
+                      >
                         <IconEdit size={14} />
                       </ActionIcon>
                       <ActionIcon size="sm" variant="light" color="red" onClick={() => handleDeleteItem(item)}>

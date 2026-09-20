@@ -241,7 +241,7 @@ export function useReorderCategories(restaurantId: string, outletId: string | nu
 export function useCreateItem(restaurantId: string, outletId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { categoryId: string; name: string; pricePaise: number; description?: string; outletId?: string | null }) =>
+    mutationFn: (body: { categoryId: string; name: string; pricePaise: number; description?: string; outletId?: string | null; variants?: any[]; addons?: any[] }) =>
       createItem(restaurantId, body, outletId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items", restaurantId] });

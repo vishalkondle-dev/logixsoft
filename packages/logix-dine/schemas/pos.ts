@@ -104,6 +104,18 @@ export const MenuCategorySchema = z.object({
 });
 type _CategoryAssert = Expect<AssertSame<z.infer<typeof MenuCategorySchema>, JsonMenuCategoryRow>>;
 
+export const MenuItemVariantSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  pricePaise: z.number().int(),
+});
+
+export const MenuItemAddonSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  pricePaise: z.number().int(),
+});
+
 export const MenuItemSchema = z.object({
   id: z.string(),
   restaurantId: z.string(),
@@ -114,6 +126,8 @@ export const MenuItemSchema = z.object({
   pricePaise: z.number().int(),
   available: z.boolean(),
   sortOrder: z.number().int(),
+  variants: z.array(MenuItemVariantSchema),
+  addons: z.array(MenuItemAddonSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),
@@ -153,6 +167,8 @@ export const SaleOrderItemSchema = z.object({
   nameSnapshot: z.string(),
   pricePaiseSnapshot: z.number().int(),
   qty: z.number().int(),
+  variant: MenuItemVariantSchema.nullable(),
+  addons: z.array(MenuItemAddonSchema),
   status: z.string(),
   round: z.number().int(),
   paymentStatus: z.string(),
@@ -237,6 +253,8 @@ export const CreateItemSchema = z.object({
   description: z.string().max(255).optional(),
   pricePaise: MoneySchema,
   sortOrder: z.number().int().nonnegative().optional().default(0),
+  variants: z.array(MenuItemVariantSchema).optional().default([]),
+  addons: z.array(MenuItemAddonSchema).optional().default([]),
 });
 
 export const UpdateItemSchema = z.object({
@@ -246,6 +264,16 @@ export const UpdateItemSchema = z.object({
   pricePaise: MoneySchema.optional(),
   sortOrder: z.number().int().nonnegative().optional(),
   available: z.boolean().optional(),
+  variants: z.array(MenuItemVariantSchema).optional(),
+  addons: z.array(MenuItemAddonSchema).optional(),
+});
+
+export const OrderItemInputSchema = z.object({
+  itemId: z.string(),
+  qty: z.number().int().positive(),
+  note: z.string().max(255).optional(),
+  variantId: z.string().optional(),
+  addonIds: z.array(z.string()).optional(),
 });
 
 export const StartOrderSchema = z.object({
@@ -253,29 +281,19 @@ export const StartOrderSchema = z.object({
   tableNo: z.string().max(50).optional(),
   customerPhone: z.string().max(25).optional(),
   note: z.string().max(255).optional(),
-  items: z.array(
-    z.object({
-      itemId: z.string(),
-      qty: z.number().int().positive(),
-      note: z.string().max(255).optional(),
-    })
-  ).optional(),
+  items: z.array(OrderItemInputSchema).optional(),
 });
 
 export const AddOrderItemSchema = z.object({
   itemId: z.string(),
   qty: z.number().int().positive().default(1),
   note: z.string().max(255).optional(),
+  variantId: z.string().optional(),
+  addonIds: z.array(z.string()).optional(),
 });
 
 export const AddOrderRoundSchema = z.object({
-  items: z.array(
-    z.object({
-      itemId: z.string(),
-      qty: z.number().int().positive(),
-      note: z.string().max(255).optional(),
-    })
-  ).min(1),
+  items: z.array(OrderItemInputSchema).min(1),
   settle: z.object({
     method: z.string().min(1),
   }).optional(),
@@ -304,13 +322,7 @@ export const CreateSettledSchema = z.object({
   customerPhone: z.string().max(25).optional(),
   note: z.string().max(255).optional(),
   method: z.enum(['Cash', 'UPI', 'QR']).optional(),
-  items: z.array(
-    z.object({
-      itemId: z.string(),
-      qty: z.number().int().positive(),
-      note: z.string().max(255).optional(),
-    })
-  ).optional(),
+  items: z.array(OrderItemInputSchema).optional(),
 });
 
 // ─── Response schemas ─────────────────────────────────────────────────────────

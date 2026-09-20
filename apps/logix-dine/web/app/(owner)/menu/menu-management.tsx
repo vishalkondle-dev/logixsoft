@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Container, Title, Tabs, Stack, Group, Text, Paper, Badge, ActionIcon,
-  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box, ScrollArea,
+  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box, ScrollArea, Divider,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconEdit, IconTrash, IconCheck } from "@tabler/icons-react";
@@ -38,7 +38,21 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const [catForm, setCatForm] = useState({ name: "", description: "" });
 
   const [itemModal, setItemModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
-  const [itemForm, setItemForm] = useState({ categoryId: "", name: "", description: "", pricePaise: 0 });
+  const [itemForm, setItemForm] = useState<{
+    categoryId: string;
+    name: string;
+    description: string;
+    pricePaise: number;
+    variants: { id?: string; name: string; pricePaise: number }[];
+    addons: { id?: string; name: string; pricePaise: number }[];
+  }>({
+    categoryId: "",
+    name: "",
+    description: "",
+    pricePaise: 0,
+    variants: [],
+    addons: [],
+  });
 
   // Mutations
   const createCat = useCreateCategory(restaurantId, outletId);
@@ -88,13 +102,33 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const saveItem = async () => {
     if (!outletId) return;
     try {
+      const cleanVariants = itemForm.variants
+        .filter((v) => v.name.trim().length > 0)
+        .map((v) => ({
+          ...(v.id ? { id: v.id } : {}),
+          name: v.name.trim(),
+          pricePaise: Number(v.pricePaise) || 0,
+        }));
+      const cleanAddons = itemForm.addons
+        .filter((a) => a.name.trim().length > 0)
+        .map((a) => ({
+          ...(a.id ? { id: a.id } : {}),
+          name: a.name.trim(),
+          pricePaise: Number(a.pricePaise) || 0,
+        }));
+
       if (itemModal.editing) {
-        await updateItm.mutateAsync({ id: itemModal.editing.id, body: {
-          categoryId: itemForm.categoryId,
-          name: itemForm.name,
-          description: itemForm.description || null,
-          pricePaise: itemForm.pricePaise,
-        }});
+        await updateItm.mutateAsync({
+          id: itemModal.editing.id,
+          body: {
+            categoryId: itemForm.categoryId,
+            name: itemForm.name,
+            description: itemForm.description || null,
+            pricePaise: itemForm.pricePaise,
+            variants: cleanVariants,
+            addons: cleanAddons,
+          },
+        });
       } else {
         await createItm.mutateAsync({
           categoryId: itemForm.categoryId,
@@ -102,6 +136,8 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           description: itemForm.description || undefined,
           pricePaise: itemForm.pricePaise,
           outletId,
+          variants: cleanVariants,
+          addons: cleanAddons,
         });
       }
       setItemModal({ open: false, editing: null });
@@ -158,7 +194,17 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
             color="dinePrimary"
             size="sm"
             leftSection={<IconPlus size={14} />}
-            onClick={() => { setItemForm({ categoryId: activeCatId ?? "", name: "", description: "", pricePaise: 0 }); setItemModal({ open: true, editing: null }); }}
+            onClick={() => {
+              setItemForm({
+                categoryId: activeCatId ?? "",
+                name: "",
+                description: "",
+                pricePaise: 0,
+                variants: [],
+                addons: [],
+              });
+              setItemModal({ open: true, editing: null });
+            }}
             disabled={!outletId || !categories.length}
           >
             Add Item
@@ -219,19 +265,46 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs">
               {itemsForCat.map((item) => (
                 <Paper key={item.id} p="md" radius="md">
-                  <Group justify="space-between">
+                  <Group justify="space-between" align="flex-start">
                     <div>
                       <Group gap="xs">
                         <Text fw={500}>{item.name}</Text>
                         {!item.available && <Badge size="xs" color="red">Unavailable</Badge>}
                       </Group>
                       {item.description && <Text size="xs" c="dimmed">{item.description}</Text>}
+                      <Group gap={6} mt={6} wrap="wrap">
+                        {Array.isArray(item.variants) && item.variants.length > 0 && (
+                          <Badge size="xs" variant="light" color="blue">
+                            {item.variants.length} {item.variants.length === 1 ? "variant" : "variants"}
+                          </Badge>
+                        )}
+                        {Array.isArray(item.addons) && item.addons.length > 0 && (
+                          <Badge size="xs" variant="light" color="violet">
+                            {item.addons.length} {item.addons.length === 1 ? "addon" : "addons"}
+                          </Badge>
+                        )}
+                      </Group>
                     </div>
-                    <Group gap="xs">
-                      <Text fw={700} c="dinePrimary">₹{(item.pricePaise / 100).toFixed(0)}</Text>
+                    <Group gap="xs" align="center">
+                      <Text fw={700} c="dinePrimary">
+                        {Array.isArray(item.variants) && item.variants.length > 0
+                          ? `From ₹${(Math.min(...item.variants.map((v: any) => v.pricePaise)) / 100).toFixed(0)}`
+                          : `₹${(item.pricePaise / 100).toFixed(0)}`}
+                      </Text>
                       <Switch size="xs" checked={item.available} onChange={() => handleToggle(item)} />
                       <ActionIcon size="sm" variant="light" onClick={() => {
-                        setItemForm({ categoryId: item.categoryId, name: item.name, description: item.description ?? "", pricePaise: item.pricePaise });
+                        setItemForm({
+                          categoryId: item.categoryId,
+                          name: item.name,
+                          description: item.description ?? "",
+                          pricePaise: item.pricePaise,
+                          variants: Array.isArray(item.variants)
+                            ? item.variants.map((v: any) => ({ id: v.id, name: v.name, pricePaise: v.pricePaise ?? 0 }))
+                            : [],
+                          addons: Array.isArray(item.addons)
+                            ? item.addons.map((a: any) => ({ id: a.id, name: a.name, pricePaise: a.pricePaise ?? 0 }))
+                            : [],
+                        });
                         setItemModal({ open: true, editing: item });
                       }}>
                         <IconEdit size={14} />
@@ -265,8 +338,8 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
       </Modal>
 
       {/* Item Modal */}
-      <Modal opened={itemModal.open} onClose={() => setItemModal({ open: false, editing: null })} title={itemModal.editing ? "Edit Item" : "Add Item"}>
-        <Stack>
+      <Modal opened={itemModal.open} onClose={() => setItemModal({ open: false, editing: null })} title={itemModal.editing ? "Edit Item" : "Add Item"} size="lg">
+        <Stack gap="sm">
           <Select
             label="Category" required
             value={itemForm.categoryId}
@@ -276,11 +349,131 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           <TextInput label="Name" required value={itemForm.name} onChange={(e) => setItemForm((f) => ({ ...f, name: e.target.value }))} />
           <TextInput label="Description" value={itemForm.description} onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))} />
           <NumberInput
-            label="Price (₹)" required min={0}
+            label="Base Price (₹)" required min={0}
+            description="Default price or fallback when no variant is selected."
             value={itemForm.pricePaise / 100}
             onChange={(v) => setItemForm((f) => ({ ...f, pricePaise: Math.round(Number(v) * 100) }))}
           />
-          <Group justify="flex-end">
+
+          <Divider label="Variants (Portions / Sizes)" labelPosition="left" mt="xs" />
+          <Text size="xs" c="dimmed">
+            Optional portions or sizes with specific prices (e.g. Half / Full, Regular / Large). When ordering, one variant must be selected.
+          </Text>
+          {itemForm.variants.map((variant, index) => (
+            <Group key={index} align="flex-end" gap="xs">
+              <TextInput
+                style={{ flex: 1 }}
+                placeholder="e.g. Half, Large"
+                label={index === 0 ? "Variant Name" : undefined}
+                value={variant.name}
+                onChange={(e) => {
+                  const next = [...itemForm.variants];
+                  next[index] = { ...next[index], name: e.target.value };
+                  setItemForm((f) => ({ ...f, variants: next }));
+                }}
+              />
+              <NumberInput
+                style={{ width: 140 }}
+                placeholder="Price"
+                label={index === 0 ? "Price (₹)" : undefined}
+                min={0}
+                value={variant.pricePaise / 100}
+                onChange={(v) => {
+                  const next = [...itemForm.variants];
+                  next[index] = { ...next[index], pricePaise: Math.round(Number(v) * 100) };
+                  setItemForm((f) => ({ ...f, variants: next }));
+                }}
+              />
+              <ActionIcon
+                color="red"
+                variant="subtle"
+                mb={4}
+                onClick={() => {
+                  setItemForm((f) => ({
+                    ...f,
+                    variants: f.variants.filter((_, i) => i !== index),
+                  }));
+                }}
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Group>
+          ))}
+          <Button
+            variant="light"
+            size="xs"
+            w="fit-content"
+            leftSection={<IconPlus size={14} />}
+            onClick={() =>
+              setItemForm((f) => ({
+                ...f,
+                variants: [...f.variants, { name: "", pricePaise: f.pricePaise || 0 }],
+              }))
+            }
+          >
+            Add Variant
+          </Button>
+
+          <Divider label="Addons / Customizations" labelPosition="left" mt="xs" />
+          <Text size="xs" c="dimmed">
+            Optional customizations (e.g. Extra Cheese, Extra Sauce) with additional charges. Free addons can be set to ₹0.
+          </Text>
+          {itemForm.addons.map((addon, index) => (
+            <Group key={index} align="flex-end" gap="xs">
+              <TextInput
+                style={{ flex: 1 }}
+                placeholder="e.g. Extra Cheese"
+                label={index === 0 ? "Addon Name" : undefined}
+                value={addon.name}
+                onChange={(e) => {
+                  const next = [...itemForm.addons];
+                  next[index] = { ...next[index], name: e.target.value };
+                  setItemForm((f) => ({ ...f, addons: next }));
+                }}
+              />
+              <NumberInput
+                style={{ width: 140 }}
+                placeholder="Price"
+                label={index === 0 ? "Extra Price (₹)" : undefined}
+                min={0}
+                value={addon.pricePaise / 100}
+                onChange={(v) => {
+                  const next = [...itemForm.addons];
+                  next[index] = { ...next[index], pricePaise: Math.round(Number(v) * 100) };
+                  setItemForm((f) => ({ ...f, addons: next }));
+                }}
+              />
+              <ActionIcon
+                color="red"
+                variant="subtle"
+                mb={4}
+                onClick={() => {
+                  setItemForm((f) => ({
+                    ...f,
+                    addons: f.addons.filter((_, i) => i !== index),
+                  }));
+                }}
+              >
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Group>
+          ))}
+          <Button
+            variant="light"
+            size="xs"
+            w="fit-content"
+            leftSection={<IconPlus size={14} />}
+            onClick={() =>
+              setItemForm((f) => ({
+                ...f,
+                addons: [...f.addons, { name: "", pricePaise: 0 }],
+              }))
+            }
+          >
+            Add Addon
+          </Button>
+
+          <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setItemModal({ open: false, editing: null })}>Cancel</Button>
             <Button color="dinePrimary" onClick={saveItem} loading={itemSaving}>Save</Button>
           </Group>

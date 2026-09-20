@@ -111,6 +111,8 @@ export type JsonMenuCategoryRow = Omit<MenuCategoryRow, 'createdAt' | 'updatedAt
   updatedAt: string;
 };
 
+export type { MenuItemVariant, MenuItemAddon } from '../schemas/pos-schema';
+
 export type MenuItemRow = InferSelectModel<typeof menuItem>;
 export type NewMenuItemRow = InferInsertModel<typeof menuItem>;
 export type JsonMenuItemRow = Omit<MenuItemRow, 'createdAt' | 'updatedAt'> & {

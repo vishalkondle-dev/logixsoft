@@ -32,6 +32,51 @@ import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
+function resolveOrderItemDetails(
+  menuItem: any,
+  itemInput: { variantId?: string; addonIds?: string[] }
+) {
+  const variants: any[] = menuItem.variants || [];
+  const allAddons: any[] = menuItem.addons || [];
+
+  let selectedVariant: any = null;
+  if (itemInput.variantId) {
+    selectedVariant = variants.find((v: any) => v.id === itemInput.variantId) || null;
+  }
+  if (!selectedVariant && variants.length > 0) {
+    selectedVariant = variants[0];
+  }
+
+  const selectedAddons = (itemInput.addonIds || [])
+    .map((aid) => allAddons.find((a: any) => a.id === aid))
+    .filter(Boolean)
+    .map((a: any) => ({
+      id: a.id,
+      name: a.name,
+      pricePaise: a.pricePaise,
+    }));
+
+  const basePrice = selectedVariant ? selectedVariant.pricePaise : menuItem.pricePaise;
+  const addonsTotal = selectedAddons.reduce((sum: number, a: any) => sum + (a.pricePaise || 0), 0);
+  const unitPrice = basePrice + addonsTotal;
+
+  const variantSnapshot = selectedVariant
+    ? { id: selectedVariant.id, name: selectedVariant.name, pricePaise: selectedVariant.pricePaise }
+    : null;
+
+  let nameSnapshot = menuItem.name;
+  if (selectedVariant) {
+    nameSnapshot = `${menuItem.name} (${selectedVariant.name})`;
+  }
+
+  return {
+    nameSnapshot,
+    pricePaiseSnapshot: unitPrice,
+    variant: variantSnapshot,
+    addons: selectedAddons,
+  };
+}
+
 function formatOrderWhatsAppMessage(
   restaurantName: string,
   outletName: string | null | undefined,
@@ -50,9 +95,12 @@ function formatOrderWhatsAppMessage(
     .filter((item) => item.status !== 'CANCELLED')
     .map((item) => {
       const name = item.nameSnapshot || item.name || 'Item';
-      const noteStr = item.note ? ` (${item.note})` : '';
+      const addonsStr = item.addons && item.addons.length > 0
+        ? ` (+${item.addons.map((a: any) => a.name).join(', ')})`
+        : '';
+      const noteStr = item.note ? ` [${item.note}]` : '';
       const itemTotal = (((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0);
-      return `• ${item.qty}x ${name}${noteStr} — ₹${itemTotal}`;
+      return `• ${item.qty}x ${name}${addonsStr}${noteStr} — ₹${itemTotal}`;
     })
     .join('\n');
 
@@ -261,15 +309,17 @@ app.post(
         for (const item of parsed.data.items) {
           const menuItem = menuMap.get(item.itemId) as any;
           if (!menuItem) continue;
-          const pricePaiseSnapshot = menuItem.pricePaise;
+          const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, item);
           subtotalPaise += pricePaiseSnapshot * item.qty;
           orderItemsToInsert.push({
             id: generateId('orderItem'),
             orderId: id,
             itemId: item.itemId,
-            nameSnapshot: menuItem.name,
+            nameSnapshot,
             pricePaiseSnapshot,
             qty: item.qty,
+            variant,
+            addons,
             round: 1,
             status: 'ORDERED',
             paymentStatus: 'UNPAID',
@@ -450,11 +500,12 @@ app.post(
         for (const item of parsed.data.items) {
           const menuItem = menuMap.get(item.itemId) as any;
           if (!menuItem) continue;
-          subtotalPaise += menuItem.pricePaise * item.qty;
+          const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, item);
+          subtotalPaise += pricePaiseSnapshot * item.qty;
           orderItemsToInsert.push({
             id: generateId('orderItem'), orderId: id, itemId: item.itemId,
-            nameSnapshot: menuItem.name, pricePaiseSnapshot: menuItem.pricePaise,
-            qty: item.qty, round: 1, status: 'ORDERED',
+            nameSnapshot, pricePaiseSnapshot,
+            qty: item.qty, variant, addons, round: 1, status: 'ORDERED',
             paymentStatus: 'PAID', settledMethod: parsed.data.method ?? 'Cash', settledAt: now,
             note: item.note ? item.note.trim() : null,
             createdAt: now, updatedAt: now, createdBy: actorPhone, updatedBy: actorPhone,
@@ -787,19 +838,30 @@ app.post(
       .where(and(eq(appSchema.menuItem.id, parsed.data.itemId), eq(appSchema.menuItem.restaurantId, restaurantId)));
     if (!menuItem) return c.json({ error: 'Not Found', message: 'Menu item not found' }, 404);
 
-    // Upsert: if same item exists in order, increment qty
-    const [existing] = await db
+    const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, parsed.data);
+
+    // Upsert: if same item with matching variant and addons exists in order, increment qty
+    const existingItems = await db
       .select()
       .from(appSchema.saleOrderItem)
       .where(and(eq(appSchema.saleOrderItem.orderId, orderId), eq(appSchema.saleOrderItem.itemId, parsed.data.itemId)));
 
-    if (existing) {
-      const updateData: any = { qty: existing.qty + (parsed.data.qty ?? 1) };
+    const matching = existingItems.find((ex: any) => {
+      const exVarId = ex.variant?.id || null;
+      const newVarId = variant?.id || null;
+      if (exVarId !== newVarId) return false;
+      const exAddons = (ex.addons || []).map((a: any) => a.id).sort().join(',');
+      const newAddons = (addons || []).map((a: any) => a.id).sort().join(',');
+      return exAddons === newAddons;
+    });
+
+    if (matching) {
+      const updateData: any = { qty: matching.qty + (parsed.data.qty ?? 1) };
       if (parsed.data.note !== undefined) updateData.note = parsed.data.note ? parsed.data.note.trim() : null;
       await db
         .update(appSchema.saleOrderItem)
         .set(updateData)
-        .where(eq(appSchema.saleOrderItem.id, existing.id));
+        .where(eq(appSchema.saleOrderItem.id, matching.id));
     } else {
       const now = new Date();
       const newOrderItemId = generateId('oi');
@@ -807,9 +869,11 @@ app.post(
         id: newOrderItemId,
         orderId,
         itemId: menuItem.id,
-        nameSnapshot: menuItem.name,
-        pricePaiseSnapshot: menuItem.pricePaise,
+        nameSnapshot,
+        pricePaiseSnapshot,
         qty: parsed.data.qty ?? 1,
+        variant,
+        addons,
         status: 'ORDERED',
         note: parsed.data.note ? parsed.data.note.trim() : null,
         createdAt: now,
@@ -914,15 +978,17 @@ app.post(
     for (const item of parsed.data.items) {
       const menuItem = menuMap.get(item.itemId) as any;
       if (!menuItem) continue;
-      const pricePaiseSnapshot = menuItem.pricePaise;
+      const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, item);
       const newOrderItemId = generateId('oi');
       orderItemsToInsert.push({
         id: newOrderItemId,
         orderId,
         itemId: menuItem.id,
-        nameSnapshot: menuItem.name,
+        nameSnapshot,
         pricePaiseSnapshot,
         qty: item.qty,
+        variant,
+        addons,
         round: nextRound,
         status: 'ORDERED',
         paymentStatus: isRoundSettled ? 'PAID' : 'UNPAID',

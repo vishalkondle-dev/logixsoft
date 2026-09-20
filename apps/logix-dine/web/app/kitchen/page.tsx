@@ -243,18 +243,25 @@ export default function KitchenPage() {
                         <Stack gap={5}>
                           {/* Row 1: Dish name and quantity / round badge */}
                           <Group justify="space-between" align="flex-start" wrap="nowrap">
-                            <Text
-                              size="sm"
-                              fw={600}
-                              c={isCancelled ? "gray.6" : "white"}
-                              style={{
-                                textDecoration: isCancelled ? "line-through" : "none",
-                                wordBreak: "break-word",
-                                lineHeight: 1.3,
-                              }}
-                            >
-                              {item.nameSnapshot}
-                            </Text>
+                            <Group gap={6} align="center" wrap="wrap" style={{ flex: 1, minWidth: 0 }}>
+                              <Text
+                                size="sm"
+                                fw={600}
+                                c={isCancelled ? "gray.6" : "white"}
+                                style={{
+                                  textDecoration: isCancelled ? "line-through" : "none",
+                                  wordBreak: "break-word",
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {item.nameSnapshot || item.name}
+                              </Text>
+                              {item.variant && (
+                                <Badge size="xs" variant="light" color="blue">
+                                  {item.variant.name}
+                                </Badge>
+                              )}
+                            </Group>
                             <Group gap={4} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
                               {item.round && item.round > 1 && (
                                 <Badge size="xs" color="indigo" variant="light">R{item.round}</Badge>
@@ -262,6 +269,12 @@ export default function KitchenPage() {
                               <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
                             </Group>
                           </Group>
+
+                          {Array.isArray(item.addons) && item.addons.length > 0 && (
+                            <Text size="xs" c="yellow.4" fw={500}>
+                              + {item.addons.map((a: any) => a.name).join(", ")}
+                            </Text>
+                          )}
 
                           {item.note && (
                             <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>

@@ -35,7 +35,7 @@ export const startOrder = (
     tableNo?: string;
     customerPhone?: string;
     note?: string;
-    items?: Array<{ itemId: string; qty: number; note?: string }>;
+    items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }
 ) => apiFetch<any>("/billing/orders", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
 
@@ -49,14 +49,19 @@ export const listOrders = (restaurantId: string, params?: { status?: string; ord
   return apiFetch<any[]>(`/billing/orders${qs ? `?${qs}` : ""}`, restaurantId, {}, params?.outletId);
 };
 
-export const addOrderItem = (restaurantId: string, orderId: string, body: { itemId: string; qty?: number }, outletId?: string | null) =>
+export const addOrderItem = (
+  restaurantId: string,
+  orderId: string,
+  body: { itemId: string; qty?: number; note?: string; variantId?: string; addonIds?: string[] },
+  outletId?: string | null
+) =>
   apiFetch<any>(`/billing/orders/${orderId}/items`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
 
 export const addOrderRound = (
   restaurantId: string,
   orderId: string,
   body: {
-    items: Array<{ itemId: string; qty: number; note?: string }>;
+    items: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
     settle?: { method: string };
   },
   outletId?: string | null
@@ -107,7 +112,7 @@ export const createSettledOrder = (
     customerPhone?: string;
     note?: string;
     method?: string;
-    items?: Array<{ itemId: string; qty: number; note?: string }>;
+    items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }
 ) => apiFetch<any>("/billing/orders/create-settled", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
 
@@ -157,7 +162,19 @@ export const getItems = (restaurantId: string, categoryId?: string, outletId?: s
   return apiFetch<any[]>(`/menu/items${qs ? `?${qs}` : ""}`, restaurantId, {}, outletId);
 };
 
-export const createItem = (restaurantId: string, body: { categoryId: string; name: string; pricePaise: number; description?: string; outletId?: string | null }, outletId?: string | null) =>
+export const createItem = (
+  restaurantId: string,
+  body: {
+    categoryId: string;
+    name: string;
+    pricePaise: number;
+    description?: string;
+    outletId?: string | null;
+    variants?: any[];
+    addons?: any[];
+  },
+  outletId?: string | null
+) =>
   apiFetch<any>("/menu/items", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId ?? body.outletId);
 
 export const updateItem = (restaurantId: string, id: string, body: any, outletId?: string | null) =>

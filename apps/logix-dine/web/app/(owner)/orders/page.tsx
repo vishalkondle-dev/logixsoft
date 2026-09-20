@@ -499,6 +499,11 @@ export default function OrdersPage() {
                             >
                               {item.nameSnapshot || item.name}
                             </Text>
+                            {item.variant && (
+                              <Badge size="xs" variant="light" color="blue">
+                                {item.variant.name}
+                              </Badge>
+                            )}
                             <Badge size="xs" variant="light" color="gray">× {item.qty}</Badge>
                             {maxRound > 1 && (
                               <Badge size="xs" variant="light" color="grape">
@@ -516,6 +521,12 @@ export default function OrdersPage() {
                               ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
                             </Text>
                           </Group>
+
+                          {Array.isArray(item.addons) && item.addons.length > 0 && (
+                            <Text size="xs" c="dimmed" mt={2}>
+                              + {item.addons.map((a: any) => a.name).join(", ")}
+                            </Text>
+                          )}
 
                           {item.note && (
                             <Text size="xs" c="dinePrimary" fs="italic" mt={2}>
@@ -575,7 +586,7 @@ export default function OrdersPage() {
                       <Stack gap={6} hiddenFrom="sm">
                         {/* Row 1: Item name & quantity on left, price on right */}
                         <Group justify="space-between" align="flex-start" wrap="nowrap">
-                          <Group gap="xs" align="center" style={{ flex: 1, minWidth: 0 }}>
+                          <Group gap="xs" align="center" style={{ flex: 1, minWidth: 0 }} wrap="wrap">
                             <Text
                               size="sm"
                               fw={600}
@@ -583,12 +594,23 @@ export default function OrdersPage() {
                             >
                               {item.nameSnapshot || item.name}
                             </Text>
+                            {item.variant && (
+                              <Badge size="xs" variant="light" color="blue">
+                                {item.variant.name}
+                              </Badge>
+                            )}
                             <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0 }}>× {item.qty}</Badge>
                           </Group>
                           <Text size="sm" fw={700} c="dimmed" style={{ flexShrink: 0, marginLeft: 8 }}>
                             ₹{(((item.pricePaiseSnapshot ?? item.pricePaise ?? 0) * item.qty) / 100).toFixed(0)}
                           </Text>
                         </Group>
+
+                        {Array.isArray(item.addons) && item.addons.length > 0 && (
+                          <Text size="xs" c="dimmed">
+                            + {item.addons.map((a: any) => a.name).join(", ")}
+                          </Text>
+                        )}
 
                         {item.note && (
                           <Text size="xs" c="dinePrimary" fs="italic">

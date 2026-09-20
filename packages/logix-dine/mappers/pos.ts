@@ -78,6 +78,8 @@ export function toCategory(c: MenuCategoryRow): JsonMenuCategoryRow {
 export function toMenuItem(i: MenuItemRow): JsonMenuItemRow {
   return {
     ...i,
+    variants: (i.variants as any) ?? [],
+    addons: (i.addons as any) ?? [],
     createdAt: toIsoRequired(i.createdAt),
     updatedAt: toIsoRequired(i.updatedAt),
   };
@@ -98,6 +100,8 @@ export function toOrder(o: SaleOrderRow): JsonSaleOrderRow {
 export function toOrderItem(i: SaleOrderItemRow): JsonSaleOrderItemRow {
   return {
     ...i,
+    variant: (i.variant as any) ?? null,
+    addons: (i.addons as any) ?? [],
     status: (i.status as any) || 'ORDERED',
     settledAt: toIso(i.settledAt),
     createdAt: toIsoRequired(i.createdAt),

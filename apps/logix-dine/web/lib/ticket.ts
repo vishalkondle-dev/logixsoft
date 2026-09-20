@@ -45,13 +45,17 @@ export function buildKotPayload(
     tableNo: order.order.tableNo ?? null,
     date,
     time,
-    items: itemsToPrint.map((i: any) => ({
-      name: i.nameSnapshot ?? i.name,
-      qty: i.qty,
-      pricePaise: i.pricePaiseSnapshot ?? i.pricePaise ?? 0,
-      note: i.note ?? null,
-      round: i.round,
-    })),
+    items: itemsToPrint.map((i: any) => {
+      const addonNames = Array.isArray(i.addons) && i.addons.length > 0 ? i.addons.map((a: any) => a.name).join(", ") : "";
+      const noteParts = [i.note, addonNames ? `+ ${addonNames}` : ""].filter(Boolean).join(" | ");
+      return {
+        name: i.nameSnapshot ?? i.name,
+        qty: i.qty,
+        pricePaise: i.pricePaiseSnapshot ?? i.pricePaise ?? 0,
+        note: noteParts || null,
+        round: i.round,
+      };
+    }),
     subtotalPaise: order.order.subtotalPaise,
     method: null,
     type: "KOT",
@@ -74,12 +78,15 @@ export function buildBillPayload(
     tableNo: order.order.tableNo ?? null,
     date,
     time,
-    items: itemsToPrint.map((i: any) => ({
-      name: i.nameSnapshot ?? i.name,
-      qty: i.qty,
-      pricePaise: i.pricePaiseSnapshot ?? i.pricePaise ?? 0,
-      round: i.round,
-    })),
+    items: itemsToPrint.map((i: any) => {
+      const addonNames = Array.isArray(i.addons) && i.addons.length > 0 ? ` (+${i.addons.map((a: any) => a.name).join(", ")})` : "";
+      return {
+        name: (i.nameSnapshot ?? i.name) + addonNames,
+        qty: i.qty,
+        pricePaise: i.pricePaiseSnapshot ?? i.pricePaise ?? 0,
+        round: i.round,
+      };
+    }),
     subtotalPaise: options?.subtotalPaise ?? order.order.subtotalPaise,
     method: order.order.paymentMethod ?? null,
     type: "BILL",

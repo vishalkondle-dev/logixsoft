@@ -1,5 +1,5 @@
 import {
-  pgTable, text, timestamp, boolean, integer, bigint, index, unique,
+  pgTable, text, timestamp, boolean, integer, bigint, index, unique, jsonb,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth-schema';
 
@@ -159,6 +159,18 @@ export const menuCategory = pgTable(
   ],
 );
 
+export interface MenuItemVariant {
+  id: string;
+  name: string;
+  pricePaise: number;
+}
+
+export interface MenuItemAddon {
+  id: string;
+  name: string;
+  pricePaise: number;
+}
+
 // ─── Menu Item ────────────────────────────────────────────────────────────────
 
 export const menuItem = pgTable(
@@ -178,6 +190,8 @@ export const menuItem = pgTable(
     pricePaise: integer('pricePaise').notNull(),
     available: boolean('available').notNull().default(true),
     sortOrder: integer('sortOrder').notNull().default(0),
+    variants: jsonb('variants').$type<MenuItemVariant[]>().notNull().default([]),
+    addons: jsonb('addons').$type<MenuItemAddon[]>().notNull().default([]),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
@@ -245,6 +259,8 @@ export const saleOrderItem = pgTable(
     nameSnapshot: text('nameSnapshot').notNull(),
     pricePaiseSnapshot: integer('pricePaiseSnapshot').notNull(),
     qty: integer('qty').notNull(),
+    variant: jsonb('variant').$type<MenuItemVariant | null>(),
+    addons: jsonb('addons').$type<MenuItemAddon[]>().notNull().default([]),
     status: text('status').notNull().default('ORDERED'), // ORDERED | PREPARING | PREPARED | SERVED | CANCELLED
     round: integer('round').notNull().default(1),
     paymentStatus: text('paymentStatus').notNull().default('UNPAID'), // UNPAID | PAID

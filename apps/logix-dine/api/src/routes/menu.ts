@@ -286,6 +286,16 @@ app.post(
     const outletId = parsed.data.outletId || headerOutletId || cat.outletId || null;
     const now = new Date();
     const id = generateId('item');
+    const variants = (parsed.data.variants || []).map((v) => ({
+      id: v.id || generateId('var'),
+      name: v.name.trim(),
+      pricePaise: v.pricePaise,
+    }));
+    const addons = (parsed.data.addons || []).map((a) => ({
+      id: a.id || generateId('add'),
+      name: a.name.trim(),
+      pricePaise: a.pricePaise,
+    }));
     await db.insert(appSchema.menuItem).values({
       id, restaurantId, outletId,
       categoryId: parsed.data.categoryId,
@@ -294,6 +304,8 @@ app.post(
       pricePaise: parsed.data.pricePaise,
       available: true,
       sortOrder: parsed.data.sortOrder ?? 0,
+      variants,
+      addons,
       createdAt: now, updatedAt: now,
     });
     const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
@@ -328,9 +340,24 @@ app.put(
 
   const { db, close } = getDb(c);
   try {
+    const updateData: any = { ...parsed.data, updatedAt: new Date() };
+    if (parsed.data.variants !== undefined) {
+      updateData.variants = parsed.data.variants.map((v) => ({
+        id: v.id || generateId('var'),
+        name: v.name.trim(),
+        pricePaise: v.pricePaise,
+      }));
+    }
+    if (parsed.data.addons !== undefined) {
+      updateData.addons = parsed.data.addons.map((a) => ({
+        id: a.id || generateId('add'),
+        name: a.name.trim(),
+        pricePaise: a.pricePaise,
+      }));
+    }
     await db
       .update(appSchema.menuItem)
-      .set({ ...parsed.data, updatedAt: new Date() })
+      .set(updateData)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
     const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
     if (!item) return c.json({ error: 'Not Found' }, 404);

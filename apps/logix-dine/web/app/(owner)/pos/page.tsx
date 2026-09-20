@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
-  Drawer, Box, ScrollArea, CloseButton, SegmentedControl,
+  Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,11 +24,14 @@ import { UpiQrCode } from "@/components/common/upi-qr-code";
 import { useOutletSync } from "@/lib/use-outlet-sync";
 
 interface LocalCartItem {
+  cartKey: string;
   itemId: string;
   name: string;
   pricePaise: number;
   qty: number;
   note?: string;
+  variant?: { id: string; name: string; pricePaise: number };
+  addons?: { id: string; name: string; pricePaise: number }[];
 }
 
 const DEFAULT_NOTE_CHIPS = [
@@ -68,8 +71,8 @@ interface CartPanelProps {
   tableSelectData: { value: string; label: string }[];
   handleClearCart: () => void;
   openNoteModal: (item: LocalCartItem) => void;
-  handleUpdateQty: (itemId: string, qty: number) => void;
-  handleRemoveItem: (itemId: string) => void;
+  handleUpdateQty: (cartKey: string, qty: number) => void;
+  handleRemoveItem: (cartKey: string) => void;
   handleSend: () => void;
   sending: boolean;
   setSettleModal: (open: boolean) => void;
@@ -199,10 +202,22 @@ function CartPanel({
             <Text c="dimmed" size="sm" ta="center" py="xl">Add items from menu to start an order</Text>
           )}
           {cartItems.map((item) => (
-            <Paper key={item.itemId} p="xs" radius="sm">
+            <Paper key={item.cartKey} p="xs" radius="sm">
               <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
+                  <Group gap={6} align="center" wrap="wrap">
+                    <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
+                    {item.variant && (
+                      <Badge size="xs" variant="light" color="blue">
+                        {item.variant.name}
+                      </Badge>
+                    )}
+                  </Group>
+                  {item.addons && item.addons.length > 0 && (
+                    <Text size="11px" c="dimmed" lineClamp={1}>
+                      + {item.addons.map((a) => a.name).join(", ")}
+                    </Text>
+                  )}
                   <Group gap={6} align="center" mt={2} wrap="nowrap">
                     <Text size="xs" c="dimmed">₹{(item.pricePaise / 100).toFixed(0)}</Text>
                     <Text size="xs" c="dimmed">·</Text>
@@ -234,14 +249,14 @@ function CartPanel({
                   </Group>
                 </div>
                 <Group gap={6} wrap="nowrap" align="center">
-                  <ActionIcon size={30} variant="light" onClick={() => handleUpdateQty(item.itemId, item.qty - 1)} aria-label="Decrease quantity">
+                  <ActionIcon size={30} variant="light" onClick={() => handleUpdateQty(item.cartKey, item.qty - 1)} aria-label="Decrease quantity">
                     <IconMinus size={15} />
                   </ActionIcon>
                   <Text size="sm" fw={600} w={22} ta="center">{item.qty}</Text>
-                  <ActionIcon size={30} variant="light" color="dinePrimary" onClick={() => handleUpdateQty(item.itemId, item.qty + 1)} aria-label="Increase quantity">
+                  <ActionIcon size={30} variant="light" color="dinePrimary" onClick={() => handleUpdateQty(item.cartKey, item.qty + 1)} aria-label="Increase quantity">
                     <IconPlus size={15} />
                   </ActionIcon>
-                  <ActionIcon size={30} variant="light" color="red" onClick={() => handleRemoveItem(item.itemId)} aria-label="Remove item">
+                  <ActionIcon size={30} variant="light" color="red" onClick={() => handleRemoveItem(item.cartKey)} aria-label="Remove item">
                     <IconTrash size={15} />
                   </ActionIcon>
                 </Group>
@@ -371,11 +386,11 @@ export default function POSPage() {
 
   // Item note modal state
   const [noteModalOpen, setNoteModalOpen] = useState(false);
-  const [noteTargetItemId, setNoteTargetItemId] = useState<string | null>(null);
+  const [noteTargetCartKey, setNoteTargetCartKey] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
 
   const openNoteModal = (item: LocalCartItem) => {
-    setNoteTargetItemId(item.itemId);
+    setNoteTargetCartKey(item.cartKey);
     setNoteText(item.note || "");
     setNoteModalOpen(true);
   };
@@ -393,31 +408,31 @@ export default function POSPage() {
   };
 
   const handleSaveNote = () => {
-    if (!noteTargetItemId) return;
+    if (!noteTargetCartKey) return;
     const trimmed = noteText.trim();
     setCartItems((prev) =>
       prev.map((ci) =>
-        ci.itemId === noteTargetItemId
+        ci.cartKey === noteTargetCartKey
           ? { ...ci, note: trimmed || undefined }
           : ci
       )
     );
     setNoteModalOpen(false);
-    setNoteTargetItemId(null);
+    setNoteTargetCartKey(null);
     setNoteText("");
   };
 
   const handleClearItemNote = () => {
-    if (!noteTargetItemId) return;
+    if (!noteTargetCartKey) return;
     setCartItems((prev) =>
       prev.map((ci) =>
-        ci.itemId === noteTargetItemId
+        ci.cartKey === noteTargetCartKey
           ? { ...ci, note: undefined }
           : ci
       )
     );
     setNoteModalOpen(false);
-    setNoteTargetItemId(null);
+    setNoteTargetCartKey(null);
     setNoteText("");
   };
 
@@ -428,25 +443,49 @@ export default function POSPage() {
     if (cartOpen) setCartOpen(false);
   };
 
-    // Auto-select first category when categories load
+  // Auto-select first category when categories load
   useEffect(() => {
     if (categories.length) {
       setActiveCatId((prev) => prev ?? (categories[0] as any).id);
     }
   }, [categories]);
 
-  // Handle adding items to local cart
-  const handleAddItem = (item: any) => {
+  // Item customization modal state (variants & addons)
+  const [customizingItem, setCustomizingItem] = useState<any | null>(null);
+  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<any[]>([]);
+  const [customQty, setCustomQty] = useState<number>(1);
+  const [customNote, setCustomNote] = useState<string>("");
+
+  const handleItemClick = (item: any) => {
+    const hasVariants = Array.isArray(item.variants) && item.variants.length > 0;
+    const hasAddons = Array.isArray(item.addons) && item.addons.length > 0;
+
+    if (!hasVariants && !hasAddons) {
+      handleAddItemDirect(item);
+      return;
+    }
+
+    setCustomizingItem(item);
+    setSelectedVariant(hasVariants ? item.variants[0] : null);
+    setSelectedAddons([]);
+    setCustomQty(1);
+    setCustomNote("");
+  };
+
+  const handleAddItemDirect = (item: any) => {
+    const cartKey = item.id;
     setCartItems((prev) => {
-      const existing = prev.find((ci) => ci.itemId === item.id);
+      const existing = prev.find((ci) => ci.cartKey === cartKey);
       if (existing) {
         return prev.map((ci) =>
-          ci.itemId === item.id ? { ...ci, qty: ci.qty + 1 } : ci
+          ci.cartKey === cartKey ? { ...ci, qty: ci.qty + 1 } : ci
         );
       }
       return [
         ...prev,
         {
+          cartKey,
           itemId: item.id,
           name: item.name,
           pricePaise: item.pricePaise,
@@ -456,18 +495,58 @@ export default function POSPage() {
     });
   };
 
-  const handleUpdateQty = (itemId: string, qty: number) => {
+  const handleAddCustomizedToCart = () => {
+    if (!customizingItem) return;
+
+    const sortedAddonIds = selectedAddons.map((a) => a.id).sort().join(",");
+    const cartKey = `${customizingItem.id}__${selectedVariant?.id || "none"}__${sortedAddonIds}`;
+
+    const unitPricePaise =
+      (selectedVariant ? selectedVariant.pricePaise : customizingItem.pricePaise) +
+      selectedAddons.reduce((sum, a) => sum + (a.pricePaise || 0), 0);
+
+    const cartItem: LocalCartItem = {
+      cartKey,
+      itemId: customizingItem.id,
+      name: customizingItem.name,
+      pricePaise: unitPricePaise,
+      qty: customQty,
+      note: customNote.trim() || undefined,
+      variant: selectedVariant
+        ? { id: selectedVariant.id, name: selectedVariant.name, pricePaise: selectedVariant.pricePaise }
+        : undefined,
+      addons: selectedAddons.map((a) => ({ id: a.id, name: a.name, pricePaise: a.pricePaise })),
+    };
+
+    setCartItems((prev) => {
+      const existingIndex = prev.findIndex((ci) => ci.cartKey === cartKey);
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex] = {
+          ...next[existingIndex],
+          qty: next[existingIndex].qty + customQty,
+          note: customNote.trim() || next[existingIndex].note,
+        };
+        return next;
+      }
+      return [...prev, cartItem];
+    });
+
+    setCustomizingItem(null);
+  };
+
+  const handleUpdateQty = (cartKey: string, qty: number) => {
     if (qty < 1) {
-      handleRemoveItem(itemId);
+      handleRemoveItem(cartKey);
       return;
     }
     setCartItems((prev) =>
-      prev.map((ci) => (ci.itemId === itemId ? { ...ci, qty } : ci))
+      prev.map((ci) => (ci.cartKey === cartKey ? { ...ci, qty } : ci))
     );
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    setCartItems((prev) => prev.filter((ci) => ci.itemId !== itemId));
+  const handleRemoveItem = (cartKey: string) => {
+    setCartItems((prev) => prev.filter((ci) => ci.cartKey !== cartKey));
   };
 
   // Order created only after clicking Send
@@ -486,7 +565,13 @@ export default function POSPage() {
           restaurantId,
           activeTableOrder.order.id,
           {
-            items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+            items: cartItems.map((i) => ({
+              itemId: i.itemId,
+              qty: i.qty,
+              note: i.note,
+              variantId: i.variant?.id,
+              addonIds: i.addons?.map((a) => a.id),
+            })),
           },
           activeOutlet.id
         );
@@ -530,7 +615,13 @@ export default function POSPage() {
           outletId: activeOutlet.id,
           tableNo: tableNo || "Takeaway",
           customerPhone: customerPhone.trim() || undefined,
-          items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+          items: cartItems.map((i) => ({
+            itemId: i.itemId,
+            qty: i.qty,
+            note: i.note,
+            variantId: i.variant?.id,
+            addonIds: i.addons?.map((a) => a.id),
+          })),
         });
 
         // Reset cart immediately — don't wait for print
@@ -585,7 +676,13 @@ export default function POSPage() {
           restaurantId,
           activeTableOrder.order.id,
           {
-            items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+            items: cartItems.map((i) => ({
+              itemId: i.itemId,
+              qty: i.qty,
+              note: i.note,
+              variantId: i.variant?.id,
+              addonIds: i.addons?.map((a) => a.id),
+            })),
             settle: { method: settleMethod },
           },
           activeOutlet.id
@@ -622,7 +719,13 @@ export default function POSPage() {
           tableNo: tableNo || "Takeaway",
           customerPhone: customerPhone.trim() || undefined,
           method: settleMethod,
-          items: cartItems.map((i) => ({ itemId: i.itemId, qty: i.qty, note: i.note })),
+          items: cartItems.map((i) => ({
+            itemId: i.itemId,
+            qty: i.qty,
+            note: i.note,
+            variantId: i.variant?.id,
+            addonIds: i.addons?.map((a) => a.id),
+          })),
         });
 
         // Success — close modal and clear cart
@@ -758,29 +861,44 @@ export default function POSPage() {
             <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }} pb={100}>
               <Grid gap="xs">
                 {filteredItems.map((item: any) => {
-                  const inCart = cartItems.find((ci) => ci.itemId === item.id);
+                  const inCartQty = cartItems
+                    .filter((ci) => ci.itemId === item.id)
+                    .reduce((sum, ci) => sum + ci.qty, 0);
+                  const hasVariants = Array.isArray(item.variants) && item.variants.length > 0;
+                  const hasAddons = Array.isArray(item.addons) && item.addons.length > 0;
+                  const displayPrice = hasVariants
+                    ? `From ₹${(Math.min(...item.variants.map((v: any) => v.pricePaise)) / 100).toFixed(0)}`
+                    : `₹${(item.pricePaise / 100).toFixed(0)}`;
+
                   return (
                     <Grid.Col key={item.id} span={{ base: 6, sm: 4, md: 3, lg: 2 }}>
                       <Paper
                         p="sm"
                         radius="md"
-                        onClick={() => handleAddItem(item)}
+                        onClick={() => handleItemClick(item)}
                         style={{
                           cursor: "pointer",
                           position: "relative",
                         }}
                       >
-                        {inCart && (
+                        {inCartQty > 0 && (
                           <Badge
                             size="xs"
                             color="dinePrimary"
                             style={{ position: "absolute", top: 6, right: 6 }}
                           >
-                            ×{inCart.qty}
+                            ×{inCartQty}
                           </Badge>
                         )}
                         <Text size="sm" fw={500} lineClamp={2} mb={4}>{item.name}</Text>
-                        <Text size="sm" fw={700} c="dinePrimary">₹{(item.pricePaise / 100).toFixed(0)}</Text>
+                        <Group justify="space-between" align="center" mt="auto">
+                          <Text size="sm" fw={700} c="dinePrimary">{displayPrice}</Text>
+                          {(hasVariants || hasAddons) && (
+                            <Badge size="xs" variant="light" color="gray">
+                              {hasVariants ? "Options" : "+ Addons"}
+                            </Badge>
+                          )}
+                        </Group>
                       </Paper>
                     </Grid.Col>
                   );
@@ -929,18 +1047,178 @@ export default function POSPage() {
         </Stack>
       </Modal>
 
+      {/* Item Customization Modal (Variants & Addons) */}
+      <Modal
+        opened={!!customizingItem}
+        onClose={() => setCustomizingItem(null)}
+        title={
+          <div>
+            <Text fw={700} size="md">{customizingItem?.name}</Text>
+            {customizingItem?.description && (
+              <Text size="xs" c="dimmed">{customizingItem.description}</Text>
+            )}
+          </div>
+        }
+        size="sm"
+        zIndex={1350}
+      >
+        {customizingItem && (() => {
+          const hasVariants = Array.isArray(customizingItem.variants) && customizingItem.variants.length > 0;
+          const hasAddons = Array.isArray(customizingItem.addons) && customizingItem.addons.length > 0;
+
+          const unitPaise =
+            (selectedVariant ? selectedVariant.pricePaise : customizingItem.pricePaise) +
+            selectedAddons.reduce((sum, a) => sum + (a.pricePaise || 0), 0);
+          const totalModalPaise = unitPaise * customQty;
+
+          return (
+            <Stack gap="sm">
+              {hasVariants && (
+                <div>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={6}>
+                    Select Option / Size
+                  </Text>
+                  <SimpleGrid cols={customizingItem.variants.length > 2 ? 3 : 2} spacing="xs">
+                    {customizingItem.variants.map((v: any) => {
+                      const isSelected = selectedVariant?.id === v.id;
+                      return (
+                        <Paper
+                          key={v.id}
+                          p="xs"
+                          radius="sm"
+                          onClick={() => setSelectedVariant(v)}
+                          style={{
+                            cursor: "pointer",
+                            border: isSelected
+                              ? "2px solid var(--mantine-color-dinePrimary-6)"
+                              : "1px solid var(--mantine-color-gray-3)",
+                            backgroundColor: isSelected ? "var(--mantine-color-dinePrimary-0)" : undefined,
+                            textAlign: "center",
+                          }}
+                        >
+                          <Text size="sm" fw={isSelected ? 700 : 500} c={isSelected ? "dinePrimary" : undefined}>
+                            {v.name}
+                          </Text>
+                          <Text size="xs" fw={600} c="dimmed">
+                            ₹{(v.pricePaise / 100).toFixed(0)}
+                          </Text>
+                        </Paper>
+                      );
+                    })}
+                  </SimpleGrid>
+                </div>
+              )}
+
+              {hasAddons && (
+                <div>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={6}>
+                    Addons & Extras
+                  </Text>
+                  <Stack gap="xs">
+                    {customizingItem.addons.map((addon: any) => {
+                      const isChecked = selectedAddons.some((a) => a.id === addon.id);
+                      return (
+                        <Paper
+                          key={addon.id}
+                          p="xs"
+                          radius="sm"
+                          onClick={() => {
+                            setSelectedAddons((prev) =>
+                              isChecked ? prev.filter((a) => a.id !== addon.id) : [...prev, addon]
+                            );
+                          }}
+                          style={{
+                            cursor: "pointer",
+                            border: isChecked
+                              ? "1px solid var(--mantine-color-dinePrimary-6)"
+                              : "1px solid var(--mantine-color-gray-3)",
+                            backgroundColor: isChecked ? "var(--mantine-color-dinePrimary-0)" : undefined,
+                          }}
+                        >
+                          <Group justify="space-between" align="center">
+                            <Group gap="xs">
+                              <Checkbox
+                                checked={isChecked}
+                                onChange={() => {}}
+                                color="dinePrimary"
+                                size="xs"
+                              />
+                              <Text size="sm" fw={isChecked ? 600 : 400}>
+                                {addon.name}
+                              </Text>
+                            </Group>
+                            <Text size="xs" fw={600} c="dimmed">
+                              {addon.pricePaise > 0 ? `+₹${(addon.pricePaise / 100).toFixed(0)}` : "Free"}
+                            </Text>
+                          </Group>
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                </div>
+              )}
+
+              <div>
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={4}>
+                  Special Note (Optional)
+                </Text>
+                <TextInput
+                  placeholder="e.g. Less Spicy, Extra Crispy"
+                  size="xs"
+                  value={customNote}
+                  onChange={(e) => setCustomNote(e.target.value)}
+                />
+              </div>
+
+              <Divider my={4} />
+
+              <Group justify="space-between" align="center">
+                <Group gap={6} align="center">
+                  <ActionIcon
+                    size={32}
+                    variant="light"
+                    onClick={() => setCustomQty(Math.max(1, customQty - 1))}
+                    disabled={customQty <= 1}
+                  >
+                    <IconMinus size={16} />
+                  </ActionIcon>
+                  <Text size="sm" fw={700} w={28} ta="center">
+                    {customQty}
+                  </Text>
+                  <ActionIcon
+                    size={32}
+                    variant="light"
+                    color="dinePrimary"
+                    onClick={() => setCustomQty(customQty + 1)}
+                  >
+                    <IconPlus size={16} />
+                  </ActionIcon>
+                </Group>
+                <Button
+                  color="dinePrimary"
+                  onClick={handleAddCustomizedToCart}
+                  leftSection={<IconPlus size={16} />}
+                >
+                  Add · ₹{(totalModalPaise / 100).toFixed(0)}
+                </Button>
+              </Group>
+            </Stack>
+          );
+        })()}
+      </Modal>
+
       {/* Item Note Modal */}
       <Modal
         opened={noteModalOpen}
         onClose={() => {
           setNoteModalOpen(false);
-          setNoteTargetItemId(null);
+          setNoteTargetCartKey(null);
         }}
         title={
           <Group gap="xs">
             <IconNote size={18} color="#af73d7" />
             <Text fw={600}>
-              Note for {cartItems.find((ci) => ci.itemId === noteTargetItemId)?.name || "Item"}
+              Note for {cartItems.find((ci) => ci.cartKey === noteTargetCartKey)?.name || "Item"}
             </Text>
           </Group>
         }
@@ -979,7 +1257,7 @@ export default function POSPage() {
             autosize
           />
           <Group justify="space-between" mt="xs">
-            {noteTargetItemId && cartItems.find((ci) => ci.itemId === noteTargetItemId)?.note ? (
+            {noteTargetCartKey && cartItems.find((ci) => ci.cartKey === noteTargetCartKey)?.note ? (
               <Button variant="subtle" color="red" size="xs" onClick={handleClearItemNote} leftSection={<IconX size={14} />}>
                 Remove Note
               </Button>
@@ -1043,10 +1321,15 @@ export default function POSPage() {
                         <Stack gap={4}>
                           {/* Row 1: Item Name & Qty on left, Price on right */}
                           <Group justify="space-between" align="flex-start" wrap="nowrap">
-                            <Group gap={6} align="center" style={{ flex: 1, minWidth: 0 }}>
+                            <Group gap={6} align="center" style={{ flex: 1, minWidth: 0 }} wrap="wrap">
                               <Text size="sm" fw={600} style={{ wordBreak: "break-word" }}>
                                 {item.nameSnapshot || item.name}
                               </Text>
+                              {item.variant && (
+                                <Badge size="xs" variant="light" color="blue">
+                                  {item.variant.name}
+                                </Badge>
+                              )}
                               <Badge size="xs" color="dark" variant="filled" style={{ flexShrink: 0 }}>
                                 ×{item.qty}
                               </Badge>
@@ -1055,6 +1338,11 @@ export default function POSPage() {
                               ₹{priceTotal}
                             </Text>
                           </Group>
+                          {Array.isArray(item.addons) && item.addons.length > 0 && (
+                            <Text size="11px" c="dimmed">
+                              + {item.addons.map((a: any) => a.name).join(", ")}
+                            </Text>
+                          )}
 
                           {/* Row 2: Left: Round & Payment Tags, Right: Fulfillment Status Tag */}
                           <Group justify="space-between" align="center" mt={2} wrap="nowrap">

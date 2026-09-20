@@ -332,8 +332,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       </Group>
 
       <Tabs value={activeTab} onChange={(v) => v && router.push(`/settings/${v}`)}>
-        <ScrollArea type="never" mb="lg">
-          <Tabs.List style={{ flexWrap: "nowrap" }}>
+        <ScrollArea type="always" scrollbarSize={4} offsetScrollbars="x" scrollbars="x" mb="lg">
+          <Tabs.List style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
             <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />}>Restaurant Details</Tabs.Tab>
             <Tabs.Tab value="menu" leftSection={<IconBook size={16} />}>Menu Management</Tabs.Tab>
             <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />}>Table Management</Tabs.Tab>

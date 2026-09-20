@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Container, Title, Stack, Group, Text, Paper, Badge, ActionIcon,
   Button, Modal, TextInput, NumberInput, Switch, Select, SimpleGrid, Box,
-  Divider, Anchor, Loader,
+  Divider, Anchor, Loader, ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -517,80 +517,83 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
             {/* ── Content panel (mobile pill row + category content) ── */}
             <Box style={{ flex: 1, minWidth: 0 }}>
               {/* Mobile: horizontal scrollable pill row */}
-              <Box
-                hiddenFrom="md"
-                style={{
-                  overflowX: "auto",
-                  display: "flex",
-                  gap: 8,
-                  paddingBottom: 12,
-                  scrollbarWidth: "none",
-                }}
-              >
-                {sortedCategories.map((cat) => {
-                  const isActive = activeCatId === cat.id;
-                  const catCount = items.filter((i: any) => i.categoryId === cat.id).length;
-                  return (
+              <Box hiddenFrom="md" mb="sm">
+                <ScrollArea type="always" scrollbarSize={4} offsetScrollbars="x" scrollbars="x">
+                  <Box
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      paddingBottom: 6,
+                      width: "max-content",
+                      minWidth: "100%",
+                    }}
+                  >
+                    {sortedCategories.map((cat) => {
+                      const isActive = activeCatId === cat.id;
+                      const catCount = items.filter((i: any) => i.categoryId === cat.id).length;
+                      return (
+                        <Box
+                          key={cat.id}
+                          onClick={() => setActiveCatId(cat.id)}
+                          style={{
+                            flexShrink: 0,
+                            padding: "6px 14px",
+                            borderRadius: 20,
+                            cursor: "pointer",
+                            border: `1.5px solid ${isActive ? "var(--mantine-color-dinePrimary-6)" : "var(--mantine-color-gray-3)"}`,
+                            backgroundColor: isActive ? "var(--mantine-color-dinePrimary-6)" : "transparent",
+                            color: isActive ? "#fff" : "var(--mantine-color-gray-7)",
+                            fontSize: 13,
+                            fontWeight: isActive ? 600 : 400,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            transition: "all 120ms ease",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {cat.name}
+                          <span
+                            style={{
+                              fontSize: 11,
+                              background: isActive ? "rgba(255,255,255,0.25)" : "var(--mantine-color-gray-1)",
+                              borderRadius: 10,
+                              padding: "1px 6px",
+                              color: isActive ? "#fff" : "var(--mantine-color-gray-6)",
+                            }}
+                          >
+                            {catCount}
+                          </span>
+                        </Box>
+                      );
+                    })}
                     <Box
-                      key={cat.id}
-                      onClick={() => setActiveCatId(cat.id)}
+                      onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
                       style={{
                         flexShrink: 0,
                         padding: "6px 14px",
                         borderRadius: 20,
                         cursor: "pointer",
-                        border: `1.5px solid ${isActive ? "var(--mantine-color-dinePrimary-6)" : "var(--mantine-color-gray-3)"}`,
-                        backgroundColor: isActive ? "var(--mantine-color-dinePrimary-6)" : "transparent",
-                        color: isActive ? "#fff" : "var(--mantine-color-gray-7)",
+                        border: "1.5px dashed var(--mantine-color-gray-3)",
+                        color: "var(--mantine-color-dinePrimary-6)",
                         fontSize: 13,
-                        fontWeight: isActive ? 600 : 400,
                         display: "flex",
                         alignItems: "center",
-                        gap: 6,
-                        transition: "all 120ms ease",
+                        gap: 4,
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {cat.name}
-                      <span
-                        style={{
-                          fontSize: 11,
-                          background: isActive ? "rgba(255,255,255,0.25)" : "var(--mantine-color-gray-1)",
-                          borderRadius: 10,
-                          padding: "1px 6px",
-                          color: isActive ? "#fff" : "var(--mantine-color-gray-6)",
-                        }}
-                      >
-                        {catCount}
-                      </span>
+                      <IconPlus size={13} /> Category
                     </Box>
-                  );
-                })}
-                <Box
-                  onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-                  style={{
-                    flexShrink: 0,
-                    padding: "6px 14px",
-                    borderRadius: 20,
-                    cursor: "pointer",
-                    border: "1.5px dashed var(--mantine-color-gray-3)",
-                    color: "var(--mantine-color-dinePrimary-6)",
-                    fontSize: 13,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <IconPlus size={13} /> Category
-                </Box>
+                  </Box>
+                </ScrollArea>
               </Box>
 
               {/* Active category content */}
               {activeCat && (() => {
                 return (
                   <>
-                    {/* ── Redesigned Category Header ── */}
+                    {/* ── Category Header ── */}
                     <Box
                       mb="md"
                       style={{
@@ -600,35 +603,34 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                         backgroundColor: "var(--mantine-color-dinePrimary-0)",
                       }}
                     >
-                      {/* Accent bar */}
                       <Box
                         style={{
                           height: 3,
                           background: "linear-gradient(90deg, var(--mantine-color-dinePrimary-5), var(--mantine-color-dinePrimary-3))",
                         }}
                       />
-                      <Group justify="space-between" align="center" wrap="wrap" gap="xs" p="sm">
-                        <div>
-                          <Group gap={8} align="center">
-                            <Text fw={700} size="md" c="dinePrimary">
-                              {activeCat.name}
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                              {catItems.length} {catItems.length === 1 ? "dish" : "dishes"}
-                            </Text>
-                          </Group>
-                          {activeCat.description && (
-                            <Text size="xs" c="dimmed" mt={2}>{activeCat.description}</Text>
+                      <Group justify="space-between" align="center" gap="xs" px="sm" py={8} wrap="nowrap">
+                        {/* Left: name + count */}
+                        <Group gap={8} align="center" style={{ minWidth: 0, flex: 1 }}>
+                          <Text fw={700} size="sm" c="dinePrimary" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {activeCat.name}
+                          </Text>
+                          <Badge size="xs" variant="filled" color="dinePrimary" style={{ flexShrink: 0 }}>
+                            {catItems.length}
+                          </Badge>
+                          {!activeCat.active && (
+                            <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0 }}>Hidden</Badge>
                           )}
-                        </div>
+                        </Group>
 
-                        <Group gap="xs">
+                        {/* Right: actions */}
+                        <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
                           <Switch
                             size="xs"
                             checked={activeCat.active}
                             onChange={() => handleToggleActive(activeCat)}
-                            label={activeCat.active ? "Visible" : "Hidden"}
                             color="dinePrimary"
+                            title={activeCat.active ? "Hide category" : "Show category"}
                           />
                           <ActionIcon
                             size="sm"
@@ -648,10 +650,10 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                           >
                             <IconTrash size={14} />
                           </ActionIcon>
-                          <Button
-                            size="xs"
+                          <ActionIcon
+                            size="sm"
+                            variant="filled"
                             color="dinePrimary"
-                            leftSection={<IconPlus size={13} />}
                             onClick={() => {
                               setItemForm({
                                 categoryId: activeCat.id,
@@ -664,9 +666,10 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                               setItemImageFile(null);
                               setItemModal({ open: true, editing: null });
                             }}
+                            title="Add dish"
                           >
-                            Add Dish
-                          </Button>
+                            <IconPlus size={14} />
+                          </ActionIcon>
                         </Group>
                       </Group>
                     </Box>

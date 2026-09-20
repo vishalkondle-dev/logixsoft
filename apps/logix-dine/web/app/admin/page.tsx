@@ -46,7 +46,7 @@ export default function AdminPage() {
     <Container size="lg" py="xl" px={0}>
       <Title order={2} mb="lg">Platform Admin</Title>
       <Tabs defaultValue="restaurants">
-        <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
+        <ScrollArea type="always" scrollbarSize={4} offsetScrollbars="x" scrollbars="x">
           <Tabs.List mb="lg" style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
             <Tabs.Tab value="restaurants" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Restaurants ({restaurants.length})</Tabs.Tab>
             <Tabs.Tab value="users" style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Users ({users.length})</Tabs.Tab>

@@ -128,3 +128,74 @@ textarea:focus,
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
 }
+
+/* Slim scrollbars for Mantine ScrollArea (always visible when scrolling, small width/height) */
+.mantine-ScrollArea-scrollbar[data-orientation="horizontal"] {
+  height: 4px !important;
+  background-color: transparent !important;
+}
+
+.mantine-ScrollArea-scrollbar[data-orientation="horizontal"] .mantine-ScrollArea-thumb {
+  background-color: rgba(175, 115, 215, 0.45) !important;
+  border-radius: 4px !important;
+}
+
+.mantine-ScrollArea-scrollbar[data-orientation="horizontal"]:hover .mantine-ScrollArea-thumb,
+.mantine-ScrollArea-scrollbar[data-orientation="horizontal"] .mantine-ScrollArea-thumb:hover {
+  background-color: rgba(175, 115, 215, 0.8) !important;
+}
+
+.mantine-ScrollArea-scrollbar[data-orientation="vertical"] {
+  width: 4px !important;
+  background-color: transparent !important;
+}
+
+.mantine-ScrollArea-scrollbar[data-orientation="vertical"] .mantine-ScrollArea-thumb {
+  background-color: rgba(175, 115, 215, 0.45) !important;
+  border-radius: 4px !important;
+}
+
+.mantine-ScrollArea-scrollbar[data-orientation="vertical"]:hover .mantine-ScrollArea-thumb,
+.mantine-ScrollArea-scrollbar[data-orientation="vertical"] .mantine-ScrollArea-thumb:hover {
+  background-color: rgba(175, 115, 215, 0.8) !important;
+}
+
+/* Native slim scrollbars for any standard overflow elements */
+.slim-scrollbar,
+[data-scrollable],
+.mantine-Tabs-list {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(175, 115, 215, 0.45) transparent !important;
+}
+
+.slim-scrollbar::-webkit-scrollbar,
+[data-scrollable]::-webkit-scrollbar,
+.mantine-Tabs-list::-webkit-scrollbar {
+  height: 4px !important;
+  width: 4px !important;
+}
+
+.slim-scrollbar::-webkit-scrollbar-track,
+[data-scrollable]::-webkit-scrollbar-track,
+.mantine-Tabs-list::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.slim-scrollbar::-webkit-scrollbar-thumb,
+[data-scrollable]::-webkit-scrollbar-thumb,
+.mantine-Tabs-list::-webkit-scrollbar-thumb {
+  background: rgba(175, 115, 215, 0.45) !important;
+  border-radius: 4px !important;
+}
+
+.slim-scrollbar::-webkit-scrollbar-thumb:hover,
+[data-scrollable]::-webkit-scrollbar-thumb:hover,
+.mantine-Tabs-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(175, 115, 215, 0.8) !important;
+}
+
+/* Ensure Tabs.List spans full scroll width so bottom border extends under all tabs */
+.mantine-Tabs-list {
+  min-width: 100%;
+}
+

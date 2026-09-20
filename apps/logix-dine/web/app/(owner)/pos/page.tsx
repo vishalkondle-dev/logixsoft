@@ -840,7 +840,7 @@ export default function POSPage() {
             />
 
             {/* Category Tabs */}
-            <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
+            <ScrollArea type="always" scrollbarSize={4} offsetScrollbars="x" scrollbars="x">
               <Group gap="xs" wrap="nowrap" pb="xs" style={{ minWidth: "max-content" }}>
                 {categories.map((cat: any) => (
                   <Button

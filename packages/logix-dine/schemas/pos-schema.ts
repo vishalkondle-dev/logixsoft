@@ -94,6 +94,7 @@ export const restaurantOutlet = pgTable(
     address: text('address'),
     phone: text('phone'),
     upiId: text('upiId'),
+    openingHours: jsonb('openingHours'),
     isDefault: boolean('isDefault').notNull().default(false),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),

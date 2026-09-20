@@ -65,6 +65,7 @@ export const RestaurantOutletSchema = z.object({
   address: z.string().nullable(),
   phone: z.string().nullable(),
   upiId: z.string().nullable(),
+  openingHours: z.unknown().nullable(),
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -227,6 +228,7 @@ export const UpdateOutletSchema = z.object({
   address: z.string().max(255).nullable().optional(),
   phone: z.string().max(20).nullable().optional(),
   upiId: z.string().max(100).nullable().optional(),
+  openingHours: z.any().nullable().optional(),
 });
 
 export const CreateCategorySchema = z.object({

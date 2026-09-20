@@ -671,7 +671,7 @@ export default function TablesPage() {
                         color={!isOccupied ? "teal" : session.duePaise === 0 ? "teal" : "orange"}
                         leftSection={!isOccupied ? <IconCheck size={11} /> : session.duePaise === 0 ? <IconCheck size={11} /> : <IconClock size={11} />}
                       >
-                        {!isOccupied ? "Free" : session.duePaise === 0 ? "Occupied · Paid" : `Occupied · Due ₹${(session.duePaise / 100).toFixed(0)}`}
+                        {!isOccupied ? "Free" : session.duePaise === 0 ? "Occupied · Paid" : "Occupied"}
                       </Badge>
 
                       {/* Management & Actions Menu */}

@@ -42,6 +42,7 @@ import { extractSessionToken } from './lib/cache';
 type Bindings = AuthEnv & {
   ENVIRONMENT?: string;
   FRONTEND_URL?: string;
+  OUTLET_ROOM?: DurableObjectNamespace;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -488,6 +489,32 @@ app.route('/api/tables', tableRoutes);
 app.route('/reports', reportRoutes);
 app.route('/api/reports', reportRoutes);
 
+// Real-time Outlet Live Sync via Durable Objects
+const handleLiveWs = async (c: any) => {
+  const upgradeHeader = c.req.header('Upgrade');
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426);
+  }
+
+  const outletId = c.req.param('outletId');
+  if (!outletId) {
+    return c.text('Outlet ID required', 400);
+  }
+
+  const doNamespace = c.env.OUTLET_ROOM;
+  if (!doNamespace) {
+    return c.text('Durable Objects not configured', 503);
+  }
+
+  const id = doNamespace.idFromName(outletId);
+  const stub = doNamespace.get(id);
+
+  return stub.fetch(c.req.raw);
+};
+
+app.get('/live/outlets/:outletId', handleLiveWs);
+app.get('/api/live/outlets/:outletId', handleLiveWs);
+
 // Register OpenAPI 3.1 specification at /doc
 const openApiDoc = createOpenApiDocument(
   app,
@@ -604,4 +631,5 @@ app.onError((err, c) => {
   );
 });
 
+export { OutletRoomDO } from './durable-objects/outlet-room';
 export default app;

@@ -29,6 +29,7 @@ import {
 import { toRestaurant, toOutlet, toCategory, toMenuItem, toOrderWithItems, toOrder } from '@logixsoft/logix-dine/mappers/pos';
 import { sendWhatsAppText } from '@logixsoft/wa';
 import type { AuthEnv } from '../lib/auth';
+import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
 function formatOrderWhatsAppMessage(
@@ -62,7 +63,7 @@ function formatOrderWhatsAppMessage(
   return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}\n\n*Items:*\n${itemsList}\n\n*Total:* ₹${totalRupees}\n\nThank you for dining with us!`;
 }
 
-const app = new Hono<{ Bindings: AuthEnv }>();
+const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
@@ -394,6 +395,12 @@ app.post(
       }
     }
 
+    broadcastToOutlet(c.env, parsed.data.outletId, {
+      topic: 'ALL',
+      type: 'ORDER_CREATED',
+      data: { orderId: result.order.id, tableNo: result.order.tableNo },
+    });
+
     return c.json(result, 201);
   } finally {
     await close();
@@ -519,6 +526,11 @@ app.post(
     }
 
     await invalidateReports(kv(c), restaurantId);
+    broadcastToOutlet(c.env, parsed.data.outletId, {
+      topic: 'ALL',
+      type: 'ORDER_CREATED',
+      data: { orderId: result.order.id, tableNo: result.order.tableNo },
+    });
     return c.json(result, 201);
   } finally {
     await close();
@@ -977,6 +989,11 @@ app.post(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'ALL',
+      type: 'ROUND_ADDED',
+      data: { orderId, round: nextRound, tableNo: order.tableNo },
+    });
     return c.json({
       ...result,
       round: nextRound,
@@ -1115,6 +1132,11 @@ app.patch(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'KITCHEN',
+      type: 'ITEM_STATUS_CHANGED',
+      data: { orderId, orderItemId, targetStatus },
+    });
     return c.json(result);
   } finally {
     await close();
@@ -1171,6 +1193,11 @@ app.patch(
 
     await recomputeTotal(db, orderId);
     const result = await getOrderWithItems(db, orderId, restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'ALL',
+      type: 'ORDER_ITEMS_UPDATED',
+      data: { orderId },
+    });
     return c.json(result);
   } finally {
     await close();
@@ -1217,6 +1244,11 @@ app.delete(
 
     await recomputeTotal(db, orderId);
     const result = await getOrderWithItems(db, orderId, restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'ALL',
+      type: 'ORDER_ITEMS_UPDATED',
+      data: { orderId },
+    });
     return c.json(result);
   } finally {
     await close();
@@ -1343,6 +1375,11 @@ app.post(
     }
 
     await invalidateReports(kv(c), restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'ALL',
+      type: 'ORDER_SETTLED',
+      data: { orderId, tableNo: order.tableNo },
+    });
     return c.json(result);
   } finally {
     await close();
@@ -1436,6 +1473,11 @@ app.post(
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
     await invalidateReports(kv(c), restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'ALL',
+      type: 'TABLE_FREED',
+      data: { orderId, tableNo: order.tableNo },
+    });
     return c.json(result);
   } finally {
     await close();
@@ -1553,7 +1595,7 @@ app.post(
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId })
+      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId, tableNo: appSchema.saleOrder.tableNo })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
@@ -1602,6 +1644,11 @@ app.post(
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
     await invalidateReports(kv(c), restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'ALL',
+      type: 'ORDER_VOIDED',
+      data: { orderId, tableNo: order.tableNo },
+    });
     return c.json(result);
   } finally {
     await close();
@@ -1678,7 +1725,7 @@ app.patch(
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ id: appSchema.saleOrder.id, outletId: appSchema.saleOrder.outletId })
+      .select({ id: appSchema.saleOrder.id, outletId: appSchema.saleOrder.outletId, tableNo: appSchema.saleOrder.tableNo })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
@@ -1733,6 +1780,11 @@ app.patch(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
+    broadcastToOutlet(c.env, order.outletId, {
+      topic: 'KITCHEN',
+      type: 'ORDER_PREPARED',
+      data: { orderId, tableNo: order.tableNo },
+    });
     return c.json(result);
   } finally {
     await close();

@@ -27,6 +27,7 @@ import { getStatusVisual, PAYMENT_STATUS_CONFIG } from "@/lib/order-status-ui";
 import { buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
+import { useOutletSync } from "@/lib/use-outlet-sync";
 
 /** Helper to match table numbers flexibly (e.g. "T1" === "Table 1" === "t1" === "1") */
 function normalizeTable(str: string): string {
@@ -74,14 +75,17 @@ export default function TablesPage() {
   }, []);
 
   // ─── Real-time Dynamic Data Fetching ──────────────────────────────────────────
-  // Tables: polling every 6s
+  // Live WebSocket sync via Cloudflare Durable Object
+  const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
+
+  // Table Definitions (zero polling when connected, 30s safety fallback when disconnected)
   const {
     data: tables = [],
     isLoading: tablesLoading,
     refetch: refetchTables,
-  } = useTables(restaurantId, outletId, { refetchInterval: 6_000 });
+  } = useTables(restaurantId, outletId, { refetchInterval: isConnected ? undefined : 30_000 });
 
-  // Occupied Table Orders: polling every 4s for instant table occupancy updates
+  // Occupied Table Orders (zero polling when connected, 30s safety fallback when disconnected)
   const {
     data: orders = [],
     isLoading: ordersLoading,
@@ -94,7 +98,7 @@ export default function TablesPage() {
       limit: 100,
     },
     !!restaurantId && !!outletId,
-    { refetchInterval: 4_000 },
+    { refetchInterval: isConnected ? undefined : 30_000 },
   );
 
   // ─── Filter States ────────────────────────────────────────────────────────────
@@ -419,8 +423,12 @@ export default function TablesPage() {
         <div>
           <Group gap="xs" align="center">
             <Title order={2}>Tables</Title>
-            <Badge size="sm" variant="dot" color="teal">
-              Live Synced
+            <Badge
+              size="sm"
+              variant="dot"
+              color={isConnected ? "teal" : isConnecting ? "yellow" : "gray"}
+            >
+              {isConnected ? "Live Synced" : isConnecting ? "Connecting..." : "Offline"}
             </Badge>
           </Group>
           <Text size="sm" c="dimmed">

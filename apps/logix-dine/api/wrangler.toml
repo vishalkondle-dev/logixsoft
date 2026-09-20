@@ -21,3 +21,12 @@ API_URL = "https://dine-api.logixsoft.in"
 FRONTEND_URL = "https://dine.logixsoft.in"
 WA_API_URL = "https://wa.logixsoft.in"
 DEV_OTP_BYPASS = "true"
+
+[durable_objects]
+bindings = [
+  { name = "OUTLET_ROOM", class_name = "OutletRoomDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["OutletRoomDO"]

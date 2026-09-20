@@ -8,9 +8,10 @@ import { PosTableSchema } from '@logixsoft/logix-dine/schemas/pos';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
 import { cacheGet, cacheSet, invalidateTables, CacheKey, TTL } from '../lib/cache';
+import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
-const app = new Hono<{ Bindings: AuthEnv }>();
+const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
@@ -22,35 +23,39 @@ function kv(c: any) { return c.env?.CACHE; }
 const CreateTableSchema = z.object({
   outletId: z.string(),
   name: z.string().min(1).max(50),
-  section: z.string().max(100).optional(),
+  section: z.string().max(50).optional(),
   capacity: z.number().int().positive().optional(),
-  sortOrder: z.number().int().nonnegative().optional().default(0),
+  sortOrder: z.number().int().optional(),
 });
 
 const UpdateTableSchema = z.object({
   name: z.string().min(1).max(50).optional(),
-  section: z.string().max(100).nullable().optional(),
+  section: z.string().max(50).nullable().optional(),
   capacity: z.number().int().positive().nullable().optional(),
-  sortOrder: z.number().int().nonnegative().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
-// GET /tables?outletId= — list tables for an outlet (or all outlets if omitted)
+// GET /tables — list active tables for tenant, optionally filtered by outletId
 app.get(
   '/',
   apiDoc({
     tags: ['Tables'],
     summary: 'List Dining Tables',
-    description: 'Returns all dining tables for the active restaurant, optionally filtered by outlet.',
-    query: z.object({ outletId: z.string().optional() }),
-    responses: { 200: z.array(PosTableSchema) },
+    description: 'Retrieves all active dining tables for the restaurant or filtered by outletId.',
+    query: z.object({
+      outletId: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(PosTableSchema),
+    },
   }),
   requirePermission('table:read'),
   async (c) => {
   const { restaurantId } = c.get('tenant');
-  const outletId = c.req.query('outletId') || '';
+  const outletId = c.req.query('outletId');
+  const cacheKey = CacheKey.tables(restaurantId, outletId);
 
-  const cacheKey = CacheKey.tables(restaurantId, outletId ? outletId : null);
-  const cached = await cacheGet<any[]>(kv(c), cacheKey);
+  const cached = await cacheGet<ReturnType<typeof toPosTable>[]>(kv(c), cacheKey);
   if (cached) return c.json(cached);
 
   const { db, close } = getDb(c);
@@ -125,6 +130,11 @@ app.post(
 
     const [created] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, id));
     await invalidateTables(kv(c), restaurantId);
+    broadcastToOutlet(c.env, parsed.data.outletId, {
+      topic: 'TABLES',
+      type: 'TABLE_CREATED',
+      data: { tableId: id },
+    });
     return c.json(toPosTable(created), 201);
   } finally {
     await close();
@@ -172,6 +182,11 @@ app.put(
 
     const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
     await invalidateTables(kv(c), restaurantId);
+    broadcastToOutlet(c.env, existing.outletId, {
+      topic: 'TABLES',
+      type: 'TABLE_UPDATED',
+      data: { tableId },
+    });
     return c.json(toPosTable(updated));
   } finally {
     await close();
@@ -212,6 +227,11 @@ app.patch(
 
     const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
     await invalidateTables(kv(c), restaurantId);
+    broadcastToOutlet(c.env, existing.outletId, {
+      topic: 'TABLES',
+      type: 'TABLE_TOGGLED',
+      data: { tableId, active: !existing.active },
+    });
     return c.json(toPosTable(updated));
   } finally {
     await close();
@@ -240,7 +260,7 @@ app.delete(
   const { db, close } = getDb(c);
   try {
     const [existing] = await db
-      .select({ id: appSchema.posTable.id })
+      .select({ id: appSchema.posTable.id, outletId: appSchema.posTable.outletId })
       .from(appSchema.posTable)
       .where(and(eq(appSchema.posTable.id, tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
     if (!existing) return c.json({ error: 'Not Found' }, 404);
@@ -251,6 +271,11 @@ app.delete(
       .where(eq(appSchema.posTable.id, tableId));
 
     await invalidateTables(kv(c), restaurantId);
+    broadcastToOutlet(c.env, existing.outletId, {
+      topic: 'TABLES',
+      type: 'TABLE_DELETED',
+      data: { tableId },
+    });
     return c.json({ success: true });
   } finally {
     await close();

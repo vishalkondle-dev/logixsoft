@@ -79,7 +79,7 @@ export function useOrders(
   restaurantId: string,
   params: { status?: string; orderStatus?: string; outletId?: string; limit?: number; tableOccupied?: boolean } = {},
   enabled = true,
-  options?: { refetchInterval?: number; staleTime?: number },
+  options?: { refetchInterval?: number | false; staleTime?: number },
 ) {
   return useQuery({
     queryKey: qk.orders(restaurantId, params),
@@ -92,13 +92,17 @@ export function useOrders(
 
 // ─── Kitchen Orders ───────────────────────────────────────────────────────────
 
-export function useKitchenOrders(restaurantId: string, outletId: string | null) {
+export function useKitchenOrders(
+  restaurantId: string,
+  outletId: string | null,
+  options?: { refetchInterval?: number | false }
+) {
   return useQuery({
     queryKey: qk.kitchenOrders(restaurantId, outletId),
     queryFn: () => getKitchenOrders(restaurantId, outletId ?? undefined),
     enabled: !!restaurantId && !!outletId,
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchInterval: options?.refetchInterval !== undefined ? options.refetchInterval : 30_000,
   });
 }
 
@@ -133,13 +137,13 @@ export function useItems(
 export function useTables(
   restaurantId: string,
   outletId: string | null | undefined,
-  options?: { refetchInterval?: number },
+  options?: { refetchInterval?: number | false; staleTime?: number },
 ) {
   return useQuery({
     queryKey: qk.tables(restaurantId, outletId),
     queryFn: () => getTables(restaurantId, outletId ?? undefined),
     enabled: !!restaurantId && !!outletId,
-    staleTime: options?.refetchInterval ? 0 : 60_000,
+    staleTime: options?.staleTime ?? (options?.refetchInterval ? 0 : 60_000),
     refetchInterval: options?.refetchInterval,
   });
 }

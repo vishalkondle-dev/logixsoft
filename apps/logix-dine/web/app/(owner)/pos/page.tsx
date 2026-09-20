@@ -21,6 +21,7 @@ import {
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
+import { useOutletSync } from "@/lib/use-outlet-sync";
 
 interface LocalCartItem {
   itemId: string;
@@ -321,12 +322,15 @@ export default function POSPage() {
   const { data: tablesData } = useTables(restaurantId, outletId);
   const tables = (tablesData ?? []).filter((t: any) => t.active);
 
-  // Poll occupied table orders to detect occupied tables and rounds dynamically
+  // Real-time live sync via Cloudflare Durable Object
+  const { isConnected } = useOutletSync(restaurantId, outletId);
+
+  // Table orders for instant occupancy and active table matching (real-time push, 30s safety fallback when offline)
   const { data: openOrders = [] } = useOrders(
     restaurantId,
     { tableOccupied: true, outletId: outletId ?? undefined },
     Boolean(restaurantId && outletId),
-    { refetchInterval: 4_000 }
+    { refetchInterval: isConnected ? false : 30_000 }
   );
 
   const [activeCatId, setActiveCatId] = useState<string | null>(null);

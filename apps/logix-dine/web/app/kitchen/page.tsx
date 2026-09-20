@@ -19,6 +19,7 @@ import {
   getStatusVisual,
   getNextItemStatus,
 } from "@/lib/order-status-ui";
+import { useOutletSync } from "@/lib/use-outlet-sync";
 
 function urgency(createdAt: string): { color: string; label: string; minutes: number } {
   const minutes = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
@@ -38,8 +39,15 @@ export default function KitchenPage() {
   const [updatingAction, setUpdatingAction] = useState<{ itemId: string; action: "next" | "close" } | null>(null);
   const [, forceTick] = useState(0);
 
-  // React Query handles auto-refresh every 10s (configured in useKitchenOrders)
-  const { data: rawOrders = [], isLoading: loading, refetch } = useKitchenOrders(restaurantId, outletId);
+  // Real-time live sync via Cloudflare Durable Object
+  const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
+
+  // Auto-refreshes in real-time via WebSocket (30s fallback when offline)
+  const { data: rawOrders = [], isLoading: loading, refetch } = useKitchenOrders(
+    restaurantId,
+    outletId,
+    { refetchInterval: isConnected ? false : 30_000 }
+  );
   const orders = rawOrders.filter((o: any) => !o.order.readyAt && o.order.orderStatus !== "SERVED" && o.order.orderStatus !== "CANCELLED");
 
   // Re-render every 30s to update elapsed-time badges
@@ -118,7 +126,16 @@ export default function KitchenPage() {
     <Container size="xl" py="md" px={{ base: "sm", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <div>
-          <Title order={2} c="white">Kitchen Display</Title>
+          <Group gap="xs" align="center">
+            <Title order={2} c="white">Kitchen Display</Title>
+            <Badge
+              size="sm"
+              variant="dot"
+              color={isConnected ? "teal" : isConnecting ? "yellow" : "gray"}
+            >
+              {isConnected ? "Live Synced" : isConnecting ? "Connecting..." : "Offline"}
+            </Badge>
+          </Group>
           <Text size="sm" c="gray.4">{restaurant.name}{activeOutlet ? ` · ${activeOutlet.name}` : ""}</Text>
         </div>
         <Group>

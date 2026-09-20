@@ -16,6 +16,7 @@ import { useOrders } from "@/lib/queries";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
+import { useOutletSync } from "@/lib/use-outlet-sync";
 import {
   updateOrderItemStatus,
   voidOrder,
@@ -49,6 +50,9 @@ export default function OrdersPage() {
   const [isFreeing, setIsFreeing] = useState(false);
 
   const [isVoiding, setIsVoiding] = useState(false);
+
+  // Real-time live sync via Cloudflare Durable Object
+  const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
   const enabled = !!restaurantId && (allOutlets || !!outletId);
 
@@ -223,7 +227,16 @@ export default function OrdersPage() {
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <div>
-          <Title order={2}>Orders</Title>
+          <Group gap="xs" align="center">
+            <Title order={2}>Orders</Title>
+            <Badge
+              size="sm"
+              variant="dot"
+              color={isConnected ? "teal" : isConnecting ? "yellow" : "gray"}
+            >
+              {isConnected ? "Live Synced" : isConnecting ? "Connecting..." : "Offline"}
+            </Badge>
+          </Group>
           <Text size="sm" c="dimmed">Track order fulfillment and item progress</Text>
         </div>
         <Group>

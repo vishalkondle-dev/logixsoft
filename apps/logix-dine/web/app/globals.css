@@ -61,7 +61,7 @@ header.mantine-AppShell-header {
   box-shadow: none !important;
 }
 
-/* White background for input with no shadow */
+/* Inputs: white background with clean border and no shadow */
 input,
 select,
 textarea,
@@ -75,7 +75,41 @@ textarea,
 .mantine-PinInput-input,
 .mantine-Textarea-input {
   background-color: #ffffff !important;
+  border: 1px solid #ced4da !important;
   box-shadow: none !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.mantine-Input-input:focus,
+.mantine-TextInput-input:focus,
+.mantine-Select-input:focus,
+.mantine-NumberInput-input:focus,
+.mantine-PasswordInput-input:focus,
+.mantine-Autocomplete-input:focus,
+.mantine-MultiSelect-input:focus,
+.mantine-PinInput-input:focus,
+.mantine-Textarea-input:focus {
+  border-color: #af73d7 !important;
+}
+
+/* Buttons: keep border ONLY where background is white (default, white, outline) */
+.mantine-Button-root[data-variant="filled"],
+.mantine-Button-root[data-variant="light"],
+.mantine-Button-root[data-variant="subtle"],
+.mantine-ActionIcon-root[data-variant="filled"],
+.mantine-ActionIcon-root[data-variant="light"],
+.mantine-ActionIcon-root[data-variant="subtle"] {
+  border: none !important;
+}
+
+.mantine-Button-root[data-variant="default"],
+.mantine-Button-root[data-variant="white"],
+.mantine-ActionIcon-root[data-variant="default"],
+.mantine-ActionIcon-root[data-variant="white"] {
+  background-color: #ffffff !important;
+  border: 1px solid #ced4da !important;
 }
 
 /* Modals and drawers */

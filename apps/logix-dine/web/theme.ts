@@ -89,6 +89,7 @@ export const theme = createTheme({
       styles: {
         input: {
           backgroundColor: "#ffffff",
+          borderColor: "#ced4da",
         },
       },
     },
@@ -96,6 +97,7 @@ export const theme = createTheme({
       styles: {
         input: {
           backgroundColor: "#ffffff",
+          borderColor: "#ced4da",
         },
       },
     },
@@ -103,6 +105,7 @@ export const theme = createTheme({
       styles: {
         input: {
           backgroundColor: "#ffffff",
+          borderColor: "#ced4da",
         },
       },
     },
@@ -110,6 +113,7 @@ export const theme = createTheme({
       styles: {
         input: {
           backgroundColor: "#ffffff",
+          borderColor: "#ced4da",
         },
       },
     },
@@ -117,6 +121,7 @@ export const theme = createTheme({
       styles: {
         input: {
           backgroundColor: "#ffffff",
+          borderColor: "#ced4da",
         },
       },
     },
@@ -124,6 +129,7 @@ export const theme = createTheme({
       styles: {
         input: {
           backgroundColor: "#ffffff",
+          borderColor: "#ced4da",
         },
       },
     },

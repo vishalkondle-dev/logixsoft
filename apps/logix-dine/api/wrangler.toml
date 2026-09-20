@@ -21,6 +21,10 @@ API_URL = "https://dine-api.logixsoft.in"
 FRONTEND_URL = "https://dine.logixsoft.in"
 WA_API_URL = "https://wa.logixsoft.in"
 DEV_OTP_BYPASS = "true"
+MINIO_ENDPOINT = "https://storage.logixsoft.in"
+MINIO_ACCESS_KEY = "vishalkondledev"
+MINIO_SECRET_KEY = "Vammavg@1605"
+MINIO_BUCKET = "logix-dine"
 
 [durable_objects]
 bindings = [

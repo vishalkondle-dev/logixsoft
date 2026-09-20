@@ -13,6 +13,10 @@ export interface AuthEnv {
   NODE_ENV?: string;
   WA_API_URL?: string;
   WA_API_KEY?: string;
+  MINIO_ENDPOINT?: string;
+  MINIO_ACCESS_KEY?: string;
+  MINIO_SECRET_KEY?: string;
+  MINIO_BUCKET?: string;
   HYPERDRIVE?: {
     connectionString: string;
   };

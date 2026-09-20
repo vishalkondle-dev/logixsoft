@@ -6,14 +6,17 @@ async function apiFetch<T>(
   opts: RequestInit = {},
   outletId?: string | null,
 ): Promise<T> {
+  const headers: Record<string, string> = {
+    "X-Restaurant-Id": restaurantId,
+    ...(outletId ? { "X-Outlet-Id": outletId } : {}),
+    ...((opts.headers as Record<string, string>) ?? {}),
+  };
+  if (!(opts.body instanceof FormData)) {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
+  }
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Restaurant-Id": restaurantId,
-      ...(outletId ? { "X-Outlet-Id": outletId } : {}),
-      ...((opts.headers as Record<string, string>) ?? {}),
-    },
+    headers,
     ...opts,
   });
   if (!res.ok) {
@@ -188,6 +191,27 @@ export const deleteItem = (restaurantId: string, id: string, outletId?: string |
 
 export const toggleItem = (restaurantId: string, id: string, outletId?: string | null) =>
   apiFetch<any>(`/menu/items/${id}/toggle`, restaurantId, { method: "PATCH" }, outletId);
+
+export const uploadItemImage = (
+  restaurantId: string,
+  id: string,
+  file: File,
+  outletId?: string | null
+) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiFetch<any>(`/menu/items/${id}/image`, restaurantId, {
+    method: "POST",
+    body: formData,
+  }, outletId);
+};
+
+export const deleteItemImage = (
+  restaurantId: string,
+  id: string,
+  outletId?: string | null
+) =>
+  apiFetch<any>(`/menu/items/${id}/image`, restaurantId, { method: "DELETE" }, outletId);
 
 // ─── Restaurant & Outlets ────────────────────────────────────────────────────
 

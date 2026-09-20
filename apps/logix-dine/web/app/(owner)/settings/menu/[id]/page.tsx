@@ -11,11 +11,12 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft, IconTrash, IconCheck, IconPlus,
-  IconAlertCircle,
+  IconAlertCircle, IconPhoto, IconUpload,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useItem, useCategories, useUpdateItem, useDeleteItem,
+  useUploadItemImage, useDeleteItemImage,
 } from "@/lib/queries";
 
 export default function MenuItemPage() {
@@ -32,6 +33,50 @@ export default function MenuItemPage() {
 
   const updateMutation = useUpdateItem(restaurantId, outletId);
   const deleteMutation = useDeleteItem(restaurantId, outletId);
+  const uploadImageMutation = useUploadItemImage(restaurantId, outletId);
+  const deleteImageMutation = useDeleteItemImage(restaurantId, outletId);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await uploadImageMutation.mutateAsync({ id, file });
+      notifications.show({
+        title: "Image Uploaded",
+        message: "Dish image successfully updated",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: "Upload Failed",
+        message: err.message || "Failed to upload image",
+        color: "red",
+      });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteImage = async () => {
+    if (!confirm("Are you sure you want to remove the image for this item?")) return;
+    try {
+      await deleteImageMutation.mutateAsync(id);
+      notifications.show({
+        title: "Image Removed",
+        message: "Dish image removed",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: "Remove Failed",
+        message: err.message || "Failed to remove image",
+        color: "red",
+      });
+    }
+  };
 
   const [form, setForm] = useState<{
     name: string;
@@ -294,6 +339,96 @@ export default function MenuItemPage() {
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           />
+        </Paper>
+
+        {/* Dish Photo Section */}
+        <Paper p="md" radius="md">
+          <Group justify="space-between" align="center" mb="xs">
+            <div>
+              <Text fw={600} size="md">Dish Photo</Text>
+              <Text size="xs" c="dimmed">
+                Stored in MinIO bucket <Text span ff="monospace">logix-dine</Text>
+              </Text>
+            </div>
+          </Group>
+
+          <Group align="center" gap="lg" mt="sm" wrap="wrap">
+            {item?.imageUrl ? (
+              <Box
+                style={{
+                  width: 130,
+                  height: 130,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  backgroundColor: "#e9ecef",
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src={item.imageUrl}
+                  alt={form.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                />
+              </Box>
+            ) : (
+              <Box
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: 130,
+                  height: 130,
+                  borderRadius: 10,
+                  border: "2px dashed var(--mantine-color-gray-3)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  backgroundColor: "#f8f9fa",
+                  flexShrink: 0,
+                }}
+              >
+                <IconPhoto size={36} color="var(--mantine-color-gray-5)" />
+                <Text size="xs" c="dimmed" mt={4} ta="center" px="xs">No Photo</Text>
+              </Box>
+            )}
+
+            <Stack gap="xs" style={{ flex: 1, minWidth: 200 }}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/png,image/jpeg,image/webp,image/avif"
+                style={{ display: "none" }}
+                onChange={handleFileSelect}
+              />
+              <Group gap="xs">
+                <Button
+                  size="sm"
+                  variant="light"
+                  color="dinePrimary"
+                  leftSection={<IconUpload size={16} />}
+                  loading={uploadImageMutation.isPending}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {item?.imageUrl ? "Change Photo" : "Upload Photo"}
+                </Button>
+                {item?.imageUrl && (
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    color="red"
+                    leftSection={<IconTrash size={16} />}
+                    loading={deleteImageMutation.isPending}
+                    onClick={handleDeleteImage}
+                  >
+                    Remove Photo
+                  </Button>
+                )}
+              </Group>
+              <Text size="xs" c="dimmed">
+                Upload JPG, PNG or WEBP dish photos. Automatically uploaded to MinIO storage.
+              </Text>
+            </Stack>
+          </Group>
         </Paper>
 
         {/* Variants Section */}

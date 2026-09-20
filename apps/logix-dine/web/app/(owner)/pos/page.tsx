@@ -885,10 +885,28 @@ export default function POSPage() {
                           <Badge
                             size="xs"
                             color="dinePrimary"
-                            style={{ position: "absolute", top: 6, right: 6 }}
+                            style={{ position: "absolute", top: 6, right: 6, zIndex: 2 }}
                           >
                             ×{inCartQty}
                           </Badge>
+                        )}
+                        {item.imageUrl && (
+                          <Box
+                            mb={6}
+                            style={{
+                              width: "100%",
+                              height: 72,
+                              borderRadius: 6,
+                              overflow: "hidden",
+                              backgroundColor: "#f1f3f5",
+                            }}
+                          >
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                            />
+                          </Box>
                         )}
                         <Text size="sm" fw={500} lineClamp={2} mb={4}>{item.name}</Text>
                         <Group justify="space-between" align="center" mt="auto">

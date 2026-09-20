@@ -27,6 +27,8 @@ import {
   updateItem,
   deleteItem,
   toggleItem,
+  uploadItemImage,
+  deleteItemImage,
   createTable,
   updateTable,
   toggleTable,
@@ -295,6 +297,32 @@ export function useToggleItem(restaurantId: string, outletId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => toggleItem(restaurantId, id, outletId),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ["items", restaurantId] });
+      qc.invalidateQueries({ queryKey: qk.item(restaurantId, id) });
+      qc.invalidateQueries({ queryKey: qk.bootstrap(restaurantId, outletId) });
+    },
+  });
+}
+
+export function useUploadItemImage(restaurantId: string, outletId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      uploadItemImage(restaurantId, id, file, outletId),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["items", restaurantId] });
+      qc.invalidateQueries({ queryKey: qk.item(restaurantId, variables.id) });
+      qc.invalidateQueries({ queryKey: qk.bootstrap(restaurantId, outletId) });
+    },
+  });
+}
+
+export function useDeleteItemImage(restaurantId: string, outletId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      deleteItemImage(restaurantId, id, outletId),
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: ["items", restaurantId] });
       qc.invalidateQueries({ queryKey: qk.item(restaurantId, id) });

@@ -78,6 +78,7 @@ export function toCategory(c: MenuCategoryRow): JsonMenuCategoryRow {
 export function toMenuItem(i: MenuItemRow): JsonMenuItemRow {
   return {
     ...i,
+    imageUrl: i.imageUrl ?? null,
     variants: (i.variants as any) ?? [],
     addons: (i.addons as any) ?? [],
     createdAt: toIsoRequired(i.createdAt),

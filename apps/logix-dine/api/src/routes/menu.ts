@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
+import { createStorageClient } from '@logixsoft/helpers/storage';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission } from '../lib/tenancy';
 import {
@@ -26,6 +27,17 @@ function getDb(c: any) {
 }
 
 function kv(c: any) { return c.env?.CACHE; }
+
+function getStorage(c: any) {
+  return createStorageClient({
+    endpoint: c.env?.MINIO_ENDPOINT || 'https://storage.logixsoft.in',
+    bucket: c.env?.MINIO_BUCKET || 'logix-dine',
+    accessKeyId: c.env?.MINIO_ACCESS_KEY || 'vishalkondledev',
+    secretAccessKey: c.env?.MINIO_SECRET_KEY || 'Vammavg@1605',
+    region: 'us-east-1',
+    forcePathStyle: true,
+  });
+}
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 
@@ -301,6 +313,7 @@ app.post(
       categoryId: parsed.data.categoryId,
       name: parsed.data.name,
       description: parsed.data.description ?? null,
+      imageUrl: parsed.data.imageUrl ?? null,
       pricePaise: parsed.data.pricePaise,
       available: true,
       sortOrder: parsed.data.sortOrder ?? 0,
@@ -451,6 +464,128 @@ app.delete(
   requirePermission('menu:write'),
   handleDeleteItem
 );
+
+const handleUploadItemImage = async (c: any) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [existing] = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found', message: 'Menu item not found' }, 404);
+
+    const formData = await c.req.formData();
+    const file = formData.get('file') || formData.get('image');
+    if (!file || typeof file === 'string') {
+      return c.json({ error: 'Validation Error', message: 'No image file provided' }, 400);
+    }
+
+    const fileObj = file as File;
+    const fileName = fileObj.name || 'image.jpg';
+    const extMatch = fileName.split('.').pop()?.toLowerCase();
+    const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'avif'];
+    const ext = extMatch && allowedExts.includes(extMatch)
+      ? extMatch
+      : (fileObj.type?.includes('png') ? 'png' : fileObj.type?.includes('webp') ? 'webp' : 'jpg');
+
+    const key = `logixsoft/logix-dine/assets/images/menu/${id}.${ext}`;
+    const buffer = await fileObj.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    const storage = getStorage(c);
+    const { url } = await storage.upload(key, bytes, {
+      contentType: fileObj.type || 'image/jpeg',
+      cacheControl: 'public, max-age=31536000, immutable',
+    });
+
+    await db
+      .update(appSchema.menuItem)
+      .set({ imageUrl: url, updatedAt: new Date() })
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+
+    const [updated] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
+    await invalidateMenu(kv(c), restaurantId);
+    return c.json(toMenuItem(updated));
+  } catch (err: any) {
+    return c.json({ error: 'Upload Failed', message: err.message || 'Failed to upload image' }, 500);
+  } finally {
+    await close();
+  }
+};
+
+const handleDeleteItemImage = async (c: any) => {
+  const { restaurantId } = c.get('tenant');
+  const id = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [existing] = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found', message: 'Menu item not found' }, 404);
+
+    if (existing.imageUrl) {
+      try {
+        const storage = getStorage(c);
+        const urlObj = new URL(existing.imageUrl);
+        const key = urlObj.pathname.replace(/^\/+logix-dine\//, '');
+        await storage.delete(key);
+      } catch {
+        // ignore delete failure
+      }
+    }
+
+    await db
+      .update(appSchema.menuItem)
+      .set({ imageUrl: null, updatedAt: new Date() })
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+
+    const [updated] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
+    await invalidateMenu(kv(c), restaurantId);
+    return c.json(toMenuItem(updated));
+  } finally {
+    await close();
+  }
+};
+
+app.post(
+  '/items/:id/image',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Upload Menu Item Image',
+    description: 'Uploads an image file to MinIO storage and associates it with the menu item.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: MenuItemSchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  handleUploadItemImage
+);
+
+app.post('/:id/image', requirePermission('menu:write'), handleUploadItemImage);
+
+app.delete(
+  '/items/:id/image',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Delete Menu Item Image',
+    description: 'Removes the image for a menu item.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: MenuItemSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  handleDeleteItemImage
+);
+
+app.delete('/:id/image', requirePermission('menu:write'), handleDeleteItemImage);
 
 const handleToggleItem = async (c: any) => {
   const { restaurantId } = c.get('tenant');

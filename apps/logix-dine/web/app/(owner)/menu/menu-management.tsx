@@ -1,22 +1,227 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Container, Title, Tabs, Stack, Group, Text, Paper, Badge, ActionIcon,
-  Button, Modal, TextInput, Textarea, NumberInput, Switch, Select, SimpleGrid, Box, ScrollArea, Divider, Anchor,
+  Button, Modal, TextInput, NumberInput, Switch, Select, SimpleGrid, Box,
+  Divider, Anchor, Loader,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlus, IconEdit, IconTrash, IconCheck } from "@tabler/icons-react";
+import {
+  IconPlus, IconEdit, IconTrash, IconCheck, IconPhoto, IconCamera, IconUpload,
+} from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCategories, useItems,
   useCreateCategory, useUpdateCategory, useDeleteCategory,
   useCreateItem, useUpdateItem, useDeleteItem, useToggleItem,
+  useUploadItemImage,
   qk,
 } from "@/lib/queries";
-import { updateCategory } from "@/lib/api-client";
+import { updateCategory, uploadItemImage } from "@/lib/api-client";
+
+interface MenuItemCardProps {
+  item: any;
+  restaurantId: string;
+  outletId: string | null;
+  onToggle: (item: any) => void;
+  onDelete: (item: any) => void;
+}
+
+function MenuItemCard({
+  item,
+  restaurantId,
+  outletId,
+  onToggle,
+  onDelete,
+}: MenuItemCardProps) {
+  const uploadImageMutation = useUploadItemImage(restaurantId, outletId);
+  const cardFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await uploadImageMutation.mutateAsync({ id: item.id, file });
+      notifications.show({
+        title: "Photo Uploaded",
+        message: `Photo updated for ${item.name}`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: "Upload Failed",
+        message: err.message || "Failed to upload image",
+        color: "red",
+      });
+    } finally {
+      if (cardFileInputRef.current) cardFileInputRef.current.value = "";
+    }
+  };
+
+  const hasVariants = Array.isArray(item.variants) && item.variants.length > 0;
+  const hasAddons = Array.isArray(item.addons) && item.addons.length > 0;
+  const displayPrice = hasVariants
+    ? `From ₹${(Math.min(...item.variants.map((v: any) => v.pricePaise)) / 100).toFixed(0)}`
+    : `₹${(item.pricePaise / 100).toFixed(0)}`;
+
+  return (
+    <Paper
+      p="sm"
+      radius="md"
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        gap: "12px",
+        alignItems: "stretch",
+        position: "relative",
+      }}
+    >
+      <input
+        type="file"
+        ref={cardFileInputRef}
+        accept="image/png,image/jpeg,image/webp,image/avif"
+        style={{ display: "none" }}
+        onChange={handleQuickUpload}
+      />
+
+      {/* Image Thumbnail */}
+      <Box
+        onClick={() => cardFileInputRef.current?.click()}
+        title="Click to upload or change photo"
+        style={{
+          width: 88,
+          height: 88,
+          minWidth: 88,
+          borderRadius: 8,
+          overflow: "hidden",
+          backgroundColor: "#f1f3f5",
+          cursor: "pointer",
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          <Stack align="center" justify="center" gap={2}>
+            <IconPhoto size={26} color="var(--mantine-color-gray-5)" />
+            <Text size="9px" c="dimmed" fw={600}>+ PHOTO</Text>
+          </Stack>
+        )}
+        {uploadImageMutation.isPending && (
+          <Box
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: "rgba(0,0,0,0.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Loader size="xs" color="white" />
+          </Box>
+        )}
+      </Box>
+
+      {/* Info & Actions */}
+      <Stack justify="space-between" style={{ flex: 1, minWidth: 0 }} gap={4}>
+        <div>
+          <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+            <Anchor
+              component={Link}
+              href={`/settings/menu/${item.id}`}
+              fw={600}
+              size="sm"
+              c="inherit"
+              underline="hover"
+              lineClamp={1}
+            >
+              {item.name}
+            </Anchor>
+            {!item.available && (
+              <Badge size="xs" color="red" variant="light" style={{ flexShrink: 0 }}>
+                Unavailable
+              </Badge>
+            )}
+          </Group>
+
+          {item.description ? (
+            <Text size="xs" c="dimmed" lineClamp={1} mt={1}>
+              {item.description}
+            </Text>
+          ) : null}
+
+          <Group gap={6} mt={4} wrap="wrap">
+            {hasVariants && (
+              <Badge size="xs" variant="light" color="blue">
+                {item.variants.length} {item.variants.length === 1 ? "variant" : "variants"}
+              </Badge>
+            )}
+            {hasAddons && (
+              <Badge size="xs" variant="light" color="violet">
+                {item.addons.length} {item.addons.length === 1 ? "addon" : "addons"}
+              </Badge>
+            )}
+          </Group>
+        </div>
+
+        <Group justify="space-between" align="center" mt="xs">
+          <Text fw={700} size="sm" c="dinePrimary">
+            {displayPrice}
+          </Text>
+
+          <Group gap={6} align="center">
+            <Switch
+              size="xs"
+              checked={item.available}
+              onChange={() => onToggle(item)}
+              title={item.available ? "Available in POS" : "Hidden in POS"}
+            />
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              color="gray"
+              onClick={() => cardFileInputRef.current?.click()}
+              title="Upload / Change Photo"
+            >
+              <IconCamera size={15} />
+            </ActionIcon>
+            <ActionIcon
+              component={Link}
+              href={`/settings/menu/${item.id}`}
+              size="sm"
+              variant="light"
+              title="Edit item details"
+            >
+              <IconEdit size={14} />
+            </ActionIcon>
+            <ActionIcon
+              size="sm"
+              variant="light"
+              color="red"
+              onClick={() => onDelete(item)}
+              title="Delete item"
+            >
+              <IconTrash size={14} />
+            </ActionIcon>
+          </Group>
+        </Group>
+      </Stack>
+    </Paper>
+  );
+}
 
 export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const { restaurant, activeOutlet } = useRestaurant();
@@ -39,6 +244,9 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const [catForm, setCatForm] = useState({ name: "", description: "" });
 
   const [itemModal, setItemModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
+  const [itemImageFile, setItemImageFile] = useState<File | null>(null);
+  const modalFileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [itemForm, setItemForm] = useState<{
     categoryId: string;
     name: string;
@@ -118,6 +326,8 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           pricePaise: Number(a.pricePaise) || 0,
         }));
 
+      let savedItemId = itemModal.editing?.id;
+
       if (itemModal.editing) {
         await updateItm.mutateAsync({
           id: itemModal.editing.id,
@@ -131,7 +341,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           },
         });
       } else {
-        await createItm.mutateAsync({
+        const res = await createItm.mutateAsync({
           categoryId: itemForm.categoryId,
           name: itemForm.name,
           description: itemForm.description || undefined,
@@ -140,8 +350,20 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           variants: cleanVariants,
           addons: cleanAddons,
         });
+        savedItemId = res?.id;
       }
+
+      if (savedItemId && itemImageFile) {
+        try {
+          await uploadItemImage(restaurantId, savedItemId, itemImageFile, outletId);
+          queryClient.invalidateQueries({ queryKey: ["items", restaurantId] });
+        } catch (imgErr) {
+          console.error("Failed to upload image:", imgErr);
+        }
+      }
+
       setItemModal({ open: false, editing: null });
+      setItemImageFile(null);
       notifications.show({ title: "Saved", message: "Item saved", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -165,15 +387,13 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
     }
   };
 
-  const itemsForCat = activeCatId ? items.filter((i: any) => i.categoryId === activeCatId) : items;
-
   if (!restaurant) return null;
 
   const content = (
     <>
-      <Group justify="space-between" align="center" mb="sm" wrap="wrap" gap="xs">
+      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="xs">
         <Group gap="xs" align="center">
-          {!embedded && <Title order={2}>Menu</Title>}
+          {!embedded && <Title order={2}>Menu Catalog</Title>}
           {activeOutlet && (
             <Badge variant="light" color="dinePrimary" size="md">
               {activeOutlet.name}
@@ -204,6 +424,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                 variants: [],
                 addons: [],
               });
+              setItemImageFile(null);
               setItemModal({ open: true, editing: null });
             }}
             disabled={!outletId || !categories.length}
@@ -231,99 +452,210 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           </Button>
         </Paper>
       ) : (
-        <Tabs value={activeCatId} onChange={setActiveCatId}>
-          <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x" mb="xs">
-            <Tabs.List style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
-              {categories.map((cat) => (
-                <Tabs.Tab key={cat.id} value={cat.id} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
-                  <Group gap={6} wrap="nowrap">
-                    {cat.name}
-                    {!cat.active && <Badge size="xs" color="gray">Hidden</Badge>}
+        <Tabs
+          value={activeCatId}
+          onChange={setActiveCatId}
+          orientation="vertical"
+          variant="pills"
+          color="dinePrimary"
+          styles={{
+            root: {
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "20px",
+              width: "100%",
+            },
+            list: {
+              width: "230px",
+              minWidth: "210px",
+              flexShrink: 0,
+              gap: "4px",
+              paddingRight: "16px",
+              borderRight: "1px solid var(--mantine-color-gray-2)",
+            },
+            tab: {
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: "8px",
+              fontSize: "14px",
+            },
+            panel: {
+              flex: 1,
+              minWidth: 0,
+            },
+          }}
+        >
+          {/* Vertical Categories Sidebar */}
+          <Tabs.List>
+            <Group justify="space-between" align="center" mb="xs" px="xs">
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.5px" }}>
+                Categories ({categories.length})
+              </Text>
+              <ActionIcon
+                size="xs"
+                variant="light"
+                color="dinePrimary"
+                onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+                title="Add Category"
+              >
+                <IconPlus size={12} />
+              </ActionIcon>
+            </Group>
+
+            {categories.map((cat) => {
+              const catCount = items.filter((i: any) => i.categoryId === cat.id).length;
+              return (
+                <Tabs.Tab key={cat.id} value={cat.id}>
+                  <Group justify="space-between" w="100%" wrap="nowrap">
+                    <Text size="sm" fw={activeCatId === cat.id ? 600 : 500} truncate>
+                      {cat.name}
+                    </Text>
+                    <Group gap={4} wrap="nowrap">
+                      {!cat.active && <Badge size="xs" color="gray" variant="subtle">Hidden</Badge>}
+                      <Badge
+                        size="xs"
+                        variant={activeCatId === cat.id ? "filled" : "light"}
+                        color={activeCatId === cat.id ? "dinePrimary" : "gray"}
+                      >
+                        {catCount}
+                      </Badge>
+                    </Group>
                   </Group>
                 </Tabs.Tab>
-              ))}
-            </Tabs.List>
-          </ScrollArea>
+              );
+            })}
 
-        {categories.map((cat) => (
-          <Tabs.Panel key={cat.id} value={cat.id}>
-            <Paper p="xs" mb="xs" radius="sm">
-              <Group justify="space-between">
-                <Text size="sm" fw={600}>{cat.name}</Text>
-                <Group gap="xs">
-                  <Switch size="xs" checked={cat.active} onChange={() => handleToggleActive(cat)}
-                    label={cat.active ? "Visible" : "Hidden"} />
-                  <ActionIcon size="sm" variant="light" onClick={() => { setCatForm({ name: cat.name, description: cat.description ?? "" }); setCatModal({ open: true, editing: cat }); }}>
-                    <IconEdit size={14} />
-                  </ActionIcon>
-                  <ActionIcon size="sm" variant="light" color="red" onClick={() => handleDeleteCat(cat)}>
-                    <IconTrash size={14} />
-                  </ActionIcon>
-                </Group>
-              </Group>
-            </Paper>
+            <Button
+              variant="subtle"
+              color="dinePrimary"
+              size="xs"
+              fullWidth
+              mt="xs"
+              leftSection={<IconPlus size={13} />}
+              onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+              disabled={!outletId}
+            >
+              New Category
+            </Button>
+          </Tabs.List>
 
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs">
-              {itemsForCat.map((item) => (
-                <Paper key={item.id} p="md" radius="md">
-                  <Group justify="space-between" align="flex-start">
+          {/* Tab Panels with Redesigned Cards */}
+          {categories.map((cat) => {
+            const catItems = items.filter((i: any) => i.categoryId === cat.id);
+            return (
+              <Tabs.Panel key={cat.id} value={cat.id}>
+                {/* Category Header Bar */}
+                <Paper p="sm" mb="md" radius="md">
+                  <Group justify="space-between" align="center" wrap="wrap" gap="xs">
                     <div>
                       <Group gap="xs" align="center">
-                        <Anchor
-                          component={Link}
-                          href={`/settings/menu/${item.id}`}
-                          fw={600}
-                          c="inherit"
-                          underline="hover"
-                        >
-                          {item.name}
-                        </Anchor>
-                        {!item.available && <Badge size="xs" color="red">Unavailable</Badge>}
+                        <Text size="md" fw={700}>{cat.name}</Text>
+                        <Badge size="xs" variant="light" color={cat.active ? "teal" : "gray"}>
+                          {cat.active ? "Visible in POS" : "Hidden"}
+                        </Badge>
+                        <Badge size="xs" variant="outline" color="gray">
+                          {catItems.length} {catItems.length === 1 ? "dish" : "dishes"}
+                        </Badge>
                       </Group>
-                      {item.description && <Text size="xs" c="dimmed">{item.description}</Text>}
-                      <Group gap={6} mt={6} wrap="wrap">
-                        {Array.isArray(item.variants) && item.variants.length > 0 && (
-                          <Badge size="xs" variant="light" color="blue">
-                            {item.variants.length} {item.variants.length === 1 ? "variant" : "variants"}
-                          </Badge>
-                        )}
-                        {Array.isArray(item.addons) && item.addons.length > 0 && (
-                          <Badge size="xs" variant="light" color="violet">
-                            {item.addons.length} {item.addons.length === 1 ? "addon" : "addons"}
-                          </Badge>
-                        )}
-                      </Group>
+                      {cat.description && (
+                        <Text size="xs" c="dimmed" mt={2}>
+                          {cat.description}
+                        </Text>
+                      )}
                     </div>
-                    <Group gap="xs" align="center">
-                      <Text fw={700} c="dinePrimary">
-                        {Array.isArray(item.variants) && item.variants.length > 0
-                          ? `From ₹${(Math.min(...item.variants.map((v: any) => v.pricePaise)) / 100).toFixed(0)}`
-                          : `₹${(item.pricePaise / 100).toFixed(0)}`}
-                      </Text>
-                      <Switch size="xs" checked={item.available} onChange={() => handleToggle(item)} />
+
+                    <Group gap="xs">
+                      <Switch
+                        size="xs"
+                        checked={cat.active}
+                        onChange={() => handleToggleActive(cat)}
+                        label={cat.active ? "Visible" : "Hidden"}
+                      />
                       <ActionIcon
-                        component={Link}
-                        href={`/settings/menu/${item.id}`}
                         size="sm"
                         variant="light"
-                        title="Edit item details"
+                        onClick={() => { setCatForm({ name: cat.name, description: cat.description ?? "" }); setCatModal({ open: true, editing: cat }); }}
+                        title="Edit category"
                       >
                         <IconEdit size={14} />
                       </ActionIcon>
-                      <ActionIcon size="sm" variant="light" color="red" onClick={() => handleDeleteItem(item)}>
+                      <ActionIcon
+                        size="sm"
+                        variant="light"
+                        color="red"
+                        onClick={() => handleDeleteCat(cat)}
+                        title="Delete category"
+                      >
                         <IconTrash size={14} />
                       </ActionIcon>
+                      <Button
+                        size="xs"
+                        color="dinePrimary"
+                        leftSection={<IconPlus size={13} />}
+                        onClick={() => {
+                          setItemForm({
+                            categoryId: cat.id,
+                            name: "",
+                            description: "",
+                            pricePaise: 0,
+                            variants: [],
+                            addons: [],
+                          });
+                          setItemImageFile(null);
+                          setItemModal({ open: true, editing: null });
+                        }}
+                      >
+                        Add Dish
+                      </Button>
                     </Group>
                   </Group>
                 </Paper>
-              ))}
-              {!itemsForCat.length && (
-                <Text c="dimmed" size="sm" ta="center" py="xl">No items in this category yet.</Text>
-              )}
-            </SimpleGrid>
-          </Tabs.Panel>
-        ))}
-      </Tabs>
+
+                {/* Grid of Redesigned Dish Cards */}
+                <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
+                  {catItems.map((item) => (
+                    <MenuItemCard
+                      key={item.id}
+                      item={item}
+                      restaurantId={restaurantId}
+                      outletId={outletId}
+                      onToggle={handleToggle}
+                      onDelete={handleDeleteItem}
+                    />
+                  ))}
+                </SimpleGrid>
+
+                {!catItems.length && (
+                  <Paper p="xl" radius="md" ta="center" my="md">
+                    <IconPhoto size={36} color="var(--mantine-color-gray-4)" style={{ margin: "0 auto 8px" }} />
+                    <Text c="dimmed" size="sm">No dishes in {cat.name} yet.</Text>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="dinePrimary"
+                      mt="sm"
+                      leftSection={<IconPlus size={14} />}
+                      onClick={() => {
+                        setItemForm({
+                          categoryId: cat.id,
+                          name: "",
+                          description: "",
+                          pricePaise: 0,
+                          variants: [],
+                          addons: [],
+                        });
+                        setItemImageFile(null);
+                        setItemModal({ open: true, editing: null });
+                      }}
+                    >
+                      Add First Dish
+                    </Button>
+                  </Paper>
+                )}
+              </Tabs.Panel>
+            );
+          })}
+        </Tabs>
       )}
 
       {/* Category Modal */}
@@ -355,6 +687,53 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
             value={itemForm.pricePaise / 100}
             onChange={(v) => setItemForm((f) => ({ ...f, pricePaise: Math.round(Number(v) * 100) }))}
           />
+
+          {/* Dish Image Upload */}
+          <Divider label="Dish Photo (optional)" labelPosition="left" mt="xs" />
+          <Group align="center" gap="sm">
+            {itemImageFile ? (
+              <Box
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 6,
+                  overflow: "hidden",
+                  backgroundColor: "#e9ecef",
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src={URL.createObjectURL(itemImageFile)}
+                  alt="Preview"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </Box>
+            ) : null}
+            <Button
+              size="xs"
+              variant="light"
+              color="dinePrimary"
+              leftSection={<IconPhoto size={14} />}
+              onClick={() => modalFileInputRef.current?.click()}
+            >
+              {itemImageFile ? "Change Photo" : "Select Photo"}
+            </Button>
+            {itemImageFile && (
+              <Button size="xs" variant="subtle" color="red" onClick={() => setItemImageFile(null)}>
+                Clear
+              </Button>
+            )}
+            <input
+              type="file"
+              ref={modalFileInputRef}
+              accept="image/png,image/jpeg,image/webp,image/avif"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setItemImageFile(file);
+              }}
+            />
+          </Group>
 
           <Divider label="Variants (Portions / Sizes)" labelPosition="left" mt="xs" />
           <Text size="xs" c="dimmed">

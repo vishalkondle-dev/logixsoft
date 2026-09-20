@@ -346,7 +346,22 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Restaurant tab */}
         <Tabs.Panel value="restaurant">
           <Grid gap="md">
-            {/* Outlets on the left */}
+            {/* Restaurant Details on the left */}
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Paper p="md" radius="md">
+                <form onSubmit={saveRestaurant}>
+                  <Stack gap="sm">
+                    <Text fw={600}>Restaurant Details</Text>
+                    <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
+                    <TextInput label="Address" required value={restForm.address} onChange={(e) => setRestForm((f) => ({ ...f, address: e.target.value }))} />
+                    <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={restForm.phone} onChange={(e) => setRestForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
+                    <Button type="submit" color="dinePrimary" loading={restSaving} leftSection={<IconCheck size={16} />} mt="xs">Save Changes</Button>
+                  </Stack>
+                </form>
+              </Paper>
+            </Grid.Col>
+
+            {/* Outlets on the right */}
             <Grid.Col span={{ base: 12, md: 6 }}>
               <Stack gap="md">
                 <Group justify="space-between" align="center">
@@ -361,21 +376,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                 {outlets.map((o) => <OutletCard key={o.id} outlet={o} />)}
                 {!outlets.length && <Text size="sm" c="dimmed">No outlets yet.</Text>}
               </Stack>
-            </Grid.Col>
-
-            {/* Restaurant Details on the right */}
-            <Grid.Col span={{ base: 12, md: 6 }}>
-              <Paper p="md" radius="md">
-                <form onSubmit={saveRestaurant}>
-                  <Stack gap="sm">
-                    <Text fw={600}>Restaurant Details</Text>
-                    <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
-                    <TextInput label="Address" required value={restForm.address} onChange={(e) => setRestForm((f) => ({ ...f, address: e.target.value }))} />
-                    <TextInput label="Phone" type="tel" inputMode="numeric" pattern="[0-9]*" maxLength={15} value={restForm.phone} onChange={(e) => setRestForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "") }))} />
-                    <Button type="submit" color="dinePrimary" loading={restSaving} leftSection={<IconCheck size={16} />} mt="xs">Save Changes</Button>
-                  </Stack>
-                </form>
-              </Paper>
             </Grid.Col>
           </Grid>
         </Tabs.Panel>

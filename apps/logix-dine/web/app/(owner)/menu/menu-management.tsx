@@ -929,7 +929,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   );
 
   if (embedded) {
-    return <Box pt="xs">{content}</Box>;
+    return <Box>{content}</Box>;
   }
 
   return (

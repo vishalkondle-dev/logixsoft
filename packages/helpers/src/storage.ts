@@ -169,7 +169,7 @@ export class StorageClient {
     this.publicUrlBase = (
       config.publicUrl || `${this.endpoint}/${this.bucket}`
     ).replace(/\/+$/, '');
-    this.customFetch = config.fetch || (typeof fetch !== 'undefined' ? fetch : (null as any));
+    this.customFetch = config.fetch || (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : (null as any));
   }
 
   /**

@@ -58,28 +58,17 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
             </Link>
 
             <Group gap="xs" wrap="nowrap" align="center">
-              {!!effectiveRole && outlets.length > 1 && (
+              {outlets.length > 0 && (
                 <Select
                   size="xs"
-                  value={activeOutlet?.id ?? ""}
+                  value={activeOutlet?.id ?? outlets[0]?.id ?? ""}
                   onChange={(v) => v && setActiveOutlet(v)}
                   data={outlets.map((o) => ({ value: o.id, label: o.name }))}
                   leftSection={<IconBuildingStore size={14} />}
-                  w={{ base: 125, xs: 150, sm: 170 }}
+                  w={{ base: 130, xs: 155, sm: 180 }}
                   aria-label="Switch outlet"
                   comboboxProps={{ withinPortal: true }}
                 />
-              )}
-              {!!effectiveRole && restaurant && outlets.length <= 1 && (
-                <Badge
-                  color="dinePrimary"
-                  variant="light"
-                  size="sm"
-                  leftSection={<IconBuildingStore size={12} />}
-                  style={{ textTransform: "none" }}
-                >
-                  {activeOutlet?.name || restaurant.name}
-                </Badge>
               )}
 
               {authLoading ? (

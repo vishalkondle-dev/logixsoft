@@ -6,7 +6,7 @@ import {
   Container, Title, Text, Group, Stack, SimpleGrid, Paper, Badge,
   Button, ActionIcon, TextInput, NumberInput, Modal, Menu,
   ThemeIcon, Loader, Center, Box, Divider, SegmentedControl,
-  Radio, Alert,
+  Radio, Alert, Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -429,28 +429,35 @@ export default function TablesPage() {
         </div>
 
         <Group gap="xs">
-          <Button
-            size="sm"
-            variant="light"
-            leftSection={<IconRefresh size={15} />}
-            onClick={() => {
-              refetchTables();
-              refetchOrders();
-            }}
-          >
-            Refresh
-          </Button>
+          <Tooltip label="Refresh Tables" withArrow position="bottom">
+            <ActionIcon
+              size="lg"
+              radius="md"
+              variant="light"
+              color="gray"
+              aria-label="Refresh Tables"
+              onClick={() => {
+                refetchTables();
+                refetchOrders();
+              }}
+            >
+              <IconRefresh size={18} />
+            </ActionIcon>
+          </Tooltip>
 
           {canManage && (
-            <Button
-              size="sm"
-              color="dinePrimary"
-              leftSection={<IconPlus size={16} />}
-              onClick={handleOpenCreate}
-              disabled={!outletId}
-            >
-              Add Table
-            </Button>
+            <Tooltip label="Add Table" withArrow position="bottom">
+              <ActionIcon
+                size="lg"
+                radius="md"
+                color="dinePrimary"
+                aria-label="Add Table"
+                onClick={handleOpenCreate}
+                disabled={!outletId}
+              >
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Tooltip>
           )}
         </Group>
       </Group>

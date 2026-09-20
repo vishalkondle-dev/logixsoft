@@ -1023,21 +1023,24 @@ export default function POSPage() {
                             </Text>
                           </Group>
 
-                          {/* Row 2: Badges & Tags (wrap to next line if screen is narrow, flexShrink: 0 prevents any truncation/ellipsis) */}
-                          <Group gap={6} align="center" wrap="wrap" mt={2}>
-                            {item.round && item.round > 1 && (
-                              <Badge size="xs" color="grape" variant="light" style={{ flexShrink: 0 }}>
-                                Round {item.round}
+                          {/* Row 2: Left: Round & Payment Tags, Right: Fulfillment Status Tag */}
+                          <Group justify="space-between" align="center" mt={2} wrap="nowrap">
+                            <Group gap={6} align="center" wrap="wrap">
+                              {item.round && item.round > 1 && (
+                                <Badge size="xs" color="grape" variant="light" style={{ flexShrink: 0 }}>
+                                  Round {item.round}
+                                </Badge>
+                              )}
+                              <Badge
+                                size="xs"
+                                color={isPaid ? "teal" : "orange"}
+                                variant="light"
+                                style={{ flexShrink: 0 }}
+                              >
+                                {isPaid ? "Paid" : "Unpaid"}
                               </Badge>
-                            )}
-                            <Badge
-                              size="xs"
-                              color={isPaid ? "teal" : "orange"}
-                              variant="light"
-                              style={{ flexShrink: 0 }}
-                            >
-                              {isPaid ? "Paid" : "Unpaid"}
-                            </Badge>
+                            </Group>
+
                             <Badge
                               size="xs"
                               color={statusColor}

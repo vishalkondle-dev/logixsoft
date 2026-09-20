@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import {
   Container, Title, Tabs, TextInput, Button, Stack, Group, Text,
   Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea,
@@ -10,7 +11,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconBuildingStore, IconCheck, IconTrash,
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
-  IconBook, IconChartBar,
+  IconBook, IconChartBar, IconArrowLeft,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -72,12 +73,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       setActiveTab(nextTab);
     }
   }, [pathname]);
-
-  useEffect(() => {
-    if (pathname === "/settings" || pathname === "/settings/") {
-      router.replace("/settings/restaurant");
-    }
-  }, [pathname, router]);
 
   const handleTabChange = (val: string | null) => {
     if (!val) return;
@@ -324,8 +319,21 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   return (
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
-      <Group justify="space-between" mb="lg">
+      <Group justify="space-between" align="center" mb="lg">
         <div>
+          <Group gap="xs" align="center" mb={4}>
+            <Button
+              component={Link}
+              href="/settings"
+              variant="subtle"
+              color="gray"
+              size="xs"
+              px={6}
+              leftSection={<IconArrowLeft size={14} />}
+            >
+              All Settings
+            </Button>
+          </Group>
           <Title order={2}>Restaurant Settings</Title>
           <Text size="sm" c="dimmed">{restaurant.name} · Multi-Outlet & Dining Configuration</Text>
         </div>

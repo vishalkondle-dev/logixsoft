@@ -1,5 +1,6 @@
-import { SettingsView } from "./settings-view";
+import { SettingsOverview } from "./settings-overview";
 
 export default function SettingsPage() {
-  return <SettingsView currentTab="restaurant" />;
+  return <SettingsOverview />;
 }
+

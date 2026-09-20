@@ -199,3 +199,21 @@ textarea:focus,
   min-width: 100%;
 }
 
+/* Settings Hub Cards Hover & Animation */
+.settings-hub-card {
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 160ms ease, border-color 160ms ease !important;
+}
+
+.settings-hub-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(175, 115, 215, 0.4) !important;
+  box-shadow: 0 8px 24px rgba(175, 115, 215, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+}
+
+.settings-hub-card:hover .settings-card-chevron {
+  color: #af73d7 !important;
+  transform: translateX(2px);
+  transition: transform 140ms ease, color 140ms ease;
+}
+
+

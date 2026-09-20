@@ -430,8 +430,11 @@ export function InvoiceTaxManagement() {
                     </div>
                   </Group>
                   <Switch
-                    checked={taxConfig.enableGst}
-                    onChange={(e) => setTaxConfig((p) => ({ ...p, enableGst: e.currentTarget.checked }))}
+                    checked={!!taxConfig.enableGst}
+                    onChange={(e) => {
+                      const isChecked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setTaxConfig((p) => ({ ...p, enableGst: isChecked }));
+                    }}
                     label={taxConfig.enableGst ? "Tax Enabled" : "Tax Disabled"}
                     size="sm"
                     color="teal"
@@ -713,14 +716,20 @@ export function InvoiceTaxManagement() {
                   <Switch
                     label="Print Dynamic UPI QR on Bill"
                     size="xs"
-                    checked={invoiceConfig.showUpiQrOnBill}
-                    onChange={(e) => setInvoiceConfig((p) => ({ ...p, showUpiQrOnBill: e.currentTarget.checked }))}
+                    checked={!!invoiceConfig.showUpiQrOnBill}
+                    onChange={(e) => {
+                      const isChecked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setInvoiceConfig((p) => ({ ...p, showUpiQrOnBill: isChecked }));
+                    }}
                   />
                   <Switch
                     label="Print Table No & Pax"
                     size="xs"
-                    checked={invoiceConfig.showTableNo}
-                    onChange={(e) => setInvoiceConfig((p) => ({ ...p, showTableNo: e.currentTarget.checked }))}
+                    checked={!!invoiceConfig.showTableNo}
+                    onChange={(e) => {
+                      const isChecked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setInvoiceConfig((p) => ({ ...p, showTableNo: isChecked }));
+                    }}
                   />
                 </Group>
               </Stack>
@@ -1003,16 +1012,22 @@ export function InvoiceTaxManagement() {
           <Switch
             label="Auto-apply to every new bill"
             size="xs"
-            checked={newRule.autoApply}
-            onChange={(e) => setNewRule((p) => ({ ...p, autoApply: e.currentTarget.checked }))}
+            checked={!!newRule.autoApply}
+            onChange={(e) => {
+              const isChecked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+              setNewRule((p) => ({ ...p, autoApply: isChecked }));
+            }}
           />
 
           {newRule.sign === "ADD" && (
             <Switch
               label="Subject to GST (Taxes calculated over this charge)"
               size="xs"
-              checked={newRule.isTaxable}
-              onChange={(e) => setNewRule((p) => ({ ...p, isTaxable: e.currentTarget.checked }))}
+              checked={!!newRule.isTaxable}
+              onChange={(e) => {
+                const isChecked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                setNewRule((p) => ({ ...p, isTaxable: isChecked }));
+              }}
             />
           )}
 

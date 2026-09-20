@@ -11,7 +11,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconBuildingStore, IconCheck, IconTrash,
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
-  IconBook, IconChartBar, IconArrowLeft, IconClock,
+  IconBook, IconChartBar, IconArrowLeft, IconClock, IconReceiptTax,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -27,6 +27,7 @@ import { PrinterButton } from "@/components/print/printer-button";
 import { MenuManagement } from "../menu/menu-management";
 import { ReportsManagement } from "../reports/reports-management";
 import { StoreHoursManagement } from "./store-hours-management";
+import { InvoiceTaxManagement } from "./invoice-tax-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -39,6 +40,7 @@ export const VALID_SETTINGS_TABS = [
   "menu",
   "tables",
   "hours",
+  "tax",
   "reports",
   "staff",
   "printing",
@@ -348,6 +350,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             <Tabs.Tab value="menu" leftSection={<IconBook size={16} />}>Menu Management</Tabs.Tab>
             <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />}>Table Management</Tabs.Tab>
             <Tabs.Tab value="hours" leftSection={<IconClock size={16} />}>Store Hours</Tabs.Tab>
+            <Tabs.Tab value="tax" leftSection={<IconReceiptTax size={16} />}>Invoice & Tax</Tabs.Tab>
             <Tabs.Tab value="reports" leftSection={<IconChartBar size={16} />}>Analytics & Reports</Tabs.Tab>
             {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />}>Staff & Team</Tabs.Tab>}
             <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />}>Printing</Tabs.Tab>
@@ -451,6 +454,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Store Hours tab */}
         <Tabs.Panel value="hours">
           <StoreHoursManagement />
+        </Tabs.Panel>
+
+        {/* Invoice & Tax tab */}
+        <Tabs.Panel value="tax">
+          <InvoiceTaxManagement />
         </Tabs.Panel>
 
         {/* Reports tab */}

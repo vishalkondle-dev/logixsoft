@@ -150,10 +150,11 @@ export function SettingsOverview() {
         {
           id: "invoice-settings",
           title: "Invoice & Tax",
-          description: "GST details, invoice number sequencing, and header notes",
+          description: "GST slabs, inclusive/exclusive pricing, invoice series & charges",
           icon: IconFileInvoice,
           color: "green",
-          isAvailable: false,
+          href: "/settings/tax",
+          isAvailable: true,
         },
         {
           id: "payment-types",

@@ -6,6 +6,7 @@ export const VALID_SETTINGS_TABS = [
   "menu",
   "tables",
   "hours",
+  "tax",
   "reports",
   "staff",
   "printing",

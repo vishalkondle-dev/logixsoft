@@ -512,12 +512,12 @@ export default function TablesPage() {
           </Group>
         </Paper>
 
-        {/* Total Seating Capacity */}
+        {/* Total Seats */}
         <Paper withBorder p="sm" radius="md">
           <Group justify="space-between" align="center">
             <div>
-              <Text size="xs" c="dimmed" fw={600} tt="uppercase">Total Capacity</Text>
-              <Text size="xl" fw={800}>{stats.totalSeats} Seats</Text>
+              <Text size="xs" c="dimmed" fw={600} tt="uppercase">Total Seats</Text>
+              <Text size="xl" fw={800}>{stats.totalSeats}</Text>
             </div>
             <ThemeIcon size={38} radius="md" variant="light" color="dinePrimary">
               <IconArmchair size={20} />

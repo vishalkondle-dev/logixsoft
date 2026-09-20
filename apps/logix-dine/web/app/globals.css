@@ -18,11 +18,10 @@
   --mantine-color-body: #F3F5F8;
 }
 
-/* Remove all shadows everywhere */
-*,
-*::before,
-*::after {
-  box-shadow: none !important;
+/* Floating bottom navigation bar with border and shadow */
+.floating-bottom-nav {
+  border: 1px solid rgba(175, 115, 215, 0.3) !important;
+  box-shadow: 0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
 /* Whole page background */
@@ -79,13 +78,19 @@ textarea,
   box-shadow: none !important;
 }
 
-/* Modals, drawers, and dropdowns */
+/* Modals and drawers */
 .mantine-Modal-content,
 .mantine-Modal-header,
 .mantine-Drawer-content,
-.mantine-Drawer-header,
-.mantine-Menu-dropdown {
+.mantine-Drawer-header {
   background-color: #ffffff;
   border: none !important;
   box-shadow: none !important;
+}
+
+/* Dropdown menus */
+.mantine-Menu-dropdown {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1) !important;
 }

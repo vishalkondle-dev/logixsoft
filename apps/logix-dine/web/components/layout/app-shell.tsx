@@ -129,11 +129,14 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       <Box
         component="nav"
         aria-label="Bottom Navigation"
+        className="floating-bottom-nav"
         style={{
           position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
           zIndex: 100, maxWidth: "calc(100vw - 32px)",
-          background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(20px)",
+          background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(175, 115, 215, 0.3)",
+          boxShadow: "0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)",
           borderRadius: "9999px", padding: "6px 8px",
           overflowX: "auto",
           scrollbarWidth: "none",

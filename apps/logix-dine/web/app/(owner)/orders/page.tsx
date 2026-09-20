@@ -450,7 +450,7 @@ export default function OrdersPage() {
               <Divider my="xs" label={`Order Items (${items.length})`} labelPosition="center" />
 
               <Stack gap="xs">
-                {items.map((item: any) => {
+                {([...(items || [])].sort((a: any, b: any) => (a.round || 1) - (b.round || 1) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())).map((item: any) => {
                   const itemStatus = item.status || "ORDERED";
                   const isCancelled = itemStatus === "CANCELLED";
                   const isServed = itemStatus === "SERVED";

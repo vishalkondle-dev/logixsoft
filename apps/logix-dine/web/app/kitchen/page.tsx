@@ -195,7 +195,7 @@ export default function KitchenPage() {
 
                 {/* Items List with Next and Close buttons */}
                 <Stack gap={6} mb="md">
-                  {items.map((item: any) => {
+                  {([...(items || [])].sort((a: any, b: any) => (a.round || 1) - (b.round || 1) || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())).map((item: any) => {
                     const itemStatus = item.status || "ORDERED";
                     const isCancelled = itemStatus === "CANCELLED";
                     const isServed = itemStatus === "SERVED";
@@ -226,102 +226,35 @@ export default function KitchenPage() {
                           border: isPrepared ? "1px solid rgba(32, 201, 151, 0.3)" : undefined,
                         }}
                       >
-                        {/* Desktop layout: item on left, status + actions on right */}
-                        <Group justify="space-between" align="center" wrap="nowrap" visibleFrom="sm">
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <Group gap={6} align="center" wrap="nowrap">
-                              <Text
-                                size="sm"
-                                fw={600}
-                                c={isCancelled ? "gray.6" : "white"}
-                                style={{ textDecoration: isCancelled ? "line-through" : "none" }}
-                                lineClamp={1}
-                              >
-                                {item.nameSnapshot}
-                              </Text>
-                              <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
-                              {item.round && item.round > 1 && (
-                                <Badge size="xs" color="indigo" variant="light">R{item.round}</Badge>
-                              )}
-                            </Group>
-                            {item.note && (
-                              <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>
-                            )}
-                          </div>
-
-                          {/* Status Badge + Next & Close Buttons */}
-                          <Group gap={4} wrap="nowrap" align="center">
-                            <Badge
-                              size="xs"
-                              variant="light"
-                              color={itemVisual.color}
-                              leftSection={<ItemIcon size={10} />}
-                            >
-                              {itemVisual.label}
-                            </Badge>
-
-                            {/* Next button */}
-                            {canNext && nextStatus && (
-                              <Tooltip label={`Next: ${getStatusVisual(nextStatus).label}`} withArrow position="top">
-                                <ActionIcon
-                                  size="sm"
-                                  color="dinePrimary"
-                                  variant="filled"
-                                  loading={isNextLoading}
-                                  disabled={isNextDisabled}
-                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "next" })}
-                                  aria-label={`Advance to ${nextStatus}`}
-                                >
-                                  <IconArrowRight size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-
-                            {/* Close (Cancel) button */}
-                            {canClose && (
-                              <Tooltip label="Close (Cancel item)" withArrow position="top">
-                                <ActionIcon
-                                  size="sm"
-                                  color="red"
-                                  variant="subtle"
-                                  loading={isCloseLoading}
-                                  disabled={isCloseDisabled}
-                                  onClick={() => handleUpdateItemStatus(order.id, item, { action: "close" })}
-                                  aria-label="Cancel item"
-                                >
-                                  <IconX size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-                          </Group>
-                        </Group>
-
-                        {/* Small screens layout: 2-row clean card with icons only */}
-                        <Stack gap={6} hiddenFrom="sm">
-                          {/* Row 1: Item name & quantity */}
-                          <Group justify="space-between" align="center" wrap="nowrap">
+                        <Stack gap={5}>
+                          {/* Row 1: Dish name and quantity / round badge */}
+                          <Group justify="space-between" align="flex-start" wrap="nowrap">
                             <Text
                               size="sm"
                               fw={600}
                               c={isCancelled ? "gray.6" : "white"}
-                              style={{ textDecoration: isCancelled ? "line-through" : "none" }}
-                              lineClamp={1}
+                              style={{
+                                textDecoration: isCancelled ? "line-through" : "none",
+                                wordBreak: "break-word",
+                                lineHeight: 1.3,
+                              }}
                             >
                               {item.nameSnapshot}
                             </Text>
-                            <Group gap={4} align="center" wrap="nowrap">
+                            <Group gap={4} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
                               {item.round && item.round > 1 && (
                                 <Badge size="xs" color="indigo" variant="light">R{item.round}</Badge>
                               )}
                               <Badge size="xs" color="dark" variant="filled">×{item.qty}</Badge>
                             </Group>
                           </Group>
+
                           {item.note && (
                             <Text size="xs" c="orange.3" fs="italic">Note: {item.note}</Text>
                           )}
 
-                          {/* Row 2: Status badge on left, Action icons on right */}
-                          <Group justify="space-between" align="center" mt={2}>
+                          {/* Row 2: Status badge on left, Action buttons on right */}
+                          <Group justify="space-between" align="center" mt={2} wrap="nowrap">
                             <Badge
                               size="xs"
                               variant="light"
@@ -331,7 +264,8 @@ export default function KitchenPage() {
                               {itemVisual.label}
                             </Badge>
 
-                            <Group gap={6} align="center">
+                            <Group gap={6} align="center" wrap="nowrap">
+                              {/* Next button */}
                               {canNext && nextStatus && (
                                 <Tooltip label={`Next: ${getStatusVisual(nextStatus).label}`} withArrow position="top">
                                   <ActionIcon
@@ -348,6 +282,7 @@ export default function KitchenPage() {
                                 </Tooltip>
                               )}
 
+                              {/* Close (Cancel) button */}
                               {canClose && (
                                 <Tooltip label="Close (Cancel item)" withArrow position="top">
                                   <ActionIcon

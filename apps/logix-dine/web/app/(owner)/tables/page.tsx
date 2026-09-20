@@ -163,7 +163,10 @@ export default function TablesPage() {
 
     const allItems = tableOrders.flatMap((o: any) => o.items ?? []);
     const totalPaise = tableOrders.reduce((sum: number, o: any) => sum + (o.order?.subtotalPaise || 0), 0);
-    const paidPaise = tableOrders.reduce((sum: number, o: any) => sum + (o.order?.paidPaise || 0), 0);
+    const paidPaise = tableOrders.reduce((sum: number, o: any) => {
+      const p = o.order?.paidPaise ?? 0;
+      return sum + (o.order?.status === "PAID" ? Math.max(p, o.order?.subtotalPaise || 0) : p);
+    }, 0);
     const duePaise = Math.max(0, totalPaise - paidPaise);
     const maxItemRound = allItems.reduce((m: number, it: any) => Math.max(m, it.round || 1), 1);
     const roundsCount = Math.max(tableOrders.length, maxItemRound);
@@ -798,6 +801,7 @@ export default function TablesPage() {
                       <Group gap={6} grow>
                         <Button
                           size="xs"
+                          px={6}
                           variant="light"
                           color="gray"
                           leftSection={<IconEye size={13} />}
@@ -808,12 +812,13 @@ export default function TablesPage() {
 
                         <Button
                           size="xs"
+                          px={6}
                           variant="light"
                           color="dinePrimary"
-                          leftSection={<IconShoppingCart size={13} />}
+                          leftSection={<IconPlus size={12} />}
                           onClick={() => router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
                         >
-                          + Add Round
+                          Add Round
                         </Button>
                       </Group>
                     </Stack>
@@ -1037,30 +1042,38 @@ export default function TablesPage() {
                 </Badge>
               </Group>
 
-              <Group grow mt="md">
+              <Group gap="xs" mt="md" wrap="wrap" justify="space-between">
                 <Button
+                  size="sm"
+                  px={8}
                   variant="light"
                   color="gray"
                   leftSection={<IconPrinter size={15} />}
                   loading={isPrintingBill}
                   onClick={() => handlePrintBill(viewSession)}
+                  style={{ flex: "1 1 110px" }}
                 >
                   Print Bill
                 </Button>
 
                 <Button
+                  size="sm"
+                  px={8}
                   variant="light"
                   color="dinePrimary"
-                  leftSection={<IconShoppingCart size={15} />}
+                  leftSection={<IconPlus size={15} />}
                   onClick={() => {
                     router.push(`/pos?table=${encodeURIComponent(viewSession.table.name)}&outletId=${outletId}`);
                     setViewSession(null);
                   }}
+                  style={{ flex: "1 1 110px" }}
                 >
-                  + Add Round
+                  Add Round
                 </Button>
 
                 <Button
+                  size="sm"
+                  px={8}
                   color="teal"
                   leftSection={<IconCheck size={15} />}
                   onClick={() => {
@@ -1068,6 +1081,7 @@ export default function TablesPage() {
                     setViewSession(null);
                     handleOpenFreeModal(sess);
                   }}
+                  style={{ flex: "1 1 110px" }}
                 >
                   Free Table
                 </Button>

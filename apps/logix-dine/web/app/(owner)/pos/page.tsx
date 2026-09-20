@@ -656,12 +656,22 @@ export default function POSPage() {
   };
 
   if (loading) return <Center py={100}><Loader size="lg" color="dinePrimary" /></Center>;
-  if (!categories.length && !loading) return null;
+  if (!categories.length && !loading) {
+    return (
+      <Center py={100}>
+        <Stack align="center" gap="sm">
+          <Text size="lg" fw={600} c="dimmed">No Menu Items Found</Text>
+          <Text size="sm" c="dimmed">Add categories and dishes in Menu Management to start taking orders.</Text>
+        </Stack>
+      </Center>
+    );
+  }
 
+  const hasSearch = Boolean(searchQuery.trim());
   const filteredItems = items
-    .filter((i: any) => activeCatId ? i.categoryId === activeCatId : true)
     .filter((i: any) => i.available)
-    .filter((i: any) => !searchQuery || i.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    .filter((i: any) => hasSearch ? true : (activeCatId ? i.categoryId === activeCatId : true))
+    .filter((i: any) => !hasSearch || i.name.toLowerCase().includes(searchQuery.trim().toLowerCase()));
 
   const total = cartItems.reduce((s, i) => s + i.pricePaise * i.qty, 0);
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
@@ -727,8 +737,8 @@ export default function POSPage() {
             />
 
             {/* Category Tabs */}
-            <ScrollArea type="auto">
-              <Group gap="xs" wrap="nowrap" pb="xs">
+            <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
+              <Group gap="xs" wrap="nowrap" pb="xs" style={{ minWidth: "max-content" }}>
                 {categories.map((cat: any) => (
                   <Button
                     key={cat.id}
@@ -736,6 +746,7 @@ export default function POSPage() {
                     variant={activeCatId === cat.id ? "filled" : "light"}
                     color="dinePrimary"
                     onClick={() => setActiveCatId(cat.id)}
+                    style={{ flexShrink: 0, whiteSpace: "nowrap" }}
                   >
                     {cat.name}
                   </Button>

@@ -7,7 +7,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconCheck, IconClock, IconLogout, IconTableAlias, IconRefresh,
+  IconCheck, IconClock, IconLogout, IconTableAlias,
   IconArrowRight, IconX, IconBan,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
@@ -148,9 +148,6 @@ export default function KitchenPage() {
               w={140}
             />
           )}
-          <ActionIcon size="lg" variant="light" color="gray" onClick={() => refetch()} title="Refresh now">
-            <IconRefresh size={18} />
-          </ActionIcon>
           {role !== "KITCHEN" && (
             <Button component="a" href={activeOutlet ? `/pos?outletId=${activeOutlet.id}` : "/pos"} size="sm" variant="light" color="gray">
               Back to POS

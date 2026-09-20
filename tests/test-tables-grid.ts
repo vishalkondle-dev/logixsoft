@@ -33,7 +33,7 @@ async function fetchAuthCookie() {
   return match[1];
 }
 
-async function verifyTablesGrid() {
+async function verifyScreens() {
   const token = await fetchAuthCookie();
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
@@ -62,14 +62,29 @@ async function verifyTablesGrid() {
   ]);
 
   const page = await context.newPage();
-  await page.goto(`${WEB_BASE}/tables`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2500);
 
-  const screenshotPath = path.join(SCREENSHOT_DIR, '49_tables_max_4_per_row.png');
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  console.log('Saved screenshot:', screenshotPath);
+  // 1. Tables page
+  await page.goto(`${WEB_BASE}/tables`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(3000);
+  const tablesScreenshot = path.join(SCREENSHOT_DIR, '53_tables_page_no_refresh.png');
+  await page.screenshot({ path: tablesScreenshot, fullPage: true });
+  console.log('Saved tables screenshot:', tablesScreenshot);
+
+  // 2. Orders page
+  await page.goto(`${WEB_BASE}/orders`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(3000);
+  const ordersScreenshot = path.join(SCREENSHOT_DIR, '54_orders_page_no_refresh.png');
+  await page.screenshot({ path: ordersScreenshot, fullPage: true });
+  console.log('Saved orders screenshot:', ordersScreenshot);
+
+  // 3. Kitchen page
+  await page.goto(`${WEB_BASE}/kitchen`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(3000);
+  const kitchenScreenshot = path.join(SCREENSHOT_DIR, '55_kitchen_page_no_refresh.png');
+  await page.screenshot({ path: kitchenScreenshot, fullPage: true });
+  console.log('Saved kitchen screenshot:', kitchenScreenshot);
 
   await browser.close();
 }
 
-verifyTablesGrid().catch(console.error);
+verifyScreens().catch(console.error);

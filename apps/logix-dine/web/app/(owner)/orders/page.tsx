@@ -8,7 +8,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
-  IconReceipt, IconRefresh, IconPrinter, IconArrowRight, IconX,
+  IconReceipt, IconPrinter, IconArrowRight, IconX,
   IconBan, IconCheck, IconCash, IconDoorExit, IconAlertCircle,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -263,9 +263,6 @@ export default function OrdersPage() {
             ]}
             w={170}
           />
-          <Button size="sm" variant="light" leftSection={<IconRefresh size={14} />} onClick={() => refetch()}>
-            Refresh
-          </Button>
         </Group>
       </Group>
 

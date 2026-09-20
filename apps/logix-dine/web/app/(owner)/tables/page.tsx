@@ -12,7 +12,7 @@ import { notifications } from "@mantine/notifications";
 import {
   IconTableAlias, IconPlus, IconSearch, IconUsers, IconClock,
   IconReceipt, IconCheck, IconDotsVertical, IconEdit, IconTrash,
-  IconShoppingCart, IconEye, IconRefresh, IconArmchair,
+  IconShoppingCart, IconEye, IconArmchair,
   IconCash, IconCreditCard, IconQrcode, IconPrinter, IconX,
   IconAlertCircle,
 } from "@tabler/icons-react";
@@ -436,38 +436,20 @@ export default function TablesPage() {
           </Text>
         </div>
 
-        <Group gap="xs">
-          <Tooltip label="Refresh Tables" withArrow position="bottom">
+        {canManage && (
+          <Tooltip label="Add Table" withArrow position="bottom">
             <ActionIcon
               size="lg"
               radius="md"
-              variant="light"
-              color="gray"
-              aria-label="Refresh Tables"
-              onClick={() => {
-                refetchTables();
-                refetchOrders();
-              }}
+              color="dinePrimary"
+              aria-label="Add Table"
+              onClick={handleOpenCreate}
+              disabled={!outletId}
             >
-              <IconRefresh size={18} />
+              <IconPlus size={18} />
             </ActionIcon>
           </Tooltip>
-
-          {canManage && (
-            <Tooltip label="Add Table" withArrow position="bottom">
-              <ActionIcon
-                size="lg"
-                radius="md"
-                color="dinePrimary"
-                aria-label="Add Table"
-                onClick={handleOpenCreate}
-                disabled={!outletId}
-              >
-                <IconPlus size={18} />
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </Group>
+        )}
       </Group>
 
       {/* ─── KPI Counters ─────────────────────────────────────────────────────── */}

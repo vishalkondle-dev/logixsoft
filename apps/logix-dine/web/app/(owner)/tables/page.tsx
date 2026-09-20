@@ -455,7 +455,7 @@ export default function TablesPage() {
       {/* ─── KPI Counters ─────────────────────────────────────────────────────── */}
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" mb="md">
         {/* Total Tables */}
-        <Paper withBorder p="sm" radius="md">
+        <Paper p="sm" radius="md" bg="white">
           <Group justify="space-between" align="center">
             <div>
               <Text size="xs" c="dimmed" fw={600} tt="uppercase">Total Tables</Text>
@@ -468,15 +468,7 @@ export default function TablesPage() {
         </Paper>
 
         {/* Free / Available Tables */}
-        <Paper
-          withBorder
-          p="sm"
-          radius="md"
-          style={{
-            borderColor: stats.free > 0 ? "rgba(32, 201, 151, 0.45)" : undefined,
-            backgroundColor: "rgba(32, 201, 151, 0.03)",
-          }}
-        >
+        <Paper p="sm" radius="md" bg="white">
           <Group justify="space-between" align="center">
             <div>
               <Text size="xs" c="teal.7" fw={700} tt="uppercase">Free Tables</Text>
@@ -489,15 +481,7 @@ export default function TablesPage() {
         </Paper>
 
         {/* Occupied Tables */}
-        <Paper
-          withBorder
-          p="sm"
-          radius="md"
-          style={{
-            borderColor: stats.occupied > 0 ? "rgba(253, 126, 20, 0.45)" : undefined,
-            backgroundColor: stats.occupied > 0 ? "rgba(253, 126, 20, 0.03)" : undefined,
-          }}
-        >
+        <Paper p="sm" radius="md" bg="white">
           <Group justify="space-between" align="center">
             <div>
               <Text size="xs" c="orange.8" fw={700} tt="uppercase">Occupied</Text>
@@ -510,7 +494,7 @@ export default function TablesPage() {
         </Paper>
 
         {/* Total Seats */}
-        <Paper withBorder p="sm" radius="md">
+        <Paper p="sm" radius="md" bg="white">
           <Group justify="space-between" align="center">
             <div>
               <Text size="xs" c="dimmed" fw={600} tt="uppercase">Total Seats</Text>
@@ -524,7 +508,7 @@ export default function TablesPage() {
       </SimpleGrid>
 
       {/* ─── Filter & Search Bar ───────────────────────────────────────────────── */}
-      <Paper withBorder p="sm" radius="md" mb="md">
+      <Paper p="sm" radius="md" mb="md" bg="white">
         <Stack gap="xs">
           <Group justify="space-between" align="center" wrap="wrap" gap="sm">
             {/* Search Input */}
@@ -590,7 +574,7 @@ export default function TablesPage() {
           <Loader color="dinePrimary" size="lg" />
         </Center>
       ) : !filteredTables.length ? (
-        <Paper withBorder p="xl" radius="md" style={{ textAlign: "center" }} my="lg">
+        <Paper p="xl" radius="md" style={{ textAlign: "center" }} my="lg" bg="white">
           <ThemeIcon size={56} radius="xl" variant="light" color="gray" mx="auto" mb="sm">
             <IconTableAlias size={28} />
           </ThemeIcon>
@@ -625,15 +609,13 @@ export default function TablesPage() {
             return (
               <Paper
                 key={table.id}
-                withBorder
                 p="md"
                 radius="md"
                 style={{
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
-                  borderColor: !isOccupied ? "rgba(32, 201, 151, 0.3)" : session.duePaise === 0 ? "rgba(32, 201, 151, 0.45)" : "rgba(253, 126, 20, 0.45)",
-                  backgroundColor: !isOccupied ? "rgba(32, 201, 151, 0.01)" : session.duePaise === 0 ? "rgba(32, 201, 151, 0.02)" : "rgba(253, 126, 20, 0.02)",
+                  backgroundColor: "#ffffff",
                   boxShadow: !isOccupied ? "0 2px 8px rgba(0, 0, 0, 0.04)" : session.duePaise === 0 ? "0 4px 14px rgba(32, 201, 151, 0.08)" : "0 4px 14px rgba(253, 126, 20, 0.08)",
                   transition: "all 0.2s ease",
                 }}
@@ -852,7 +834,7 @@ export default function TablesPage() {
       >
         {freeModalSession && (
           <Stack gap="md">
-            <Paper withBorder p="sm" radius="md" style={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}>
+            <Paper p="sm" radius="md" bg="white">
               <Group justify="space-between" align="center" mb="xs">
                 <div>
                   <Text size="sm" fw={700}>Token {freeModalSession.tokensStr}</Text>
@@ -995,7 +977,7 @@ export default function TablesPage() {
                   const isRoundPaid = items.every((it: any) => it.paymentStatus === 'PAID');
                   const roundPaise = items.reduce((sum, it) => sum + ((it.pricePaiseSnapshot ?? it.pricePaise ?? 0) * it.qty), 0);
                   return (
-                    <Paper key={rNum} withBorder p="xs" radius="sm" style={{ backgroundColor: "rgba(0, 0, 0, 0.01)" }}>
+                    <Paper key={rNum} p="xs" radius="sm" bg="white">
                       <Group justify="space-between" align="center" mb="xs">
                         <Group gap="xs">
                           <Badge size="xs" color={rNum === 1 ? "blue" : "grape"} variant="filled">

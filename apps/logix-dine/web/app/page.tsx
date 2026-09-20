@@ -122,7 +122,7 @@ export default function HomePage() {
 
         {/* Feature Highlights Grid */}
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xl" mt={40} style={{ width: "100%", textAlign: "left" }}>
-          <Card withBorder padding="xl" radius="md">
+          <Card padding="xl" radius="md" bg="white" shadow="xs">
             <ThemeIcon size={48} radius="md" color="dinePrimary" variant="light" mb="md">
               <IconBrandWhatsapp size={26} />
             </ThemeIcon>
@@ -134,7 +134,7 @@ export default function HomePage() {
             </Text>
           </Card>
 
-          <Card withBorder padding="xl" radius="md">
+          <Card padding="xl" radius="md" bg="white" shadow="xs">
             <ThemeIcon size={48} radius="md" color="dinePrimary" variant="light" mb="md">
               <IconCookie size={26} />
             </ThemeIcon>
@@ -146,7 +146,7 @@ export default function HomePage() {
             </Text>
           </Card>
 
-          <Card withBorder padding="xl" radius="md">
+          <Card padding="xl" radius="md" bg="white" shadow="xs">
             <ThemeIcon size={48} radius="md" color="dinePrimary" variant="light" mb="md">
               <IconShieldLock size={26} />
             </ThemeIcon>

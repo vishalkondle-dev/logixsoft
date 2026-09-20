@@ -139,17 +139,18 @@ export function ReportsCardsList() {
             key={card.id}
             component={Link}
             href={`/settings/reports/${card.id}`}
-            withBorder
             p="lg"
             radius="md"
+            bg="white"
             style={{
               textDecoration: "none",
               cursor: "pointer",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
-              transition: "transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease",
-              background: "var(--mantine-color-body)",
+              transition: "transform 150ms ease, box-shadow 150ms ease",
+              background: "#ffffff",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
             }}
           >
             <div>
@@ -333,7 +334,7 @@ function ReportPanel({ type, data }: { type: ReportType; data: any }) {
 
 function StatCard({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <Paper withBorder p="lg" radius="md">
+    <Paper p="lg" radius="md" bg="white" shadow="xs">
       <Text size="xs" c="dimmed" tt="uppercase" fw={600} mb={4}>{label}</Text>
       <Text size="xl" fw={800} c={color ?? "dinePrimary"}>{value}</Text>
     </Paper>
@@ -355,7 +356,7 @@ function SummaryPanel({ data }: { data: any }) {
 function TopItemsPanel({ data }: { data: any[] }) {
   if (!Array.isArray(data) || !data.length) return <Text c="dimmed" ta="center" py="xl">No items sold in this period</Text>;
   return (
-    <Paper withBorder p="md" radius="md">
+    <Paper p="md" radius="md" bg="white" shadow="xs">
       <BarChart
         h={Math.max(300, data.length * 40)}
         data={data.map((d) => ({ name: d.name, Qty: d.qty }))}
@@ -385,7 +386,7 @@ function OrdersByStatusPanel({ data }: { data: any }) {
         <StatCard label="Void" value={String(counts.VOID ?? 0)} color="gray" />
       </SimpleGrid>
       {donutData.length > 0 && (
-        <Paper withBorder p="md" radius="md">
+        <Paper p="md" radius="md" bg="white" shadow="xs">
           <Center>
             <DonutChart data={donutData} withLabelsLine withLabels size={220} thickness={30} />
           </Center>
@@ -401,12 +402,12 @@ function PaymentMethodsPanel({ data }: { data: any[] }) {
   const donutData = data.map((d, i) => ({ name: d.method, value: d.revenuePaise, color: colors[i % colors.length] }));
   return (
     <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-      <Paper withBorder p="md" radius="md">
+      <Paper p="md" radius="md" bg="white" shadow="xs">
         <Center h="100%">
           <DonutChart data={donutData} withLabelsLine withLabels size={220} thickness={30} />
         </Center>
       </Paper>
-      <Paper withBorder p="md" radius="md">
+      <Paper p="md" radius="md" bg="white" shadow="xs">
         <Stack gap="xs">
           {data.map((d) => (
             <Group key={d.method} justify="space-between">
@@ -427,7 +428,7 @@ function HourlyPanel({ data }: { data: any[] }) {
   if (!Array.isArray(data)) return null;
   const chartData = data.map((d) => ({ hour: `${d.hour}:00`, Revenue: d.revenuePaise / 100 }));
   return (
-    <Paper withBorder p="md" radius="md">
+    <Paper p="md" radius="md" bg="white" shadow="xs">
       <BarChart
         h={320}
         data={chartData}
@@ -445,7 +446,7 @@ function DailyTrendPanel({ data }: { data: any[] }) {
   if (!Array.isArray(data) || !data.length) return <Text c="dimmed" ta="center" py="xl">No sales in this period</Text>;
   const chartData = data.map((d) => ({ day: d.day.slice(5), Revenue: d.revenuePaise / 100 }));
   return (
-    <Paper withBorder p="md" radius="md">
+    <Paper p="md" radius="md" bg="white" shadow="xs">
       <LineChart
         h={320}
         data={chartData}

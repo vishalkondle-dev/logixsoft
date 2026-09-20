@@ -74,13 +74,10 @@ export function UpiQrCode({
 
   return (
     <Paper
-      withBorder
       p="sm"
       radius="md"
-      style={{
-        background: "var(--mantine-color-gray-0)",
-        borderColor: "var(--mantine-color-teal-2)",
-      }}
+      bg="white"
+      shadow="xs"
     >
       <Stack align="center" gap="xs">
         <Group justify="space-between" w="100%">

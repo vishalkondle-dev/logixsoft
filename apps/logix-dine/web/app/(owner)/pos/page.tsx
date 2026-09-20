@@ -156,13 +156,9 @@ function CartPanel({
 
           return (
             <Paper
-              withBorder
               p="xs"
               radius="sm"
-              style={{
-                backgroundColor: isAllPaid ? "rgba(32, 201, 151, 0.08)" : "rgba(253, 126, 20, 0.08)",
-                borderColor: isAllPaid ? "rgba(32, 201, 151, 0.35)" : "rgba(253, 126, 20, 0.35)",
-              }}
+              bg="white"
             >
               <Group justify="space-between" align="center" mb={2}>
                 <Badge
@@ -204,7 +200,7 @@ function CartPanel({
             <Text c="dimmed" size="sm" ta="center" py="xl">Add items from menu to start an order</Text>
           )}
           {cartItems.map((item) => (
-            <Paper key={item.itemId} withBorder p="xs" radius="sm">
+            <Paper key={item.itemId} p="xs" radius="sm" bg="white">
               <Group justify="space-between" gap="xs" wrap="nowrap" align="center">
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Text size="sm" fw={500} lineClamp={1}>{item.name}</Text>
@@ -767,11 +763,15 @@ export default function POSPage() {
                   return (
                     <Grid.Col key={item.id} span={{ base: 6, sm: 4, md: 3, lg: 2 }}>
                       <Paper
-                        withBorder
                         p="sm"
                         radius="md"
+                        bg="white"
                         onClick={() => handleAddItem(item)}
-                        style={{ cursor: "pointer", position: "relative", borderColor: inCart ? "#af73d7" : undefined }}
+                        style={{
+                          cursor: "pointer",
+                          position: "relative",
+                          boxShadow: inCart ? "0 0 0 2px #af73d7" : "0 1px 3px rgba(0, 0, 0, 0.05)",
+                        }}
                       >
                         {inCart && (
                           <Badge
@@ -801,10 +801,16 @@ export default function POSPage() {
         {/* Desktop Cart Panel */}
         <Grid.Col span={{ base: 0, sm: 4 }} visibleFrom="sm" style={{ height: "100%" }}>
           <Paper
-            withBorder
             p="md"
             radius="md"
-          style={{ height: "100%", display: "flex", flexDirection: "column", position: "relative" }}
+            bg="white"
+            style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              position: "relative",
+              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+            }}
           >
             <CartPanel {...cartPanelProps} />
           </Paper>
@@ -1039,7 +1045,7 @@ export default function POSPage() {
                         : "blue";
 
                     return (
-                      <Paper key={item.id} withBorder p="xs" radius="sm">
+                      <Paper key={item.id} p="xs" radius="sm" bg="white">
                         <Stack gap={4}>
                           {/* Row 1: Item Name & Qty on left, Price on right */}
                           <Group justify="space-between" align="flex-start" wrap="nowrap">

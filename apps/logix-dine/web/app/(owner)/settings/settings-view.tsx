@@ -268,7 +268,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const inviteSaving = inviteStaffMut.isPending;
 
   const OutletCard = ({ outlet }: { outlet: any }) => (
-    <Paper key={outlet.id} withBorder p="md" radius="md">
+    <Paper key={outlet.id} p="md" radius="md" bg="white" shadow="xs">
       <Group justify="space-between">
         <div>
           <Group gap="xs">
@@ -302,16 +302,23 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   return (
     <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
-      <Title order={2} mb="md">Settings</Title>
-      <Tabs value={activeTab} onChange={handleTabChange}>
-        <ScrollArea type="auto" offsetScrollbars={false} scrollbars="x">
-          <Tabs.List mb="md" style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
-            <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Restaurant</Tabs.Tab>
-            <Tabs.Tab value="menu" leftSection={<IconBook size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Menu</Tabs.Tab>
-            <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Tables</Tabs.Tab>
-            <Tabs.Tab value="reports" leftSection={<IconChartBar size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Reports</Tabs.Tab>
-            {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Staff</Tabs.Tab>}
-            <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>Printing</Tabs.Tab>
+      <Group justify="space-between" mb="lg">
+        <div>
+          <Title order={2}>Restaurant Settings</Title>
+          <Text size="sm" c="dimmed">{restaurant.name} · Multi-Outlet & Dining Configuration</Text>
+        </div>
+      </Group>
+
+      <Tabs value={activeTab} onChange={(v) => v && router.push(`/settings/${v}`)}>
+        <ScrollArea type="never" mb="lg">
+          <Tabs.List style={{ flexWrap: "nowrap" }}>
+            <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />}>Restaurant Details</Tabs.Tab>
+            <Tabs.Tab value="outlets" leftSection={<IconBuildingStore size={16} />}>Outlets</Tabs.Tab>
+            <Tabs.Tab value="menu" leftSection={<IconBook size={16} />}>Menu Management</Tabs.Tab>
+            <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />}>Table Management</Tabs.Tab>
+            <Tabs.Tab value="reports" leftSection={<IconChartBar size={16} />}>Analytics & Reports</Tabs.Tab>
+            {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />}>Staff & Team</Tabs.Tab>}
+            <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />}>Printing</Tabs.Tab>
           </Tabs.List>
         </ScrollArea>
 
@@ -319,7 +326,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         <Tabs.Panel value="restaurant">
           <Grid gap="md">
             <Grid.Col span={{ base: 12, md: 6 }}>
-              <Paper withBorder p="xl" radius="md">
+              <Paper p="xl" radius="md" bg="white" shadow="xs">
                 <form onSubmit={saveRestaurant}>
                   <Stack gap="md">
                     <TextInput label="Restaurant Name" required value={restForm.name} onChange={(e) => setRestForm((f) => ({ ...f, name: e.target.value }))} />
@@ -368,7 +375,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               <Grid gap="sm">
                 {tables.map((t) => (
                   <Grid.Col key={t.id} span={{ base: 12, sm: 6, md: 4 }}>
-                    <Paper withBorder p="md" radius="md">
+                    <Paper p="md" radius="md" bg="white" shadow="xs">
                       <Group justify="space-between">
                         <div>
                           <Group gap="xs">
@@ -419,7 +426,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               {staffLoading ? (
                 <Loader size="sm" />
               ) : !staff.length ? (
-                <Paper withBorder p="xl" radius="md" ta="center">
+                <Paper p="xl" radius="md" ta="center" bg="white" shadow="xs">
                   <Text size="sm" c="dimmed">
                     No staff yet. Invite a Manager, Waiter, or Kitchen member to get started.
                   </Text>
@@ -430,7 +437,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               ) : (
                 <Stack gap="sm">
                   {staff.map((m) => (
-                    <Paper key={m.id} withBorder p="md" radius="md">
+                    <Paper key={m.id} p="md" radius="md" bg="white" shadow="xs">
                       {/* Row 1 — identity */}
                       <Group justify="space-between" mb="sm" wrap="nowrap">
                         <div style={{ minWidth: 0 }}>
@@ -486,7 +493,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
         {/* Printing tab */}
         <Tabs.Panel value="printing">
-          <Paper withBorder p="xl" radius="md" maw={{ base: "100%", md: 560 }}>
+          <Paper p="xl" radius="md" maw={{ base: "100%", md: 560 }} bg="white" shadow="xs">
             <Stack gap="md">
               <Text fw={600}>Bluetooth Printer</Text>
               <Text size="sm" c="dimmed">

@@ -1,6 +1,6 @@
 "use client";
 
-import { createTheme, MantineColorsTuple } from "@mantine/core";
+import { createTheme, MantineColorsTuple, CSSVariablesResolver } from "@mantine/core";
 
 // Primary palette derived from Logix Dine brand favicon (#af73d7)
 const dinePrimary: MantineColorsTuple = [
@@ -50,10 +50,81 @@ export const theme = createTheme({
         radius: "md",
       },
     },
-    Paper: {
+    Card: {
       defaultProps: {
+        withBorder: false,
         radius: "md",
       },
+      styles: {
+        root: {
+          backgroundColor: "#ffffff",
+          border: "none",
+        },
+      },
     },
+    Paper: {
+      defaultProps: {
+        withBorder: false,
+        radius: "md",
+      },
+      styles: {
+        root: {
+          backgroundColor: "#ffffff",
+          border: "none",
+        },
+      },
+    },
+    Input: {
+      styles: {
+        input: {
+          backgroundColor: "#ffffff",
+        },
+      },
+    },
+    TextInput: {
+      styles: {
+        input: {
+          backgroundColor: "#ffffff",
+        },
+      },
+    },
+    Select: {
+      styles: {
+        input: {
+          backgroundColor: "#ffffff",
+        },
+      },
+    },
+    NumberInput: {
+      styles: {
+        input: {
+          backgroundColor: "#ffffff",
+        },
+      },
+    },
+    PasswordInput: {
+      styles: {
+        input: {
+          backgroundColor: "#ffffff",
+        },
+      },
+    },
+    Textarea: {
+      styles: {
+        input: {
+          backgroundColor: "#ffffff",
+        },
+      },
+    },
+  },
+});
+
+export const cssResolver: CSSVariablesResolver = () => ({
+  variables: {},
+  light: {
+    "--mantine-color-body": "#F3F5F8",
+  },
+  dark: {
+    "--mantine-color-body": "#1a1a1a",
   },
 });

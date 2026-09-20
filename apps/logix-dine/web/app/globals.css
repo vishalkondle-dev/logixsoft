@@ -14,9 +14,63 @@
   }
 }
 
-/* Prevent accidental double-tap zoom and unwanted text scaling on mobile viewports */
+:root {
+  --mantine-color-body: #F3F5F8;
+}
+
+/* Whole page background */
 html,
 body {
+  background-color: #F3F5F8;
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
+}
+
+/* AppShell Layout */
+.mantine-AppShell-root,
+.mantine-AppShell-main {
+  background-color: #F3F5F8;
+}
+
+header.mantine-AppShell-header {
+  background-color: #ffffff;
+}
+
+/* White background for cards */
+.mantine-Card-root,
+.mantine-Paper-root {
+  background-color: #ffffff;
+}
+
+/* Remove borders on cards */
+:not(main[style*="#1a1a1a"]) .mantine-Card-root,
+:not(main[style*="#1a1a1a"]) .mantine-Paper-root,
+:not(main[style*="#1a1a1a"]) .mantine-Card-root[data-with-border],
+:not(main[style*="#1a1a1a"]) .mantine-Paper-root[data-with-border] {
+  border: none !important;
+}
+
+/* White background for input */
+input,
+select,
+textarea,
+.mantine-Input-input,
+.mantine-TextInput-input,
+.mantine-Select-input,
+.mantine-NumberInput-input,
+.mantine-PasswordInput-input,
+.mantine-Autocomplete-input,
+.mantine-MultiSelect-input,
+.mantine-PinInput-input,
+.mantine-Textarea-input {
+  background-color: #ffffff !important;
+}
+
+/* Modals, drawers, and dropdowns */
+.mantine-Modal-content,
+.mantine-Modal-header,
+.mantine-Drawer-content,
+.mantine-Drawer-header,
+.mantine-Menu-dropdown {
+  background-color: #ffffff;
 }

@@ -34,7 +34,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   if (!isAuthenticated) {
     return (
       <Container size="sm" py={80}>
-        <Paper withBorder p="xl" radius="lg" shadow="sm" style={{ textAlign: "center" }}>
+        <Paper p="xl" radius="lg" bg="white" shadow="sm" style={{ textAlign: "center" }}>
           <Stack align="center" gap="md">
             <ThemeIcon size={64} radius="xl" color="dinePrimary" variant="light">
               <IconLock size={32} />

@@ -7,7 +7,7 @@ import { ModalsProvider } from "@mantine/modals";
 import { NavigationProgress } from "@mantine/nprogress";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { theme } from "@/theme";
+import { theme, cssResolver } from "@/theme";
 import { AuthProvider } from "@/lib/auth-context";
 import { RestaurantProvider } from "@/lib/restaurant-context";
 import { AppShellLayout } from "@/components/layout/app-shell";
@@ -27,7 +27,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MantineProvider theme={theme}>
+      <MantineProvider theme={theme} cssVariablesResolver={cssResolver}>
         <ModalsProvider>
           <NavigationProgress />
           <Notifications position="top-right" />

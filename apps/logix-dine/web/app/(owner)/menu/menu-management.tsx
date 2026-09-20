@@ -167,7 +167,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
       </Group>
 
       {!categories.length ? (
-        <Paper withBorder p="xl" radius="md" ta="center" my="md">
+        <Paper p="xl" radius="md" ta="center" my="md" bg="white" shadow="xs">
           <Text size="sm" c="dimmed">
             No menu categories yet for {activeOutlet?.name || "this outlet"}.
           </Text>
@@ -200,7 +200,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
         {categories.map((cat) => (
           <Tabs.Panel key={cat.id} value={cat.id}>
-            <Paper withBorder p="xs" mb="xs" radius="sm">
+            <Paper p="xs" mb="xs" radius="sm" bg="white" shadow="xs">
               <Group justify="space-between">
                 <Text size="sm" fw={600}>{cat.name}</Text>
                 <Group gap="xs">
@@ -218,7 +218,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs">
               {itemsForCat.map((item) => (
-                <Paper key={item.id} withBorder p="md" radius="md">
+                <Paper key={item.id} p="md" radius="md" bg="white" shadow="xs">
                   <Group justify="space-between">
                     <div>
                       <Group gap="xs">

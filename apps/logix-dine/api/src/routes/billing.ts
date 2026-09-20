@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { eq, ne, and, or, sql, desc } from 'drizzle-orm';
+import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, hasOutletAccess } from '../lib/tenancy';
@@ -15,6 +16,10 @@ import {
   UpdateOrderItemStatusSchema,
   SettleOrderSchema,
   FreeTableSchema,
+  BillingBootstrapSchema,
+  OrderWithItemsSchema,
+  SaleOrderSchema,
+  SaleOrderItemSchema,
 } from '@logixsoft/logix-dine/schemas/pos';
 import {
   computeOrderStatus,
@@ -24,6 +29,7 @@ import {
 import { toRestaurant, toOutlet, toCategory, toMenuItem, toOrderWithItems, toOrder } from '@logixsoft/logix-dine/mappers/pos';
 import { sendWhatsAppText } from '@logixsoft/wa';
 import type { AuthEnv } from '../lib/auth';
+import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
 function formatOrderWhatsAppMessage(
   restaurantName: string,
@@ -149,7 +155,17 @@ async function getOrderWithItems(db: any, orderId: string, restaurantId: string)
 }
 
 // GET /billing/bootstrap
-app.get('/bootstrap', requirePermission('menu:read'), async (c) => {
+app.get(
+  '/bootstrap',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Bootstrap POS Data',
+    description: 'Fetches restaurant, outlets, categories, and menu items in a single optimized payload.',
+    query: z.object({ outletId: z.string().optional() }),
+    responses: { 200: BillingBootstrapSchema },
+  }),
+  requirePermission('menu:read'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
 
@@ -196,7 +212,20 @@ function generateOrderId(outletId: string): string {
 }
 
 // POST /billing/orders — start a new OPEN order
-app.post('/orders', requirePermission('order:create'), async (c) => {
+app.post(
+  '/orders',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Start New Order',
+    description: 'Creates a new OPEN order with token number and initial order items.',
+    body: StartOrderSchema,
+    responses: {
+      201: OrderWithItemsSchema,
+      400: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
@@ -373,7 +402,20 @@ app.post('/orders', requirePermission('order:create'), async (c) => {
 
 // POST /billing/orders/create-settled — create + settle in ONE transaction (Settle & Send fast path)
 // Saves one full HTTP round-trip vs POST /orders then POST /orders/:id/settle.
-app.post('/orders/create-settled', requirePermission('order:settle'), async (c) => {
+app.post(
+  '/orders/create-settled',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Settle & Send (Fast Path)',
+    description: 'Creates and immediately settles an order in a single atomic database transaction.',
+    body: CreateSettledSchema,
+    responses: {
+      201: OrderWithItemsSchema,
+      400: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:settle'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const user = c.get('sessionUser') as any;
@@ -484,7 +526,27 @@ app.post('/orders/create-settled', requirePermission('order:settle'), async (c) 
 });
 
 // GET /billing/orders
-app.get('/orders', requirePermission('order:read'), async (c) => {
+app.get(
+  '/orders',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'List Orders',
+    description: 'Queries orders with optional status, table occupancy, order status, or outlet filters.',
+    query: z.object({
+      status: z.string().optional().meta({ description: 'Filter by order payment status (OPEN, PAID, PARTIAL, VOID)' }),
+      tableOccupied: z.string().optional().meta({ description: 'Filter only active orders currently occupying a table (true/false)' }),
+      orderStatus: z.string().optional().meta({ description: 'Filter by kitchen order status (ORDERED, PREPARING, PREPARED, SERVED, CANCELLED)' }),
+      outletId: z.string().optional().meta({ description: 'Outlet ID filter' }),
+      limit: z.string().optional().meta({ description: 'Max items to return (default 50, max 100)' }),
+    }),
+    responses: {
+      200: z.array(OrderWithItemsSchema),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const status = c.req.query('status');
@@ -576,7 +638,18 @@ app.get('/orders', requirePermission('order:read'), async (c) => {
 // MUST be registered before GET /orders/:id, or Hono would match "kitchen" as an order ID.
 // KITCHEN role is outlet-scoped, so the web sends X-Outlet-Id; requirePermission
 // already enforces that this outlet is one the caller has access to.
-app.get('/orders/kitchen', requirePermission('order:read'), async (c) => {
+app.get(
+  '/orders/kitchen',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Kitchen Display System (KDS) Active Tickets',
+    description: 'Fetches active tickets (OPEN or unpaid/unserved) for the kitchen display.',
+    responses: {
+      200: z.array(OrderWithItemsSchema),
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
   const { restaurantId, outletId } = c.get('tenant');
 
   const { db, close } = getDb(c);
@@ -620,7 +693,21 @@ app.get('/orders/kitchen', requirePermission('order:read'), async (c) => {
 });
 
 // GET /billing/orders/:id
-app.get('/orders/:id', requirePermission('order:read'), async (c) => {
+app.get(
+  '/orders/:id',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Get Order Details',
+    description: 'Fetches full order details including line items and status change audits.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: OrderWithItemsSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const id = c.req.param('id');
@@ -644,7 +731,24 @@ app.get('/orders/:id', requirePermission('order:read'), async (c) => {
 });
 
 // POST /billing/orders/:id/items — add or upsert item
-app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
+app.post(
+  '/orders/:id/items',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Add or Upsert Single Item',
+    description: 'Appends a single item to an existing OPEN order, or increments its quantity if already present.',
+    params: z.object({ id: z.string() }),
+    body: AddOrderItemSchema,
+    responses: {
+      200: OrderWithItemsSchema,
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -722,7 +826,29 @@ app.post('/orders/:id/items', requirePermission('order:create'), async (c) => {
 });
 
 // POST /billing/orders/:id/round — append a new round of items to an existing OPEN order
-app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
+app.post(
+  '/orders/:id/round',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Add Multi-Item Round',
+    description: 'Appends a new round of items to an existing order, with optional instant round payment.',
+    params: z.object({ id: z.string() }),
+    body: AddOrderRoundSchema,
+    responses: {
+      200: z.object({
+        order: SaleOrderSchema,
+        items: z.array(SaleOrderItemSchema),
+        round: z.number(),
+        addedItems: z.array(z.any()),
+      }),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -863,7 +989,24 @@ app.post('/orders/:id/round', requirePermission('order:create'), async (c) => {
 
 // PATCH /billing/orders/:id/items/:orderItemId/status — update status (Next, Close, or direct)
 // "Anyone can do that just audit it. Except customer"
-app.patch('/orders/:id/items/:orderItemId/status', requirePermission('order:read'), async (c) => {
+app.patch(
+  '/orders/:id/items/:orderItemId/status',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Update Item Status',
+    description: 'Advances item preparation status (e.g. ORDERED -> PREPARING -> PREPARED -> SERVED) or cancels item.',
+    params: z.object({ id: z.string(), orderItemId: z.string() }),
+    body: UpdateOrderItemStatusSchema,
+    responses: {
+      200: OrderWithItemsSchema,
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -979,7 +1122,24 @@ app.patch('/orders/:id/items/:orderItemId/status', requirePermission('order:read
 });
 
 // PATCH /billing/orders/:id/items/:orderItemId — update qty or note
-app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), async (c) => {
+app.patch(
+  '/orders/:id/items/:orderItemId',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Update Item Quantity/Note',
+    description: 'Updates quantity or special instruction note for an existing item on an open order.',
+    params: z.object({ id: z.string(), orderItemId: z.string() }),
+    body: UpdateOrderItemSchema,
+    responses: {
+      200: OrderWithItemsSchema,
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -1018,7 +1178,22 @@ app.patch('/orders/:id/items/:orderItemId', requirePermission('order:create'), a
 });
 
 // DELETE /billing/orders/:id/items/:orderItemId
-app.delete('/orders/:id/items/:orderItemId', requirePermission('order:create'), async (c) => {
+app.delete(
+  '/orders/:id/items/:orderItemId',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Delete Item from Order',
+    description: 'Removes an unserved item from an open order and recalculates subtotal.',
+    params: z.object({ id: z.string(), orderItemId: z.string() }),
+    responses: {
+      200: OrderWithItemsSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -1049,7 +1224,24 @@ app.delete('/orders/:id/items/:orderItemId', requirePermission('order:create'), 
 });
 
 // POST /billing/orders/:id/settle
-app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
+app.post(
+  '/orders/:id/settle',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Settle Order',
+    description: 'Marks unpaid items and order as PAID, optionally sends WhatsApp receipt if customer phone provided.',
+    params: z.object({ id: z.string() }),
+    body: SettleOrderSchema,
+    responses: {
+      200: OrderWithItemsSchema,
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:settle'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -1158,7 +1350,24 @@ app.post('/orders/:id/settle', requirePermission('order:settle'), async (c) => {
 });
 
 // POST /billing/orders/:id/free-table — settle remaining unpaid items (if any) and free/vacate table
-app.post('/orders/:id/free-table', requirePermission('order:settle'), async (c) => {
+app.post(
+  '/orders/:id/free-table',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Free / Vacate Table',
+    description: 'Settles any remaining items, records tableFreedAt timestamp, and marks the table as free.',
+    params: z.object({ id: z.string() }),
+    body: FreeTableSchema,
+    responses: {
+      200: OrderWithItemsSchema,
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:settle'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -1234,7 +1443,28 @@ app.post('/orders/:id/free-table', requirePermission('order:settle'), async (c) 
 });
 
 // POST /billing/orders/:id/whatsapp — dispatch/resend WhatsApp order details
-app.post('/orders/:id/whatsapp', requirePermission('order:read'), async (c) => {
+app.post(
+  '/orders/:id/whatsapp',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Dispatch / Resend WhatsApp Bill',
+    description: 'Formats and dispatches order confirmation or payment receipt via WhatsApp.',
+    params: z.object({ id: z.string() }),
+    body: z.object({
+      phone: z.string().optional().meta({ description: 'Target WhatsApp number (defaults to customer phone on order)' }),
+    }),
+    responses: {
+      200: z.object({
+        success: z.boolean(),
+        waResponse: z.any().optional(),
+      }),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -1299,7 +1529,22 @@ app.post('/orders/:id/whatsapp', requirePermission('order:read'), async (c) => {
 });
 
 // POST /billing/orders/:id/void
-app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
+app.post(
+  '/orders/:id/void',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Void Order',
+    description: 'Cancels all items and marks the order as VOID, releasing the table.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: OrderWithItemsSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:void'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -1364,7 +1609,21 @@ app.post('/orders/:id/void', requirePermission('order:void'), async (c) => {
 });
 
 // PATCH /billing/orders/:id/mark-kot-printed
-app.patch('/orders/:id/mark-kot-printed', requirePermission('order:create'), async (c) => {
+app.patch(
+  '/orders/:id/mark-kot-printed',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Mark KOT as Printed',
+    description: 'Records timestamp when Kitchen Order Ticket was printed.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: OrderWithItemsSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');
@@ -1396,7 +1655,21 @@ app.patch('/orders/:id/mark-kot-printed', requirePermission('order:create'), asy
 });
 
 // PATCH /billing/orders/:id/mark-ready — kitchen marks an order ready for pickup
-app.patch('/orders/:id/mark-ready', requirePermission('order:read'), async (c) => {
+app.patch(
+  '/orders/:id/mark-ready',
+  apiDoc({
+    tags: ['Billing'],
+    summary: 'Mark Order Ready for Pickup',
+    description: 'Kitchen marks all preparing items as prepared and updates order ready status.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: OrderWithItemsSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const orderId = c.req.param('id');

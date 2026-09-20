@@ -8,6 +8,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { timing } from 'hono/timing';
 import { trimTrailingSlash } from 'hono/trailing-slash';
 import { createOpenApiDocument, openApi } from 'hono-zod-openapi';
+import * as z from 'zod';
 import { eq, and } from 'drizzle-orm';
 import { HealthResponseSchema } from '@logixsoft/logix-dine/schemas/health';
 import {
@@ -17,6 +18,7 @@ import {
   AuthUserSchema,
   AuthSessionSchema,
 } from '@logixsoft/logix-dine/schemas/auth';
+import { apiDoc, ErrorResponseSchema } from './lib/openapi';
 import { createAuth, AUTH_BASE_PATH, type AuthEnv } from './lib/auth';
 import { rateLimiter } from './lib/rate-limit';
 import { toAuthSession, toAuthUser } from '@logixsoft/logix-dine/mappers/auth';
@@ -402,13 +404,55 @@ const handleBetterAuth = async (c: any) => {
 // Register routes under both /auth and /api/auth
 // -------------------------------------------------------------
 // OTP endpoints are rate-limited per IP (DB-backed, works across isolates)
-app.post('/auth/phone/send-otp', rateLimiter({ keyPrefix: 'send-otp', max: 3 }), handleSendOtp);
+app.post(
+  '/auth/phone/send-otp',
+  apiDoc({
+    tags: ['Auth'],
+    summary: 'Send WhatsApp OTP',
+    description: 'Dispatches a 6-digit one-time password to the specified WhatsApp phone number for login or registration.',
+    body: SendOtpRequestSchema,
+    responses: {
+      200: SendOtpResponseSchema,
+      500: ErrorResponseSchema,
+    },
+  }),
+  rateLimiter({ keyPrefix: 'send-otp', max: 3 }),
+  handleSendOtp
+);
 app.post('/api/auth/phone/send-otp', rateLimiter({ keyPrefix: 'send-otp', max: 3 }), handleSendOtp);
 
-app.post('/auth/phone/verify', rateLimiter({ keyPrefix: 'verify-otp', max: 10 }), handleVerifyOtp);
+app.post(
+  '/auth/phone/verify',
+  apiDoc({
+    tags: ['Auth'],
+    summary: 'Verify WhatsApp OTP',
+    description: 'Verifies the WhatsApp OTP, signs the user in or completes registration, establishes a session cookie, and returns the active session.',
+    body: VerifyOtpRequestSchema,
+    responses: {
+      200: AuthSessionSchema,
+      400: ErrorResponseSchema,
+      500: ErrorResponseSchema,
+    },
+  }),
+  rateLimiter({ keyPrefix: 'verify-otp', max: 10 }),
+  handleVerifyOtp
+);
 app.post('/api/auth/phone/verify', rateLimiter({ keyPrefix: 'verify-otp', max: 10 }), handleVerifyOtp);
 
-app.get('/auth/me', handleGetMe);
+app.get(
+  '/auth/me',
+  apiDoc({
+    tags: ['Auth'],
+    summary: 'Get Current Authenticated User & Session',
+    description: 'Returns the currently authenticated user profile and active session based on session cookies.',
+    security: [{ cookieAuth: [] }],
+    responses: {
+      200: AuthSessionSchema,
+      401: z.object({ user: z.null(), session: z.null() }),
+    },
+  }),
+  handleGetMe
+);
 app.get('/api/auth/me', handleGetMe);
 
 app.on(['GET', 'POST'], `${AUTH_BASE_PATH}/*`, handleBetterAuth);
@@ -445,27 +489,76 @@ app.route('/reports', reportRoutes);
 app.route('/api/reports', reportRoutes);
 
 // Register OpenAPI 3.1 specification at /doc
-createOpenApiDocument(app, {
-  info: {
-    title: 'Logix Dine API',
-    version: '1.0.0',
-    description: 'OpenAPI specification for Logix Dine API service with WhatsApp OTP authentication',
+const openApiDoc = createOpenApiDocument(
+  app,
+  {
+    info: {
+      title: 'Logix Dine API',
+      version: '1.0.0',
+      description: 'Comprehensive OpenAPI 3.1 specification for Logix Dine restaurant POS and billing service with WhatsApp OTP authentication.',
+    },
+    servers: [
+      {
+        url: 'https://dine-api.logixsoft.in',
+        description: 'Production server',
+      },
+      {
+        url: 'http://localhost:8787',
+        description: 'Local development server',
+      },
+    ],
+    tags: [
+      { name: 'Health', description: 'API health and uptime status' },
+      { name: 'Auth', description: 'WhatsApp OTP authentication and user sessions' },
+      { name: 'Billing', description: 'POS table orders, rounds, settlement, WhatsApp bills, and KDS' },
+      { name: 'Tables', description: 'Table management and occupancy tracking' },
+      { name: 'Menu', description: 'Menu categories and item catalogue management' },
+      { name: 'Restaurants', description: 'Restaurant profiles and membership roles' },
+      { name: 'Outlets', description: 'Restaurant outlet / branch management' },
+      { name: 'Staff', description: 'Staff members, roles, and invitation management' },
+      { name: 'Reports', description: 'Financial analytics, daily sales, item sales, and tax reports' },
+      { name: 'Onboarding', description: 'Initial restaurant registration and setup' },
+      { name: 'Admin', description: 'Platform administration and system role management' },
+    ],
+    components: {
+      securitySchemes: {
+        cookieAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'better-auth.session_token',
+          description: 'Session cookie created upon successful OTP verification',
+        },
+        restaurantHeader: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-restaurant-id',
+          description: 'Active restaurant context identifier',
+        },
+        outletHeader: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-outlet-id',
+          description: 'Active outlet context identifier',
+        },
+      },
+    },
   },
-  servers: [
-    {
-      url: 'https://dine-api.logixsoft.in',
-      description: 'Production server',
-    },
-    {
-      url: 'http://localhost:8787',
-      description: 'Local development server',
-    },
-  ],
-});
+  { addRoute: false }
+);
 
-// Interactive API Documentation via Scalar UI at /ui
-app.get('/ui', (c) => {
-  return c.html(`<!doctype html>
+// Filter out redundant /api/ prefix duplicate routes from the documentation so only canonical paths appear
+const cleanOpenApiDoc = {
+  ...openApiDoc,
+  paths: Object.fromEntries(
+    Object.entries(openApiDoc.paths || {}).filter(([p]) => !p.startsWith('/api/'))
+  ),
+};
+
+app.get('/doc', (c) => c.json(cleanOpenApiDoc, 200));
+app.get('/api/doc', (c) => c.json(cleanOpenApiDoc, 200));
+
+// Interactive API Documentation via Scalar UI at /ui and /api/ui
+const scalarHtml = `<!doctype html>
 <html>
   <head>
     <title>Logix Dine API Reference</title>
@@ -479,8 +572,10 @@ app.get('/ui', (c) => {
     <script id="api-reference" data-url="/doc"></script>
     <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
   </body>
-</html>`);
-});
+</html>`;
+
+app.get('/ui', (c) => c.html(scalarHtml));
+app.get('/api/ui', (c) => c.html(scalarHtml));
 
 // 404 Not Found Handler
 app.notFound((c) => {

@@ -4,9 +4,11 @@ import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission } from '../lib/tenancy';
 import { toPosTable } from '@logixsoft/logix-dine/mappers/pos';
+import { PosTableSchema } from '@logixsoft/logix-dine/schemas/pos';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
 import { cacheGet, cacheSet, invalidateTables, CacheKey, TTL } from '../lib/cache';
+import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -33,7 +35,17 @@ const UpdateTableSchema = z.object({
 });
 
 // GET /tables?outletId= — list tables for an outlet (or all outlets if omitted)
-app.get('/', requirePermission('table:read'), async (c) => {
+app.get(
+  '/',
+  apiDoc({
+    tags: ['Tables'],
+    summary: 'List Dining Tables',
+    description: 'Returns all dining tables for the active restaurant, optionally filtered by outlet.',
+    query: z.object({ outletId: z.string().optional() }),
+    responses: { 200: z.array(PosTableSchema) },
+  }),
+  requirePermission('table:read'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const outletId = c.req.query('outletId') || '';
 
@@ -56,7 +68,22 @@ app.get('/', requirePermission('table:read'), async (c) => {
 });
 
 // POST /tables — create a table
-app.post('/', requirePermission('table:write'), async (c) => {
+app.post(
+  '/',
+  apiDoc({
+    tags: ['Tables'],
+    summary: 'Create Dining Table',
+    description: 'Creates a new dining table in the specified outlet.',
+    body: CreateTableSchema,
+    responses: {
+      201: PosTableSchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('table:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
@@ -105,7 +132,22 @@ app.post('/', requirePermission('table:write'), async (c) => {
 });
 
 // PUT /tables/:id — update a table
-app.put('/:id', requirePermission('table:write'), async (c) => {
+app.put(
+  '/:id',
+  apiDoc({
+    tags: ['Tables'],
+    summary: 'Update Dining Table',
+    description: 'Updates table name, section, capacity, or sort order.',
+    params: z.object({ id: z.string() }),
+    body: UpdateTableSchema,
+    responses: {
+      200: PosTableSchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('table:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const actorPhone = c.get('actorPhone');
   const tableId = c.req.param('id');
@@ -137,7 +179,20 @@ app.put('/:id', requirePermission('table:write'), async (c) => {
 });
 
 // PATCH /tables/:id/toggle — flip active/inactive
-app.patch('/:id/toggle', requirePermission('table:write'), async (c) => {
+app.patch(
+  '/:id/toggle',
+  apiDoc({
+    tags: ['Tables'],
+    summary: 'Toggle Table Active Status',
+    description: 'Toggles a dining table between active and inactive states.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: PosTableSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('table:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const actorPhone = c.get('actorPhone');
   const tableId = c.req.param('id');
@@ -164,7 +219,20 @@ app.patch('/:id/toggle', requirePermission('table:write'), async (c) => {
 });
 
 // DELETE /tables/:id — soft-delete (set active=false, preserves order history)
-app.delete('/:id', requirePermission('table:write'), async (c) => {
+app.delete(
+  '/:id',
+  apiDoc({
+    tags: ['Tables'],
+    summary: 'Soft Delete Dining Table',
+    description: 'Deactivates the dining table to preserve order history.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('table:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const actorPhone = c.get('actorPhone');
   const tableId = c.req.param('id');

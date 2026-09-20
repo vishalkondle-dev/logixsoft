@@ -1,11 +1,13 @@
 import { Hono } from 'hono';
 import { sql, eq } from 'drizzle-orm';
+import * as z from 'zod';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, hasOutletAccess } from '../lib/tenancy';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import type { AuthEnv } from '../lib/auth';
 import { cacheGet, cacheSet, CacheKey, TTL } from '../lib/cache';
+import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -56,7 +58,36 @@ function outletFilter(column: ReturnType<typeof sql>, outletId: string | null) {
 }
 
 // GET /reports/:type?from=YYYY-MM-DD&to=YYYY-MM-DD&outletId=
-app.get('/:type', requirePermission('report:read'), async (c) => {
+app.get(
+  '/:type',
+  apiDoc({
+    tags: ['Reports'],
+    summary: 'Generate Analytics Report',
+    description: 'Generates reporting aggregates for summary, top items, orders by status, payment methods, hourly trend, or daily trend.',
+    params: z.object({
+      type: z.enum(REPORT_TYPES),
+    }),
+    query: z.object({
+      from: z.string().meta({ description: 'Start date YYYY-MM-DD (IST)', example: '2026-09-01' }),
+      to: z.string().meta({ description: 'End date YYYY-MM-DD (IST)', example: '2026-09-20' }),
+      outletId: z.string().optional().meta({ description: 'Outlet ID filter (required for non-owner roles)' }),
+    }),
+    responses: {
+      200: z.object({
+        type: z.string(),
+        from: z.string(),
+        to: z.string(),
+        outletId: z.string().nullable(),
+        data: z.any(),
+      }),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      500: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('report:read'),
+  async (c) => {
   const type = c.req.param('type') as ReportType;
   if (!REPORT_TYPES.includes(type)) {
     return c.json({ error: 'Not Found', message: `Unknown report type: ${type}` }, 404);

@@ -1,13 +1,15 @@
 import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
+import * as z from 'zod';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, requireAuth } from '../lib/tenancy';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
-import { UpdateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
+import { RestaurantSchema, UpdateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { invalidateRestaurant } from '../lib/cache';
+import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -19,7 +21,19 @@ function getDb(c: any) {
 function kv(c: any) { return c.env?.CACHE; }
 
 // GET /restaurants/me
-app.get('/me', requirePermission('restaurant:read'), async (c) => {
+app.get(
+  '/me',
+  apiDoc({
+    tags: ['Restaurants'],
+    summary: 'Get Current Restaurant',
+    description: 'Fetches details of the currently selected restaurant (scoped by X-Restaurant-Id header).',
+    responses: {
+      200: RestaurantSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('restaurant:read'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const { db, close } = getDb(c);
   try {
@@ -36,7 +50,18 @@ app.get('/me', requirePermission('restaurant:read'), async (c) => {
 });
 
 // GET /restaurants — list all restaurants the user is a member of (auth only, no restaurant context needed)
-app.get('/', requireAuth(), async (c) => {
+app.get(
+  '/',
+  apiDoc({
+    tags: ['Restaurants'],
+    summary: 'List User Restaurants',
+    description: 'Lists all restaurants where the current authenticated user has active membership.',
+    responses: {
+      200: z.array(RestaurantSchema),
+    },
+  }),
+  requireAuth(),
+  async (c) => {
   const user = c.get('sessionUser') as any;
   const { db, close } = getDb(c);
   try {
@@ -70,7 +95,22 @@ app.get('/', requireAuth(), async (c) => {
 // GET /restaurants/my-role — the caller's role + outlet access in the current restaurant.
 // Used by the web to decide which nav/pages to show (KITCHEN -> /kitchen, etc.)
 // without needing a full /staff list call (which requires member:read, staff-only).
-app.get('/my-role', requirePermission('restaurant:read'), async (c) => {
+app.get(
+  '/my-role',
+  apiDoc({
+    tags: ['Restaurants'],
+    summary: 'Get Role in Current Restaurant',
+    description: 'Returns role and accessible outlet IDs for current restaurant session.',
+    responses: {
+      200: z.object({
+        role: z.string(),
+        outletIds: z.array(z.string()),
+        allOutlets: z.boolean(),
+      }),
+    },
+  }),
+  requirePermission('restaurant:read'),
+  async (c) => {
   const tenant = c.get('tenant');
   const { db, close } = getDb(c);
   try {
@@ -92,7 +132,22 @@ app.get('/my-role', requirePermission('restaurant:read'), async (c) => {
 });
 
 // PUT /restaurants/:id
-app.put('/:id', requirePermission('restaurant:write'), async (c) => {
+app.put(
+  '/:id',
+  apiDoc({
+    tags: ['Restaurants'],
+    summary: 'Update Restaurant Details',
+    description: 'Updates restaurant name, address, or contact phone.',
+    params: z.object({ id: z.string() }),
+    body: UpdateRestaurantSchema,
+    responses: {
+      200: RestaurantSchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('restaurant:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const body = await c.req.json().catch(() => ({}));
   const parsed = UpdateRestaurantSchema.safeParse(body);

@@ -1,11 +1,17 @@
 import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
+import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission } from '../lib/tenancy';
-import { CreateOutletSchema, UpdateOutletSchema } from '@logixsoft/logix-dine/schemas/pos';
+import {
+  CreateOutletSchema,
+  UpdateOutletSchema,
+  RestaurantOutletSchema,
+} from '@logixsoft/logix-dine/schemas/pos';
 import { toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
+import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -15,7 +21,16 @@ function getDb(c: any) {
 }
 
 // GET /outlets
-app.get('/', requirePermission('outlet:read'), async (c) => {
+app.get(
+  '/',
+  apiDoc({
+    tags: ['Outlets'],
+    summary: 'List Restaurant Outlets',
+    description: 'Returns all outlets for the active restaurant.',
+    responses: { 200: z.array(RestaurantOutletSchema) },
+  }),
+  requirePermission('outlet:read'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const { db, close } = getDb(c);
   try {
@@ -30,7 +45,20 @@ app.get('/', requirePermission('outlet:read'), async (c) => {
 });
 
 // POST /outlets
-app.post('/', requirePermission('outlet:write'), async (c) => {
+app.post(
+  '/',
+  apiDoc({
+    tags: ['Outlets'],
+    summary: 'Create Restaurant Outlet',
+    description: 'Creates a new branch/outlet for the active restaurant.',
+    body: CreateOutletSchema,
+    responses: {
+      201: RestaurantOutletSchema,
+      400: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('outlet:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const body = await c.req.json().catch(() => ({}));
   const parsed = CreateOutletSchema.safeParse(body);
@@ -61,7 +89,22 @@ app.post('/', requirePermission('outlet:write'), async (c) => {
 });
 
 // PUT /outlets/:id
-app.put('/:id', requirePermission('outlet:write'), async (c) => {
+app.put(
+  '/:id',
+  apiDoc({
+    tags: ['Outlets'],
+    summary: 'Update Restaurant Outlet',
+    description: 'Updates outlet name, address, or phone number.',
+    params: z.object({ id: z.string() }),
+    body: UpdateOutletSchema,
+    responses: {
+      200: RestaurantOutletSchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('outlet:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const outletId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
@@ -89,7 +132,21 @@ app.put('/:id', requirePermission('outlet:write'), async (c) => {
 });
 
 // DELETE /outlets/:id
-app.delete('/:id', requirePermission('outlet:write'), async (c) => {
+app.delete(
+  '/:id',
+  apiDoc({
+    tags: ['Outlets'],
+    summary: 'Delete Restaurant Outlet',
+    description: 'Deletes an outlet (default outlet cannot be deleted).',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('outlet:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const outletId = c.req.param('id');
   const { db, close } = getDb(c);
@@ -115,7 +172,20 @@ app.delete('/:id', requirePermission('outlet:write'), async (c) => {
 });
 
 // PATCH /outlets/:id/set-default
-app.patch('/:id/set-default', requirePermission('outlet:write'), async (c) => {
+app.patch(
+  '/:id/set-default',
+  apiDoc({
+    tags: ['Outlets'],
+    summary: 'Set Outlet as Default',
+    description: 'Sets this outlet as the default outlet for the restaurant.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: RestaurantOutletSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('outlet:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const outletId = c.req.param('id');
   const { db, close } = getDb(c);

@@ -4,10 +4,12 @@ import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission } from '../lib/tenancy';
 import { RESTAURANT_ROLES } from '@logixsoft/logix-dine/types/roles';
+import { RestaurantMemberSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurantMember } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
 import { cacheGet, cacheSet, invalidateStaff, CacheKey, TTL } from '../lib/cache';
+import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -36,6 +38,10 @@ const UpdateStaffSchema = z.object({
   outletIds: z.array(z.string()).optional(),
 });
 
+export const RestaurantMemberWithOutletsSchema = RestaurantMemberSchema.extend({
+  outletIds: z.array(z.string()),
+});
+
 async function memberWithOutlets(db: any, restaurantId: string, memberId?: string) {
   const whereClause = memberId
     ? and(eq(appSchema.restaurantMember.restaurantId, restaurantId), eq(appSchema.restaurantMember.id, memberId))
@@ -61,7 +67,18 @@ async function memberWithOutlets(db: any, restaurantId: string, memberId?: strin
 }
 
 // GET /staff — list all members (with outlet access) for the current restaurant
-app.get('/', requirePermission('member:read'), async (c) => {
+app.get(
+  '/',
+  apiDoc({
+    tags: ['Staff'],
+    summary: 'List Staff Members',
+    description: 'Lists all staff members and their assigned outlet IDs for the current restaurant.',
+    responses: {
+      200: z.array(RestaurantMemberWithOutletsSchema),
+    },
+  }),
+  requirePermission('member:read'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
 
   const cached = await cacheGet<any[]>(kv(c), CacheKey.staff(restaurantId));
@@ -79,7 +96,21 @@ app.get('/', requirePermission('member:read'), async (c) => {
 });
 
 // POST /staff/invite — create a PENDING member row + outlet access, notify by WhatsApp
-app.post('/invite', requirePermission('member:write'), async (c) => {
+app.post(
+  '/invite',
+  apiDoc({
+    tags: ['Staff'],
+    summary: 'Invite Staff Member',
+    description: 'Invites a new staff member by phone with specific role and outlet access.',
+    body: InviteStaffSchema,
+    responses: {
+      201: RestaurantMemberWithOutletsSchema,
+      400: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('member:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
@@ -178,7 +209,23 @@ app.post('/invite', requirePermission('member:write'), async (c) => {
 });
 
 // PUT /staff/:id — update role and/or outlet assignments
-app.put('/:id', requirePermission('member:write'), async (c) => {
+app.put(
+  '/:id',
+  apiDoc({
+    tags: ['Staff'],
+    summary: 'Update Staff Member',
+    description: 'Updates role and/or assigned outlet IDs for a staff member.',
+    params: z.object({ id: z.string() }),
+    body: UpdateStaffSchema,
+    responses: {
+      200: RestaurantMemberWithOutletsSchema,
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('member:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const actorPhone = c.get('actorPhone');
   const memberId = c.req.param('id');
@@ -229,7 +276,21 @@ app.put('/:id', requirePermission('member:write'), async (c) => {
 });
 
 // DELETE /staff/:id — remove a member (cascades to memberOutletAccess)
-app.delete('/:id', requirePermission('member:write'), async (c) => {
+app.delete(
+  '/:id',
+  apiDoc({
+    tags: ['Staff'],
+    summary: 'Remove Staff Member',
+    description: 'Removes a staff member and their outlet access.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('member:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const memberId = c.req.param('id');
 

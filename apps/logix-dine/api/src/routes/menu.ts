@@ -1,11 +1,14 @@
 import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
+import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission } from '../lib/tenancy';
 import {
   CreateCategorySchema,
   UpdateCategorySchema,
+  MenuCategorySchema,
+  MenuItemSchema,
   CreateItemSchema,
   UpdateItemSchema,
   ReorderSchema,
@@ -13,6 +16,7 @@ import {
 import { toCategory, toMenuItem } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { cacheGet, cacheSet, invalidateMenu, CacheKey, TTL } from '../lib/cache';
+import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -25,7 +29,17 @@ function kv(c: any) { return c.env?.CACHE; }
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 
-app.get('/categories', requirePermission('menu:read'), async (c) => {
+app.get(
+  '/categories',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'List Menu Categories',
+    description: 'Fetches active menu categories for the current restaurant/outlet.',
+    query: z.object({ outletId: z.string().optional() }),
+    responses: { 200: z.array(MenuCategorySchema) },
+  }),
+  requirePermission('menu:read'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
 
@@ -47,7 +61,20 @@ app.get('/categories', requirePermission('menu:read'), async (c) => {
   }
 });
 
-app.post('/categories', requirePermission('menu:write'), async (c) => {
+app.post(
+  '/categories',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Create Menu Category',
+    description: 'Creates a new menu category for the restaurant/outlet.',
+    body: CreateCategorySchema,
+    responses: {
+      201: MenuCategorySchema,
+      400: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const headerOutletId = c.req.header('x-outlet-id');
   const body = await c.req.json().catch(() => ({}));
@@ -75,7 +102,22 @@ app.post('/categories', requirePermission('menu:write'), async (c) => {
   }
 });
 
-app.put('/categories/:id', requirePermission('menu:write'), async (c) => {
+app.put(
+  '/categories/:id',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Update Menu Category',
+    description: 'Updates a menu category name, description, active status, or sort order.',
+    params: z.object({ id: z.string() }),
+    body: UpdateCategorySchema,
+    responses: {
+      200: MenuCategorySchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
@@ -97,7 +139,20 @@ app.put('/categories/:id', requirePermission('menu:write'), async (c) => {
   }
 });
 
-app.delete('/categories/:id', requirePermission('menu:write'), async (c) => {
+app.delete(
+  '/categories/:id',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Delete Menu Category',
+    description: 'Deletes a menu category if no items are assigned to it.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const { db, close } = getDb(c);
@@ -120,7 +175,20 @@ app.delete('/categories/:id', requirePermission('menu:write'), async (c) => {
   }
 });
 
-app.patch('/categories/reorder', requirePermission('menu:write'), async (c) => {
+app.patch(
+  '/categories/reorder',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Reorder Menu Categories',
+    description: 'Updates sort order for an array of categories.',
+    body: ReorderSchema,
+    responses: {
+      200: SuccessResponseSchema,
+      400: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const body = await c.req.json().catch(() => []);
   const parsed = ReorderSchema.safeParse(body);
@@ -145,7 +213,20 @@ app.patch('/categories/reorder', requirePermission('menu:write'), async (c) => {
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
-app.get('/items', requirePermission('menu:read'), async (c) => {
+app.get(
+  '/items',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'List Menu Items',
+    description: 'Fetches menu items with optional categoryId or outletId filter.',
+    query: z.object({
+      categoryId: z.string().optional(),
+      outletId: z.string().optional(),
+    }),
+    responses: { 200: z.array(MenuItemSchema) },
+  }),
+  requirePermission('menu:read'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const categoryId = c.req.query('categoryId');
   const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
@@ -172,7 +253,21 @@ app.get('/items', requirePermission('menu:read'), async (c) => {
   }
 });
 
-app.post('/items', requirePermission('menu:write'), async (c) => {
+app.post(
+  '/items',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Create Menu Item',
+    description: 'Creates a new menu item under a specific category.',
+    body: CreateItemSchema,
+    responses: {
+      201: MenuItemSchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const headerOutletId = c.req.header('x-outlet-id');
   const body = await c.req.json().catch(() => ({}));
@@ -209,7 +304,22 @@ app.post('/items', requirePermission('menu:write'), async (c) => {
   }
 });
 
-app.put('/items/:id', requirePermission('menu:write'), async (c) => {
+app.put(
+  '/:id',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Update Menu Item',
+    description: 'Updates menu item details, price, category, or sort order.',
+    params: z.object({ id: z.string() }),
+    body: UpdateItemSchema,
+    responses: {
+      200: MenuItemSchema,
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
@@ -231,7 +341,20 @@ app.put('/items/:id', requirePermission('menu:write'), async (c) => {
   }
 });
 
-app.delete('/items/:id', requirePermission('menu:write'), async (c) => {
+app.delete(
+  '/:id',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Delete Menu Item',
+    description: 'Deletes a menu item from the restaurant catalog.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const { db, close } = getDb(c);
@@ -246,7 +369,20 @@ app.delete('/items/:id', requirePermission('menu:write'), async (c) => {
   }
 });
 
-app.patch('/items/:id/toggle', requirePermission('menu:write'), async (c) => {
+app.patch(
+  '/:id/toggle',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Toggle Menu Item Availability',
+    description: 'Flips availability of a menu item on or off.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: MenuItemSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const id = c.req.param('id');
   const { db, close } = getDb(c);
@@ -268,7 +404,20 @@ app.patch('/items/:id/toggle', requirePermission('menu:write'), async (c) => {
   }
 });
 
-app.patch('/items/reorder', requirePermission('menu:write'), async (c) => {
+app.patch(
+  '/items/reorder',
+  apiDoc({
+    tags: ['Menu'],
+    summary: 'Reorder Menu Items',
+    description: 'Updates sort order for an array of items.',
+    body: ReorderSchema,
+    responses: {
+      200: SuccessResponseSchema,
+      400: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('menu:write'),
+  async (c) => {
   const { restaurantId } = c.get('tenant');
   const body = await c.req.json().catch(() => []);
   const parsed = ReorderSchema.safeParse(body);

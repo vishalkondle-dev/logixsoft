@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
+import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient } from '../db';
 import { appSchema } from '../db';
 import { requireAuth } from '../lib/tenancy';
-import { CreateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
+import { CreateRestaurantSchema, RestaurantSchema, RestaurantOutletSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant, toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
+import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -15,7 +17,24 @@ function getDb(c: any) {
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
 
-app.post('/restaurant', requireAuth(), async (c) => {
+app.post(
+  '/restaurant',
+  apiDoc({
+    tags: ['Onboarding'],
+    summary: 'Onboard New Restaurant',
+    description: 'Initializes a new restaurant, creates default outlet, and assigns current user as OWNER.',
+    body: CreateRestaurantSchema,
+    responses: {
+      201: z.object({
+        restaurant: RestaurantSchema,
+        outlet: RestaurantOutletSchema,
+      }),
+      400: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requireAuth(),
+  async (c) => {
   const user = c.get('sessionUser') as any;
 
   const body = await c.req.json().catch(() => ({}));

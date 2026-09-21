@@ -5,8 +5,9 @@ import { createDbWithClient, appSchema } from '../db';
 import { requireAuth } from '../lib/tenancy';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
+import { broadcastToCustomer } from '../lib/sync';
 
-const app = new Hono<{ Bindings: AuthEnv }>();
+const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
@@ -254,6 +255,14 @@ app.patch(
         .update(appSchema.user)
         .set(updates)
         .where(eq(appSchema.user.id, String(sessionUser.id)));
+
+      if (sessionUser?.phoneNumber) {
+        broadcastToCustomer(c.env, sessionUser.phoneNumber, {
+          topic: 'CUSTOMER',
+          type: 'PROFILE_UPDATED',
+          data: { name, email },
+        });
+      }
 
       return c.json({ success: true, message: 'Profile updated successfully' });
     } catch (err: any) {

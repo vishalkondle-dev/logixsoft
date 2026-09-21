@@ -50,10 +50,12 @@ import {
   IconMeat,
   IconLeaf,
   IconRefresh,
+  IconBolt,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "@/lib/auth-context";
 import { useCustomerPortal, useUpdateCustomerProfile } from "@/lib/queries";
+import { useCustomerSync } from "@/lib/use-customer-sync";
 import type { CustomerPortalOrder } from "@/lib/api-client";
 
 // Format paise to INR string
@@ -174,6 +176,20 @@ ${itemsText}
     window.open(url, "_blank");
   };
 
+  const customer = data?.customer;
+  const stats = data?.stats;
+  const activeOrders = data?.activeOrders || [];
+  const pastOrders = data?.pastOrders || [];
+
+  const activeOutletIds = useMemo(() => {
+    return Array.from(new Set(activeOrders.map((o) => o.outletId).filter(Boolean)));
+  }, [activeOrders]);
+
+  const { isConnected, isConnecting } = useCustomerSync(
+    isAuthenticated ? (customer?.phone || user?.phoneNumber) : null,
+    { activeOutletIds }
+  );
+
   // 1. Auth Loading State
   if (authLoading) {
     return (
@@ -221,11 +237,6 @@ ${itemsText}
       </Container>
     );
   }
-
-  const customer = data?.customer;
-  const stats = data?.stats;
-  const activeOrders = data?.activeOrders || [];
-  const pastOrders = data?.pastOrders || [];
 
   const tierBadgeColor =
     customer?.loyaltyTier === "VIP Customer"
@@ -312,6 +323,26 @@ ${itemsText}
                       {customer.dietaryPreference}
                     </Badge>
                   )}
+                  {isConnected ? (
+                    <Badge
+                      color="teal"
+                      variant="light"
+                      size="xs"
+                      leftSection={<IconBolt size={11} />}
+                      style={{ textTransform: "none" }}
+                    >
+                      Durable Object Live
+                    </Badge>
+                  ) : isConnecting ? (
+                    <Badge
+                      color="yellow"
+                      variant="light"
+                      size="xs"
+                      style={{ textTransform: "none" }}
+                    >
+                      Connecting DO...
+                    </Badge>
+                  ) : null}
                 </Group>
               </Box>
             </Group>
@@ -439,25 +470,31 @@ ${itemsText}
               </Paper>
             ) : (
               <Stack gap="md">
-                <Group justify="space-between" align="center">
-                  <Group gap={6}>
+                <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                  <Group gap={6} align="center">
                     <Box
                       style={{
                         width: 10,
                         height: 10,
                         borderRadius: "50%",
-                        backgroundColor: "#2b8a3e",
-                        boxShadow: "0 0 0 3px rgba(43, 138, 62, 0.25)",
-                        animation: "pulse 2s infinite",
+                        backgroundColor: isConnected ? "#2b8a3e" : isConnecting ? "#f59f00" : "#868e96",
+                        boxShadow: isConnected ? "0 0 0 3px rgba(43, 138, 62, 0.25)" : "none",
+                        animation: isConnected ? "pulse 2s infinite" : "none",
                       }}
                     />
-                    <Text fw={700} size="sm" c="green.8">
+                    <Text fw={700} size="sm" c={isConnected ? "green.8" : "dimmed"}>
                       Live Kitchen Tracking ({activeOrders.length} Active {activeOrders.length === 1 ? "Order" : "Orders"})
                     </Text>
                   </Group>
-                  <Text size="xs" c="dimmed">
-                    Auto-refreshes every 15s
-                  </Text>
+                  <Badge
+                    color={isConnected ? "teal" : isConnecting ? "yellow" : "gray"}
+                    variant="light"
+                    size="xs"
+                    leftSection={<IconBolt size={11} />}
+                    style={{ textTransform: "none" }}
+                  >
+                    {isConnected ? "Durable Object Live Sync" : isConnecting ? "Connecting Live..." : "Offline"}
+                  </Badge>
                 </Group>
 
                 {activeOrders.map((order) => (

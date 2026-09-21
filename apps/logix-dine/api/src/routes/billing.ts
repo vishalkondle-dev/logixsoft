@@ -442,11 +442,16 @@ app.post(
       }
     }
 
-    broadcastToOutlet(c.env, parsed.data.outletId, {
-      topic: 'ALL',
-      type: 'ORDER_CREATED',
-      data: { orderId: result.order.id, tableNo: result.order.tableNo },
-    });
+    broadcastToOutlet(
+      c.env,
+      parsed.data.outletId,
+      {
+        topic: 'ALL',
+        type: 'ORDER_CREATED',
+        data: { orderId: result.order.id, tableNo: result.order.tableNo, customerPhone: result.order.customerPhone },
+      },
+      result.order.customerPhone
+    );
 
     return c.json(result, 201);
   } finally {
@@ -578,11 +583,16 @@ app.post(
     }
 
     await invalidateReports(kv(c), restaurantId);
-    broadcastToOutlet(c.env, parsed.data.outletId, {
-      topic: 'ALL',
-      type: 'ORDER_CREATED',
-      data: { orderId: result.order.id, tableNo: result.order.tableNo },
-    });
+    broadcastToOutlet(
+      c.env,
+      parsed.data.outletId,
+      {
+        topic: 'ALL',
+        type: 'ORDER_CREATED',
+        data: { orderId: result.order.id, tableNo: result.order.tableNo, customerPhone: result.order.customerPhone },
+      },
+      result.order.customerPhone
+    );
     return c.json(result, 201);
   } finally {
     await close();
@@ -1056,11 +1066,16 @@ app.post(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'ALL',
-      type: 'ROUND_ADDED',
-      data: { orderId, round: nextRound, tableNo: order.tableNo },
-    });
+    broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'ALL',
+        type: 'ROUND_ADDED',
+        data: { orderId, round: nextRound, tableNo: order.tableNo, customerPhone: order.customerPhone },
+      },
+      order.customerPhone
+    );
     return c.json({
       ...result,
       round: nextRound,
@@ -1199,11 +1214,16 @@ app.patch(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'KITCHEN',
-      type: 'ITEM_STATUS_CHANGED',
-      data: { orderId, orderItemId, targetStatus },
-    });
+    broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'KITCHEN',
+        type: 'ITEM_STATUS_CHANGED',
+        data: { orderId, orderItemId, targetStatus },
+      },
+      order.customerPhone
+    );
     return c.json(result);
   } finally {
     await close();
@@ -1240,7 +1260,11 @@ app.patch(
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId })
+      .select({
+        status: appSchema.saleOrder.status,
+        outletId: appSchema.saleOrder.outletId,
+        customerPhone: appSchema.saleOrder.customerPhone,
+      })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
@@ -1260,11 +1284,16 @@ app.patch(
 
     await recomputeTotal(db, orderId);
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'ALL',
-      type: 'ORDER_ITEMS_UPDATED',
-      data: { orderId },
-    });
+    broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'ALL',
+        type: 'ORDER_ITEMS_UPDATED',
+        data: { orderId, customerPhone: order.customerPhone },
+      },
+      order.customerPhone
+    );
     return c.json(result);
   } finally {
     await close();
@@ -1296,7 +1325,11 @@ app.delete(
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId })
+      .select({
+        status: appSchema.saleOrder.status,
+        outletId: appSchema.saleOrder.outletId,
+        customerPhone: appSchema.saleOrder.customerPhone,
+      })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
@@ -1311,11 +1344,16 @@ app.delete(
 
     await recomputeTotal(db, orderId);
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'ALL',
-      type: 'ORDER_ITEMS_UPDATED',
-      data: { orderId },
-    });
+    broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'ALL',
+        type: 'ORDER_ITEMS_UPDATED',
+        data: { orderId, customerPhone: order.customerPhone },
+      },
+      order.customerPhone
+    );
     return c.json(result);
   } finally {
     await close();
@@ -1442,11 +1480,16 @@ app.post(
     }
 
     await invalidateReports(kv(c), restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'ALL',
-      type: 'ORDER_SETTLED',
-      data: { orderId, tableNo: order.tableNo },
-    });
+    broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'ALL',
+        type: 'ORDER_SETTLED',
+        data: { orderId, tableNo: order.tableNo, customerPhone: order.customerPhone },
+      },
+      order.customerPhone
+    );
     return c.json(result);
   } finally {
     await close();
@@ -1792,7 +1835,12 @@ app.patch(
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ id: appSchema.saleOrder.id, outletId: appSchema.saleOrder.outletId, tableNo: appSchema.saleOrder.tableNo })
+      .select({
+        id: appSchema.saleOrder.id,
+        outletId: appSchema.saleOrder.outletId,
+        tableNo: appSchema.saleOrder.tableNo,
+        customerPhone: appSchema.saleOrder.customerPhone,
+      })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
@@ -1847,11 +1895,16 @@ app.patch(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'KITCHEN',
-      type: 'ORDER_PREPARED',
-      data: { orderId, tableNo: order.tableNo },
-    });
+    broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'KITCHEN',
+        type: 'ORDER_PREPARED',
+        data: { orderId, tableNo: order.tableNo, customerPhone: order.customerPhone },
+      },
+      order.customerPhone
+    );
     return c.json(result);
   } finally {
     await close();

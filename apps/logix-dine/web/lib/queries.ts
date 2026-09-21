@@ -498,8 +498,7 @@ export function useCustomerPortal() {
   return useQuery({
     queryKey: qk.customerPortal(),
     queryFn: () => getCustomerPortal(),
-    refetchInterval: 15_000, // Live poll every 15s for order status updates
-    staleTime: 10_000,
+    staleTime: 60_000,
   });
 }
 

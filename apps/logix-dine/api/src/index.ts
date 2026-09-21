@@ -523,6 +523,37 @@ const handleLiveWs = async (c: any) => {
 app.get('/live/outlets/:outletId', handleLiveWs);
 app.get('/api/live/outlets/:outletId', handleLiveWs);
 
+// Real-time Customer Live Sync via Durable Objects
+const handleCustomerLiveWs = async (c: any) => {
+  const upgradeHeader = c.req.header('Upgrade');
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426);
+  }
+
+  const phone = c.req.param('phone');
+  if (!phone) {
+    return c.text('Customer Phone required', 400);
+  }
+
+  const rawDigits = phone.replace(/\D/g, '').slice(-10);
+  if (!rawDigits) {
+    return c.text('Invalid phone number', 400);
+  }
+
+  const doNamespace = c.env.OUTLET_ROOM;
+  if (!doNamespace) {
+    return c.text('Durable Objects not configured', 503);
+  }
+
+  const id = doNamespace.idFromName(`customer:${rawDigits}`);
+  const stub = doNamespace.get(id);
+
+  return stub.fetch(c.req.raw);
+};
+
+app.get('/live/customers/:phone', handleCustomerLiveWs);
+app.get('/api/live/customers/:phone', handleCustomerLiveWs);
+
 // Register OpenAPI 3.1 specification at /doc
 const openApiDoc = createOpenApiDocument(
   app,

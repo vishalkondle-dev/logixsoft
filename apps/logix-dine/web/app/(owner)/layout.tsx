@@ -35,8 +35,8 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
       router.replace("/kitchen");
       return;
     }
-    // WAITER role can access /pos, /orders, and /tables
-    if (restaurant && role === "WAITER" && !redirected.current && !pathname.startsWith("/pos") && !pathname.startsWith("/orders") && !pathname.startsWith("/tables")) {
+    // WAITER role can access /pos, /orders, /tables, and /customers
+    if (restaurant && role === "WAITER" && !redirected.current && !pathname.startsWith("/pos") && !pathname.startsWith("/orders") && !pathname.startsWith("/tables") && !pathname.startsWith("/customers")) {
       redirected.current = true;
       router.replace("/pos");
       return;

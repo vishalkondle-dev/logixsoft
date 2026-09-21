@@ -36,6 +36,7 @@ import { adminRoutes } from './routes/admin';
 import { staffRoutes } from './routes/staff';
 import { tableRoutes } from './routes/tables';
 import { reportRoutes } from './routes/reports';
+import { customerRoutes } from './routes/customers';
 import { storeSessionPayload } from './lib/tenancy';
 import { extractSessionToken } from './lib/cache';
 
@@ -488,6 +489,9 @@ app.route('/api/tables', tableRoutes);
 
 app.route('/reports', reportRoutes);
 app.route('/api/reports', reportRoutes);
+
+app.route('/customers', customerRoutes);
+app.route('/api/customers', customerRoutes);
 
 // Real-time Outlet Live Sync via Durable Objects
 const handleLiveWs = async (c: any) => {

@@ -40,6 +40,9 @@ import {
   updateOutlet,
   deleteOutlet,
   setDefaultOutlet,
+  getCustomerProfile,
+  updateCustomerNotes,
+  sendCustomerWhatsApp,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
@@ -65,6 +68,8 @@ export const qk = {
     ["outlets", restaurantId] as const,
   report: (restaurantId: string, type: ReportType, from: string, to: string, outletId: string | null) =>
     ["report", restaurantId, type, from, to, outletId ?? null] as const,
+  customer: (restaurantId: string, phone: string, outletId?: string | null) =>
+    ["customer", restaurantId, phone, outletId ?? "all"] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -447,5 +452,38 @@ export function useSetDefaultOutlet(restaurantId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.outlets(restaurantId) });
     },
+  });
+}
+
+// ─── Customer Profile Hooks ──────────────────────────────────────────────────
+
+export function useCustomerProfile(
+  restaurantId: string,
+  phone: string,
+  outletId?: string | null
+) {
+  return useQuery({
+    queryKey: qk.customer(restaurantId, phone, outletId),
+    queryFn: () => getCustomerProfile(restaurantId, phone, outletId),
+    enabled: Boolean(restaurantId && phone),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateCustomerNotes(restaurantId: string, phone: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body, outletId }: { body: { notes?: string; tags?: string[] }; outletId?: string | null }) =>
+      updateCustomerNotes(restaurantId, phone, body, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer", restaurantId, phone] });
+    },
+  });
+}
+
+export function useSendCustomerWhatsApp(restaurantId: string, phone: string) {
+  return useMutation({
+    mutationFn: ({ message, outletId }: { message: string; outletId?: string | null }) =>
+      sendCustomerWhatsApp(restaurantId, phone, { message }, outletId),
   });
 }

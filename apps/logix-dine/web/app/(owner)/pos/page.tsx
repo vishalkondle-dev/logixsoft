@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
-  UnstyledButton,
+  UnstyledButton, Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import {
   IconPlus, IconMinus, IconTrash, IconChevronDown,
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
+  IconUser,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useCategories, useItems, useTables, useOrders, qk } from "@/lib/queries";
@@ -166,6 +168,21 @@ function CartPanel({
             value={customerPhone}
             onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
             leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
+            rightSection={
+              customerPhone.length >= 10 ? (
+                <Tooltip label="View Customer Profile" withArrow position="left">
+                  <ActionIcon
+                    component={Link}
+                    href={`/customers/${customerPhone}`}
+                    size="sm"
+                    color="dinePrimary"
+                    variant="light"
+                  >
+                    <IconUser size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              ) : null
+            }
           />
 
           {activeTableOrder && (() => {
@@ -392,13 +409,17 @@ export default function POSPage() {
   const nextRound = currentRound + 1;
   const [showExistingItemsModal, setShowExistingItemsModal] = useState(false);
 
-  // Sync table from URL if provided (e.g. from Tables page)
+  // Sync table or customer phone from URL if provided (e.g. from Tables page or Customer Profile)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tableParam = params.get("table");
       if (tableParam) {
         setTableNo(tableParam);
+      }
+      const phoneParam = params.get("phone");
+      if (phoneParam) {
+        setCustomerPhone(phoneParam.replace(/\D/g, "").slice(0, 15));
       }
     }
   }, []);

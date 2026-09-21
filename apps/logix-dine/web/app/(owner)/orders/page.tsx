@@ -7,9 +7,11 @@ import {
   SimpleGrid, Alert,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import Link from "next/link";
 import {
   IconReceipt, IconPrinter, IconArrowRight, IconX,
   IconBan, IconCheck, IconCash, IconDoorExit, IconAlertCircle,
+  IconUser,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useOrders } from "@/lib/queries";
@@ -320,7 +322,19 @@ export default function OrdersPage() {
                         ↻ {maxRound} Rounds
                       </Badge>
                     )}
-                    {order.customerPhone && <Badge size="xs" variant="outline" color="teal">WA</Badge>}
+                    {order.customerPhone && (
+                      <Badge
+                        component={Link}
+                        href={`/customers/${order.customerPhone}`}
+                        size="xs"
+                        variant="light"
+                        color="teal"
+                        style={{ cursor: "pointer" }}
+                        onClick={(e: any) => e.stopPropagation()}
+                      >
+                        {order.customerPhone}
+                      </Badge>
+                    )}
 
                     {/* Order Fulfillment Status Badge */}
                     <Badge
@@ -454,7 +468,19 @@ export default function OrdersPage() {
               </Group>
 
               {order.customerPhone && (
-                <Text size="xs" c="dimmed">Customer: {order.customerPhone}</Text>
+                <Group gap="xs" align="center">
+                  <Text size="xs" c="dimmed">Customer: <b>{order.customerPhone}</b></Text>
+                  <Button
+                    component={Link}
+                    href={`/customers/${order.customerPhone}`}
+                    size="compact-xs"
+                    variant="light"
+                    color="dinePrimary"
+                    leftSection={<IconUser size={12} />}
+                  >
+                    View Profile
+                  </Button>
+                </Group>
               )}
 
               <Divider my="xs" label={`Order Items (${items.length})`} labelPosition="center" />

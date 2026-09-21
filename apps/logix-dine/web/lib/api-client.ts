@@ -305,3 +305,137 @@ export const createRestaurant = async (body: { name: string; address: string; ph
   }
   return res.json();
 };
+
+// ─── Customers ────────────────────────────────────────────────────────────────
+
+export interface CustomerProfileData {
+  customer: {
+    phone: string;
+    rawPhone: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+    tags: string[];
+    notes: string;
+  };
+  scope: {
+    filterOutletId: string | null;
+    activeOutletName: string;
+    restaurantName: string;
+  };
+  metrics: {
+    totalOrdersCount: number;
+    completedOrdersCount: number;
+    cancelledOrdersCount: number;
+    openOrdersCount: number;
+    lifetimeSpendPaise: number;
+    averageOrderValuePaise: number;
+    highestOrderPaise: number;
+    firstVisitAt: string | null;
+    lastVisitAt: string | null;
+    daysSinceLastVisit: number | null;
+    visitFrequencyDays: number | null;
+    dineInCount: number;
+    takeawayCount: number;
+    preferredDineMode: "Dine-In" | "Takeaway";
+    preferredTable: string | null;
+    preferredPaymentMethod: string | null;
+    paymentMethodsBreakdown: Array<{ method: string; count: number; totalPaise: number }>;
+    dietaryPreference: {
+      vegCount: number;
+      nonVegCount: number;
+      totalDishes: number;
+      primary: "Veg" | "Non-Veg" | "Mixed";
+    };
+  };
+  overallChainMetrics: {
+    totalChainOrders: number;
+    totalChainSpendPaise: number;
+    outletBreakdown: Array<{
+      outletId: string;
+      outletName: string;
+      ordersCount: number;
+      totalSpendPaise: number;
+      lastVisit: string | null;
+    }>;
+  };
+  favoriteItems: Array<{
+    itemId: string;
+    name: string;
+    isNonVeg: boolean;
+    qty: number;
+    totalSpendPaise: number;
+    orderCount: number;
+    lastOrderedAt: string;
+  }>;
+  orders: Array<{
+    id: string;
+    orderNo: number;
+    outletId: string;
+    outletName: string;
+    tableNo: string;
+    customerPhone: string | null;
+    status: string;
+    orderStatus: string;
+    subtotalPaise: number;
+    paidPaise: number;
+    method: string | null;
+    note: string | null;
+    createdAt: string | null;
+    settledAt: string | null;
+    itemsCount: number;
+    items: Array<{
+      id: string;
+      itemId: string;
+      name: string;
+      pricePaise: number;
+      qty: number;
+      variant?: any;
+      addons?: any[];
+      status: string;
+      paymentStatus: string;
+      round: number;
+      note?: string;
+    }>;
+  }>;
+}
+
+export const getCustomerProfile = (
+  restaurantId: string,
+  phone: string,
+  outletId?: string | null
+) => {
+  const qs = outletId ? `?outletId=${encodeURIComponent(outletId)}` : "";
+  return apiFetch<CustomerProfileData>(
+    `/customers/${encodeURIComponent(phone)}${qs}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+export const updateCustomerNotes = (
+  restaurantId: string,
+  phone: string,
+  body: { notes?: string; tags?: string[] },
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; notes: string; tags: string[] }>(
+    `/customers/${encodeURIComponent(phone)}/notes`,
+    restaurantId,
+    { method: "PUT", body: JSON.stringify(body) },
+    outletId
+  );
+
+export const sendCustomerWhatsApp = (
+  restaurantId: string,
+  phone: string,
+  body: { message: string },
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; waResponse: any }>(
+    `/customers/${encodeURIComponent(phone)}/whatsapp`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(body) },
+    outletId
+  );

@@ -89,16 +89,18 @@ export default function HomePage() {
 
         <Group justify="center" mt="md">
           {isAuthenticated ? (
-            <Button
-              component={Link}
-              href="/dashboard"
-              size="lg"
-              color="dinePrimary"
-              rightSection={<IconArrowRight size={18} />}
-              leftSection={<IconShoppingCart size={18} />}
-            >
-              Go to Protected Dashboard
-            </Button>
+            <Group>
+              <Button
+                component={Link}
+                href="/portal"
+                size="lg"
+                color="dinePrimary"
+                rightSection={<IconArrowRight size={18} />}
+                leftSection={<IconReceipt size={18} />}
+              >
+                View My Orders & Profile
+              </Button>
+            </Group>
           ) : (
             <Button
               size="lg"
@@ -106,18 +108,9 @@ export default function HomePage() {
               leftSection={<IconBrandWhatsapp size={20} />}
               onClick={openLoginModal}
             >
-              Sign In with Mobile OTP
+              Sign In with WhatsApp OTP
             </Button>
           )}
-
-          <Button
-            component={Link}
-            href="/dashboard"
-            size="lg"
-            variant="default"
-          >
-            Explore Protected Area
-          </Button>
         </Group>
 
         {/* Feature Highlights Grid */}

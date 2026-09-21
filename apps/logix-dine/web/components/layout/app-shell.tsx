@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   AppShell, Group, Text, Button, ActionIcon, Avatar, Menu,
   Tooltip, Badge, Loader, Box, UnstyledButton,
@@ -11,22 +11,39 @@ import {
   IconLogin, IconLogout, IconShoppingCart, IconHome,
   IconBook, IconSettings, IconBuildingStore, IconReceipt,
   IconChartBar, IconTableAlias, IconChevronDown, IconCheck,
+  IconFlame, IconHistory, IconUser,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
 
-// `roles: undefined` = visible to every restaurant member (incl. no restaurant yet).
-// KITCHEN never sees this nav at all — it's redirected to the dedicated /kitchen layout.
-const NAV_ITEMS = [
+// Staff navigation items
+const STAFF_NAV_ITEMS = [
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
 ];
 
+// Customer portal navigation items (Active Order, Past Orders, My Profile)
+const CUSTOMER_NAV_ITEMS = [
+  { label: "Active Orders", href: "/portal?tab=active", icon: IconFlame },
+  { label: "Past Orders", href: "/portal?tab=past", icon: IconHistory },
+  { label: "My Profile", href: "/portal?tab=profile", icon: IconUser },
+];
+
+function SearchParamsWatcher({ onTabChange }: { onTabChange: (tab: string) => void }) {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") || "active";
+  React.useEffect(() => {
+    onTabChange(tab);
+  }, [tab, onTabChange]);
+  return null;
+}
+
 export function AppShellLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [currentTab, setCurrentTab] = React.useState<string>("active");
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
   const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
 
@@ -40,10 +57,21 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   }
 
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
-  const visibleNav = NAV_ITEMS.filter((n) => !n.roles || (effectiveRole && n.roles.includes(effectiveRole)));
+  const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER"].includes(effectiveRole));
+  const isCustomer = isAuthenticated && !isStaffOrOwner;
+
+  const visibleNav = isStaffOrOwner
+    ? STAFF_NAV_ITEMS.filter((n) => !n.roles || (effectiveRole && n.roles.includes(effectiveRole)))
+    : isCustomer
+    ? CUSTOMER_NAV_ITEMS
+    : [];
+
 
   return (
     <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0}>
+      <React.Suspense fallback={null}>
+        <SearchParamsWatcher onTabChange={setCurrentTab} />
+      </React.Suspense>
       <AppShell.Header withBorder={false}>
         <Box h="100%" px={{ base: "xs", sm: "md" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
@@ -78,14 +106,20 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               >
                 {visibleNav.map((item) => {
                   const Icon = item.icon;
-                  const isActive = item.href === "/"
-                    ? pathname === "/"
-                    : item.href.startsWith("/settings")
-                      ? pathname.startsWith("/settings")
-                      : pathname.startsWith(item.href);
-                  const itemHref = activeOutlet && item.href !== "/"
-                    ? `${item.href}?outletId=${activeOutlet.id}`
-                    : item.href;
+                  const isPortalItem = item.href.includes("?tab=");
+                  const targetTab = isPortalItem ? item.href.split("?tab=")[1] : "";
+                  const isActive = isPortalItem
+                    ? pathname === "/portal" && currentTab === targetTab
+                    : item.href === "/"
+                      ? pathname === "/"
+                      : item.href.startsWith("/settings")
+                        ? pathname.startsWith("/settings")
+                        : pathname.startsWith(item.href);
+                  const itemHref = isPortalItem
+                    ? item.href
+                    : activeOutlet && item.href !== "/"
+                      ? `${item.href}?outletId=${activeOutlet.id}`
+                      : item.href;
                   return (
                     <UnstyledButton
                       key={item.href}
@@ -240,10 +274,18 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   <Menu.Dropdown>
                     <Menu.Label>
                       <Group justify="space-between">
-                        <Text size="xs" fw={700}>{user.name}</Text>
-                        <Badge size="xs" color="dinePrimary" variant="light">{(user as any).role}</Badge>
+                        <Text size="xs" fw={700}>{user.name || "Customer"}</Text>
+                        <Badge size="xs" color="dinePrimary" variant="light">{(user as any).role || (isCustomer ? "CUSTOMER" : "USER")}</Badge>
                       </Group>
                     </Menu.Label>
+                    <Menu.Item
+                      component={Link}
+                      href="/portal"
+                      leftSection={<IconUser size={16} color="#af73d7" />}
+                    >
+                      My Orders & Profile
+                    </Menu.Item>
+                    <Menu.Divider />
                     <Menu.Item color="red" leftSection={<IconLogout size={16} />} onClick={() => signOut()}>Sign Out</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
@@ -264,60 +306,68 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         <LoginModal />
       </AppShell.Main>
 
-      <Box
-        component="nav"
-        aria-label="Bottom Navigation"
-        className="floating-bottom-nav"
-        hiddenFrom="md"
-        style={{
-          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-          zIndex: 100, maxWidth: "calc(100vw - 32px)",
-          background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          border: "1px solid rgba(175, 115, 215, 0.3)",
-          boxShadow: "0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)",
-          borderRadius: "9999px", padding: "6px 8px",
-          overflowX: "auto",
-          scrollbarWidth: "none",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        <Group gap={4} wrap="nowrap" style={{ flexWrap: "nowrap", minWidth: "max-content" }}>
-          {visibleNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.href === "/"
-              ? pathname === "/"
-              : item.href.startsWith("/settings")
-                ? pathname.startsWith("/settings")
-                : pathname.startsWith(item.href);
-            const itemHref = activeOutlet && item.href !== "/"
-              ? `${item.href}?outletId=${activeOutlet.id}`
-              : item.href;
-            return (
-              <UnstyledButton
-                key={item.href} component={Link} href={itemHref} aria-label={item.label}
-                px={{ base: isActive ? 14 : 10, sm: 16 }} py={8}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  borderRadius: "9999px", fontWeight: isActive ? 600 : 500,
-                  color: isActive ? "#af73d7" : "rgba(30, 30, 30, 0.8)",
-                  backgroundColor: isActive ? "rgba(175, 115, 215, 0.15)" : "transparent",
-                  textDecoration: "none", userSelect: "none", fontSize: 13,
-                  flexShrink: 0,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Icon size={18} stroke={isActive ? 2.2 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
-                {isActive ? (
-                  <Text size="sm" fw={700} c="dinePrimary">{item.label}</Text>
-                ) : (
-                  <Text size="sm" fw={500} c="inherit" visibleFrom="sm">{item.label}</Text>
-                )}
-              </UnstyledButton>
-            );
-          })}
-        </Group>
-      </Box>
+      {visibleNav.length > 0 && (
+        <Box
+          component="nav"
+          aria-label="Bottom Navigation"
+          className="floating-bottom-nav"
+          hiddenFrom="md"
+          style={{
+            position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+            zIndex: 100, maxWidth: "calc(100vw - 32px)",
+            background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(175, 115, 215, 0.3)",
+            boxShadow: "0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)",
+            borderRadius: "9999px", padding: "6px 8px",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <Group gap={4} wrap="nowrap" style={{ flexWrap: "nowrap", minWidth: "max-content" }}>
+            {visibleNav.map((item) => {
+              const Icon = item.icon;
+              const isPortalItem = item.href.includes("?tab=");
+              const targetTab = isPortalItem ? item.href.split("?tab=")[1] : "";
+              const isActive = isPortalItem
+                ? pathname === "/portal" && currentTab === targetTab
+                : item.href === "/"
+                  ? pathname === "/"
+                  : item.href.startsWith("/settings")
+                    ? pathname.startsWith("/settings")
+                    : pathname.startsWith(item.href);
+              const itemHref = isPortalItem
+                ? item.href
+                : activeOutlet && item.href !== "/"
+                  ? `${item.href}?outletId=${activeOutlet.id}`
+                  : item.href;
+              return (
+                <UnstyledButton
+                  key={item.href} component={Link} href={itemHref} aria-label={item.label}
+                  px={{ base: isActive ? 14 : 10, sm: 16 }} py={8}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    borderRadius: "9999px", fontWeight: isActive ? 600 : 500,
+                    color: isActive ? "#af73d7" : "rgba(30, 30, 30, 0.8)",
+                    backgroundColor: isActive ? "rgba(175, 115, 215, 0.15)" : "transparent",
+                    textDecoration: "none", userSelect: "none", fontSize: 13,
+                    flexShrink: 0,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <Icon size={18} stroke={isActive ? 2.2 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
+                  {isActive ? (
+                    <Text size="sm" fw={700} c="dinePrimary">{item.label}</Text>
+                  ) : (
+                    <Text size="sm" fw={500} c="inherit" visibleFrom="sm">{item.label}</Text>
+                  )}
+                </UnstyledButton>
+              );
+            })}
+          </Group>
+        </Box>
+      )}
     </AppShell>
   );
 }

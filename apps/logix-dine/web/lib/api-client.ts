@@ -439,3 +439,99 @@ export const sendCustomerWhatsApp = (
     { method: "POST", body: JSON.stringify(body) },
     outletId
   );
+
+// ─── Customer Portal API ─────────────────────────────────────────────────────
+
+export interface CustomerPortalOrder {
+  id: string;
+  tokenNo: number | null;
+  restaurantId: string;
+  restaurantName: string;
+  restaurantPhone: string | null;
+  outletId: string;
+  outletName: string;
+  outletAddress: string | null;
+  tableNo: string;
+  status: string;
+  subtotalPaise: number;
+  paidPaise: number;
+  method: string;
+  note?: string | null;
+  createdAt: string | null;
+  settledAt: string | null;
+  itemsCount: number;
+  items: Array<{
+    id: string;
+    name: string;
+    pricePaise: number;
+    qty: number;
+    variant?: any;
+    addons?: any;
+    status?: string;
+    note?: string;
+  }>;
+}
+
+export interface CustomerPortalData {
+  customer: {
+    id: string;
+    name?: string | null;
+    phone: string;
+    rawPhone: string;
+    email?: string | null;
+    loyaltyTier: string;
+    dietaryPreference: string;
+  };
+  activeOrders: CustomerPortalOrder[];
+  pastOrders: CustomerPortalOrder[];
+  stats: {
+    lifetimeSpendPaise: number;
+    totalOrdersCount: number;
+    activeOrdersCount: number;
+    completedOrdersCount: number;
+    favoriteDishes: Array<{
+      itemId: string;
+      name: string;
+      isNonVeg: boolean;
+      qty: number;
+      totalSpendPaise: number;
+      orderCount: number;
+    }>;
+    vegItemsCount: number;
+    nonVegItemsCount: number;
+  };
+}
+
+export const getCustomerPortal = async (): Promise<CustomerPortalData> => {
+  const res = await fetch(`${API_BASE}/customer/portal`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+export const updateCustomerProfile = async (body: {
+  name?: string;
+  email?: string;
+}): Promise<{ success: boolean; message: string }> => {
+  const res = await fetch(`${API_BASE}/customer/profile`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+

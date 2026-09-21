@@ -43,6 +43,9 @@ import {
   getCustomerProfile,
   updateCustomerNotes,
   sendCustomerWhatsApp,
+  getCustomerPortal,
+  updateCustomerProfile,
+  type CustomerPortalData,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
@@ -70,6 +73,7 @@ export const qk = {
     ["report", restaurantId, type, from, to, outletId ?? null] as const,
   customer: (restaurantId: string, phone: string, outletId?: string | null) =>
     ["customer", restaurantId, phone, outletId ?? "all"] as const,
+  customerPortal: () => ["customerPortal"] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -487,3 +491,25 @@ export function useSendCustomerWhatsApp(restaurantId: string, phone: string) {
       sendCustomerWhatsApp(restaurantId, phone, { message }, outletId),
   });
 }
+
+// ─── Customer Portal Hooks ───────────────────────────────────────────────────
+
+export function useCustomerPortal() {
+  return useQuery({
+    queryKey: qk.customerPortal(),
+    queryFn: () => getCustomerPortal(),
+    refetchInterval: 15_000, // Live poll every 15s for order status updates
+    staleTime: 10_000,
+  });
+}
+
+export function useUpdateCustomerProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string; email?: string }) => updateCustomerProfile(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.customerPortal() });
+    },
+  });
+}
+

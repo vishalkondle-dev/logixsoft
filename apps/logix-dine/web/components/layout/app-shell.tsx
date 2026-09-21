@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AppShell, Group, Text, Button, ActionIcon, Avatar, Menu,
-  Tooltip, Container, Badge, Loader, Box, UnstyledButton, Select,
+  Tooltip, Badge, Loader, Box, UnstyledButton,
 } from "@mantine/core";
 import {
   IconLogin, IconLogout, IconShoppingCart, IconHome,
   IconBook, IconSettings, IconBuildingStore, IconReceipt,
-  IconChartBar, IconTableAlias,
+  IconChartBar, IconTableAlias, IconChevronDown, IconCheck,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -19,11 +19,10 @@ import { LoginModal } from "@/components/auth/login-modal";
 // `roles: undefined` = visible to every restaurant member (incl. no restaurant yet).
 // KITCHEN never sees this nav at all — it's redirected to the dedicated /kitchen layout.
 const NAV_ITEMS = [
-  { label: "Home", href: "/", icon: IconHome },
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Settings", href: "/settings/restaurant", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
+  { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
 ];
 
 export function AppShellLayout({ children }: { children: ReactNode }) {
@@ -46,7 +45,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0}>
       <AppShell.Header withBorder={false}>
-        <Container size="xl" h="100%" px={{ base: "md", sm: "lg" }}>
+        <Box h="100%" px={{ base: "xs", sm: "md" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
             <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
               <svg width="28" height="28" viewBox="233 245 520 520" fill="#af73d7">
@@ -57,18 +56,168 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               </Text>
             </Link>
 
+            {/* Middle: Header Navigation on Large Screens (where there is space) */}
+            <Box
+              component="nav"
+              aria-label="Main Navigation"
+              visibleFrom="md"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Group
+                gap="xs"
+                wrap="nowrap"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                }}
+              >
+                {visibleNav.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.href === "/"
+                    ? pathname === "/"
+                    : item.href.startsWith("/settings")
+                      ? pathname.startsWith("/settings")
+                      : pathname.startsWith(item.href);
+                  const itemHref = activeOutlet && item.href !== "/"
+                    ? `${item.href}?outletId=${activeOutlet.id}`
+                    : item.href;
+                  return (
+                    <UnstyledButton
+                      key={item.href}
+                      component={Link}
+                      href={itemHref}
+                      aria-label={item.label}
+                      px={14}
+                      py={6}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        borderRadius: "9999px",
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? "#af73d7" : "rgba(30, 30, 30, 0.75)",
+                        backgroundColor: isActive ? "rgba(175, 115, 215, 0.15)" : "transparent",
+                        textDecoration: "none",
+                        userSelect: "none",
+                        fontSize: 13,
+                        transition: "all 0.15s ease",
+                        whiteSpace: "nowrap",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "rgba(175, 115, 215, 0.08)";
+                          e.currentTarget.style.color = "#af73d7";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                          e.currentTarget.style.color = "rgba(30, 30, 30, 0.75)";
+                        }
+                      }}
+                    >
+                      <Icon size={16} stroke={isActive ? 2.2 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
+                      <Text size="sm" fw={isActive ? 700 : 500} c={isActive ? "dinePrimary" : "inherit"}>
+                        {item.label}
+                      </Text>
+                    </UnstyledButton>
+                  );
+                })}
+              </Group>
+            </Box>
+
             <Group gap="xs" wrap="nowrap" align="center">
               {outlets.length > 0 && (
-                <Select
-                  size="xs"
-                  value={activeOutlet?.id ?? outlets[0]?.id ?? ""}
-                  onChange={(v) => v && setActiveOutlet(v)}
-                  data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-                  leftSection={<IconBuildingStore size={14} />}
-                  w={{ base: 130, xs: 155, sm: 180 }}
-                  aria-label="Switch outlet"
-                  comboboxProps={{ withinPortal: true }}
-                />
+                <Menu
+                  position="bottom-end"
+                  withArrow={false}
+                  shadow="md"
+                  radius="md"
+                  withinPortal
+                  transitionProps={{ transition: "pop-top-right", duration: 150 }}
+                >
+                  <Menu.Target>
+                    <UnstyledButton
+                      aria-label="Switch outlet"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "4px 10px 4px 6px",
+                        borderRadius: "9999px",
+                        backgroundColor: "rgba(175, 115, 215, 0.08)",
+                        border: "1px solid rgba(175, 115, 215, 0.35)",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        maxWidth: 200,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "rgba(175, 115, 215, 0.16)";
+                        e.currentTarget.style.borderColor = "rgba(175, 115, 215, 0.6)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "rgba(175, 115, 215, 0.08)";
+                        e.currentTarget.style.borderColor = "rgba(175, 115, 215, 0.35)";
+                      }}
+                    >
+                      <Box
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          backgroundColor: "rgba(175, 115, 215, 0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <IconBuildingStore size={12} color="#af73d7" />
+                      </Box>
+                      <Text
+                        size="xs"
+                        fw={600}
+                        lineClamp={1}
+                        style={{ maxWidth: 110, lineHeight: 1.2 }}
+                      >
+                        {activeOutlet?.name || outlets[0]?.name || "Select Outlet"}
+                      </Text>
+                      <IconChevronDown size={13} color="#af73d7" style={{ flexShrink: 0 }} />
+                    </UnstyledButton>
+                  </Menu.Target>
+                  <Menu.Dropdown style={{ minWidth: 200, padding: 6 }}>
+                    <Menu.Label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Switch Outlet
+                    </Menu.Label>
+                    {outlets.map((outlet) => {
+                      const isCurrent = outlet.id === (activeOutlet?.id ?? outlets[0]?.id);
+                      return (
+                        <Menu.Item
+                          key={outlet.id}
+                          onClick={() => setActiveOutlet(outlet.id)}
+                          leftSection={<IconBuildingStore size={15} color={isCurrent ? "#af73d7" : "#868e96"} />}
+                          rightSection={isCurrent ? <IconCheck size={14} color="#af73d7" /> : null}
+                          style={{
+                            fontWeight: isCurrent ? 700 : 500,
+                            backgroundColor: isCurrent ? "rgba(175, 115, 215, 0.12)" : "transparent",
+                            color: isCurrent ? "#af73d7" : "inherit",
+                            borderRadius: 6,
+                            marginBottom: 2,
+                            padding: "8px 10px",
+                          }}
+                        >
+                          {outlet.name}
+                        </Menu.Item>
+                      );
+                    })}
+                  </Menu.Dropdown>
+                </Menu>
               )}
 
               {authLoading ? (
@@ -107,7 +256,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               )}
             </Group>
           </Group>
-        </Container>
+        </Box>
       </AppShell.Header>
 
       <AppShell.Main>
@@ -119,6 +268,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         component="nav"
         aria-label="Bottom Navigation"
         className="floating-bottom-nav"
+        hiddenFrom="md"
         style={{
           position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
           zIndex: 100, maxWidth: "calc(100vw - 32px)",

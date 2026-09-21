@@ -5,13 +5,14 @@ import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
+  UnstyledButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   IconPlus, IconMinus, IconTrash, IconChevronDown,
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
-  IconNote, IconEdit, IconX, IconClock,
+  IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useCategories, useItems, useTables, useOrders, qk } from "@/lib/queries";
@@ -60,6 +61,11 @@ function isTableMatch(name1?: string | null, name2?: string | null) {
   return n1.length > 0 && n1 === n2;
 }
 
+function checkIsNonVeg(name?: string | null): boolean {
+  if (!name) return false;
+  return /chicken|mutton|fish|prawn|egg|lamb|meat|keema|beef|pork|seafood/i.test(name) && !/veg/i.test(name);
+}
+
 interface CartPanelProps {
   cartItems: LocalCartItem[];
   cartCount: number;
@@ -106,98 +112,112 @@ function CartPanel({
   onViewExistingItems,
 }: CartPanelProps) {
   return (
-    <Stack gap="sm" h="100%">
-      <Group justify="space-between" align="center">
-        <Group gap="xs" align="center">
-          <Title order={4}>Cart</Title>
-          {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
+    <Box
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        maxHeight: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+      }}
+    >
+      {/* Top Fixed Section */}
+      <Box style={{ flexShrink: 0 }}>
+        <Group justify="space-between" align="center" mb="xs">
+          <Group gap="xs" align="center">
+            <Title order={4}>Cart</Title>
+            {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
+          </Group>
+          <Group gap="xs" align="center">
+            {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
+              <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
+                Clear
+              </Button>
+            )}
+            {onClose && (
+              <CloseButton onClick={onClose} size="sm" aria-label="Close cart" />
+            )}
+          </Group>
         </Group>
-        <Group gap="xs" align="center">
-          {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
-            <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
-              Clear
-            </Button>
-          )}
-          {onClose && (
-            <CloseButton onClick={onClose} size="sm" aria-label="Close cart" />
-          )}
-        </Group>
-      </Group>
 
-      {/* Cart Selection: Table select (default to Takeaway) + optional Customer Phone */}
-      <Stack gap="xs">
-        <Select
-          label="Table / Order Type"
-          placeholder="Select table"
-          size="sm"
-          value={tableNo}
-          onChange={(v) => setTableNo(v || "Takeaway")}
-          data={tableSelectData}
-          leftSection={<IconTableAlias size={16} />}
-          allowDeselect={false}
-          comboboxProps={{ withinPortal: true, zIndex: 1500 }}
-        />
+        {/* Cart Selection: Table select (default to Takeaway) + optional Customer Phone */}
+        <Stack gap="xs" mb="xs">
+          <Select
+            label="Table / Order Type"
+            placeholder="Select table"
+            size="sm"
+            value={tableNo}
+            onChange={(v) => setTableNo(v || "Takeaway")}
+            data={tableSelectData}
+            leftSection={<IconTableAlias size={16} />}
+            allowDeselect={false}
+            comboboxProps={{ withinPortal: true, zIndex: 1500 }}
+          />
 
-        <TextInput
-          label="Customer Phone (optional)"
-          placeholder="WhatsApp number (e.g. 9876543210)"
-          type="tel"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={20}
-          size="sm"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
-          leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
-        />
+          <TextInput
+            label="Customer Phone (optional)"
+            placeholder="WhatsApp number (e.g. 9876543210)"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={20}
+            size="sm"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 15))}
+            leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
+          />
 
-        {activeTableOrder && (() => {
-          const paidPaise = activeTableOrder.order.paidPaise || 0;
-          const totalPaise = activeTableOrder.order.subtotalPaise || 0;
-          const duePaise = Math.max(0, totalPaise - paidPaise);
-          const isAllPaid = duePaise === 0 && totalPaise > 0;
+          {activeTableOrder && (() => {
+            const paidPaise = activeTableOrder.order.paidPaise || 0;
+            const totalPaise = activeTableOrder.order.subtotalPaise || 0;
+            const duePaise = Math.max(0, totalPaise - paidPaise);
+            const isAllPaid = duePaise === 0 && totalPaise > 0;
 
-          return (
-            <Paper
-              p="xs"
-              radius="sm"
-            >
-              <Group justify="space-between" align="center" mb={2}>
-                <Badge
-                  size="xs"
-                  color={isAllPaid ? "teal" : "orange"}
-                  variant="filled"
-                  leftSection={isAllPaid ? <IconCheck size={10} /> : <IconClock size={10} />}
-                >
-                  Round {currentRound} Active {isAllPaid ? "· All Paid" : ""}
-                </Badge>
-                <Text size="xs" fw={800} c={isAllPaid ? "teal.9" : "orange.9"}>
-                  Token #{activeTableOrder.order.orderNo}
-                </Text>
-              </Group>
-              <Group justify="space-between" align="center" mt={4}>
-                <Text size="11px" c="dimmed">
-                  Bill: ₹{(totalPaise / 100).toFixed(0)} · Paid: ₹{(paidPaise / 100).toFixed(0)} · Due: ₹{(duePaise / 100).toFixed(0)}
-                </Text>
-                {onViewExistingItems && (
-                  <Button
-                    variant="subtle"
-                    color="dinePrimary"
-                    size="compact-xs"
-                    onClick={onViewExistingItems}
+            return (
+              <Paper
+                p="xs"
+                radius="sm"
+              >
+                <Group justify="space-between" align="center" mb={2}>
+                  <Badge
+                    size="xs"
+                    color={isAllPaid ? "teal" : "orange"}
+                    variant="filled"
+                    leftSection={isAllPaid ? <IconCheck size={10} /> : <IconClock size={10} />}
                   >
-                    View Items
-                  </Button>
-                )}
-              </Group>
-            </Paper>
-          );
-        })()}
-      </Stack>
+                    Round {currentRound} Active {isAllPaid ? "· All Paid" : ""}
+                  </Badge>
+                  <Text size="xs" fw={800} c={isAllPaid ? "teal.9" : "orange.9"}>
+                    Token #{activeTableOrder.order.orderNo}
+                  </Text>
+                </Group>
+                <Group justify="space-between" align="center" mt={4}>
+                  <Text size="11px" c="dimmed">
+                    Bill: ₹{(totalPaise / 100).toFixed(0)} · Paid: ₹{(paidPaise / 100).toFixed(0)} · Due: ₹{(duePaise / 100).toFixed(0)}
+                  </Text>
+                  {onViewExistingItems && (
+                    <Button
+                      variant="subtle"
+                      color="dinePrimary"
+                      size="compact-xs"
+                      onClick={onViewExistingItems}
+                    >
+                      View Items
+                    </Button>
+                  )}
+                </Group>
+              </Paper>
+            );
+          })()}
+        </Stack>
 
-      <Divider />
-      <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }}>
-        <Stack gap="xs">
+        <Divider mb="xs" />
+      </Box>
+
+      {/* Middle Scrollable Section - Only Cart Items Scroll */}
+      <ScrollArea flex={1} type="auto" offsetScrollbars style={{ minHeight: 0 }}>
+        <Stack gap="xs" pr={4}>
           {cartItems.length === 0 && (
             <Text c="dimmed" size="sm" ta="center" py="xl">Add items from menu to start an order</Text>
           )}
@@ -267,55 +287,58 @@ function CartPanel({
         </Stack>
       </ScrollArea>
 
-      <Divider />
-      <Group justify="space-between">
-        <Text fw={700}>Total</Text>
-        <Text fw={700} c="dinePrimary" size="lg">₹{(total / 100).toFixed(0)}</Text>
-      </Group>
+      {/* Bottom Fixed Section */}
+      <Box style={{ flexShrink: 0, marginTop: "auto" }}>
+        <Divider my="xs" />
+        <Group justify="space-between" mb="xs">
+          <Text fw={700}>Total</Text>
+          <Text fw={700} c="dinePrimary" size="lg">₹{(total / 100).toFixed(0)}</Text>
+        </Group>
 
-      {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
-      <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
-        <Button
-          color={activeTableOrder ? "orange" : "dinePrimary"}
-          onClick={handleSend}
-          loading={sending}
-          style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
-          disabled={cartItems.length === 0}
-          leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
-        >
-          {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
-        </Button>
-        <Menu position="top-end" withinPortal zIndex={1500}>
-          <Menu.Target>
-            <ActionIcon
-              color={activeTableOrder ? "orange" : "dinePrimary"}
-              variant="filled"
-              size={36}
-              style={{
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-                borderLeft: "1px solid rgba(255,255,255,0.3)",
-                flexShrink: 0,
-                width: 36,
-                height: 36,
-              }}
-              disabled={cartItems.length === 0 || sending}
-              aria-label="More order options"
-            >
-              <IconChevronDown size={16} />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<IconCash size={16} />}
-              onClick={() => setSettleModal(true)}
-            >
-              {activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      </Group>
-    </Stack>
+        {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
+        <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
+          <Button
+            color={activeTableOrder ? "orange" : "dinePrimary"}
+            onClick={handleSend}
+            loading={sending}
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
+            disabled={cartItems.length === 0}
+            leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
+          >
+            {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
+          </Button>
+          <Menu position="top-end" withinPortal zIndex={1500}>
+            <Menu.Target>
+              <ActionIcon
+                color={activeTableOrder ? "orange" : "dinePrimary"}
+                variant="filled"
+                size={36}
+                style={{
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                  borderLeft: "1px solid rgba(255,255,255,0.3)",
+                  flexShrink: 0,
+                  width: 36,
+                  height: 36,
+                }}
+                disabled={cartItems.length === 0 || sending}
+                aria-label="More order options"
+              >
+                <IconChevronDown size={16} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                leftSection={<IconCash size={16} />}
+                onClick={() => setSettleModal(true)}
+              >
+                {activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </Group>
+      </Box>
+    </Box>
   );
 }
 
@@ -345,6 +368,8 @@ export default function POSPage() {
 
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterVeg, setFilterVeg] = useState(false);
+  const [filterNonVeg, setFilterNonVeg] = useState(false);
 
   // Local cart state — orders are only created upon clicking Send
   const [cartItems, setCartItems] = useState<LocalCartItem[]>([]);
@@ -443,11 +468,9 @@ export default function POSPage() {
     if (cartOpen) setCartOpen(false);
   };
 
-  // Auto-select first category when categories load
+  // Categories loaded
   useEffect(() => {
-    if (categories.length) {
-      setActiveCatId((prev) => prev ?? (categories[0] as any).id);
-    }
+    // Keep activeCatId as null by default to show All items
   }, [categories]);
 
   // Item customization modal state (variants & addons)
@@ -774,7 +797,12 @@ export default function POSPage() {
   const filteredItems = items
     .filter((i: any) => i.available)
     .filter((i: any) => hasSearch ? true : (activeCatId ? i.categoryId === activeCatId : true))
-    .filter((i: any) => !hasSearch || i.name.toLowerCase().includes(searchQuery.trim().toLowerCase()));
+    .filter((i: any) => !hasSearch || i.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    .filter((i: any) => {
+      if (filterVeg && !filterNonVeg) return !checkIsNonVeg(i.name);
+      if (filterNonVeg && !filterVeg) return checkIsNonVeg(i.name);
+      return true;
+    });
 
   const total = cartItems.reduce((s, i) => s + i.pricePaise * i.qty, 0);
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
@@ -821,27 +849,189 @@ export default function POSPage() {
         maxHeight: "calc(100dvh - var(--app-shell-header-offset, 60px))",
         display: "flex",
         flexDirection: "column",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
       px={{ base: "xs", sm: "md" }}
       pt="xs"
+      pb="xs"
     >
-      <Grid gap="md" style={{ flex: 1, height: "100%", overflow: "visible" }}>
+      <Grid
+        gap="md"
+        styles={{
+          inner: {
+            height: "100%",
+            maxHeight: "100%",
+            minHeight: 0,
+          },
+        }}
+        style={{
+          flex: 1,
+          height: "100%",
+          maxHeight: "100%",
+          minHeight: 0,
+          overflow: "hidden",
+        }}
+      >
         {/* Menu Panel */}
         <Grid.Col
           span={{ base: 12, sm: 8 }}
-          style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            maxHeight: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+          }}
         >
-          <Stack gap="sm" style={{ height: "100%", overflow: "hidden" }}>
-            <TextInput
-              placeholder="Search items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              size="sm"
-            />
+          <Stack
+            gap="sm"
+            style={{
+              height: "100%",
+              maxHeight: "100%",
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
+            {/* Search Bar & Veg/Non-Veg Filter Checkboxes */}
+            <Group gap="md" align="center" wrap="nowrap" style={{ width: "100%" }}>
+              <TextInput
+                placeholder="Search items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                size="sm"
+                style={{ flex: 1 }}
+                leftSection={<IconSearch size={16} stroke={1.5} />}
+                rightSection={
+                  searchQuery ? (
+                    <CloseButton
+                      size="sm"
+                      onClick={() => setSearchQuery("")}
+                      aria-label="Clear search"
+                    />
+                  ) : null
+                }
+              />
+
+              {/* Veg / Non-Veg Checkboxes Filter */}
+              <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+                {/* Veg Filter Checkbox */}
+                <UnstyledButton
+                  role="checkbox"
+                  aria-checked={filterVeg}
+                  onClick={() => setFilterVeg((prev) => !prev)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: `1.5px solid ${filterVeg ? "#2e7d32" : "#ced4da"}`,
+                    backgroundColor: filterVeg ? "#e8f5e9" : "#ffffff",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    transition: "all 120ms ease",
+                  }}
+                >
+                  {/* Single Checkbox with Veg Icon inside */}
+                  <Box
+                    style={{
+                      width: 17,
+                      height: 17,
+                      borderRadius: 3.5,
+                      border: "1.5px solid #2e7d32",
+                      backgroundColor: filterVeg ? "#2e7d32" : "#ffffff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "all 120ms ease",
+                    }}
+                  >
+                    {filterVeg ? (
+                      <IconCheck size={12} stroke={3.5} color="#ffffff" />
+                    ) : (
+                      <Box
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          backgroundColor: "#2e7d32",
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Text size="xs" fw={filterVeg ? 700 : 500} c={filterVeg ? "green.9" : "dark.4"}>
+                    Veg
+                  </Text>
+                </UnstyledButton>
+
+                {/* Non-Veg Filter Checkbox */}
+                <UnstyledButton
+                  role="checkbox"
+                  aria-checked={filterNonVeg}
+                  onClick={() => setFilterNonVeg((prev) => !prev)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    border: `1.5px solid ${filterNonVeg ? "#c62828" : "#ced4da"}`,
+                    backgroundColor: filterNonVeg ? "#ffebee" : "#ffffff",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    transition: "all 120ms ease",
+                  }}
+                >
+                  {/* Single Checkbox with Non-Veg Icon inside */}
+                  <Box
+                    style={{
+                      width: 17,
+                      height: 17,
+                      borderRadius: 3.5,
+                      border: "1.5px solid #c62828",
+                      backgroundColor: filterNonVeg ? "#c62828" : "#ffffff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "all 120ms ease",
+                    }}
+                  >
+                    {filterNonVeg ? (
+                      <IconCheck size={12} stroke={3.5} color="#ffffff" />
+                    ) : (
+                      <Box
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          backgroundColor: "#c62828",
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Text size="xs" fw={filterNonVeg ? 700 : 500} c={filterNonVeg ? "red.9" : "dark.4"}>
+                    Non-Veg
+                  </Text>
+                </UnstyledButton>
+              </Group>
+            </Group>
 
             {/* Category Tabs */}
             <ScrollArea type="always" scrollbarSize={4} offsetScrollbars="x" scrollbars="x">
               <Group gap="xs" wrap="nowrap" pb="xs" style={{ minWidth: "max-content" }}>
+                <Button
+                  size="xs"
+                  variant={activeCatId === null ? "filled" : "light"}
+                  color="dinePrimary"
+                  onClick={() => setActiveCatId(null)}
+                  style={{ flexShrink: 0, whiteSpace: "nowrap" }}
+                >
+                  All ({items.filter((i: any) => i.available).length})
+                </Button>
                 {categories.map((cat: any) => (
                   <Button
                     key={cat.id}
@@ -857,9 +1047,9 @@ export default function POSPage() {
               </Group>
             </ScrollArea>
 
-            {/* Item Grid - scrollable */}
-            <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }} pb={100}>
-              <Grid gap="xs">
+            {/* Item Grid - scrollable with uniform card dimensions */}
+            <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }} pb={{ base: 100, md: "xs" }}>
+              <SimpleGrid cols={{ base: 2, xs: 3, sm: 2, md: 3, lg: 4 }} spacing="sm" verticalSpacing="sm">
                 {filteredItems.map((item: any) => {
                   const inCartQty = cartItems
                     .filter((ci) => ci.itemId === item.id)
@@ -869,78 +1059,282 @@ export default function POSPage() {
                   const displayPrice = hasVariants
                     ? `From ₹${(Math.min(...item.variants.map((v: any) => v.pricePaise)) / 100).toFixed(0)}`
                     : `₹${(item.pricePaise / 100).toFixed(0)}`;
+                  const isNonVeg = checkIsNonVeg(item.name);
 
                   return (
-                    <Grid.Col key={item.id} span={{ base: 6, sm: 4, md: 3, lg: 2 }}>
-                      <Paper
-                        p="sm"
-                        radius="md"
-                        onClick={() => handleItemClick(item)}
+                    <Paper
+                      key={item.id}
+                      p={0}
+                      radius="md"
+                      onClick={() => handleItemClick(item)}
+                      style={{
+                        height: 155,
+                        display: "flex",
+                        flexDirection: "column",
+                        borderRadius: 10,
+                        position: "relative",
+                        overflow: "hidden",
+                        backgroundColor: inCartQty > 0 ? "rgba(175, 115, 215, 0.04)" : "#ffffff",
+                        border: inCartQty > 0 ? "2px solid #af73d7" : "1px solid rgba(0, 0, 0, 0.09)",
+                        boxShadow: inCartQty > 0
+                          ? "0 4px 14px rgba(175, 115, 215, 0.22)"
+                          : "0 2px 6px rgba(0, 0, 0, 0.04)",
+                        cursor: "pointer",
+                        userSelect: "none",
+                        transition: "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = "0 6px 18px rgba(0, 0, 0, 0.09)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = inCartQty > 0
+                          ? "0 4px 14px rgba(175, 115, 215, 0.22)"
+                          : "0 2px 6px rgba(0, 0, 0, 0.04)";
+                      }}
+                      onMouseDown={(e) => {
+                        e.currentTarget.style.transform = "scale(0.98)";
+                      }}
+                      onMouseUp={(e) => {
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                      }}
+                    >
+                      {/* Top Thumbnail Section */}
+                      <Box
                         style={{
-                          cursor: "pointer",
+                          height: 85,
+                          width: "100%",
                           position: "relative",
+                          backgroundColor: "#e9ecef",
+                          overflow: "hidden",
+                          flexShrink: 0,
                         }}
                       >
+                        {/* Grey Background Placeholder with Item Name */}
+                        <Box
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "#e9ecef",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "8px 10px",
+                            zIndex: 1,
+                            userSelect: "none",
+                          }}
+                        >
+                          <Text
+                            size="xs"
+                            fw={700}
+                            ta="center"
+                            style={{
+                              lineHeight: 1.2,
+                              color: "#495057",
+                              fontSize: 11,
+                              display: "-webkit-box",
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {item.name}
+                          </Text>
+                        </Box>
+
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            loading="lazy"
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              display: "block",
+                              zIndex: 2,
+                            }}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : null}
+
+                        {/* In-Cart Quantity Counter */}
                         {inCartQty > 0 && (
                           <Badge
-                            size="xs"
+                            size="sm"
+                            variant="filled"
                             color="dinePrimary"
-                            style={{ position: "absolute", top: 6, right: 6, zIndex: 2 }}
+                            style={{
+                              position: "absolute",
+                              top: 5,
+                              right: 5,
+                              zIndex: 3,
+                              fontWeight: 700,
+                              fontSize: 10,
+                              height: 18,
+                              padding: "0 5px",
+                              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                            }}
                           >
                             ×{inCartQty}
                           </Badge>
                         )}
-                        {item.imageUrl && (
+                      </Box>
+
+                      {/* Bottom Info Section */}
+                      <Box
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          padding: "6px 8px 6px 8px",
+                        }}
+                      >
+                        {/* Veg/Non-Veg Icon directly before Item Name */}
+                        <Group gap={5} align="flex-start" wrap="nowrap" style={{ minWidth: 0 }}>
                           <Box
-                            mb={6}
                             style={{
-                              width: "100%",
-                              height: 72,
-                              borderRadius: 6,
-                              overflow: "hidden",
-                              backgroundColor: "#f1f3f5",
+                              width: 13,
+                              height: 13,
+                              minWidth: 13,
+                              borderRadius: 3,
+                              border: `1.5px solid ${isNonVeg ? "#c62828" : "#2e7d32"}`,
+                              backgroundColor: "#ffffff",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginTop: 2,
+                              flexShrink: 0,
                             }}
+                            title={isNonVeg ? "Non-Vegetarian" : "Vegetarian"}
                           >
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                            <Box
+                              style={{
+                                width: 5.5,
+                                height: 5.5,
+                                borderRadius: "50%",
+                                backgroundColor: isNonVeg ? "#c62828" : "#2e7d32",
+                              }}
                             />
                           </Box>
-                        )}
-                        <Text size="sm" fw={500} lineClamp={2} mb={4}>{item.name}</Text>
-                        <Group justify="space-between" align="center" mt="auto">
-                          <Text size="sm" fw={700} c="dinePrimary">{displayPrice}</Text>
-                          {(hasVariants || hasAddons) && (
-                            <Badge size="xs" variant="light" color="gray">
-                              {hasVariants ? "Options" : "+ Addons"}
+
+                          <Text
+                            size="xs"
+                            fw={600}
+                            style={{
+                              lineHeight: 1.25,
+                              overflow: "hidden",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              color: "#212529",
+                              fontSize: 12.5,
+                              minWidth: 0,
+                              flex: 1,
+                            }}
+                            title={item.name}
+                          >
+                            {item.name}
+                          </Text>
+                        </Group>
+
+                        <Group justify="space-between" align="center" wrap="nowrap" mt="auto">
+                          <Text
+                            size="xs"
+                            fw={700}
+                            c="dinePrimary"
+                            style={{ letterSpacing: "-0.2px", whiteSpace: "nowrap", fontSize: 13 }}
+                          >
+                            {displayPrice}
+                          </Text>
+
+                          {hasVariants ? (
+                            <Badge
+                              size="xs"
+                              variant="light"
+                              color="blue"
+                              radius="sm"
+                              style={{ fontWeight: 600, fontSize: 10, flexShrink: 0 }}
+                            >
+                              Options
                             </Badge>
+                          ) : hasAddons ? (
+                            <Badge
+                              size="xs"
+                              variant="light"
+                              color="grape"
+                              radius="sm"
+                              style={{ fontWeight: 600, fontSize: 10, flexShrink: 0 }}
+                            >
+                              +Addons
+                            </Badge>
+                          ) : (
+                            <Box
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 9999,
+                                background: inCartQty > 0 ? "#af73d7" : "rgba(175, 115, 215, 0.12)",
+                                color: inCartQty > 0 ? "#ffffff" : "#af73d7",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                transition: "all 0.12s ease",
+                              }}
+                            >
+                              <IconPlus size={13} stroke={2.5} />
+                            </Box>
                           )}
                         </Group>
-                      </Paper>
-                    </Grid.Col>
+                      </Box>
+                    </Paper>
                   );
                 })}
-                {!filteredItems.length && (
-                  <Grid.Col span={12}>
-                    <Text c="dimmed" size="sm" ta="center" py="xl">No items found</Text>
-                  </Grid.Col>
-                )}
-              </Grid>
+              </SimpleGrid>
+              {!filteredItems.length && (
+                <Text c="dimmed" size="sm" ta="center" py="xl">No items found</Text>
+              )}
             </ScrollArea>
           </Stack>
         </Grid.Col>
 
         {/* Desktop Cart Panel */}
-        <Grid.Col span={{ base: 0, sm: 4 }} visibleFrom="sm" style={{ height: "100%" }}>
+        <Grid.Col
+          span={{ base: 0, sm: 4 }}
+          visibleFrom="sm"
+          style={{
+            height: "100%",
+            maxHeight: "100%",
+            minHeight: 0,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           <Paper
             p="md"
             radius="md"
+            withBorder
             style={{
               height: "100%",
+              maxHeight: "100%",
+              minHeight: 0,
               display: "flex",
               flexDirection: "column",
               position: "relative",
+              overflow: "hidden",
             }}
           >
             <CartPanel {...cartPanelProps} />
@@ -980,15 +1374,17 @@ export default function POSPage() {
         opened={cartOpen}
         onClose={() => setCartOpen(false)}
         position="bottom"
-        size="80%"
+        size="85%"
         zIndex={1200}
         hiddenFrom="sm"
         withCloseButton={false}
         styles={{
           body: {
             height: "100%",
+            maxHeight: "100%",
             display: "flex",
             flexDirection: "column",
+            overflow: "hidden",
             paddingTop: "16px",
             paddingBottom: "max(16px, env(safe-area-inset-bottom))",
           },

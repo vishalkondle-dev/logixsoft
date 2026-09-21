@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Container, Title, Text, Button, Group, Stack, SimpleGrid, Card, ThemeIcon, Badge, Center, Loader,
+  Box, Title, Text, Button, Group, Stack, SimpleGrid, Card, ThemeIcon, Badge, Center, Loader,
 } from "@mantine/core";
 import {
   IconBrandWhatsapp, IconShieldLock, IconCookie, IconArrowRight,
@@ -35,7 +35,7 @@ export default function HomePage() {
   // Redirect owners directly to POS
   if (isAuthenticated && restaurant) {
     return (
-      <Container size="xl" pt="md" pb={100} px="md">
+      <Box pt="md" pb={100} px={{ base: "xs", sm: "md" }}>
         <Stack align="center" gap="md" style={{ textAlign: "center" }}>
           <Badge color="dinePrimary" variant="light" size="lg" radius="xl" px="md">
             {restaurant.name}
@@ -52,12 +52,12 @@ export default function HomePage() {
             </Button>
           </Group>
         </Stack>
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container size="xl" pt="md" pb={100} px="md">
+    <Box pt="md" pb={100} px={{ base: "xs", sm: "md" }}>
       <Stack align="center" gap="xl" style={{ textAlign: "center" }}>
         <Badge
           color="dinePrimary"
@@ -159,6 +159,6 @@ export default function HomePage() {
           </Card>
         </SimpleGrid>
       </Stack>
-    </Container>
+    </Box>
   );
 }

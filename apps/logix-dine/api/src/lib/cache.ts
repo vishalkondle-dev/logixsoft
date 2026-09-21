@@ -60,7 +60,8 @@ export const CacheKey = {
   restaurant: (r: string)            => `rest:${r}`,
   outlets:    (r: string)            => `outlets:${r}`,
   staff:      (r: string)            => `staff:${r}`,
-  tables:     (r: string, o: string | null | undefined) => `tables:${r}:${o ?? 'all'}`,
+  tables:     (r: string, o: string | null | undefined, includeInactive = false) =>
+    `tables:${r}:${o ?? 'all'}:${includeInactive ? 'all' : 'active'}`,
   report:     (r: string, type: string, from: string, to: string, o: string | null) =>
     `report:${r}:${type}:${from}:${to}:${o ?? 'all'}`,
 
@@ -177,6 +178,7 @@ export async function invalidateRestaurant(kv: KVNamespace, restaurantId: string
   await Promise.all([
     cacheDel(kv, CacheKey.restaurant(restaurantId)),
     cacheDel(kv, CacheKey.outlets(restaurantId)),
+    cacheDelPrefix(kv, CacheKey.bsPrefix(restaurantId)),
   ]);
 }
 

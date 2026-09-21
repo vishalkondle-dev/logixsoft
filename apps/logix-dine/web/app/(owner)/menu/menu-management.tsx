@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  Container, Title, Stack, Group, Text, Paper, Badge, ActionIcon,
+  Title, Stack, Group, Text, Paper, Badge, ActionIcon,
   Button, Modal, TextInput, NumberInput, Switch, Select, SimpleGrid, Box,
   Divider, Anchor, Loader, ScrollArea,
 } from "@mantine/core";
@@ -251,6 +251,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
     categoryId: string;
     name: string;
     description: string;
+    imageUrl: string;
     pricePaise: number;
     variants: { id?: string; name: string; pricePaise: number }[];
     addons: { id?: string; name: string; pricePaise: number }[];
@@ -258,6 +259,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
     categoryId: "",
     name: "",
     description: "",
+    imageUrl: "",
     pricePaise: 0,
     variants: [],
     addons: [],
@@ -335,6 +337,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
             categoryId: itemForm.categoryId,
             name: itemForm.name,
             description: itemForm.description || null,
+            imageUrl: itemForm.imageUrl?.trim() || null,
             pricePaise: itemForm.pricePaise,
             variants: cleanVariants,
             addons: cleanAddons,
@@ -345,6 +348,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           categoryId: itemForm.categoryId,
           name: itemForm.name,
           description: itemForm.description || undefined,
+          imageUrl: itemForm.imageUrl?.trim() || undefined,
           pricePaise: itemForm.pricePaise,
           outletId,
           variants: cleanVariants,
@@ -659,6 +663,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                                 categoryId: activeCat.id,
                                 name: "",
                                 description: "",
+                                imageUrl: "",
                                 pricePaise: 0,
                                 variants: [],
                                 addons: [],
@@ -703,6 +708,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                               categoryId: activeCat.id,
                               name: "",
                               description: "",
+                              imageUrl: "",
                               pricePaise: 0,
                               variants: [],
                               addons: [],
@@ -756,8 +762,15 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
           {/* Dish Image Upload */}
           <Divider label="Dish Photo (optional)" labelPosition="left" mt="xs" />
+          <TextInput
+            label="Image URL"
+            placeholder="https://images.unsplash.com/..."
+            value={itemForm.imageUrl}
+            onChange={(e) => setItemForm((f) => ({ ...f, imageUrl: e.target.value }))}
+            description="Direct link to dish photo (Unsplash, CDN, or web URL)"
+          />
           <Group align="center" gap="sm">
-            {itemImageFile ? (
+            {(itemImageFile || itemForm.imageUrl) ? (
               <Box
                 style={{
                   width: 52,
@@ -769,9 +782,10 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                 }}
               >
                 <img
-                  src={URL.createObjectURL(itemImageFile)}
+                  src={itemImageFile ? URL.createObjectURL(itemImageFile) : itemForm.imageUrl}
                   alt="Preview"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => { (e.target as any).style.display = "none"; }}
                 />
               </Box>
             ) : null}
@@ -782,10 +796,10 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
               leftSection={<IconPhoto size={14} />}
               onClick={() => modalFileInputRef.current?.click()}
             >
-              {itemImageFile ? "Change Photo" : "Select Photo"}
+              {itemImageFile ? "Change File" : "Upload File"}
             </Button>
-            {itemImageFile && (
-              <Button size="xs" variant="subtle" color="red" onClick={() => setItemImageFile(null)}>
+            {(itemImageFile || itemForm.imageUrl) && (
+              <Button size="xs" variant="subtle" color="red" onClick={() => { setItemImageFile(null); setItemForm((f) => ({ ...f, imageUrl: "" })); }}>
                 Clear
               </Button>
             )}
@@ -933,8 +947,8 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   }
 
   return (
-    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+    <Box pt="sm" pb={100} px={{ base: "xs", sm: "md" }}>
       {content}
-    </Container>
+    </Box>
   );
 }

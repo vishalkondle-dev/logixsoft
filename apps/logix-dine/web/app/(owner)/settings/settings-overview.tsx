@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import {
-  Container,
   Title,
   Text,
   SimpleGrid,
@@ -215,7 +214,7 @@ export function SettingsOverview() {
   ];
 
   return (
-    <Container size="xl" pt="md" pb={120} px={{ base: "sm", sm: "md" }}>
+    <Box pt="md" pb={120} px={{ base: "xs", sm: "md" }}>
       {/* Header */}
       <Box mb="xl">
         <Group justify="space-between" align="flex-end" wrap="wrap" gap="xs">
@@ -326,6 +325,6 @@ export function SettingsOverview() {
           </Box>
         ))}
       </Box>
-    </Container>
+    </Box>
   );
 }

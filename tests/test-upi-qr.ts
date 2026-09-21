@@ -91,6 +91,11 @@ async function runTest() {
   if (await itemCard.isVisible()) {
     await itemCard.click();
     await page.waitForTimeout(500);
+    const customizeAddBtn = page.locator('.mantine-Modal-content button').filter({ hasText: /^Add/i }).first();
+    if (await customizeAddBtn.isVisible()) {
+      await customizeAddBtn.click();
+      await page.waitForTimeout(500);
+    }
   }
 
   // Click Chevron on split order button to select Settle & Send
@@ -130,7 +135,7 @@ async function runTest() {
   }
 
   console.log('--- Step 4: Navigating to Tables page ---');
-  await page.goto(`${WEB_BASE}/tables`, { waitUntil: 'networkidle' });
+  await page.goto(`${WEB_BASE}/tables`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(2000);
 
   // Look for occupied table with Settle & Free button
@@ -158,11 +163,9 @@ async function runTest() {
   }
 
   console.log('--- Step 5: Test Outlet WITHOUT UPI ID ---');
-  // Switch outlet to Branch 2
-  const outletPicker = page.locator('button:has-text("Main"), button:has-text("Branch 2")').first();
-  if (await outletPicker.isVisible()) {
-    await page.goto(`${WEB_BASE}/pos?outletId=outlet_EL3OT7iEQJCUwsi7mszOm2be`, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(2000);
+  // Switch outlet to Koramangala Hub
+  await page.goto(`${WEB_BASE}/pos?outletId=outlet_FXTP5OtGQbtvIun7J7hMbCwQ`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2000);
 
     const itemCardBranch = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
     if (await itemCardBranch.isVisible()) {
@@ -191,7 +194,6 @@ async function runTest() {
       const qrBadge = page.locator('.mantine-Badge-label:has-text("UPI QR CODE")');
       console.log('Is QR Badge visible for Branch 2 (should be false):', await qrBadge.isVisible());
     }
-  }
 
   await browser.close();
   console.log('--- All tests finished successfully! ---');

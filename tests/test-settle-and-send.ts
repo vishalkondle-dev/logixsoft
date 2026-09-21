@@ -118,8 +118,13 @@ async function run() {
     await page.waitForTimeout(500);
   }
 
-  // Add Chicken Biryani to cart
-  const biryani = page.getByText('Chicken Biryani').first();
+  // Add Hyderabadi Chicken Biryani to cart
+  const biryaniTab = page.getByRole('button', { name: 'Biryani & Rice', exact: true }).first();
+  if (await biryaniTab.isVisible()) {
+    await biryaniTab.click();
+    await page.waitForTimeout(400);
+  }
+  const biryani = page.getByText('Hyderabadi Chicken Biryani', { exact: true }).first();
   await biryani.waitFor({ state: 'visible', timeout: 8000 });
   await biryani.click();
   await page.waitForTimeout(500);
@@ -199,9 +204,15 @@ async function run() {
     await starters.click();
     await page.waitForTimeout(400);
   }
-  const item2 = page.getByText('Paneer Tikka').or(page.getByText('Masala Chai')).or(page.getByText('Chicken Biryani')).first();
+  const item2 = page.getByText('Crispy Corn').or(page.getByText('Paneer Tikka')).first();
   await item2.click();
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(500);
+
+  const customizeAddBtn = page.locator('.mantine-Modal-content button').filter({ hasText: /^Add/i }).first();
+  if (await customizeAddBtn.isVisible()) {
+    await customizeAddBtn.click();
+    await page.waitForTimeout(500);
+  }
 
   // Verify button text says "Send Round 2 to Kitchen"
   const sendR2Btn = page.getByRole('button', { name: /Send Round 2 to Kitchen/i }).first();

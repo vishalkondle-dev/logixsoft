@@ -57,8 +57,8 @@ export const qk = {
     ["items", restaurantId, outletId, categoryId ?? null] as const,
   item: (restaurantId: string, id: string) =>
     ["item", restaurantId, id] as const,
-  tables: (restaurantId: string, outletId: string | null | undefined) =>
-    ["tables", restaurantId, outletId ?? null] as const,
+  tables: (restaurantId: string, outletId: string | null | undefined, includeInactive?: boolean) =>
+    ["tables", restaurantId, outletId ?? null, includeInactive ? "all" : "active"] as const,
   staff: (restaurantId: string) =>
     ["staff", restaurantId] as const,
   outlets: (restaurantId: string) =>
@@ -155,11 +155,11 @@ export function useItem(
 export function useTables(
   restaurantId: string,
   outletId: string | null | undefined,
-  options?: { refetchInterval?: number | false; staleTime?: number },
+  options?: { refetchInterval?: number | false; staleTime?: number; includeInactive?: boolean },
 ) {
   return useQuery({
-    queryKey: qk.tables(restaurantId, outletId),
-    queryFn: () => getTables(restaurantId, outletId ?? undefined),
+    queryKey: qk.tables(restaurantId, outletId, options?.includeInactive),
+    queryFn: () => getTables(restaurantId, outletId ?? undefined, options?.includeInactive),
     enabled: !!restaurantId && !!outletId,
     staleTime: options?.staleTime ?? (options?.refetchInterval ? 0 : 60_000),
     refetchInterval: options?.refetchInterval,
@@ -259,7 +259,7 @@ export function useReorderCategories(restaurantId: string, outletId: string | nu
 export function useCreateItem(restaurantId: string, outletId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { categoryId: string; name: string; pricePaise: number; description?: string; outletId?: string | null; variants?: any[]; addons?: any[] }) =>
+    mutationFn: (body: { categoryId: string; name: string; pricePaise: number; description?: string; imageUrl?: string | null; outletId?: string | null; variants?: any[]; addons?: any[] }) =>
       createItem(restaurantId, body, outletId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["items", restaurantId] });
@@ -338,7 +338,7 @@ export function useCreateTable(restaurantId: string, outletId: string | null) {
     mutationFn: (body: { outletId: string; name: string; section?: string; capacity?: number }) =>
       createTable(restaurantId, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+      qc.invalidateQueries({ queryKey: ["tables", restaurantId] });
     },
   });
 }
@@ -349,7 +349,7 @@ export function useUpdateTable(restaurantId: string, outletId: string | null) {
     mutationFn: ({ id, body }: { id: string; body: any }) =>
       updateTable(restaurantId, id, body, outletId ?? undefined),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+      qc.invalidateQueries({ queryKey: ["tables", restaurantId] });
     },
   });
 }
@@ -359,7 +359,7 @@ export function useToggleTable(restaurantId: string, outletId: string | null) {
   return useMutation({
     mutationFn: (id: string) => toggleTable(restaurantId, id, outletId ?? undefined),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+      qc.invalidateQueries({ queryKey: ["tables", restaurantId] });
     },
   });
 }
@@ -369,7 +369,7 @@ export function useDeleteTable(restaurantId: string, outletId: string | null) {
   return useMutation({
     mutationFn: (id: string) => deleteTable(restaurantId, id, outletId ?? undefined),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+      qc.invalidateQueries({ queryKey: ["tables", restaurantId] });
     },
   });
 }

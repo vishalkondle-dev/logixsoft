@@ -262,7 +262,7 @@ async function run() {
   await navigateTo(page, 'tables');
 
   t4Card = getTableCard(page, 'T4');
-  const addRoundBtn = t4Card.getByRole('button', { name: /\+ Add Round/i }).first();
+  const addRoundBtn = t4Card.getByRole('button', { name: /Add Round/i }).first();
   await addRoundBtn.click();
   await page.waitForTimeout(2000);
 

@@ -44,6 +44,7 @@ app.get(
     description: 'Retrieves all active dining tables for the restaurant or filtered by outletId.',
     query: z.object({
       outletId: z.string().optional(),
+      includeInactive: z.string().optional(),
     }),
     responses: {
       200: z.array(PosTableSchema),
@@ -53,17 +54,22 @@ app.get(
   async (c) => {
   const { restaurantId } = c.get('tenant');
   const outletId = c.req.query('outletId');
-  const cacheKey = CacheKey.tables(restaurantId, outletId);
+  const includeInactive = c.req.query('includeInactive') === 'true';
+  const cacheKey = CacheKey.tables(restaurantId, outletId, includeInactive);
 
   const cached = await cacheGet<ReturnType<typeof toPosTable>[]>(kv(c), cacheKey);
   if (cached) return c.json(cached);
 
   const { db, close } = getDb(c);
   try {
-    const where = outletId
-      ? and(eq(appSchema.posTable.restaurantId, restaurantId), eq(appSchema.posTable.outletId, outletId))
-      : eq(appSchema.posTable.restaurantId, restaurantId);
-    const tables = await db.select().from(appSchema.posTable).where(where);
+    const conditions = [
+      eq(appSchema.posTable.restaurantId, restaurantId),
+    ];
+    if (!includeInactive) {
+      conditions.push(eq(appSchema.posTable.active, true));
+    }
+    if (outletId) conditions.push(eq(appSchema.posTable.outletId, outletId));
+    const tables = await db.select().from(appSchema.posTable).where(and(...conditions));
     const result = tables.map(toPosTable);
     await cacheSet(kv(c), cacheKey, result, TTL.tables);
     return c.json(result);

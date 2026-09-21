@@ -2,7 +2,7 @@
 
 import React from "react";
 import {
-  Container,
+  Box,
   Title,
   Text,
   Paper,
@@ -31,7 +31,7 @@ export default function ProtectedDashboardPage() {
   const { user, signOut } = useAuth();
 
   return (
-    <Container size="lg" py="xl" px={0}>
+    <Box py="xl" px={{ base: "xs", sm: "md" }}>
       <Stack gap="xl">
         {/* Welcome Header */}
         <Group justify="space-between" align="flex-start">
@@ -196,6 +196,6 @@ export default function ProtectedDashboardPage() {
           </div>
         </SimpleGrid>
       </Stack>
-    </Container>
+    </Box>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Container, Title, Tabs, Table, Text, Badge, Button, Loader, Center, Select, ScrollArea } from "@mantine/core";
+import { Box, Title, Tabs, Table, Text, Badge, Button, Loader, Center, Select, ScrollArea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
@@ -43,7 +43,7 @@ export default function AdminPage() {
   if (isLoading || loading) return <Center py={100}><Loader color="dinePrimary" /></Center>;
 
   return (
-    <Container size="lg" py="xl" px={0}>
+    <Box py="xl" px={{ base: "xs", sm: "md" }}>
       <Title order={2} mb="lg">Platform Admin</Title>
       <Tabs defaultValue="restaurants">
         <ScrollArea type="always" scrollbarSize={4} offsetScrollbars="x" scrollbars="x">
@@ -105,6 +105,6 @@ export default function AdminPage() {
           </Table>
         </Tabs.Panel>
       </Tabs>
-    </Container>
+    </Box>
   );
 }

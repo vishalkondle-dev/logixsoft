@@ -54,6 +54,19 @@ async function apiGet(path: string, restaurantId?: string): Promise<any> {
   return res.json();
 }
 
+async function addItemToCart(page: any) {
+  const itemCard = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
+  await itemCard.waitFor({ state: 'visible', timeout: 10000 });
+  await itemCard.click();
+  await page.waitForTimeout(400);
+
+  const customizeAddBtn = page.locator('.mantine-Modal-content button').filter({ hasText: /^Add/i }).first();
+  if (await customizeAddBtn.isVisible()) {
+    await customizeAddBtn.click();
+    await page.waitForTimeout(400);
+  }
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test.describe('POS Cart Selection & Order Creation E2E', () => {
@@ -95,7 +108,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     await expect(takeawayOption).toBeVisible();
 
     // Table T1 should also be in options
-    const t1Option = page.getByRole('option', { name: /T1/i });
+    const t1Option = page.getByRole('option', { name: /T1/i }).first();
     if (await t1Option.isVisible()) {
       console.log('Found table T1 in table options dropdown');
     }
@@ -139,10 +152,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     console.log('Initial orders count:', initialCount);
 
     // 1. Add item to cart
-    const itemCard = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
-    await expect(itemCard).toBeVisible({ timeout: 10000 });
-    await itemCard.click();
-    await page.waitForTimeout(500);
+    await addItemToCart(page);
 
     // Verify item is visible in local cart
     const cartItem = page.locator('.mantine-Paper-root').filter({ has: page.locator('button[aria-label="Increase quantity"]') }).first();
@@ -206,9 +216,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     await page.waitForLoadState('networkidle');
 
     // Add item to cart
-    const itemCard = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
-    await itemCard.click();
-    await page.waitForTimeout(500);
+    await addItemToCart(page);
 
     // Fill customer phone
     const phoneInput = page.locator('input[placeholder*="WhatsApp" i], input[placeholder*="9876543210" i]').first();
@@ -290,10 +298,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     await expect(page.getByRole('button', { name: /cart/i })).not.toBeVisible();
 
     // 4. Add an item and verify mobile cart button becomes visible
-    const itemCard = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
-    await expect(itemCard).toBeVisible();
-    await itemCard.click();
-    await page.waitForTimeout(300);
+    await addItemToCart(page);
 
     const openCartBtn = page.getByRole('button', { name: /cart/i }).first();
     await expect(openCartBtn).toBeVisible();
@@ -327,7 +332,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     const tableSelect = page.locator('input[value="Takeaway"]').first();
     await tableSelect.click();
     await page.waitForTimeout(300);
-    const t1Option = page.getByRole('option', { name: /T1/i });
+    const t1Option = page.getByRole('option', { name: /T1/i }).first();
     if (await t1Option.isVisible()) {
       await t1Option.click();
     } else {
@@ -335,9 +340,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     }
 
     // 3. Add item to cart
-    const itemCard = page.locator('.mantine-Paper-root').filter({ hasText: '₹' }).first();
-    await itemCard.click();
-    await page.waitForTimeout(500);
+    await addItemToCart(page);
 
     // 4. Verify "each" is NOT present; shows ₹X only
     const cartItem = page.locator('.mantine-Paper-root').filter({ has: page.locator('button[aria-label="Increase quantity"]') }).first();
@@ -401,14 +404,30 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     // 1. Fetch restaurant and bootstrap
     const [restaurant] = await apiGet('/restaurants');
     const restaurantId = restaurant.id;
-    const bootstrap = await apiGet('/billing/bootstrap', restaurantId);
-    expect(bootstrap.outlets.length).toBeGreaterThanOrEqual(2);
+    let outlets = await apiGet('/outlets', restaurantId);
+    if (!Array.isArray(outlets) || outlets.length < 2) {
+      await fetch(`${API_BASE}/outlets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': `${authCookie.name}=${authCookie.value}`,
+          'X-Restaurant-Id': restaurantId,
+        },
+        body: JSON.stringify({
+          name: 'Koramangala Hub',
+          address: '80 Feet Rd, Bengaluru',
+        }),
+      });
+      outlets = await apiGet('/outlets', restaurantId);
+    }
+    expect(outlets.length).toBeGreaterThanOrEqual(2);
 
-    const outlet1 = bootstrap.outlets[0];
-    const outlet2 = bootstrap.outlets.find((o: any) => o.id !== outlet1.id);
+    const outlet1 = outlets[0];
+    const outlet2 = outlets.find((o: any) => o.id !== outlet1.id);
     expect(outlet2).toBeDefined();
 
-    const item = bootstrap.items[0];
+    const items = await apiGet('/menu/items', restaurantId);
+    const item = items[0];
     expect(item).toBeDefined();
 
     // 2. Create an order in outlet2 via API

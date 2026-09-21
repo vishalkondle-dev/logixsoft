@@ -12,8 +12,11 @@ import {
 import { toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
+import { invalidateRestaurant } from '../lib/cache';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
+
+function kv(c: any) { return c.env?.CACHE; }
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
@@ -83,6 +86,7 @@ app.post(
       .select()
       .from(appSchema.restaurantOutlet)
       .where(eq(appSchema.restaurantOutlet.id, id));
+    await invalidateRestaurant(kv(c), restaurantId);
     return c.json(toOutlet(outlet), 201);
   } finally {
     await close();
@@ -126,6 +130,7 @@ app.put(
       .from(appSchema.restaurantOutlet)
       .where(eq(appSchema.restaurantOutlet.id, outletId));
     if (!outlet) return c.json({ error: 'Not Found' }, 404);
+    await invalidateRestaurant(kv(c), restaurantId);
     return c.json(toOutlet(outlet));
   } finally {
     await close();
@@ -166,6 +171,7 @@ app.delete(
     await db
       .delete(appSchema.restaurantOutlet)
       .where(eq(appSchema.restaurantOutlet.id, outletId));
+    await invalidateRestaurant(kv(c), restaurantId);
     return c.json({ success: true });
   } finally {
     await close();
@@ -211,6 +217,7 @@ app.patch(
       .from(appSchema.restaurantOutlet)
       .where(eq(appSchema.restaurantOutlet.id, outletId));
     if (!outlet) return c.json({ error: 'Not Found' }, 404);
+    await invalidateRestaurant(kv(c), restaurantId);
     return c.json(toOutlet(outlet));
   } finally {
     await close();

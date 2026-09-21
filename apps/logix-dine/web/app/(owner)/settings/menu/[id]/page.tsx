@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Container, Title, Text, Button, Paper, Group, Stack, TextInput,
+  Title, Text, Button, Paper, Group, Stack, TextInput,
   Textarea, NumberInput, Switch, Select, Badge, ActionIcon, Modal,
   Loader, Center, Divider, SimpleGrid, Box,
 } from "@mantine/core";
@@ -82,6 +82,7 @@ export default function MenuItemPage() {
     name: string;
     categoryId: string;
     description: string;
+    imageUrl: string;
     pricePaise: number;
     available: boolean;
     variants: { id?: string; name: string; pricePaise: number }[];
@@ -90,6 +91,7 @@ export default function MenuItemPage() {
     name: "",
     categoryId: "",
     description: "",
+    imageUrl: "",
     pricePaise: 0,
     available: true,
     variants: [],
@@ -105,6 +107,7 @@ export default function MenuItemPage() {
         name: item.name || "",
         categoryId: item.categoryId || "",
         description: item.description || "",
+        imageUrl: item.imageUrl || "",
         pricePaise: item.pricePaise || 0,
         available: item.available !== undefined ? item.available : true,
         variants: Array.isArray(item.variants)
@@ -150,6 +153,7 @@ export default function MenuItemPage() {
           name: form.name.trim(),
           categoryId: form.categoryId,
           description: form.description.trim() || null,
+          imageUrl: form.imageUrl?.trim() || null,
           pricePaise: form.pricePaise,
           available: form.available,
           variants: cleanVariants,
@@ -204,7 +208,7 @@ export default function MenuItemPage() {
 
   if (itemError || (!itemLoading && !item)) {
     return (
-      <Container size="md" py="xl">
+      <Box py="xl" px={{ base: "xs", sm: "md" }} maw={560} mx="auto">
         <Paper p="xl" radius="md" ta="center">
           <IconAlertCircle size={40} color="#e03131" style={{ margin: "0 auto 12px" }} />
           <Title order={3} mb="xs">Item Not Found</Title>
@@ -221,14 +225,14 @@ export default function MenuItemPage() {
             Back to Menu
           </Button>
         </Paper>
-      </Container>
+      </Box>
     );
   }
 
   const categoryName = categories.find((c) => c.id === form.categoryId)?.name;
 
   return (
-    <Container size="md" py="lg" pb={100} px={{ base: "sm", sm: "md" }}>
+    <Box py="lg" pb={100} px={{ base: "xs", sm: "md" }}>
       {/* Top Navigation & Actions Bar */}
       <Group justify="space-between" align="center" mb="lg" wrap="wrap" gap="xs">
         <Group gap="xs" align="center">
@@ -424,8 +428,35 @@ export default function MenuItemPage() {
                   </Button>
                 )}
               </Group>
+              <TextInput
+                size="xs"
+                placeholder="Or enter direct image URL (https://...)"
+                value={form.imageUrl}
+                onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                rightSection={
+                  form.imageUrl !== (item?.imageUrl || "") ? (
+                    <Button
+                      size="compact-xs"
+                      color="dinePrimary"
+                      onClick={async () => {
+                        try {
+                          await updateMutation.mutateAsync({
+                            id,
+                            body: { imageUrl: form.imageUrl.trim() || null },
+                          });
+                          notifications.show({ title: "Saved", message: "Dish photo URL updated", color: "green", icon: <IconCheck size={16} /> });
+                        } catch (err: any) {
+                          notifications.show({ title: "Error", message: err.message, color: "red" });
+                        }
+                      }}
+                    >
+                      Save URL
+                    </Button>
+                  ) : null
+                }
+              />
               <Text size="xs" c="dimmed">
-                Upload JPG, PNG or WEBP dish photos. Automatically uploaded to MinIO storage.
+                Upload JPG/PNG dish photos to storage, or paste any direct web image URL.
               </Text>
             </Stack>
           </Group>
@@ -654,6 +685,6 @@ export default function MenuItemPage() {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </Box>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Container, Title, Text, Group, Stack, Paper, SimpleGrid, Loader, Center,
+  Title, Text, Group, Stack, Paper, SimpleGrid, Loader, Center,
   Button, Select, Box, ActionIcon, ThemeIcon,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
@@ -211,7 +211,7 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
   }
 
   return (
-    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+    <Box pt="sm" pb={100} px={{ base: "xs", sm: "md" }}>
       <Stack gap="lg">
         <Group justify="space-between" align="flex-start" wrap="wrap" gap="md">
           <Group gap="sm" align="center" wrap="nowrap">
@@ -299,7 +299,7 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
           <ReportPanel type={reportType} data={data} />
         )}
       </Stack>
-    </Container>
+    </Box>
   );
 }
 

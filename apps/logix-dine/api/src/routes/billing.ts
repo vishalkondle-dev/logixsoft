@@ -295,7 +295,12 @@ app.post(
     // On the very first order (KV miss), start at 1.
     const seqKey = CacheKey.outletSeq(parsed.data.outletId);
     const kvSeq = await cacheGet<number>(kv(c), seqKey);
-    const tokenNo = (kvSeq ?? 0) + 1;
+    const [maxRow] = await db
+      .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
+      .from(appSchema.saleOrder)
+      .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
+    const dbMax = Number(maxRow?.maxNo ?? 0);
+    const tokenNo = Math.max(kvSeq ?? 0, dbMax) + 1;
 
     await db.transaction(async (tx: any) => {
 
@@ -402,16 +407,8 @@ app.post(
       updatedAt: now,
     })));
 
-    // ── Update KV sequence (non-blocking) ────────────────────────────────────
-    // Use waitUntil so the write finishes even after the response is sent.
-    try {
-      c.executionCtx.waitUntil(
-        cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq)
-      );
-    } catch {
-      // executionCtx not available in local dev
-      cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq).catch(() => {});
-    }
+    // ── Update KV sequence ───────────────────────────────────────────────────
+    await cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq);
 
     // ── WhatsApp notification (non-blocking) ──────────────────────────────────
     if (parsed.data.customerPhone && result) {
@@ -490,7 +487,12 @@ app.post(
 
     const seqKey = CacheKey.outletSeq(parsed.data.outletId);
     const kvSeq = await cacheGet<number>(kv(c), seqKey);
-    const tokenNo = (kvSeq ?? 0) + 1;
+    const [maxRow] = await db
+      .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
+      .from(appSchema.saleOrder)
+      .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
+    const dbMax = Number(maxRow?.maxNo ?? 0);
+    const tokenNo = Math.max(kvSeq ?? 0, dbMax) + 1;
 
     await db.transaction(async (tx: any) => {
       if (parsed.data.items && parsed.data.items.length > 0) {
@@ -540,9 +542,8 @@ app.post(
       }
     });
 
-    // Non-blocking KV sequence update
-    try { c.executionCtx.waitUntil(cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq)); }
-    catch { cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq).catch(() => {}); }
+    // Update KV sequence
+    await cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq);
 
     // Build response from inserted data — no SELECT round-trip
     const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');

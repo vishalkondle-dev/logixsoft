@@ -175,6 +175,7 @@ export const createItem = (
     name: string;
     pricePaise: number;
     description?: string;
+    imageUrl?: string | null;
     outletId?: string | null;
     variants?: any[];
     addons?: any[];
@@ -255,8 +256,13 @@ export const removeStaff = (restaurantId: string, memberId: string) =>
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 
-export const getTables = (restaurantId: string, outletId?: string) =>
-  apiFetch<any[]>(`/tables${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
+export const getTables = (restaurantId: string, outletId?: string, includeInactive?: boolean) => {
+  const params = new URLSearchParams();
+  if (outletId) params.set("outletId", outletId);
+  if (includeInactive) params.set("includeInactive", "true");
+  const qs = params.toString();
+  return apiFetch<any[]>(`/tables${qs ? `?${qs}` : ""}`, restaurantId, {}, outletId);
+};
 
 export const createTable = (restaurantId: string, body: { outletId: string; name: string; section?: string; capacity?: number }) =>
   apiFetch<any>("/tables", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);

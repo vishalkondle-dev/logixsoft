@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Container, Title, Tabs, TextInput, Button, Stack, Group, Text,
+  Box, Title, Tabs, TextInput, Button, Stack, Group, Text,
   Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -97,7 +97,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   // Table — React Query (shared cache with POS page)
   const tableOutletId = activeOutlet?.id ?? (ctxOutlets[0]?.id || null);
-  const { data: tables = [], isLoading: tablesLoading } = useTables(restaurantId, tableOutletId);
+  const { data: tables = [], isLoading: tablesLoading } = useTables(restaurantId, tableOutletId, { includeInactive: true });
   const [tableModal, setTableModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [tableForm, setTableForm] = useState({ name: "", section: "", capacity: "" });
 
@@ -322,7 +322,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   if (!restaurant) return <Loader />;
 
   return (
-    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+    <Box pt="sm" pb={100} px={{ base: "xs", sm: "md" }}>
       <Group justify="space-between" align="center" mb="lg">
         <div>
           <Group gap="xs" align="center" mb={4}>
@@ -628,6 +628,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </Box>
   );
 }

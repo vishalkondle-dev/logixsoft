@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Container, Title, Text, Group, Stack, SimpleGrid, Paper, Badge,
+  Title, Text, Group, Stack, SimpleGrid, Paper, Badge,
   Button, ActionIcon, TextInput, NumberInput, Modal, Menu,
   ThemeIcon, Loader, Center, Box, Divider, SegmentedControl,
   Radio, Alert, Tooltip,
@@ -417,7 +417,7 @@ export default function TablesPage() {
   if (!restaurant) return null;
 
   return (
-    <Container size="xl" pt="sm" pb={120} px={{ base: "sm", sm: "md" }}>
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
       {/* ─── Top Header ───────────────────────────────────────────────────────── */}
       <Group justify="space-between" align="center" mb="md" wrap="wrap">
         <div>
@@ -1168,6 +1168,6 @@ export default function TablesPage() {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </Box>
   );
 }

@@ -79,6 +79,28 @@ async function run() {
   const page = await context.newPage();
 
   // ──────────────────────────────────────────────────────────────────────────
+  // STEP 0: Clean up any existing active order for T1 via Tables page
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log('\n[STEP 0] Checking if Table T1 needs clearing...');
+  await page.goto(`${WEB_BASE}/tables`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(2000);
+
+  const existingT1 = page.locator('.mantine-Paper-root').filter({ hasText: 'T1' }).first();
+  if (await existingT1.isVisible()) {
+    const freeBtn = existingT1.getByRole('button', { name: /Free Table|Settle & Free/i }).first();
+    if (await freeBtn.isVisible()) {
+      console.log('Clearing existing order on T1...');
+      await freeBtn.click();
+      await page.waitForTimeout(600);
+      const confirmFree = page.locator('.mantine-Modal-content').getByRole('button', { name: /Free Table|Settle/i }).first();
+      if (await confirmFree.isVisible()) {
+        await confirmFree.click();
+        await page.waitForTimeout(1500);
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // STEP 1: POS - Order Round 1 for Table T1
   // ──────────────────────────────────────────────────────────────────────────
   console.log('\n[STEP 1] Navigating to POS with Table T1...');
@@ -101,8 +123,13 @@ async function run() {
   }
   console.log('Table T1 selected in POS.');
 
-  // Click on Chicken Biryani menu item directly
-  const biryaniItem = page.getByText('Chicken Biryani').first();
+  // Click on Biryani & Rice category and Hyderabadi Chicken Biryani
+  const biryaniTab = page.getByRole('button', { name: 'Biryani & Rice', exact: true }).first();
+  if (await biryaniTab.isVisible()) {
+    await biryaniTab.click();
+    await page.waitForTimeout(400);
+  }
+  const biryaniItem = page.getByText('Hyderabadi Chicken Biryani', { exact: true }).first();
   await biryaniItem.waitFor({ state: 'visible', timeout: 10000 });
   await biryaniItem.click();
   await page.waitForTimeout(500);
@@ -184,10 +211,16 @@ async function run() {
     await page.waitForTimeout(500);
   }
 
-  const itemToClick = page.getByText('Paneer Tikka').or(page.getByText('Masala Chai')).or(page.getByText('Chicken Biryani')).first();
+  const itemToClick = page.getByText('Crispy Corn').or(page.getByText('Paneer Tikka')).first();
   await itemToClick.waitFor({ state: 'visible', timeout: 5000 });
   await itemToClick.click();
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(500);
+
+  const customizeAddBtn = page.locator('.mantine-Modal-content button').filter({ hasText: /^Add/i }).first();
+  if (await customizeAddBtn.isVisible()) {
+    await customizeAddBtn.click();
+    await page.waitForTimeout(500);
+  }
 
   // Wait for item to appear in cart
   await cartItemIncrease.waitFor({ state: 'visible', timeout: 5000 });
@@ -287,7 +320,7 @@ async function run() {
   console.log(`Saved screenshot 9: ${ss9Path}`);
 
   // Click "Settle & Free Table"
-  const settleBtn = freeModal.getByRole('button', { name: /Settle & Free Table/i }).first();
+  const settleBtn = freeModal.getByRole('button', { name: /Settle.*Free Table|Free Table/i }).first();
   console.log('Settling and freeing table...');
   await settleBtn.click();
 
@@ -297,7 +330,7 @@ async function run() {
   await page.waitForTimeout(2500);
 
   // Verify Table T1 is now Free
-  const freeReadyText = t1Card.locator('text=/Table is Free & Ready/i').first();
+  const freeReadyText = t1Card.locator('text=/Free & Ready|FREE/i').first();
   await freeReadyText.waitFor({ state: 'visible', timeout: 8000 });
   console.log('Confirmed: Table T1 is now "Table is Free & Ready"!');
 

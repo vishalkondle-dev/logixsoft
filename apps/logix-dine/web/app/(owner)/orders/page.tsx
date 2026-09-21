@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import {
-  Container, Title, Stack, Paper, Group, Text, Badge, Select, Button,
+  Title, Stack, Paper, Group, Text, Badge, Select, Button,
   Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip, Radio,
   SimpleGrid, Alert,
 } from "@mantine/core";
@@ -224,7 +224,7 @@ export default function OrdersPage() {
   if (!restaurant) return null;
 
   return (
-    <Container size="xl" pt="sm" pb={100} px={{ base: "sm", sm: "md" }}>
+    <Box pt="sm" pb={100} px={{ base: "xs", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <div>
           <Group gap="xs" align="center">
@@ -956,6 +956,6 @@ export default function OrdersPage() {
           );
         })()}
       </Modal>
-    </Container>
+    </Box>
   );
 }

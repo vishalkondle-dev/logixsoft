@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Container, Title, Text, SimpleGrid, Paper, Badge, Button, Group, Stack,
+  Box, Title, Text, SimpleGrid, Paper, Badge, Button, Group, Stack,
   Center, Loader, ActionIcon, Select, Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -123,7 +123,7 @@ export default function KitchenPage() {
   }
 
   return (
-    <Container size="xl" py="md" px={{ base: "sm", sm: "md" }}>
+    <Box py="md" px={{ base: "xs", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <div>
           <Group gap="xs" align="center">
@@ -347,6 +347,6 @@ export default function KitchenPage() {
           })}
         </SimpleGrid>
       )}
-    </Container>
+    </Box>
   );
 }

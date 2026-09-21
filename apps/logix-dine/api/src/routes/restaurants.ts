@@ -111,25 +111,13 @@ app.get(
   }),
   requirePermission('restaurant:read'),
   async (c) => {
-  const tenant = c.get('tenant');
-  const { db, close } = getDb(c);
-  try {
-    if (!tenant.member) {
-      // Platform ADMIN impersonation path — treat as OWNER, all outlets.
-      return c.json({ role: tenant.role, outletIds: [] as string[], allOutlets: true });
-    }
-    if (isAllOutletRole(tenant.role as RestaurantRole)) {
-      return c.json({ role: tenant.role, outletIds: [] as string[], allOutlets: true });
-    }
-    const rows = await db
-      .select({ outletId: appSchema.memberOutletAccess.outletId })
-      .from(appSchema.memberOutletAccess)
-      .where(eq(appSchema.memberOutletAccess.memberId, (tenant.member as any).id));
-    return c.json({ role: tenant.role, outletIds: rows.map((r: any) => r.outletId), allOutlets: false });
-  } finally {
-    await close();
-  }
-});
+    const tenant = c.get('tenant');
+    return c.json({
+      role: tenant.role,
+      outletIds: tenant.outletIds ?? [],
+      allOutlets: !!tenant.allOutlets,
+    });
+  });
 
 // PUT /restaurants/:id
 app.put(

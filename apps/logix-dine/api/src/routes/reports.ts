@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { sql, eq } from 'drizzle-orm';
 import * as z from 'zod';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission, hasOutletAccess } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import type { AuthEnv } from '../lib/auth';
@@ -93,7 +93,8 @@ app.get(
     return c.json({ error: 'Not Found', message: `Unknown report type: ${type}` }, 404);
   }
 
-  const { restaurantId, role, member } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId, role } = tenant;
   const fromStr = c.req.query('from');
   const toStr = c.req.query('to');
   if (!isValidDateStr(fromStr) || !isValidDateStr(toStr)) {
@@ -103,14 +104,17 @@ app.get(
   const fromDate = istDayStart(fromStr);
   const toDate = istDayEnd(toStr); // exclusive
 
-  // Outlet scoping: OWNER may pass any outletId or none (all outlets).
-  // Non-OWNER roles are ALWAYS forced to their own accessible outlet(s) —
-  // outletId comes from the query string here (not X-Outlet-Id header, since
-  // reports naturally use query params for date range too), so we verify
-  // access explicitly rather than relying on requirePermission's header check.
+  // Outlet scoping:
+  // If outletId is provided, enforce that caller (including OWNER) has permission to it.
+  // Non-OWNER roles are ALWAYS forced to specify their own accessible outlet.
   let outletId: string | null = c.req.query('outletId') ?? null;
   const roleIsAllOutlet = isAllOutletRole(role as RestaurantRole);
-  if (!roleIsAllOutlet && !outletId) {
+
+  if (outletId) {
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+  } else if (!roleIsAllOutlet) {
     return c.json({ error: 'Bad Request', message: 'outletId is required for this role' }, 400);
   }
 
@@ -120,13 +124,6 @@ app.get(
 
   const { db, close } = getDb(c);
   try {
-    if (!roleIsAllOutlet && outletId && member) {
-      const allowed = await hasOutletAccess(db, (member as any).id, role, outletId);
-      if (!allowed) {
-        return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
-      }
-    }
-
     const data = await runReport(db, type, restaurantId, fromDate, toDate, outletId);
     const result = { type, from: fromStr, to: toStr, outletId, data };
     await cacheSet(kv(c), cacheKey, result, TTL.report);

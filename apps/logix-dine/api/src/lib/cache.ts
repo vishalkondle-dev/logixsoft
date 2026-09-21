@@ -129,9 +129,42 @@ export async function cacheDelPrefix(kv: KVNamespace, prefix: string): Promise<v
 
 // ─── Session payload helpers ──────────────────────────────────────────────────
 
-export function extractSessionToken(cookieHeader: string): string | null {
-  const match = cookieHeader.match(/session_token=([^;]+)/);
-  return match ? match[1] : null;
+export function isJwtToken(token: string): boolean {
+  if (!token) return false;
+  const parts = token.trim().split('.');
+  return parts.length === 3 && parts[0].length > 10;
+}
+
+export function extractSessionToken(cookieOrHeader?: string | null, authHeader?: string | null): string | null {
+  // 1. Check Authorization Bearer header
+  if (authHeader) {
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (bearerMatch) return bearerMatch[1].trim();
+  }
+
+  if (!cookieOrHeader) return null;
+
+  // If passed an Authorization string directly
+  if (cookieOrHeader.startsWith('Bearer ')) {
+    return cookieOrHeader.slice(7).trim();
+  }
+
+  // 2. Check cookies: logix-dine.session_token, better-auth.session_token (with optional __Secure-)
+  const cookieMatch = cookieOrHeader.match(/(?:__Secure-|)(?:logix-dine\.|better-auth\.|)session_token=([^;]+)/);
+  if (cookieMatch) {
+    try {
+      return decodeURIComponent(cookieMatch[1].trim());
+    } catch {
+      return cookieMatch[1].trim();
+    }
+  }
+
+  // 3. If raw string is passed and looks like token
+  if (!cookieOrHeader.includes(';') && !cookieOrHeader.includes('=')) {
+    return cookieOrHeader.trim();
+  }
+
+  return null;
 }
 
 export async function getSessionPayload(

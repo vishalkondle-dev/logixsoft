@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { sql, eq, and, desc, inArray, or } from 'drizzle-orm';
 import * as z from 'zod';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 import { sendWhatsAppText } from '@logixsoft/wa';
@@ -69,6 +69,10 @@ app.get(
     const rawParamPhone = c.req.param('phone');
     const filterOutletId = c.req.query('outletId');
 
+    if (filterOutletId && !assertOutletAccess(tenant, filterOutletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${filterOutletId}'` }, 403);
+    }
+
     if (!rawParamPhone || rawParamPhone.trim().length < 5) {
       return c.json({ error: 'Bad Request', message: 'Valid mobile number is required' }, 400);
     }
@@ -106,13 +110,18 @@ app.get(
         .limit(1);
 
       // 4. Query all sale orders for this restaurant matching customer phone
-      const orderConditions = [
+      const orderConditions: any[] = [
         eq(appSchema.saleOrder.restaurantId, restaurantId),
         or(
           inArray(appSchema.saleOrder.customerPhone, variants),
           sql`${appSchema.saleOrder.customerPhone} LIKE ${'%' + rawDigits}`
         ),
       ];
+      if (filterOutletId) {
+        orderConditions.push(eq(appSchema.saleOrder.outletId, filterOutletId));
+      } else if (tenant.role !== 'ADMIN') {
+        orderConditions.push(inArray(appSchema.saleOrder.outletId, tenant.outletIds || ['__none__']));
+      }
 
       const allOrders = await db
         .select()

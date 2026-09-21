@@ -4,7 +4,7 @@ import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createStorageClient } from '@logixsoft/helpers/storage';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import {
   CreateCategorySchema,
   UpdateCategorySchema,
@@ -52,8 +52,12 @@ app.get(
   }),
   requirePermission('menu:read'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
+  if (outletId && !assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+  }
 
   const cacheKey = CacheKey.categories(restaurantId, outletId);
   const cached = await cacheGet<any[]>(kv(c), cacheKey);
@@ -87,13 +91,17 @@ app.post(
   }),
   requirePermission('menu:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const headerOutletId = c.req.header('x-outlet-id');
   const body = await c.req.json().catch(() => ({}));
   const parsed = CreateCategorySchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
 
   const outletId = parsed.data.outletId || headerOutletId || null;
+  if (outletId && !assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+  }
 
   const { db, close } = getDb(c);
   try {
@@ -130,7 +138,8 @@ app.put(
   }),
   requirePermission('menu:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const parsed = UpdateCategorySchema.safeParse(body);
@@ -138,6 +147,12 @@ app.put(
 
   const { db, close } = getDb(c);
   try {
+    const [existing] = await db.select().from(appSchema.menuCategory).where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found' }, 404);
+    if (existing.outletId && !assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
     await db
       .update(appSchema.menuCategory)
       .set({ ...parsed.data, updatedAt: new Date() })
@@ -165,10 +180,17 @@ app.delete(
   }),
   requirePermission('menu:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
+    const [existing] = await db.select().from(appSchema.menuCategory).where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found' }, 404);
+    if (existing.outletId && !assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
     const items = await db
       .select({ id: appSchema.menuItem.id })
       .from(appSchema.menuItem)
@@ -239,9 +261,13 @@ app.get(
   }),
   requirePermission('menu:read'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const categoryId = c.req.query('categoryId');
   const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
+  if (outletId && !assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+  }
 
   // Cache only full-outlet item lists (no categoryId filter) — that is what the web uses
   const cacheKey = !categoryId ? CacheKey.items(restaurantId, outletId) : null;
@@ -280,7 +306,8 @@ app.post(
   }),
   requirePermission('menu:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const headerOutletId = c.req.header('x-outlet-id');
   const body = await c.req.json().catch(() => ({}));
   const parsed = CreateItemSchema.safeParse(body);
@@ -296,6 +323,9 @@ app.post(
     if (!cat) return c.json({ error: 'Not Found', message: 'Category not found' }, 404);
 
     const outletId = parsed.data.outletId || headerOutletId || cat.outletId || null;
+    if (outletId && !assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     const now = new Date();
     const id = generateId('item');
     const variants = (parsed.data.variants || []).map((v) => ({
@@ -330,7 +360,8 @@ app.post(
 });
 
 const handleGetItem = async (c: any) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -339,6 +370,9 @@ const handleGetItem = async (c: any) => {
       .from(appSchema.menuItem)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
     if (!item) return c.json({ error: 'Not Found', message: 'Menu item not found' }, 404);
+    if (item.outletId && !assertOutletAccess(tenant, item.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     return c.json(toMenuItem(item));
   } finally {
     await close();
@@ -368,7 +402,8 @@ app.get(
 );
 
 const handleUpdateItem = async (c: any) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const parsed = UpdateItemSchema.safeParse(body);
@@ -376,6 +411,15 @@ const handleUpdateItem = async (c: any) => {
 
   const { db, close } = getDb(c);
   try {
+    const [existing] = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found' }, 404);
+    if (existing.outletId && !assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
     const updateData: any = { ...parsed.data, updatedAt: new Date() };
     if (parsed.data.variants !== undefined) {
       updateData.variants = parsed.data.variants.map((v) => ({
@@ -429,10 +473,20 @@ app.put(
 );
 
 const handleDeleteItem = async (c: any) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
+    const [existing] = await db
+      .select()
+      .from(appSchema.menuItem)
+      .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
+    if (!existing) return c.json({ error: 'Not Found' }, 404);
+    if (existing.outletId && !assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
     await db
       .delete(appSchema.menuItem)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
@@ -466,7 +520,8 @@ app.delete(
 );
 
 const handleUploadItemImage = async (c: any) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -475,6 +530,9 @@ const handleUploadItemImage = async (c: any) => {
       .from(appSchema.menuItem)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
     if (!existing) return c.json({ error: 'Not Found', message: 'Menu item not found' }, 404);
+    if (existing.outletId && !assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
 
     const formData = await c.req.formData();
     const file = formData.get('file') || formData.get('image');
@@ -516,7 +574,8 @@ const handleUploadItemImage = async (c: any) => {
 };
 
 const handleDeleteItemImage = async (c: any) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -525,6 +584,9 @@ const handleDeleteItemImage = async (c: any) => {
       .from(appSchema.menuItem)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
     if (!existing) return c.json({ error: 'Not Found', message: 'Menu item not found' }, 404);
+    if (existing.outletId && !assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
 
     if (existing.imageUrl) {
       try {
@@ -588,7 +650,8 @@ app.delete(
 app.delete('/:id/image', requirePermission('menu:write'), handleDeleteItemImage);
 
 const handleToggleItem = async (c: any) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const id = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -597,6 +660,9 @@ const handleToggleItem = async (c: any) => {
       .from(appSchema.menuItem)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
     if (!item) return c.json({ error: 'Not Found' }, 404);
+    if (item.outletId && !assertOutletAccess(tenant, item.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
     await db
       .update(appSchema.menuItem)
       .set({ available: !item.available, updatedAt: new Date() })

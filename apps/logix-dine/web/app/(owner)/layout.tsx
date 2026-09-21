@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function OwnerLayout({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
   const { restaurant, isLoading: restLoading, role } = useRestaurant();
   const router = useRouter();
   const pathname = usePathname();
@@ -22,10 +22,14 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     // Only redirect after BOTH auth and restaurant have fully loaded
     if (authLoading || restLoading) return;
     if (!isAuthenticated) return; // handled below in render
-    // Authenticated but no restaurant → send to onboarding
+    // Authenticated but no restaurant → send to onboarding (or portal if customer)
     if (!restaurant && !redirected.current) {
       redirected.current = true;
-      router.replace("/onboarding");
+      if (user?.role === "CUSTOMER") {
+        router.replace("/portal");
+      } else {
+        router.replace("/onboarding");
+      }
       return;
     }
     // KITCHEN role never sees the owner-area nav/pages — dedicated /kitchen

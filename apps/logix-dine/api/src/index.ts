@@ -38,7 +38,7 @@ import { tableRoutes } from './routes/tables';
 import { reportRoutes } from './routes/reports';
 import { customerRoutes } from './routes/customers';
 import { customerPortalRoutes } from './routes/customer-portal';
-import { storeSessionPayload } from './lib/tenancy';
+import { storeSessionPayload, resolveSessionPayload } from './lib/tenancy';
 import { extractSessionToken } from './lib/cache';
 
 type Bindings = AuthEnv & {
@@ -509,6 +509,16 @@ const handleLiveWs = async (c: any) => {
     return c.text('Outlet ID required', 400);
   }
 
+  const { payload } = await resolveSessionPayload(c);
+  if (!payload) {
+    return c.text('Unauthorized: Valid session required', 401);
+  }
+
+  const hasOutletAccess = payload.memberships?.some((m: any) => m.outletIds.includes(outletId));
+  if (!hasOutletAccess && payload.user.role !== 'CUSTOMER') {
+    return c.text('Forbidden: You do not have access to this outlet', 403);
+  }
+
   const doNamespace = c.env.OUTLET_ROOM;
   if (!doNamespace) {
     return c.text('Durable Objects not configured', 503);
@@ -538,6 +548,17 @@ const handleCustomerLiveWs = async (c: any) => {
   const rawDigits = phone.replace(/\D/g, '').slice(-10);
   if (!rawDigits) {
     return c.text('Invalid phone number', 400);
+  }
+
+  const { payload } = await resolveSessionPayload(c);
+  if (!payload) {
+    return c.text('Unauthorized: Valid session required', 401);
+  }
+
+  const callerPhone = (payload.user.phoneNumber || '').replace(/\D/g, '').slice(-10);
+  const isStaffOrOwner = payload.memberships && payload.memberships.length > 0;
+  if (callerPhone !== rawDigits && !isStaffOrOwner) {
+    return c.text('Forbidden: You can only subscribe to your own customer updates', 403);
   }
 
   const doNamespace = c.env.OUTLET_ROOM;

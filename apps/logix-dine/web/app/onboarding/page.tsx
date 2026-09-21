@@ -1,24 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Container, Paper, Title, Text, TextInput, Button, Stack,
-  Group, ThemeIcon, Stepper, Loader, Alert,
+  Group, ThemeIcon, Stepper, Loader, Alert, Center,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconBuildingStore, IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import { IconBuildingStore, IconCheck, IconAlertCircle, IconLock, IconBrandWhatsapp } from "@tabler/icons-react";
 import { createRestaurant } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setActiveRestaurant } = useRestaurant();
+  const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
+  const { restaurant, isLoading: restLoading, setActiveRestaurant } = useRestaurant();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "", address: "", phone: "", outletName: "Main",
   });
+
+  useEffect(() => {
+    if (authLoading || restLoading) return;
+    if (restaurant) {
+      router.replace("/pos");
+    } else if (user?.role === "CUSTOMER") {
+      router.replace("/portal");
+    }
+  }, [authLoading, restLoading, restaurant, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +61,40 @@ export default function OnboardingPage() {
       setIsLoading(false);
     }
   };
+
+  if (authLoading || restLoading || restaurant) {
+    return (
+      <Center py={100}>
+        <Loader size="lg" color="dinePrimary" />
+      </Center>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Container size="sm" py={80}>
+        <Paper p="xl" radius="lg" style={{ textAlign: "center" }}>
+          <Stack align="center" gap="md">
+            <ThemeIcon size={64} radius="xl" color="dinePrimary" variant="light">
+              <IconLock size={32} />
+            </ThemeIcon>
+            <Title order={2}>Sign In Required</Title>
+            <Text c="dimmed" size="sm" maw={400}>
+              Please sign in with your mobile number to set up your restaurant.
+            </Text>
+            <Button
+              size="md"
+              color="dinePrimary"
+              leftSection={<IconBrandWhatsapp size={18} />}
+              onClick={openLoginModal}
+            >
+              Sign In with WhatsApp OTP
+            </Button>
+          </Stack>
+        </Paper>
+      </Container>
+    );
+  }
 
   return (
     <Container size="sm" py={60}>

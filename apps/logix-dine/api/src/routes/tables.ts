@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import { toPosTable } from '@logixsoft/logix-dine/mappers/pos';
 import { PosTableSchema } from '@logixsoft/logix-dine/schemas/pos';
 import type { AuthEnv } from '../lib/auth';
@@ -52,8 +52,13 @@ app.get(
   }),
   requirePermission('table:read'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const outletId = c.req.query('outletId');
+  if (outletId && !assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+  }
+
   const includeInactive = c.req.query('includeInactive') === 'true';
   const cacheKey = CacheKey.tables(restaurantId, outletId, includeInactive);
 
@@ -68,7 +73,11 @@ app.get(
     if (!includeInactive) {
       conditions.push(eq(appSchema.posTable.active, true));
     }
-    if (outletId) conditions.push(eq(appSchema.posTable.outletId, outletId));
+    if (outletId) {
+      conditions.push(eq(appSchema.posTable.outletId, outletId));
+    } else if (tenant.role !== 'ADMIN') {
+      conditions.push(inArray(appSchema.posTable.outletId, tenant.outletIds || ['__none__']));
+    }
     const tables = await db.select().from(appSchema.posTable).where(and(...conditions));
     const result = tables.map(toPosTable);
     await cacheSet(kv(c), cacheKey, result, TTL.tables);
@@ -95,12 +104,17 @@ app.post(
   }),
   requirePermission('table:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
   const parsed = CreateTableSchema.safeParse(body);
   if (!parsed.success) {
     return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+  }
+
+  if (!assertOutletAccess(tenant, parsed.data.outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${parsed.data.outletId}'` }, 403);
   }
 
   const { db, close } = getDb(c);
@@ -164,7 +178,8 @@ app.put(
   }),
   requirePermission('table:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
   const tableId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
@@ -180,6 +195,10 @@ app.put(
       .from(appSchema.posTable)
       .where(and(eq(appSchema.posTable.id, tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
     if (!existing) return c.json({ error: 'Not Found' }, 404);
+
+    if (!assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${existing.outletId}'` }, 403);
+    }
 
     await db
       .update(appSchema.posTable)
@@ -214,7 +233,8 @@ app.patch(
   }),
   requirePermission('table:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
   const tableId = c.req.param('id');
 
@@ -225,6 +245,10 @@ app.patch(
       .from(appSchema.posTable)
       .where(and(eq(appSchema.posTable.id, tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
     if (!existing) return c.json({ error: 'Not Found' }, 404);
+
+    if (!assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${existing.outletId}'` }, 403);
+    }
 
     await db
       .update(appSchema.posTable)
@@ -259,7 +283,8 @@ app.delete(
   }),
   requirePermission('table:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
   const tableId = c.req.param('id');
 
@@ -270,6 +295,10 @@ app.delete(
       .from(appSchema.posTable)
       .where(and(eq(appSchema.posTable.id, tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
     if (!existing) return c.json({ error: 'Not Found' }, 404);
+
+    if (!assertOutletAccess(tenant, existing.outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${existing.outletId}'` }, 403);
+    }
 
     await db
       .update(appSchema.posTable)

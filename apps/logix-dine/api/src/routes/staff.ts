@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import { RESTAURANT_ROLES } from '@logixsoft/logix-dine/types/roles';
 import { RestaurantMemberSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurantMember } from '@logixsoft/logix-dine/mappers/pos';
@@ -111,7 +111,8 @@ app.post(
   }),
   requirePermission('member:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
   const parsed = InviteStaffSchema.safeParse(body);
@@ -134,15 +135,15 @@ app.post(
       return c.json({ error: 'Conflict', message: 'This phone number is already a staff member' }, 409);
     }
 
-    // Validate outlets belong to this restaurant
+    // Validate outlets belong to this restaurant and the caller has permission to assign them
     const outlets = await db
       .select({ id: appSchema.restaurantOutlet.id })
       .from(appSchema.restaurantOutlet)
       .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
     const validOutletIds = new Set(outlets.map((o: any) => o.id));
     for (const oid of outletIds) {
-      if (!validOutletIds.has(oid)) {
-        return c.json({ error: 'Bad Request', message: `Outlet ${oid} does not belong to this restaurant` }, 400);
+      if (!validOutletIds.has(oid) || !assertOutletAccess(tenant, oid)) {
+        return c.json({ error: 'Forbidden', message: `You do not have permission to assign outlet '${oid}'` }, 403);
       }
     }
 
@@ -226,7 +227,8 @@ app.put(
   }),
   requirePermission('member:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
   const memberId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
@@ -243,6 +245,14 @@ app.put(
       .where(and(eq(appSchema.restaurantMember.id, memberId), eq(appSchema.restaurantMember.restaurantId, restaurantId)));
     if (!existing) return c.json({ error: 'Not Found' }, 404);
     if (existing.role === 'OWNER') return c.json({ error: 'Forbidden', message: 'Cannot modify the owner' }, 403);
+
+    if (parsed.data.outletIds) {
+      for (const oid of parsed.data.outletIds) {
+        if (!assertOutletAccess(tenant, oid)) {
+          return c.json({ error: 'Forbidden', message: `You do not have permission to assign outlet '${oid}'` }, 403);
+        }
+      }
+    }
 
     const now = new Date();
     await db.transaction(async (tx: any) => {

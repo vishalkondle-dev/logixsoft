@@ -10,6 +10,8 @@ declare module 'hono' {
       role: string;
       member: Record<string, unknown> | null;
       outletId: string | null;
+      outletIds: string[];
+      allOutlets?: boolean;
     };
     /** Phone number of the authenticated actor — used to populate createdBy/updatedBy audit columns. */
     actorPhone: string | null;

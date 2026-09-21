@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { eq, ne, and, or, sql, desc } from 'drizzle-orm';
+import { eq, ne, and, or, sql, desc, inArray } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission, hasOutletAccess } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import { cacheGet, cacheSet, invalidateReports, CacheKey, TTL } from '../lib/cache';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
@@ -120,17 +120,7 @@ function getDb(c: any) {
 
 function kv(c: any) { return c.env?.CACHE; }
 
-/**
- * Enforce outlet access on a specific outletId regardless of whether the
- * client bothered to send X-Outlet-Id. OWNER (or any all-outlet role)
- * always passes. Non-owner roles (MANAGER/WAITER/KITCHEN) must have a
- * memberOutletAccess row for this exact outlet.
- */
-async function assertOutletAccess(db: any, tenant: any, outletId: string): Promise<boolean> {
-  if (isAllOutletRole(tenant.role as RestaurantRole)) return true;
-  if (!tenant.member) return false;
-  return hasOutletAccess(db, tenant.member.id, tenant.role, outletId);
-}
+
 
 async function recomputeTotal(db: any, orderId: string) {
   const items = await db
@@ -215,8 +205,13 @@ app.get(
   }),
   requirePermission('menu:read'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
+
+  if (outletId && !assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+  }
 
   const cacheKey = CacheKey.bootstrap(restaurantId, outletId);
   const cachedBs = await cacheGet<any>(kv(c), cacheKey);
@@ -237,9 +232,11 @@ app.get(
       : eq(appSchema.menuItem.restaurantId, restaurantId);
     const items = await db.select().from(appSchema.menuItem).where(itemWhere);
 
+    const scopedOutlets = outlets.filter((o: any) => assertOutletAccess(tenant, o.id));
+
     const bsResult = {
       restaurant: toRestaurant(rest),
-      outlets: outlets.map(toOutlet),
+      outlets: scopedOutlets.map(toOutlet),
       categories: categories.map(toCategory),
       items: items.map(toMenuItem),
     };
@@ -281,6 +278,10 @@ app.post(
   const body = await c.req.json().catch(() => ({}));
   const parsed = StartOrderSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+  if (!assertOutletAccess(tenant, parsed.data.outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${parsed.data.outletId}'` }, 403);
+  }
 
   const { db, close } = getDb(c);
   try {
@@ -483,6 +484,10 @@ app.post(
   const parsed = CreateSettledSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
 
+  if (!assertOutletAccess(tenant, parsed.data.outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${parsed.data.outletId}'` }, 403);
+  }
+
   const { db, close } = getDb(c);
   try {
     const id = generateOrderId(parsed.data.outletId);
@@ -631,18 +636,18 @@ app.get(
 
   const { db, close } = getDb(c);
   try {
-    // Non-owner roles must specify an outlet they're assigned to — never
-    // an implicit "all outlets" view.
-    if (!isAllOutletRole(tenant.role as RestaurantRole)) {
-      if (!outletId) {
-        return c.json({ error: 'Bad Request', message: 'outletId is required for this role' }, 400);
-      }
-      if (!(await assertOutletAccess(db, tenant, outletId))) {
-        return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
-      }
-    }
-
     const conditions: any[] = [eq(appSchema.saleOrder.restaurantId, restaurantId)];
+
+    if (outletId) {
+      if (!assertOutletAccess(tenant, outletId)) {
+        return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+      }
+      conditions.push(eq(appSchema.saleOrder.outletId, outletId));
+    } else if (!isAllOutletRole(tenant.role as RestaurantRole)) {
+      return c.json({ error: 'Bad Request', message: 'outletId is required for this role' }, 400);
+    } else if (tenant.outletIds && tenant.outletIds.length > 0) {
+      conditions.push(inArray(appSchema.saleOrder.outletId, tenant.outletIds));
+    }
     if (tableOccupied === 'true') {
       conditions.push(
         sql`${appSchema.saleOrder.tableFreedAt} IS NULL`,
@@ -654,7 +659,6 @@ app.get(
       conditions.push(eq(appSchema.saleOrder.status, status));
     }
     if (orderStatus) conditions.push(eq(appSchema.saleOrder.orderStatus, orderStatus));
-    if (outletId) conditions.push(eq(appSchema.saleOrder.outletId, outletId));
 
     const orders = await db
       .select()
@@ -724,7 +728,13 @@ app.get(
   }),
   requirePermission('order:read'),
   async (c) => {
-  const { restaurantId, outletId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const outletId = c.req.query('outletId') || tenant.outletId;
+
+  if (outletId && !assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+  }
 
   const { db, close } = getDb(c);
   try {
@@ -739,7 +749,11 @@ app.get(
           eq(appSchema.saleOrder.outletId, outletId),
           activeCondition,
         )
-      : and(eq(appSchema.saleOrder.restaurantId, restaurantId), activeCondition);
+      : and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          inArray(appSchema.saleOrder.outletId, tenant.outletIds || []),
+          activeCondition,
+        );
 
     const orders = await db
       .select()
@@ -792,7 +806,7 @@ app.get(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, id), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!orderRow) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, orderRow.outletId))) {
+    if (!assertOutletAccess(tenant, orderRow.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
 
@@ -838,7 +852,7 @@ app.post(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status !== 'OPEN') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
@@ -951,7 +965,7 @@ app.post(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Order is voided' }, 409);
@@ -1128,7 +1142,7 @@ app.patch(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status === 'VOID') {
@@ -1268,7 +1282,7 @@ app.patch(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status !== 'OPEN' && order.status !== 'PARTIAL') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
@@ -1333,7 +1347,7 @@ app.delete(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status !== 'OPEN' && order.status !== 'PARTIAL') return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
@@ -1395,7 +1409,7 @@ app.post(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Order is voided' }, 409);
@@ -1531,7 +1545,7 @@ app.post(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Cannot free a voided order' }, 409);
@@ -1630,7 +1644,7 @@ app.post(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
 
@@ -1709,7 +1723,7 @@ app.post(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status !== 'OPEN' && order.status !== 'PARTIAL') return c.json({ error: 'Conflict', message: 'Only OPEN or PARTIAL orders can be voided' }, 409);
@@ -1792,7 +1806,7 @@ app.patch(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
 
@@ -1844,7 +1858,7 @@ app.patch(
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
-    if (!(await assertOutletAccess(db, tenant, order.outletId))) {
+    if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
 

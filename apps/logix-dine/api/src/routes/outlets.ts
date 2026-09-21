@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import {
   CreateOutletSchema,
   UpdateOutletSchema,
@@ -12,7 +12,7 @@ import {
 import { toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
-import { invalidateRestaurant } from '../lib/cache';
+import { invalidateRestaurant, invalidateUserSession, extractSessionToken } from '../lib/cache';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -34,13 +34,18 @@ app.get(
   }),
   requirePermission('outlet:read'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const { db, close } = getDb(c);
   try {
+    const conditions = [eq(appSchema.restaurantOutlet.restaurantId, restaurantId)];
+    if (tenant.role !== 'ADMIN') {
+      conditions.push(inArray(appSchema.restaurantOutlet.id, tenant.outletIds || ['__none__']));
+    }
     const outlets = await db
       .select()
       .from(appSchema.restaurantOutlet)
-      .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
+      .where(and(...conditions));
     return c.json(outlets.map(toOutlet));
   } finally {
     await close();
@@ -87,6 +92,13 @@ app.post(
       .from(appSchema.restaurantOutlet)
       .where(eq(appSchema.restaurantOutlet.id, id));
     await invalidateRestaurant(kv(c), restaurantId);
+
+    // Invalidate user session so newly created outlet is immediately in tenant.outletIds
+    const token = extractSessionToken(c.req.header('Cookie') || '', c.req.header('Authorization') || '');
+    if (token) {
+      await invalidateUserSession(kv(c), token).catch(() => {});
+    }
+
     return c.json(toOutlet(outlet), 201);
   } finally {
     await close();
@@ -110,8 +122,14 @@ app.put(
   }),
   requirePermission('outlet:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const outletId = c.req.param('id');
+
+  if (!assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+  }
+
   const body = await c.req.json().catch(() => ({}));
   const parsed = UpdateOutletSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
@@ -153,8 +171,14 @@ app.delete(
   }),
   requirePermission('outlet:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const outletId = c.req.param('id');
+
+  if (!assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+  }
+
   const { db, close } = getDb(c);
   try {
     const [outlet] = await db
@@ -193,8 +217,14 @@ app.patch(
   }),
   requirePermission('outlet:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
   const outletId = c.req.param('id');
+
+  if (!assertOutletAccess(tenant, outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+  }
+
   const { db, close } = getDb(c);
   try {
     await db.transaction(async (tx) => {

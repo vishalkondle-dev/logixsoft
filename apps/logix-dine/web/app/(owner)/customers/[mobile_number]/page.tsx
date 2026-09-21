@@ -56,6 +56,7 @@ import {
   IconSoup,
   IconTag,
   IconPlus,
+  IconReceiptOff,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -820,11 +821,22 @@ export default function CustomerProfilePage() {
                 </Group>
 
                 {filteredOrders.length === 0 ? (
-                  <Center py={60}>
-                    <Text size="sm" c="dimmed">
-                      No orders found matching the selected filter.
-                    </Text>
-                  </Center>
+                  <Paper p="xl" radius="md" withBorder style={{ textAlign: "center", backgroundColor: "#ffffff" }}>
+                    <Stack align="center" gap="xs">
+                      <ThemeIcon size={48} radius="xl" color="gray" variant="light">
+                        <IconReceiptOff size={24} />
+                      </ThemeIcon>
+                      <Text size="sm" fw={600}>
+                        No orders found
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        No orders matching the selected &ldquo;{orderFilterStatus}&rdquo; filter.
+                      </Text>
+                      <Button size="xs" variant="default" onClick={() => setOrderFilterStatus("ALL")} mt="xs">
+                        Reset Filter
+                      </Button>
+                    </Stack>
+                  </Paper>
                 ) : (
                   <Stack gap="xs">
                     {filteredOrders.map((order) => {
@@ -834,7 +846,7 @@ export default function CustomerProfilePage() {
                       return (
                         <Paper
                           key={order.id}
-                          p="sm"
+                          p={{ base: "xs", sm: "sm" }}
                           radius="md"
                           withBorder
                           style={{
@@ -843,11 +855,15 @@ export default function CustomerProfilePage() {
                             transition: "all 0.15s ease",
                           }}
                         >
-                          {/* Order Summary Row */}
-                          <Group justify="space-between" align="center" wrap="wrap">
-                            <Group gap="sm" align="center">
-                              <Box>
-                                <Group gap={6} align="center">
+                          {/* Clickable Order Summary Header */}
+                          <Box
+                            onClick={() => toggleOrderExpand(order.id)}
+                            style={{ cursor: "pointer", userSelect: "none" }}
+                          >
+                            <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+                              {/* Left Info: Token, Badges, Date */}
+                              <Box style={{ minWidth: 0, flex: 1 }}>
+                                <Group gap={6} align="center" wrap="wrap">
                                   <Text fw={700} size="sm">
                                     Token #{order.orderNo}
                                   </Text>
@@ -865,97 +881,157 @@ export default function CustomerProfilePage() {
                                     {order.status}
                                   </Badge>
                                   <Badge size="xs" variant="outline" color={isTakeaway ? "gray" : "blue"}>
-                                    {isTakeaway ? "Takeaway" : `Table ${order.tableNo}`}
+                                    {isTakeaway ? "🛍️ Takeaway" : `🍽️ Table ${order.tableNo}`}
                                   </Badge>
-                                  <Badge size="xs" variant="default">
-                                    {order.outletName}
-                                  </Badge>
+                                  {scopeMode === "all" && (
+                                    <Badge size="xs" variant="default" visibleFrom="xs">
+                                      {order.outletName}
+                                    </Badge>
+                                  )}
                                 </Group>
-                                <Text size="11px" c="dimmed" mt={2}>
-                                  {formatDate(order.createdAt)}
-                                </Text>
-                              </Box>
-                            </Group>
 
-                            <Group gap="md" align="center">
-                              {/* Payment Info */}
-                              <Box style={{ textAlign: "right" }}>
-                                <Text fw={700} size="md" c={order.status === "PAID" ? "green.8" : "dark.8"}>
-                                  ₹{((order.subtotalPaise || 0) / 100).toFixed(0)}
-                                </Text>
-                                <Text size="10px" c="dimmed">
-                                  {order.itemsCount} items • {order.method || "Cash"}
-                                </Text>
+                                <Group gap={6} align="center" mt={3} wrap="nowrap" style={{ overflow: "hidden" }}>
+                                  <Text size="11px" c="dimmed" style={{ whiteSpace: "nowrap" }}>
+                                    {formatDate(order.createdAt)}
+                                  </Text>
+                                  <Text size="11px" c="dimmed" style={{ whiteSpace: "nowrap" }}>
+                                    • {order.itemsCount} {order.itemsCount === 1 ? "item" : "items"}
+                                  </Text>
+                                  <Text size="11px" c="dimmed" style={{ whiteSpace: "nowrap" }}>
+                                    • {order.method || "Cash"}
+                                  </Text>
+                                  {scopeMode === "all" && (
+                                    <Text size="11px" c="dimmed" hiddenFrom="xs" style={{ whiteSpace: "nowrap" }}>
+                                      • {order.outletName}
+                                    </Text>
+                                  )}
+                                </Group>
                               </Box>
 
-                              {/* Expand/Collapse Toggle */}
-                              <ActionIcon
-                                variant="subtle"
-                                color="gray"
-                                size="sm"
-                                onClick={() => toggleOrderExpand(order.id)}
-                                aria-label="Expand order details"
-                              >
-                                {isExpanded ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
-                              </ActionIcon>
+                              {/* Right Info: Amount & Expand Toggle (Always Pinned) */}
+                              <Group gap="xs" align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
+                                <Box style={{ textAlign: "right" }}>
+                                  <Text
+                                    fw={700}
+                                    size="sm"
+                                    c={order.status === "PAID" ? "green.8" : "dark.8"}
+                                    style={{ fontSize: 16 }}
+                                  >
+                                    ₹{((order.subtotalPaise || 0) / 100).toFixed(0)}
+                                  </Text>
+                                </Box>
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="gray"
+                                  size="sm"
+                                  aria-label={isExpanded ? "Collapse order details" : "Expand order details"}
+                                >
+                                  {isExpanded ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                                </ActionIcon>
+                              </Group>
                             </Group>
-                          </Group>
+                          </Box>
 
                           {/* Expandable Order Items Details */}
                           <Collapse expanded={isExpanded}>
-                            <Box mt="sm" pt="xs" style={{ borderTop: "1px solid #f1f3f5" }}>
-                              <Table.ScrollContainer minWidth={280}>
-                                <Table verticalSpacing={4} style={{ fontSize: 12 }}>
-                                  <Table.Thead>
-                                    <Table.Tr>
-                                      <Table.Th>Item</Table.Th>
-                                      <Table.Th style={{ textAlign: "center" }}>Qty</Table.Th>
-                                      <Table.Th style={{ textAlign: "right" }}>Price</Table.Th>
-                                      <Table.Th style={{ textAlign: "right" }}>Total</Table.Th>
-                                    </Table.Tr>
-                                  </Table.Thead>
-                                  <Table.Tbody>
-                                    {order.items.map((it) => (
-                                      <Table.Tr key={it.id}>
-                                        <Table.Td>
-                                          <Text size="xs" fw={600}>
-                                            {it.name}
-                                          </Text>
-                                          {it.variant && (
-                                            <Text size="10px" c="dimmed">
-                                              Variant: {it.variant.name}
-                                            </Text>
-                                          )}
-                                          {it.addons && it.addons.length > 0 && (
-                                            <Text size="10px" c="dimmed">
-                                              Addons: {it.addons.map((a: any) => a.name).join(", ")}
-                                            </Text>
-                                          )}
-                                          {it.note && (
-                                            <Text size="10px" c="orange.7" fs="italic">
-                                              Note: {it.note}
-                                            </Text>
-                                          )}
-                                        </Table.Td>
-                                        <Table.Td style={{ textAlign: "center" }}>
-                                          <Badge size="xs" variant="light" color="gray">
+                            <Box mt="xs" pt="xs" style={{ borderTop: "1px solid #f1f3f5" }}>
+                              {/* Mobile View: Clean native list without table header */}
+                              <Box hiddenFrom="sm">
+                                <Stack gap={6} mb="xs">
+                                  {order.items.map((it) => (
+                                    <Group key={it.id} justify="space-between" align="flex-start" wrap="nowrap" py={2}>
+                                      <Box style={{ minWidth: 0, flex: 1 }}>
+                                        <Group gap={6} align="center" wrap="nowrap">
+                                          <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0 }}>
                                             ×{it.qty}
                                           </Badge>
-                                        </Table.Td>
-                                        <Table.Td style={{ textAlign: "right" }}>
-                                          ₹{(it.pricePaise / 100).toFixed(0)}
-                                        </Table.Td>
-                                        <Table.Td style={{ textAlign: "right", fontWeight: 600 }}>
-                                          ₹{((it.pricePaise * it.qty) / 100).toFixed(0)}
-                                        </Table.Td>
+                                          <Text size="xs" fw={600} lineClamp={1}>
+                                            {it.name}
+                                          </Text>
+                                        </Group>
+                                        {(it.variant || it.addons || it.note) && (
+                                          <Stack gap={1} pl={26} mt={2}>
+                                            {it.variant && (
+                                              <Text size="10px" c="dimmed">
+                                                Variant: {it.variant.name}
+                                              </Text>
+                                            )}
+                                            {it.addons && it.addons.length > 0 && (
+                                              <Text size="10px" c="dimmed">
+                                                Addons: {it.addons.map((a: any) => a.name).join(", ")}
+                                              </Text>
+                                            )}
+                                            {it.note && (
+                                              <Text size="10px" c="orange.7" fs="italic">
+                                                Note: {it.note}
+                                              </Text>
+                                            )}
+                                          </Stack>
+                                        )}
+                                      </Box>
+                                      <Text size="xs" fw={600} style={{ flexShrink: 0 }}>
+                                        ₹{((it.pricePaise * it.qty) / 100).toFixed(0)}
+                                      </Text>
+                                    </Group>
+                                  ))}
+                                </Stack>
+                              </Box>
+
+                              {/* Desktop View: Full Table */}
+                              <Box visibleFrom="sm">
+                                <Table.ScrollContainer minWidth={280}>
+                                  <Table verticalSpacing={4} style={{ fontSize: 12 }}>
+                                    <Table.Thead>
+                                      <Table.Tr>
+                                        <Table.Th>Item</Table.Th>
+                                        <Table.Th style={{ textAlign: "center" }}>Qty</Table.Th>
+                                        <Table.Th style={{ textAlign: "right" }}>Price</Table.Th>
+                                        <Table.Th style={{ textAlign: "right" }}>Total</Table.Th>
                                       </Table.Tr>
-                                    ))}
-                                  </Table.Tbody>
-                                </Table>
-                              </Table.ScrollContainer>
+                                    </Table.Thead>
+                                    <Table.Tbody>
+                                      {order.items.map((it) => (
+                                        <Table.Tr key={it.id}>
+                                          <Table.Td>
+                                            <Text size="xs" fw={600}>
+                                              {it.name}
+                                            </Text>
+                                            {it.variant && (
+                                              <Text size="10px" c="dimmed">
+                                                Variant: {it.variant.name}
+                                              </Text>
+                                            )}
+                                            {it.addons && it.addons.length > 0 && (
+                                              <Text size="10px" c="dimmed">
+                                                Addons: {it.addons.map((a: any) => a.name).join(", ")}
+                                              </Text>
+                                            )}
+                                            {it.note && (
+                                              <Text size="10px" c="orange.7" fs="italic">
+                                                Note: {it.note}
+                                              </Text>
+                                            )}
+                                          </Table.Td>
+                                          <Table.Td style={{ textAlign: "center" }}>
+                                            <Badge size="xs" variant="light" color="gray">
+                                              ×{it.qty}
+                                            </Badge>
+                                          </Table.Td>
+                                          <Table.Td style={{ textAlign: "right" }}>
+                                            ₹{(it.pricePaise / 100).toFixed(0)}
+                                          </Table.Td>
+                                          <Table.Td style={{ textAlign: "right", fontWeight: 600 }}>
+                                            ₹{((it.pricePaise * it.qty) / 100).toFixed(0)}
+                                          </Table.Td>
+                                        </Table.Tr>
+                                      ))}
+                                    </Table.Tbody>
+                                  </Table>
+                                </Table.ScrollContainer>
+                              </Box>
 
                               {/* Order Footnote & Actions */}
-                              <Group justify="space-between" align="center" mt="xs" pt="xs">
+                              <Group justify="space-between" align="center" mt="xs" pt="xs" style={{ borderTop: "1px dashed #e9ecef" }}>
                                 <Text size="11px" c="dimmed">
                                   ID: <code style={{ fontSize: 10 }}>{order.id.slice(0, 8)}...</code>
                                 </Text>

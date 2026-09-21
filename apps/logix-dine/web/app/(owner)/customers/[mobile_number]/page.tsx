@@ -55,6 +55,7 @@ import {
   IconBuildingStore,
   IconSoup,
   IconTag,
+  IconPlus,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -267,43 +268,170 @@ export default function CustomerProfilePage() {
       }}
       px={{ base: "xs", sm: "md", md: "lg" }}
       py="md"
+      pb={{ base: 100, sm: "xl" }}
     >
       <Stack gap="md" maw={1400} mx="auto">
         {/* Top Header Bar */}
-        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
-          <Group gap="sm" align="center">
-            <ActionIcon
-              variant="default"
-              size="lg"
-              radius="md"
-              onClick={() => router.back()}
-              aria-label="Go back"
-            >
-              <IconArrowLeft size={18} />
-            </ActionIcon>
-            <Box>
-              <Group gap="xs" align="center">
-                <Title order={2} style={{ fontSize: 22, fontWeight: 700 }}>
-                  Customer Profile
-                </Title>
-                <Badge
-                  size="md"
-                  variant="light"
-                  color={isVip ? "yellow" : isRegular ? "blue" : "teal"}
-                  leftSection={isVip ? <IconStar size={12} /> : undefined}
+        <Box>
+          <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
+            <Group gap="xs" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+              <ActionIcon
+                variant="default"
+                size="lg"
+                radius="md"
+                onClick={() => router.back()}
+                aria-label="Go back"
+                style={{ flexShrink: 0 }}
+              >
+                <IconArrowLeft size={18} />
+              </ActionIcon>
+              <Box style={{ minWidth: 0 }}>
+                <Group gap="xs" align="center" wrap="nowrap">
+                  <Title
+                    order={2}
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    Customer Profile
+                  </Title>
+                  <Badge
+                    size="sm"
+                    variant="light"
+                    color={isVip ? "yellow" : isRegular ? "blue" : "teal"}
+                    leftSection={isVip ? <IconStar size={12} /> : undefined}
+                    visibleFrom="sm"
+                  >
+                    {isVip ? "VIP Customer" : isRegular ? "Regular Guest" : isNew ? "New Guest" : "Customer"}
+                  </Badge>
+                </Group>
+                <Text size="xs" c="dimmed" lineClamp={1} visibleFrom="sm">
+                  Detailed customer history & dining analytics
+                </Text>
+              </Box>
+            </Group>
+
+            {/* Desktop Actions (sm+) */}
+            <Group gap="sm" wrap="nowrap" visibleFrom="sm">
+              {/* Scope Switcher */}
+              <SegmentedControl
+                size="xs"
+                radius="md"
+                value={scopeMode}
+                onChange={(val) => setScopeMode(val as "current" | "all")}
+                data={[
+                  {
+                    value: "current",
+                    label: (
+                      <Group gap={5} wrap="nowrap">
+                        <IconBuildingStore size={14} />
+                        <span>{activeOutlet?.name || "This Outlet"}</span>
+                      </Group>
+                    ),
+                  },
+                  {
+                    value: "all",
+                    label: (
+                      <Group gap={5} wrap="nowrap">
+                        <span>All Outlets</span>
+                      </Group>
+                    ),
+                  },
+                ]}
+              />
+
+              <Button
+                color="dinePrimary"
+                size="sm"
+                radius="md"
+                leftSection={<IconShoppingCart size={16} />}
+                onClick={() => router.push(`/pos?phone=${encodeURIComponent(rawCleanPhone)}`)}
+              >
+                Start Order in POS
+              </Button>
+
+              <Button
+                color="green"
+                variant="filled"
+                size="sm"
+                radius="md"
+                leftSection={<IconBrandWhatsapp size={16} />}
+                onClick={() => {
+                  setWhatsappMessage(
+                    `Hello from ${restaurant?.name || "Logix Dine"}! Thank you for dining with us. We appreciate your patronage!`
+                  );
+                  setWhatsappModalOpen(true);
+                }}
+              >
+                WhatsApp
+              </Button>
+
+              <Button
+                component="a"
+                href={`tel:+91${rawCleanPhone}`}
+                variant="default"
+                size="sm"
+                radius="md"
+                leftSection={<IconPhone size={16} />}
+              >
+                Call
+              </Button>
+            </Group>
+
+            {/* Mobile Actions (Icons only, hiddenFrom="sm") */}
+            <Group gap={6} align="center" wrap="nowrap" hiddenFrom="sm" style={{ flexShrink: 0 }}>
+              <Tooltip label="Start Order in POS" position="bottom" withArrow>
+                <ActionIcon
+                  color="dinePrimary"
+                  variant="filled"
+                  size="lg"
+                  radius="md"
+                  onClick={() => router.push(`/pos?phone=${encodeURIComponent(rawCleanPhone)}`)}
+                  aria-label="Start Order in POS"
                 >
-                  {isVip ? "VIP Customer" : isRegular ? "Regular Guest" : isNew ? "New Guest" : "Customer"}
-                </Badge>
-              </Group>
-              <Text size="xs" c="dimmed">
-                Detailed customer history & dining analytics
-              </Text>
-            </Box>
+                  <IconShoppingCart size={18} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="WhatsApp Customer" position="bottom" withArrow>
+                <ActionIcon
+                  color="green"
+                  variant="filled"
+                  size="lg"
+                  radius="md"
+                  onClick={() => {
+                    setWhatsappMessage(
+                      `Hello from ${restaurant?.name || "Logix Dine"}! Thank you for dining with us. We appreciate your patronage!`
+                    );
+                    setWhatsappModalOpen(true);
+                  }}
+                  aria-label="WhatsApp Customer"
+                >
+                  <IconBrandWhatsapp size={18} />
+                </ActionIcon>
+              </Tooltip>
+
+              <Tooltip label="Call Customer" position="bottom" withArrow>
+                <ActionIcon
+                  component="a"
+                  href={`tel:+91${rawCleanPhone}`}
+                  variant="default"
+                  size="lg"
+                  radius="md"
+                  aria-label="Call Customer"
+                >
+                  <IconPhone size={18} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
           </Group>
 
-          {/* Scope & Quick Actions */}
-          <Group gap="sm" wrap="wrap">
-            {/* Scope Switcher */}
+          {/* Mobile Secondary Bar (Scope Switcher + Badge) */}
+          <Group justify="space-between" align="center" mt="xs" hiddenFrom="sm">
             <SegmentedControl
               size="xs"
               radius="md"
@@ -313,8 +441,8 @@ export default function CustomerProfilePage() {
                 {
                   value: "current",
                   label: (
-                    <Group gap={5} wrap="nowrap">
-                      <IconBuildingStore size={14} />
+                    <Group gap={4} wrap="nowrap">
+                      <IconBuildingStore size={13} />
                       <span>{activeOutlet?.name || "This Outlet"}</span>
                     </Group>
                   ),
@@ -322,55 +450,23 @@ export default function CustomerProfilePage() {
                 {
                   value: "all",
                   label: (
-                    <Group gap={5} wrap="nowrap">
+                    <Group gap={4} wrap="nowrap">
                       <span>All Outlets</span>
                     </Group>
                   ),
                 },
               ]}
             />
-
-            {/* Start POS Order */}
-            <Button
-              color="dinePrimary"
+            <Badge
               size="sm"
-              radius="md"
-              leftSection={<IconShoppingCart size={16} />}
-              onClick={() => router.push(`/pos?phone=${encodeURIComponent(rawCleanPhone)}`)}
+              variant="light"
+              color={isVip ? "yellow" : isRegular ? "blue" : "teal"}
+              leftSection={isVip ? <IconStar size={12} /> : undefined}
             >
-              Start Order in POS
-            </Button>
-
-            {/* Direct WhatsApp Message */}
-            <Button
-              color="green"
-              variant="filled"
-              size="sm"
-              radius="md"
-              leftSection={<IconBrandWhatsapp size={16} />}
-              onClick={() => {
-                setWhatsappMessage(
-                  `Hello from ${restaurant?.name || "Logix Dine"}! Thank you for dining with us. We appreciate your patronage!`
-                );
-                setWhatsappModalOpen(true);
-              }}
-            >
-              WhatsApp
-            </Button>
-
-            {/* Direct Phone Call */}
-            <Button
-              component="a"
-              href={`tel:+91${rawCleanPhone}`}
-              variant="default"
-              size="sm"
-              radius="md"
-              leftSection={<IconPhone size={16} />}
-            >
-              Call
-            </Button>
+              {isVip ? "VIP Customer" : isRegular ? "Regular Guest" : isNew ? "New Guest" : "Customer"}
+            </Badge>
           </Group>
-        </Group>
+        </Box>
 
         {/* ─── 1. Customer Hero Identity Card ────────────────────────────── */}
         <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
@@ -380,8 +476,6 @@ export default function CustomerProfilePage() {
               <Group gap="md" align="center" wrap="nowrap">
                 <Box
                   style={{
-                    width: 64,
-                    height: 64,
                     borderRadius: 16,
                     backgroundColor: isVip ? "#fff8e1" : "#e8f5e9",
                     border: `2px solid ${isVip ? "#ffd54f" : "#a5d6a7"}`,
@@ -389,10 +483,12 @@ export default function CustomerProfilePage() {
                     alignItems: "center",
                     justifyContent: "center",
                     color: isVip ? "#f57f17" : "#2e7d32",
-                    fontSize: 22,
                     fontWeight: 700,
                     flexShrink: 0,
                   }}
+                  w={{ base: 52, sm: 64 }}
+                  h={{ base: 52, sm: 64 }}
+                  fz={{ base: 18, sm: 22 }}
                 >
                   {customer.name ? customer.name.slice(0, 2).toUpperCase() : rawCleanPhone.slice(-2)}
                 </Box>
@@ -427,11 +523,27 @@ export default function CustomerProfilePage() {
 
                   {/* Badges / Tags */}
                   <Group gap={6} mt={6} wrap="wrap">
-                    {customer.tags.map((tag) => (
-                      <Badge key={tag} size="sm" variant="outline" color={tag.includes("VIP") ? "yellow" : "teal"}>
-                        {tag}
-                      </Badge>
-                    ))}
+                    {/* Custom tags (excluding calculated or duplicate badges) */}
+                    {customer.tags
+                      .filter((tag) => {
+                        const l = tag.toLowerCase();
+                        if (
+                          l.includes("veg") ||
+                          l.includes("takeaway") ||
+                          l.includes("dine-in") ||
+                          l.includes("vip") ||
+                          l.includes("regular") ||
+                          l.includes("new customer")
+                        ) {
+                          return false;
+                        }
+                        return true;
+                      })
+                      .map((tag) => (
+                        <Badge key={tag} size="sm" variant="outline" color="teal">
+                          {tag}
+                        </Badge>
+                      ))}
 
                     {/* Dietary Preference Badge */}
                     <Badge
@@ -509,9 +621,9 @@ export default function CustomerProfilePage() {
         </Paper>
 
         {/* ─── 2. Key Performance Indicators (6 Stat Cards) ─────────────── */}
-        <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="sm">
+        <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing={{ base: "xs", sm: "sm" }}>
           {/* Lifetime Spend */}
-          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Lifetime Spend
@@ -520,10 +632,10 @@ export default function CustomerProfilePage() {
                 <IconCash size={14} />
               </ThemeIcon>
             </Group>
-            <Title order={3} mt={4} style={{ fontSize: 19, fontWeight: 700, color: "#2b8a3e" }}>
+            <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700, color: "#2b8a3e" }}>
               ₹{(metrics.lifetimeSpendPaise / 100).toLocaleString("en-IN")}
             </Title>
-            <Text size="10px" c="dimmed" mt={2}>
+            <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
               {scopeMode === "current"
                 ? `Total Chain: ₹${(overallChainMetrics.totalChainSpendPaise / 100).toLocaleString("en-IN")}`
                 : "Across all settled orders"}
@@ -531,7 +643,7 @@ export default function CustomerProfilePage() {
           </Paper>
 
           {/* Total Orders / Visits */}
-          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Total Orders
@@ -540,16 +652,16 @@ export default function CustomerProfilePage() {
                 <IconReceipt size={14} />
               </ThemeIcon>
             </Group>
-            <Title order={3} mt={4} style={{ fontSize: 19, fontWeight: 700 }}>
+            <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
               {metrics.totalOrdersCount}
             </Title>
-            <Text size="10px" c="dimmed" mt={2}>
+            <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
               {metrics.completedOrdersCount} paid • {metrics.openOrdersCount} active
             </Text>
           </Paper>
 
           {/* Average Order Value (AOV) */}
-          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Avg Order Value
@@ -558,16 +670,16 @@ export default function CustomerProfilePage() {
                 <IconChartBar size={14} />
               </ThemeIcon>
             </Group>
-            <Title order={3} mt={4} style={{ fontSize: 19, fontWeight: 700 }}>
+            <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
               ₹{(metrics.averageOrderValuePaise / 100).toFixed(0)}
             </Title>
-            <Text size="10px" c="dimmed" mt={2}>
+            <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
               Per settled bill
             </Text>
           </Paper>
 
           {/* Highest Bill */}
-          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Highest Bill
@@ -576,16 +688,16 @@ export default function CustomerProfilePage() {
                 <IconStar size={14} />
               </ThemeIcon>
             </Group>
-            <Title order={3} mt={4} style={{ fontSize: 19, fontWeight: 700 }}>
+            <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
               ₹{(metrics.highestOrderPaise / 100).toFixed(0)}
             </Title>
-            <Text size="10px" c="dimmed" mt={2}>
+            <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
               Max single order
             </Text>
           </Paper>
 
           {/* Preferred Payment */}
-          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Payment Mode
@@ -597,7 +709,7 @@ export default function CustomerProfilePage() {
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
               {metrics.preferredPaymentMethod || "Cash"}
             </Title>
-            <Text size="10px" c="dimmed" mt={2}>
+            <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
               {metrics.paymentMethodsBreakdown.length > 1
                 ? `${metrics.paymentMethodsBreakdown.length} modes used`
                 : "Primary choice"}
@@ -605,10 +717,10 @@ export default function CustomerProfilePage() {
           </Paper>
 
           {/* Dining Type Ratio */}
-          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
-                Dine-In vs Takeaway
+                Dine vs Takeaway
               </Text>
               <ThemeIcon size={24} radius="md" color="orange" variant="light">
                 <IconToolsKitchen2 size={14} />
@@ -617,27 +729,68 @@ export default function CustomerProfilePage() {
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
               {metrics.dineInCount} : {metrics.takeawayCount}
             </Title>
-            <Text size="10px" c="dimmed" mt={2}>
+            <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
               {metrics.preferredDineMode} preferred
             </Text>
           </Paper>
         </SimpleGrid>
 
         {/* ─── 3. Detailed Tabs Section ───────────────────────────────────── */}
-        <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+        <Paper p={{ base: "xs", sm: "md" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
           <Tabs defaultValue="orders" color="dinePrimary">
-            <Tabs.List mb="md">
-              <Tabs.Tab value="orders" leftSection={<IconReceipt size={16} />}>
-                Order History ({metrics.totalOrdersCount})
+            <Tabs.List mb="md" grow>
+              <Tabs.Tab
+                value="orders"
+                leftSection={<IconReceipt size={18} />}
+                rightSection={
+                  <Badge size="xs" variant="light" circle>
+                    {metrics.totalOrdersCount}
+                  </Badge>
+                }
+                title="Order History"
+              >
+                <Box visibleFrom="sm">Order History</Box>
               </Tabs.Tab>
-              <Tabs.Tab value="favorites" leftSection={<IconSoup size={16} />}>
-                Favorite Dishes ({favoriteItems.length})
+
+              <Tabs.Tab
+                value="favorites"
+                leftSection={<IconSoup size={18} />}
+                rightSection={
+                  <Badge size="xs" variant="light" circle>
+                    {favoriteItems.length}
+                  </Badge>
+                }
+                title="Favorite Dishes"
+              >
+                <Box visibleFrom="sm">Favorite Dishes</Box>
               </Tabs.Tab>
-              <Tabs.Tab value="analytics" leftSection={<IconChartBar size={16} />}>
-                Dining Preferences & Outlets
+
+              <Tabs.Tab
+                value="analytics"
+                leftSection={<IconChartBar size={18} />}
+                title="Dining Preferences & Outlets"
+              >
+                <Box visibleFrom="sm">Dining Preferences & Outlets</Box>
               </Tabs.Tab>
-              <Tabs.Tab value="notes" leftSection={<IconNotes size={16} />}>
-                Staff Notes & Requests
+
+              <Tabs.Tab
+                value="notes"
+                leftSection={<IconNotes size={18} />}
+                rightSection={
+                  staffNotes.trim().length > 0 ? (
+                    <Box
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        backgroundColor: "#12b886",
+                      }}
+                    />
+                  ) : undefined
+                }
+                title="Staff Notes & Tags"
+              >
+                <Box visibleFrom="sm">Staff Notes & Tags</Box>
               </Tabs.Tab>
             </Tabs.List>
 
@@ -645,20 +798,22 @@ export default function CustomerProfilePage() {
             <Tabs.Panel value="orders">
               <Stack gap="sm">
                 {/* Orders Filter Row */}
-                <Group justify="space-between" align="center" wrap="wrap">
-                  <SegmentedControl
-                    size="xs"
-                    radius="md"
-                    value={orderFilterStatus}
-                    onChange={setOrderFilterStatus}
-                    data={[
-                      { label: `All (${profile.orders.length})`, value: "ALL" },
-                      { label: "Paid", value: "PAID" },
-                      { label: "Open", value: "OPEN" },
-                      { label: "Dine-In", value: "DINE_IN" },
-                      { label: "Takeaway", value: "TAKEAWAY" },
-                    ]}
-                  />
+                <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                  <Box style={{ overflowX: "auto", maxWidth: "100%", paddingBottom: 2 }}>
+                    <SegmentedControl
+                      size="xs"
+                      radius="md"
+                      value={orderFilterStatus}
+                      onChange={setOrderFilterStatus}
+                      data={[
+                        { label: `All (${profile.orders.length})`, value: "ALL" },
+                        { label: "Paid", value: "PAID" },
+                        { label: "Open", value: "OPEN" },
+                        { label: "Dine-In", value: "DINE_IN" },
+                        { label: "Takeaway", value: "TAKEAWAY" },
+                      ]}
+                    />
+                  </Box>
                   <Text size="xs" c="dimmed">
                     Showing {filteredOrders.length} of {profile.orders.length} orders
                   </Text>
@@ -749,64 +904,67 @@ export default function CustomerProfilePage() {
                           {/* Expandable Order Items Details */}
                           <Collapse expanded={isExpanded}>
                             <Box mt="sm" pt="xs" style={{ borderTop: "1px solid #f1f3f5" }}>
-                              <Table verticalSpacing={4} style={{ fontSize: 12 }}>
-                                <Table.Thead>
-                                  <Table.Tr>
-                                    <Table.Th>Item</Table.Th>
-                                    <Table.Th style={{ textAlign: "center" }}>Qty</Table.Th>
-                                    <Table.Th style={{ textAlign: "right" }}>Price</Table.Th>
-                                    <Table.Th style={{ textAlign: "right" }}>Total</Table.Th>
-                                  </Table.Tr>
-                                </Table.Thead>
-                                <Table.Tbody>
-                                  {order.items.map((it) => (
-                                    <Table.Tr key={it.id}>
-                                      <Table.Td>
-                                        <Text size="xs" fw={600}>
-                                          {it.name}
-                                        </Text>
-                                        {it.variant && (
-                                          <Text size="10px" c="dimmed">
-                                            Variant: {it.variant.name}
-                                          </Text>
-                                        )}
-                                        {it.addons && it.addons.length > 0 && (
-                                          <Text size="10px" c="dimmed">
-                                            Addons: {it.addons.map((a: any) => a.name).join(", ")}
-                                          </Text>
-                                        )}
-                                        {it.note && (
-                                          <Text size="10px" c="orange.7" fs="italic">
-                                            Note: {it.note}
-                                          </Text>
-                                        )}
-                                      </Table.Td>
-                                      <Table.Td style={{ textAlign: "center" }}>
-                                        <Badge size="xs" variant="light" color="gray">
-                                          ×{it.qty}
-                                        </Badge>
-                                      </Table.Td>
-                                      <Table.Td style={{ textAlign: "right" }}>
-                                        ₹{(it.pricePaise / 100).toFixed(0)}
-                                      </Table.Td>
-                                      <Table.Td style={{ textAlign: "right", fontWeight: 600 }}>
-                                        ₹{((it.pricePaise * it.qty) / 100).toFixed(0)}
-                                      </Table.Td>
+                              <Table.ScrollContainer minWidth={280}>
+                                <Table verticalSpacing={4} style={{ fontSize: 12 }}>
+                                  <Table.Thead>
+                                    <Table.Tr>
+                                      <Table.Th>Item</Table.Th>
+                                      <Table.Th style={{ textAlign: "center" }}>Qty</Table.Th>
+                                      <Table.Th style={{ textAlign: "right" }}>Price</Table.Th>
+                                      <Table.Th style={{ textAlign: "right" }}>Total</Table.Th>
                                     </Table.Tr>
-                                  ))}
-                                </Table.Tbody>
-                              </Table>
+                                  </Table.Thead>
+                                  <Table.Tbody>
+                                    {order.items.map((it) => (
+                                      <Table.Tr key={it.id}>
+                                        <Table.Td>
+                                          <Text size="xs" fw={600}>
+                                            {it.name}
+                                          </Text>
+                                          {it.variant && (
+                                            <Text size="10px" c="dimmed">
+                                              Variant: {it.variant.name}
+                                            </Text>
+                                          )}
+                                          {it.addons && it.addons.length > 0 && (
+                                            <Text size="10px" c="dimmed">
+                                              Addons: {it.addons.map((a: any) => a.name).join(", ")}
+                                            </Text>
+                                          )}
+                                          {it.note && (
+                                            <Text size="10px" c="orange.7" fs="italic">
+                                              Note: {it.note}
+                                            </Text>
+                                          )}
+                                        </Table.Td>
+                                        <Table.Td style={{ textAlign: "center" }}>
+                                          <Badge size="xs" variant="light" color="gray">
+                                            ×{it.qty}
+                                          </Badge>
+                                        </Table.Td>
+                                        <Table.Td style={{ textAlign: "right" }}>
+                                          ₹{(it.pricePaise / 100).toFixed(0)}
+                                        </Table.Td>
+                                        <Table.Td style={{ textAlign: "right", fontWeight: 600 }}>
+                                          ₹{((it.pricePaise * it.qty) / 100).toFixed(0)}
+                                        </Table.Td>
+                                      </Table.Tr>
+                                    ))}
+                                  </Table.Tbody>
+                                </Table>
+                              </Table.ScrollContainer>
 
                               {/* Order Footnote & Actions */}
                               <Group justify="space-between" align="center" mt="xs" pt="xs">
                                 <Text size="11px" c="dimmed">
-                                  Order ID: <code style={{ fontSize: 10 }}>{order.id}</code>
+                                  ID: <code style={{ fontSize: 10 }}>{order.id.slice(0, 8)}...</code>
                                 </Text>
                                 <Button
                                   size="xs"
                                   variant="light"
                                   color="green"
                                   leftSection={<IconBrandWhatsapp size={14} />}
+                                  visibleFrom="xs"
                                   onClick={() => {
                                     setWhatsappMessage(
                                       `Receipt for Order #${order.orderNo} from ${restaurant?.name || "Logix Dine"}:\nTotal: ₹${(
@@ -818,6 +976,25 @@ export default function CustomerProfilePage() {
                                 >
                                   Share Receipt
                                 </Button>
+                                <Tooltip label="Share Receipt via WhatsApp">
+                                  <ActionIcon
+                                    size="md"
+                                    variant="light"
+                                    color="green"
+                                    hiddenFrom="xs"
+                                    aria-label="Share Receipt via WhatsApp"
+                                    onClick={() => {
+                                      setWhatsappMessage(
+                                        `Receipt for Order #${order.orderNo} from ${restaurant?.name || "Logix Dine"}:\nTotal: ₹${(
+                                          (order.subtotalPaise || 0) / 100
+                                        ).toFixed(0)}\nStatus: ${order.status}\nThank you!`
+                                      );
+                                      setWhatsappModalOpen(true);
+                                    }}
+                                  >
+                                    <IconBrandWhatsapp size={16} />
+                                  </ActionIcon>
+                                </Tooltip>
                               </Group>
                             </Box>
                           </Collapse>
@@ -998,39 +1175,41 @@ export default function CustomerProfilePage() {
                       Customer visit summary across all branches in {restaurant?.name || "the restaurant"}
                     </Text>
 
-                    <Table verticalSpacing="xs" style={{ fontSize: 12 }}>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Outlet Branch</Table.Th>
-                          <Table.Th style={{ textAlign: "center" }}>Orders Count</Table.Th>
-                          <Table.Th style={{ textAlign: "right" }}>Total Revenue</Table.Th>
-                          <Table.Th style={{ textAlign: "right" }}>Last Visit Date</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {overallChainMetrics.outletBreakdown.map((ob) => (
-                          <Table.Tr key={ob.outletId}>
-                            <Table.Td fw={600}>
-                              <Group gap="xs">
-                                <IconBuildingStore size={15} color="#228be6" />
-                                <span>{ob.outletName}</span>
-                              </Group>
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: "center" }}>
-                              <Badge size="xs" variant="light" color="blue">
-                                {ob.ordersCount} orders
-                              </Badge>
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: "right", fontWeight: 700, color: "#2b8a3e" }}>
-                              ₹{(ob.totalSpendPaise / 100).toLocaleString("en-IN")}
-                            </Table.Td>
-                            <Table.Td style={{ textAlign: "right", color: "#868e96" }}>
-                              {formatShortDate(ob.lastVisit)}
-                            </Table.Td>
+                    <Table.ScrollContainer minWidth={450}>
+                      <Table verticalSpacing="xs" style={{ fontSize: 12 }}>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Outlet Branch</Table.Th>
+                            <Table.Th style={{ textAlign: "center" }}>Orders Count</Table.Th>
+                            <Table.Th style={{ textAlign: "right" }}>Total Revenue</Table.Th>
+                            <Table.Th style={{ textAlign: "right" }}>Last Visit Date</Table.Th>
                           </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {overallChainMetrics.outletBreakdown.map((ob) => (
+                            <Table.Tr key={ob.outletId}>
+                              <Table.Td fw={600}>
+                                <Group gap="xs">
+                                  <IconBuildingStore size={15} color="#228be6" />
+                                  <span>{ob.outletName}</span>
+                                </Group>
+                              </Table.Td>
+                              <Table.Td style={{ textAlign: "center" }}>
+                                <Badge size="xs" variant="light" color="blue">
+                                  {ob.ordersCount} orders
+                                </Badge>
+                              </Table.Td>
+                              <Table.Td style={{ textAlign: "right", fontWeight: 700, color: "#2b8a3e" }}>
+                                ₹{(ob.totalSpendPaise / 100).toLocaleString("en-IN")}
+                              </Table.Td>
+                              <Table.Td style={{ textAlign: "right", color: "#868e96" }}>
+                                {formatShortDate(ob.lastVisit)}
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </Table.ScrollContainer>
                   </Paper>
                 </Grid.Col>
               </Grid>
@@ -1086,10 +1265,10 @@ export default function CustomerProfilePage() {
                     ))}
                   </Group>
 
-                  <Group gap="xs">
+                  <Group gap="xs" wrap="nowrap" maw={400}>
                     <input
                       type="text"
-                      placeholder="Add custom tag (e.g. VIP, Corporate, Regular)..."
+                      placeholder="Add custom tag (e.g. Corporate)..."
                       value={newTagInput}
                       onChange={(e) => setNewTagInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -1104,12 +1283,16 @@ export default function CustomerProfilePage() {
                         borderRadius: 6,
                         border: "1px solid #ced4da",
                         outline: "none",
-                        width: 250,
+                        flex: 1,
+                        minWidth: 0,
                       }}
                     />
-                    <Button size="xs" variant="default" onClick={handleAddTag}>
+                    <Button size="xs" variant="default" onClick={handleAddTag} visibleFrom="xs">
                       Add Tag
                     </Button>
+                    <ActionIcon size="md" variant="default" onClick={handleAddTag} hiddenFrom="xs" aria-label="Add Tag">
+                      <IconPlus size={16} />
+                    </ActionIcon>
                   </Group>
                 </Box>
 

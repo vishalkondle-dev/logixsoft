@@ -88,6 +88,12 @@ export function useOutletSync(
           if (topic === "KITCHEN" || topic === "ALL") {
             queryClient.invalidateQueries({ queryKey: ["kitchenOrders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["waiterStats", restaurantId] });
+          }
+
+          if (msg.type === "WAITER_CALL" || msg.type === "WAITER_REQUEST_UPDATED") {
+            queryClient.invalidateQueries({ queryKey: ["waiterRequests", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["waiterStats", restaurantId] });
           }
 
           if (msg.type === "WAITER_CALL") {
@@ -98,6 +104,16 @@ export function useOutletSync(
               color: "yellow",
               autoClose: 12000,
             });
+          } else if (msg.type === "WAITER_REQUEST_UPDATED") {
+            const d = (msg.data || {}) as any;
+            if (d.status === "COMPLETED") {
+              notifications.show({
+                title: `✅ Table ${d.tableNo || "Guest"} Request Completed`,
+                message: `${d.serviceLabel || "Request"} resolved`,
+                color: "green",
+                autoClose: 4000,
+              });
+            }
           } else if (msg.type === "NEW_ROUND") {
             const d = (msg.data || {}) as any;
             notifications.show({

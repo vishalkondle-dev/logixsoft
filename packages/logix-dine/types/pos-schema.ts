@@ -10,6 +10,7 @@ import {
   saleOrder,
   saleOrderItem,
   orderItemAudit,
+  waiterRequest,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -153,3 +154,12 @@ export type OrderWithItems = {
   order: JsonSaleOrderRow;
   items: JsonSaleOrderItemRow[];
 };
+
+export type WaiterRequestRow = InferSelectModel<typeof waiterRequest>;
+export type NewWaiterRequestRow = InferInsertModel<typeof waiterRequest>;
+export type JsonWaiterRequestRow = Omit<WaiterRequestRow, 'createdAt' | 'updatedAt' | 'completedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+};
+

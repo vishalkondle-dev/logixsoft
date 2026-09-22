@@ -48,6 +48,10 @@ import {
   getCustomerOutletMenu,
   addCustomerOrderItems,
   callWaiterAssistance,
+  getWaiterRequests,
+  getWaiterStats,
+  createWaiterRequest,
+  updateWaiterRequestStatus,
   type CustomerPortalData,
   type CustomerMenuResponse,
 } from "@/lib/api-client";
@@ -79,6 +83,10 @@ export const qk = {
     ["customer", restaurantId, phone, outletId ?? "all"] as const,
   customerPortal: () => ["customerPortal"] as const,
   customerMenu: (outletId: string) => ["customerMenu", outletId] as const,
+  waiterRequests: (restaurantId: string, outletId: string | null, params?: Record<string, any>) =>
+    ["waiterRequests", restaurantId, outletId, params ?? {}] as const,
+  waiterStats: (restaurantId: string, outletId: string | null) =>
+    ["waiterStats", restaurantId, outletId] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -555,6 +563,7 @@ export function useAddCustomerOrderItems() {
 }
 
 export function useCallWaiter() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
       orderId,
@@ -566,7 +575,90 @@ export function useCallWaiter() {
         note?: string;
       };
     }) => callWaiterAssistance(orderId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["waiterRequests"] });
+      qc.invalidateQueries({ queryKey: ["waiterStats"] });
+    },
   });
 }
+
+// ─── Waiter Requests Hooks ──────────────────────────────────────────────────
+
+export function useWaiterRequests(
+  restaurantId: string,
+  outletId: string | null,
+  params: { status?: string; tableNo?: string; limit?: number } = {},
+  options?: { refetchInterval?: number | false; staleTime?: number }
+) {
+  return useQuery({
+    queryKey: qk.waiterRequests(restaurantId, outletId, params),
+    queryFn: () => getWaiterRequests(restaurantId, outletId, params),
+    enabled: !!restaurantId && !!outletId,
+    staleTime: options?.staleTime ?? (options?.refetchInterval ? 0 : 30_000),
+    refetchInterval: options?.refetchInterval,
+  });
+}
+
+export function useWaiterStats(
+  restaurantId: string,
+  outletId: string | null,
+  options?: { refetchInterval?: number | false; staleTime?: number }
+) {
+  return useQuery({
+    queryKey: qk.waiterStats(restaurantId, outletId),
+    queryFn: () => getWaiterStats(restaurantId, outletId),
+    enabled: !!restaurantId && !!outletId,
+    staleTime: options?.staleTime ?? (options?.refetchInterval ? 0 : 30_000),
+    refetchInterval: options?.refetchInterval,
+  });
+}
+
+export function useCreateWaiterRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      restaurantId,
+      outletId,
+      body,
+    }: {
+      restaurantId: string;
+      outletId: string;
+      body: {
+        tableNo: string;
+        serviceType: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER";
+        serviceLabel?: string;
+        note?: string;
+        orderId?: string;
+        customerPhone?: string;
+      };
+    }) => createWaiterRequest(restaurantId, body, outletId),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["waiterRequests", vars.restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["waiterStats", vars.restaurantId] });
+    },
+  });
+}
+
+export function useUpdateWaiterRequestStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      restaurantId,
+      outletId,
+      requestId,
+      status,
+    }: {
+      restaurantId: string;
+      outletId: string;
+      requestId: string;
+      status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+    }) => updateWaiterRequestStatus(restaurantId, requestId, status, outletId),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["waiterRequests", vars.restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["waiterStats", vars.restaurantId] });
+    },
+  });
+}
+
 
 

@@ -308,6 +308,42 @@ export const orderItemAudit = pgTable(
   ],
 );
 
+// ─── Waiter Request ──────────────────────────────────────────────────────────
+
+export const waiterRequest = pgTable(
+  'waiterRequest',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    orderId: text('orderId')
+      .references(() => saleOrder.id, { onDelete: 'set null' }),
+    tableNo: text('tableNo').notNull(),
+    serviceType: text('serviceType').notNull(), // WATER | CUTLERY | BILL | CLEAN_TABLE | OTHER
+    serviceLabel: text('serviceLabel').notNull(),
+    note: text('note'),
+    customerPhone: text('customerPhone'),
+    status: text('status').notNull().default('PENDING'), // PENDING | IN_PROGRESS | COMPLETED | CANCELLED
+    completedAt: timestamp('completedAt'),
+    completedBy: text('completedBy'),
+    completedByRole: text('completedByRole'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+    updatedBy: text('updatedBy'),
+  },
+  (t) => [
+    index('waiterRequest_restaurantId_status_idx').on(t.restaurantId, t.status),
+    index('waiterRequest_outletId_status_idx').on(t.outletId, t.status),
+    index('waiterRequest_outletId_idx').on(t.outletId),
+    index('waiterRequest_createdAt_idx').on(t.createdAt),
+  ],
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
@@ -321,4 +357,6 @@ export const posSchema = {
   saleOrder,
   saleOrderItem,
   orderItemAudit,
+  waiterRequest,
 };
+

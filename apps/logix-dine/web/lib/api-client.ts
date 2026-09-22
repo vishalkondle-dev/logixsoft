@@ -642,4 +642,58 @@ export const callWaiterAssistance = async (
   return res.json();
 };
 
+// ─── Waiter Requests & Floor Assistance ──────────────────────────────────────
+
+export const getWaiterRequests = (
+  restaurantId: string,
+  outletId?: string | null,
+  params?: { status?: string; tableNo?: string; limit?: number }
+) => {
+  const qs = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params ?? {})
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, String(v)])
+    )
+  ).toString();
+  return apiFetch<any[]>(`/waiter/requests${qs ? `?${qs}` : ""}`, restaurantId, {}, outletId);
+};
+
+export const getWaiterStats = (restaurantId: string, outletId?: string | null) =>
+  apiFetch<any>(`/waiter/stats`, restaurantId, {}, outletId);
+
+export const createWaiterRequest = (
+  restaurantId: string,
+  body: {
+    outletId?: string;
+    tableNo: string;
+    serviceType: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER";
+    serviceLabel?: string;
+    note?: string;
+    orderId?: string;
+    customerPhone?: string;
+  },
+  outletId?: string | null
+) =>
+  apiFetch<any>(
+    "/waiter/requests",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ ...body, outletId: outletId || body.outletId }) },
+    outletId || body.outletId
+  );
+
+export const updateWaiterRequestStatus = (
+  restaurantId: string,
+  requestId: string,
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED",
+  outletId?: string | null
+) =>
+  apiFetch<any>(
+    `/waiter/requests/${encodeURIComponent(requestId)}/status`,
+    restaurantId,
+    { method: "PATCH", body: JSON.stringify({ status }) },
+    outletId
+  );
+
+
 

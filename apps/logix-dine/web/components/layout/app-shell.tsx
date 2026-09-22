@@ -11,7 +11,7 @@ import {
   IconLogin, IconLogout, IconShoppingCart, IconHome,
   IconBook, IconSettings, IconBuildingStore, IconReceipt,
   IconChartBar, IconTableAlias, IconChevronDown, IconCheck,
-  IconFlame, IconHistory, IconUser,
+  IconFlame, IconHistory, IconUser, IconBellRinging,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -22,6 +22,7 @@ const STAFF_NAV_ITEMS = [
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
+  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
 ];
 

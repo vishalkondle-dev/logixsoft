@@ -730,6 +730,25 @@ app.post(
 
       const label = serviceLabels[parsed.data.serviceType] || 'Staff Assistance';
       const now = Date.now();
+      const reqId = `wr_${generateId()}`;
+      const nowDate = new Date();
+
+      // Persist to waiterRequest table so it appears on the Waiter page
+      await db.insert(appSchema.waiterRequest).values({
+        id: reqId,
+        restaurantId: order.restaurantId,
+        outletId: order.outletId,
+        orderId,
+        tableNo: order.tableNo || 'Takeaway',
+        serviceType: parsed.data.serviceType,
+        serviceLabel: label,
+        note: parsed.data.note || null,
+        customerPhone: phone,
+        status: 'PENDING',
+        createdBy: phone,
+        createdAt: nowDate,
+        updatedAt: nowDate,
+      });
 
       // Broadcast to Outlet DO (POS / Floor Waiter tablet)
       await broadcastToOutlet(
@@ -739,6 +758,7 @@ app.post(
           topic: 'ORDERS',
           type: 'WAITER_CALL',
           data: {
+            id: reqId,
             orderId,
             orderNo: order.orderNo,
             tableNo: order.tableNo || 'Takeaway',
@@ -754,6 +774,7 @@ app.post(
 
       return c.json({
         success: true,
+        requestId: reqId,
         message: `Waiter notified: ${label}`,
         serviceType: parsed.data.serviceType,
         serviceLabel: label,

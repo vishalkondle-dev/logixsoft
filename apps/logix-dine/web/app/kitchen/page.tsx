@@ -201,7 +201,7 @@ export default function KitchenPage() {
                   </Group>
                 </Group>
 
-                {order.orderType === "DELIVERY" ? (
+                {(order.orderType === "DELIVERY" || order.tableNo === "Delivery" || Boolean(order.delivery)) ? (
                   <Badge size="sm" variant="filled" color="teal" mb="sm" leftSection={<IconMotorbike size={12} />}>
                     DELIVERY
                   </Badge>

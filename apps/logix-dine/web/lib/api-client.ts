@@ -569,6 +569,8 @@ export interface CustomerPortalOrder {
   };
   items: CustomerOrderItem[];
   orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | string;
+  packagingChargePaise?: number;
+  deliveryChargePaise?: number;
   delivery?: DeliveryDetails | null;
   activeWaiterRequest?: {
     id: string;

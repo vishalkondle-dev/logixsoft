@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, isNull } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createStorageClient } from '@logixsoft/helpers/storage';
@@ -66,7 +66,10 @@ app.get(
   const { db, close } = getDb(c);
   try {
     const where = outletId
-      ? and(eq(appSchema.menuCategory.restaurantId, restaurantId), eq(appSchema.menuCategory.outletId, outletId))
+      ? and(
+          eq(appSchema.menuCategory.restaurantId, restaurantId),
+          or(eq(appSchema.menuCategory.outletId, outletId), isNull(appSchema.menuCategory.outletId))
+        )
       : eq(appSchema.menuCategory.restaurantId, restaurantId);
     const cats = await db.select().from(appSchema.menuCategory).where(where);
     const result = cats.map(toCategory);
@@ -280,7 +283,9 @@ app.get(
   try {
     const conditions = [eq(appSchema.menuItem.restaurantId, restaurantId)];
     if (categoryId) conditions.push(eq(appSchema.menuItem.categoryId, categoryId));
-    if (outletId) conditions.push(eq(appSchema.menuItem.outletId, outletId));
+    if (outletId) {
+      conditions.push(or(eq(appSchema.menuItem.outletId, outletId), isNull(appSchema.menuItem.outletId))!);
+    }
 
     const items = await db.select().from(appSchema.menuItem).where(and(...conditions));
     const result = items.map(toMenuItem);

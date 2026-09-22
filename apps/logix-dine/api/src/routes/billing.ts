@@ -95,7 +95,7 @@ function formatOrderWhatsAppMessage(
       : 'Takeaway';
   const pkgPaise = order.packagingChargePaise || 0;
   const delPaise = order.deliveryChargePaise || 0;
-  const totalRupees = (((order.subtotalPaise ?? 0) + pkgPaise + delPaise) / 100).toFixed(0);
+  const totalRupees = (((order.subtotalPaise ?? 0)) / 100).toFixed(0);
 
   const itemsList = items
     .filter((item) => item.status !== 'CANCELLED')
@@ -140,7 +140,7 @@ async function recomputeTotal(db: any, orderId: string) {
     .where(eq(appSchema.saleOrderItem.orderId, orderId));
   const activeItems = items.filter((item: any) => item.status !== 'CANCELLED');
   const itemsTotal = activeItems.reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
-  const paidTotal = activeItems
+  const paidItemsTotal = activeItems
     .filter((item: any) => item.paymentStatus === 'PAID')
     .reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
   const orderStatus = computeOrderStatus(items.map((i: any) => i.status));
@@ -154,11 +154,16 @@ async function recomputeTotal(db: any, orderId: string) {
     .from(appSchema.saleOrder)
     .where(eq(appSchema.saleOrder.id, orderId));
 
-  const total = itemsTotal + (existingOrder?.packagingChargePaise || 0) + (existingOrder?.deliveryChargePaise || 0);
+  const pkgPaise = existingOrder?.packagingChargePaise || 0;
+  const delPaise = existingOrder?.deliveryChargePaise || 0;
+  const total = itemsTotal + pkgPaise + delPaise;
+
+  const allActiveItemsPaid = activeItems.length > 0 && activeItems.every((item: any) => item.paymentStatus === 'PAID');
+  const paidTotal = allActiveItemsPaid ? total : paidItemsTotal;
 
   let status = existingOrder?.status;
   if (status !== 'VOID') {
-    if (paidTotal >= total && total > 0) status = 'PAID';
+    if (allActiveItemsPaid && total > 0) status = 'PAID';
     else if (paidTotal > 0) status = 'PARTIAL';
     else status = 'OPEN';
   }
@@ -997,6 +1002,8 @@ app.get(
         sql`${appSchema.saleOrder.tableFreedAt} IS NULL`,
         sql`${appSchema.saleOrder.tableNo} IS NOT NULL`,
         sql`${appSchema.saleOrder.tableNo} != 'Takeaway'`,
+        sql`${appSchema.saleOrder.tableNo} != 'Delivery'`,
+        sql`COALESCE(${appSchema.saleOrder.orderType}, 'DINE_IN') != 'DELIVERY'`,
         sql`${appSchema.saleOrder.status} != 'VOID'`
       );
     } else if (status) {
@@ -1320,15 +1327,15 @@ app.post(
     if (!assertOutletAccess(tenant, order.outletId)) {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
-    if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Order is voided' }, 409);
-    const isTableOrder = Boolean(order.tableNo && order.tableNo.trim() && order.tableNo !== 'Takeaway');
+    const isDelivery = order.orderType === 'DELIVERY' || order.tableNo === 'Delivery';
+    const isTableOrder = Boolean(!isDelivery && order.tableNo && order.tableNo.trim() && order.tableNo !== 'Takeaway');
     if (isTableOrder) {
       if (order.tableFreedAt !== null) {
         return c.json({ error: 'Conflict', message: 'Table has already been freed' }, 409);
       }
     } else {
       if (order.status !== 'OPEN') {
-        return c.json({ error: 'Conflict', message: 'Takeaway order is not open' }, 409);
+        return c.json({ error: 'Conflict', message: 'Order is not open' }, 409);
       }
     }
 
@@ -1560,7 +1567,8 @@ app.patch(
       const newOrderStatus = computeOrderStatus(updatedStatuses);
 
       const activeItems = allItems.filter((i: any) => i.id === orderItemId ? targetStatus !== 'CANCELLED' : i.status !== 'CANCELLED');
-      const subtotalPaise = activeItems.reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+      const itemsSubtotal = activeItems.reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+      const subtotalPaise = itemsSubtotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0);
 
       const orderUpdates: any = {
         orderStatus: newOrderStatus,
@@ -1797,9 +1805,12 @@ app.post(
         .select()
         .from(appSchema.saleOrderItem)
         .where(eq(appSchema.saleOrderItem.orderId, orderId));
-      const total = allItems
+      const itemsTotal = allItems
         .filter((i: any) => i.status !== 'CANCELLED')
         .reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+      const pkgPaise = order.packagingChargePaise || 0;
+      const delPaise = order.deliveryChargePaise || 0;
+      const total = itemsTotal + pkgPaise + delPaise;
 
       await tx
         .update(appSchema.saleOrder)
@@ -1961,9 +1972,12 @@ app.post(
         .select()
         .from(appSchema.saleOrderItem)
         .where(eq(appSchema.saleOrderItem.orderId, orderId));
-      const total = allItems
+      const itemsTotal = allItems
         .filter((i: any) => i.status !== 'CANCELLED')
         .reduce((sum: number, i: any) => sum + i.pricePaiseSnapshot * i.qty, 0);
+      const pkgPaise = order.packagingChargePaise || 0;
+      const delPaise = order.deliveryChargePaise || 0;
+      const total = itemsTotal + pkgPaise + delPaise;
 
       await tx
         .update(appSchema.saleOrder)
@@ -2160,6 +2174,26 @@ app.post(
         .update(appSchema.saleOrder)
         .set({ status: 'VOID', orderStatus: 'CANCELLED', tableFreedAt: now, updatedAt: now, updatedBy: actorIdentity })
         .where(eq(appSchema.saleOrder.id, orderId));
+
+      // If delivery order exists, mark as CANCELLED and free assigned rider
+      const [del] = await tx
+        .select()
+        .from(appSchema.deliveryOrder)
+        .where(eq(appSchema.deliveryOrder.orderId, orderId));
+
+      if (del) {
+        await tx
+          .update(appSchema.deliveryOrder)
+          .set({ status: 'CANCELLED', failedReason: 'Order voided by staff', updatedAt: now })
+          .where(eq(appSchema.deliveryOrder.id, del.id));
+
+        if (del.riderId) {
+          await tx
+            .update(appSchema.deliveryRider)
+            .set({ status: 'AVAILABLE', activeOrderId: null, updatedAt: now })
+            .where(eq(appSchema.deliveryRider.id, del.riderId));
+        }
+      }
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);

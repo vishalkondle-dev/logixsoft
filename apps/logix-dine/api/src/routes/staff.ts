@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
@@ -51,7 +51,10 @@ async function memberWithOutlets(db: any, restaurantId: string, memberId?: strin
   const memberIds = members.map((m: any) => m.id);
   if (!memberIds.length) return [];
 
-  const accessRows = await db.select().from(appSchema.memberOutletAccess);
+  const accessRows = await db
+    .select()
+    .from(appSchema.memberOutletAccess)
+    .where(inArray(appSchema.memberOutletAccess.memberId, memberIds));
   const byMember = new Map<string, string[]>();
   for (const row of accessRows) {
     if (!memberIds.includes(row.memberId)) continue;

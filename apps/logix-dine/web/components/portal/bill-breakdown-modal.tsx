@@ -206,9 +206,29 @@ Thank you for dining with us!`;
               Items Subtotal ({order.itemsCount} items)
             </Text>
             <Text size="xs" fw={600}>
-              {formatINR(subtotalPaise)}
+              {formatINR(Math.max(0, subtotalPaise - (order.packagingChargePaise || 0) - (order.deliveryChargePaise || 0)))}
             </Text>
           </Group>
+          {(order.packagingChargePaise || 0) > 0 && (
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">
+                Packaging Fee
+              </Text>
+              <Text size="xs" fw={500}>
+                {formatINR(order.packagingChargePaise)}
+              </Text>
+            </Group>
+          )}
+          {(order.deliveryChargePaise || 0) > 0 && (
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">
+                Delivery Fee
+              </Text>
+              <Text size="xs" fw={500}>
+                {formatINR(order.deliveryChargePaise)}
+              </Text>
+            </Group>
+          )}
           <Group justify="space-between">
             <Text size="xs" c="dimmed">
               CGST (2.5%)

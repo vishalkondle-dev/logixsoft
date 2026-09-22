@@ -269,10 +269,14 @@ app.get(
         };
 
         const isDelivery = orderType === 'DELIVERY';
-        const isDeliveryActive = isDelivery && o.status !== 'VOID' && (!deliveryDetails || (deliveryDetails.status !== 'DELIVERED' && deliveryDetails.status !== 'CANCELLED'));
-        const isDineInActive = !isDelivery && o.status === 'OPEN';
+        const isTakeaway = orderType === 'TAKEAWAY';
+        const isDineIn = !isDelivery && !isTakeaway;
 
-        if (isDeliveryActive || isDineInActive) {
+        const isDeliveryActive = isDelivery && o.status !== 'VOID' && (!deliveryDetails || (deliveryDetails.status !== 'DELIVERED' && deliveryDetails.status !== 'CANCELLED'));
+        const isDineInActive = isDineIn && o.status !== 'VOID' && (o.status === 'OPEN' || o.tableFreedAt === null);
+        const isTakeawayActive = isTakeaway && o.status !== 'VOID' && (o.orderStatus !== 'SERVED' || o.status === 'OPEN');
+
+        if (isDeliveryActive || isDineInActive || isTakeawayActive) {
           activeOrdersList.push(mappedOrder);
         } else {
           pastOrdersList.push(mappedOrder);
@@ -685,7 +689,8 @@ app.post(
           )
         );
 
-      const newSubtotal = allActiveItems.reduce((sum: number, it: any) => sum + it.pricePaiseSnapshot * it.qty, 0);
+      const itemsSubtotal = allActiveItems.reduce((sum: number, it: any) => sum + it.pricePaiseSnapshot * it.qty, 0);
+      const newSubtotal = itemsSubtotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0);
 
       const trimmedRoundNote = parsed.data.roundNote?.trim();
       const updatedOrderNote = trimmedRoundNote

@@ -66,6 +66,33 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [lastWaiterCall, setLastWaiterCall] = useState<{ label: string; time: string } | null>(null);
 
+  // Merge server activeWaiterRequest with local optimistic lastWaiterCall
+  const serverReq = order.activeWaiterRequest;
+  const activeWaiterCall = React.useMemo(() => {
+    if (serverReq && serverReq.status !== "CANCELLED") {
+      const time = serverReq.createdAt
+        ? new Date(serverReq.createdAt).toLocaleTimeString("en-IN", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "";
+      return {
+        label: serverReq.serviceLabel,
+        time,
+        status: serverReq.status, // PENDING | IN_PROGRESS | COMPLETED
+      };
+    }
+    if (lastWaiterCall) {
+      return {
+        label: lastWaiterCall.label,
+        time: lastWaiterCall.time,
+        status: "PENDING" as const,
+      };
+    }
+    return null;
+  }, [serverReq, lastWaiterCall]);
+
   // Group items by round
   const itemsByRound = React.useMemo(() => {
     const map = new Map<number, CustomerOrderItem[]>();
@@ -322,25 +349,71 @@ ${itemsText}
         </Paper>
 
         {/* Waiter Assistance Alert Banner */}
-        {lastWaiterCall && (
+        {activeWaiterCall && (
           <Paper
             mt="xs"
             p="xs"
             radius="md"
             style={{
-              backgroundColor: "rgba(255, 192, 0, 0.12)",
-              border: "1px solid #ffd43b",
+              backgroundColor:
+                activeWaiterCall.status === "COMPLETED"
+                  ? "rgba(43, 138, 62, 0.08)"
+                  : activeWaiterCall.status === "IN_PROGRESS"
+                  ? "rgba(34, 139, 230, 0.08)"
+                  : "rgba(255, 192, 0, 0.12)",
+              border:
+                activeWaiterCall.status === "COMPLETED"
+                  ? "1px solid #40c057"
+                  : activeWaiterCall.status === "IN_PROGRESS"
+                  ? "1px solid #339af0"
+                  : "1px solid #ffd43b",
             }}
           >
             <Group justify="space-between" align="center">
               <Group gap={6}>
-                <IconBellRinging size={16} color="#d9480f" />
-                <Text size="xs" fw={600} c="orange.9">
-                  Staff alerted for <strong>{lastWaiterCall.label}</strong> at {lastWaiterCall.time}
+                {activeWaiterCall.status === "COMPLETED" ? (
+                  <IconCheck size={16} color="#2b8a3e" />
+                ) : activeWaiterCall.status === "IN_PROGRESS" ? (
+                  <IconClock size={16} color="#1971c2" />
+                ) : (
+                  <IconBellRinging size={16} color="#d9480f" />
+                )}
+                <Text
+                  size="xs"
+                  fw={600}
+                  c={
+                    activeWaiterCall.status === "COMPLETED"
+                      ? "green.9"
+                      : activeWaiterCall.status === "IN_PROGRESS"
+                      ? "blue.9"
+                      : "orange.9"
+                  }
+                >
+                  {activeWaiterCall.status === "COMPLETED" ? (
+                    <>Staff attended to <strong>{activeWaiterCall.label}</strong></>
+                  ) : activeWaiterCall.status === "IN_PROGRESS" ? (
+                    <>Staff is attending to <strong>{activeWaiterCall.label}</strong></>
+                  ) : (
+                    <>Staff alerted for <strong>{activeWaiterCall.label}</strong>{activeWaiterCall.time ? ` at ${activeWaiterCall.time}` : ""}</>
+                  )}
                 </Text>
               </Group>
-              <Badge size="xs" color="yellow" variant="filled">
-                On the way
+              <Badge
+                size="xs"
+                color={
+                  activeWaiterCall.status === "COMPLETED"
+                    ? "green"
+                    : activeWaiterCall.status === "IN_PROGRESS"
+                    ? "blue"
+                    : "yellow"
+                }
+                variant="filled"
+              >
+                {activeWaiterCall.status === "COMPLETED"
+                  ? "Resolved ✓"
+                  : activeWaiterCall.status === "IN_PROGRESS"
+                  ? "Attending"
+                  : "On the way"}
               </Badge>
             </Group>
           </Paper>

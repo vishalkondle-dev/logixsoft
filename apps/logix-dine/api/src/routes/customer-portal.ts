@@ -123,6 +123,23 @@ app.get(
         itemsByOrderId.set(it.orderId, arr);
       });
 
+      // 3b. Fetch latest waiter requests for these orders
+      const waiterRequests = orderIds.length > 0
+        ? await db
+            .select()
+            .from(appSchema.waiterRequest)
+            .where(inArray(appSchema.waiterRequest.orderId, orderIds))
+            .orderBy(desc(appSchema.waiterRequest.createdAt))
+        : [];
+
+      const latestWaiterRequestByOrderId = new Map<string, any>();
+      waiterRequests.forEach((wr: any) => {
+        if (!wr.orderId) return;
+        if (!latestWaiterRequestByOrderId.has(wr.orderId)) {
+          latestWaiterRequestByOrderId.set(wr.orderId, wr);
+        }
+      });
+
       // 4. Categorize active and past orders
       const activeOrdersList: any[] = [];
       const pastOrdersList: any[] = [];
@@ -135,6 +152,26 @@ app.get(
         const ordItems = itemsByOrderId.get(o.id) || [];
         const outlet = outletMap.get(o.outletId);
         const rest = restMap.get(o.restaurantId);
+
+        const wr = latestWaiterRequestByOrderId.get(o.id);
+        let activeWaiterRequest: any = null;
+        if (wr && wr.status !== 'CANCELLED') {
+          const isCompleted = wr.status === 'COMPLETED';
+          const completedTime = wr.completedAt ? new Date(wr.completedAt).getTime() : 0;
+          const isRecentCompletion = isCompleted && (Date.now() - completedTime < 15 * 60 * 1000);
+          if (!isCompleted || isRecentCompletion) {
+            activeWaiterRequest = {
+              id: wr.id,
+              serviceType: wr.serviceType,
+              serviceLabel: wr.serviceLabel,
+              note: wr.note,
+              status: wr.status,
+              createdAt: wr.createdAt ? new Date(wr.createdAt).toISOString() : null,
+              updatedAt: wr.updatedAt ? new Date(wr.updatedAt).toISOString() : null,
+              completedAt: wr.completedAt ? new Date(wr.completedAt).toISOString() : null,
+            };
+          }
+        }
 
         const activeDishItems = ordItems.filter((it: any) => it.status !== 'CANCELLED');
         const servedItemsCount = activeDishItems.filter((it: any) => it.status === 'SERVED').reduce((sum: number, it: any) => sum + it.qty, 0);
@@ -163,6 +200,7 @@ app.get(
           paidPaise: o.paidPaise || 0,
           method: o.method || 'Cash',
           note: o.note,
+          activeWaiterRequest,
           createdAt: o.createdAt ? new Date(o.createdAt).toISOString() : null,
           settledAt: o.settledAt ? new Date(o.settledAt).toISOString() : null,
           itemsCount: totalDishQty,

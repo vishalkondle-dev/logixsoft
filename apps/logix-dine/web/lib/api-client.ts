@@ -488,6 +488,16 @@ export interface CustomerPortalOrder {
     percentComplete: number;
   };
   items: CustomerOrderItem[];
+  activeWaiterRequest?: {
+    id: string;
+    serviceType: string;
+    serviceLabel: string;
+    note?: string | null;
+    status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+    createdAt: string | null;
+    updatedAt: string | null;
+    completedAt: string | null;
+  } | null;
 }
 
 export interface CustomerMenuItem {

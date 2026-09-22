@@ -373,6 +373,7 @@ app.patch(
           type: 'WAITER_REQUEST_UPDATED',
           data: {
             id: requestId,
+            orderId: existing.orderId,
             status: nextStatus,
             tableNo: existing.tableNo,
             serviceType: existing.serviceType,

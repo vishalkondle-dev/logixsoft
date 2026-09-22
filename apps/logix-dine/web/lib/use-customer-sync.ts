@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import { qk } from "./queries";
 
 export type ConnectionStatus = "connected" | "connecting" | "disconnected";
@@ -128,6 +129,25 @@ export function useCustomerSync(
           // Invalidate and immediately refetch customer portal query upon any event from Durable Object
           queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
           queryClient.refetchQueries({ queryKey: qk.customerPortal() });
+
+          if (msg.type === "WAITER_REQUEST_UPDATED") {
+            const d = (msg.data || {}) as any;
+            if (d.status === "IN_PROGRESS") {
+              notifications.show({
+                title: "Staff Attending",
+                message: `Staff is attending to your request for "${d.serviceLabel || "Staff Assistance"}"`,
+                color: "blue",
+                autoClose: 6000,
+              });
+            } else if (d.status === "COMPLETED") {
+              notifications.show({
+                title: "Request Resolved",
+                message: `Your request for "${d.serviceLabel || "Staff Assistance"}" has been completed`,
+                color: "green",
+                autoClose: 5000,
+              });
+            }
+          }
         } catch (e) {
           console.warn("[useCustomerSync] Error processing event:", e);
         }
@@ -210,6 +230,25 @@ export function useCustomerSync(
               // Instantly invalidate and refetch customer portal queries
               queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
               queryClient.refetchQueries({ queryKey: qk.customerPortal() });
+
+              if (msg.type === "WAITER_REQUEST_UPDATED") {
+                const d = (msg.data || {}) as any;
+                if (d.status === "IN_PROGRESS") {
+                  notifications.show({
+                    title: "Staff Attending",
+                    message: `Staff is attending to your request for "${d.serviceLabel || "Staff Assistance"}"`,
+                    color: "blue",
+                    autoClose: 6000,
+                  });
+                } else if (d.status === "COMPLETED") {
+                  notifications.show({
+                    title: "Request Resolved",
+                    message: `Your request for "${d.serviceLabel || "Staff Assistance"}" has been completed`,
+                    color: "green",
+                    autoClose: 5000,
+                  });
+                }
+              }
             } catch {
               // ignore
             }

@@ -86,7 +86,7 @@ export default function WaiterPage() {
   const [, setTick] = useState(0);
 
   // Durable Object Live Sync
-  const { isConnected } = useOutletSync(restaurantId, outletId);
+  const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
   // Fetch Waiter Requests (Auto-updates via DO or 15s polling fallback)
   const {
@@ -274,84 +274,76 @@ export default function WaiterPage() {
   };
 
   return (
-    <Stack gap="lg" p={{ base: "md", md: "xl" }} maw={1400} mx="auto">
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+      <Stack gap="lg">
       {/* ─── Top Header ─── */}
-      <Paper p="md" radius="md" withBorder>
-        <Group justify="space-between" align="center" wrap="wrap" gap="md">
-          <Group gap="sm">
-            <Title order={2} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <IconBellRinging size={26} color="#7950f2" />
-              Waiter & Floor Assistance
-            </Title>
+      <Group justify="space-between" align="center" wrap="wrap" gap="md" mb="xs">
+        <div>
+          <Group gap="xs" align="center">
+            <Title order={2}>Waiter & Floor Assistance</Title>
             <Badge
-              color={isConnected ? "teal" : "yellow"}
-              variant="light"
-              leftSection={
-                <Box
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    backgroundColor: isConnected ? "var(--mantine-color-teal-6)" : "var(--mantine-color-yellow-6)",
-                  }}
-                />
-              }
+              size="sm"
+              variant="dot"
+              color={isConnected ? "teal" : isConnecting ? "yellow" : "gray"}
             >
-              {isConnected ? "Live DO Sync" : "Syncing..."}
+              {isConnected ? "Live Synced" : isConnecting ? "Connecting..." : "Offline"}
             </Badge>
           </Group>
+          <Text size="sm" c="dimmed">
+            {activeOutlet ? activeOutlet.name : "All Outlets"} · Real-time guest assistance calls & kitchen pickup
+          </Text>
+        </div>
 
-          <Group gap="sm" wrap="wrap">
-            {outlets.length > 1 && (
-              <Select
-                size="sm"
-                data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-                value={activeOutlet?.id ?? null}
-                onChange={(val) => {
-                  const found = outlets.find((o) => o.id === val);
-                  if (found) setActiveOutlet(found.id);
-                }}
-                w={200}
-              />
-            )}
+        <Group gap="sm" wrap="wrap">
+          {outlets.length > 1 && (
+            <Select
+              size="sm"
+              data={outlets.map((o) => ({ value: o.id, label: o.name }))}
+              value={activeOutlet?.id ?? null}
+              onChange={(val) => {
+                const found = outlets.find((o) => o.id === val);
+                if (found) setActiveOutlet(found.id);
+              }}
+              w={180}
+            />
+          )}
 
-            <Tooltip label={soundEnabled ? "Chime sound enabled on new requests" : "Chime sound muted"}>
-              <ActionIcon
-                variant={soundEnabled ? "filled" : "light"}
-                color={soundEnabled ? "indigo" : "gray"}
-                size="lg"
-                radius="md"
-                onClick={() => setSoundEnabled((v) => !v)}
-              >
-                {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
-              </ActionIcon>
-            </Tooltip>
-
-            <Tooltip label="Refresh requests">
-              <ActionIcon
-                variant="default"
-                size="lg"
-                radius="md"
-                onClick={() => {
-                  refetchRequests();
-                  queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
-                }}
-              >
-                <IconRefresh size={18} />
-              </ActionIcon>
-            </Tooltip>
-
-            <Button
-              color="dinePrimary"
-              leftSection={<IconPlus size={16} />}
+          <Tooltip label={soundEnabled ? "Chime sound enabled on new requests" : "Chime sound muted"}>
+            <ActionIcon
+              variant={soundEnabled ? "filled" : "light"}
+              color={soundEnabled ? "indigo" : "gray"}
+              size="lg"
               radius="md"
-              onClick={() => setNewModalOpen(true)}
+              onClick={() => setSoundEnabled((v) => !v)}
             >
-              New Request
-            </Button>
-          </Group>
+              {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Refresh requests">
+            <ActionIcon
+              variant="default"
+              size="lg"
+              radius="md"
+              onClick={() => {
+                refetchRequests();
+                queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+              }}
+            >
+              <IconRefresh size={18} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Button
+            color="dinePrimary"
+            leftSection={<IconPlus size={16} />}
+            radius="md"
+            onClick={() => setNewModalOpen(true)}
+          >
+            New Request
+          </Button>
         </Group>
-      </Paper>
+      </Group>
 
       {/* ─── Metric Strip ─── */}
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
@@ -855,5 +847,6 @@ export default function WaiterPage() {
         </Stack>
       </Modal>
     </Stack>
-  );
+  </Box>
+);
 }

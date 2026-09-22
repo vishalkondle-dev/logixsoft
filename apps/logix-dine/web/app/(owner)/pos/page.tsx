@@ -437,6 +437,23 @@ export default function POSPage() {
   const nextRound = currentRound + 1;
   const [showExistingItemsModal, setShowExistingItemsModal] = useState(false);
 
+  // Active customer order conflict check (must be at top level before early returns)
+  const customerActiveOrderConflict = useMemo(() => {
+    const raw = customerPhone.replace(/\D/g, "");
+    if (raw.length < 7) return null;
+    const last10 = raw.slice(-10);
+    const found = openOrders.find((o: any) => {
+      const p = (o.order?.customerPhone || "").replace(/\D/g, "");
+      return p && (p === raw || p.endsWith(last10) || raw.endsWith(p.slice(-10)));
+    });
+    if (!found) return null;
+    return {
+      orderNo: found.order.orderNo,
+      tableNo: found.order.tableNo,
+      orderId: found.order.id,
+    };
+  }, [customerPhone, openOrders]);
+
   // Sync table or customer phone from URL if provided (e.g. from Tables page or Customer Profile)
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -886,22 +903,6 @@ export default function POSPage() {
       return { value: t.name, label };
     }),
   ];
-
-  const customerActiveOrderConflict = useMemo(() => {
-    const raw = customerPhone.replace(/\D/g, "");
-    if (raw.length < 7) return null;
-    const last10 = raw.slice(-10);
-    const found = openOrders.find((o: any) => {
-      const p = (o.order?.customerPhone || "").replace(/\D/g, "");
-      return p && (p === raw || p.endsWith(last10) || raw.endsWith(p.slice(-10)));
-    });
-    if (!found) return null;
-    return {
-      orderNo: found.order.orderNo,
-      tableNo: found.order.tableNo,
-      orderId: found.order.id,
-    };
-  }, [customerPhone, openOrders]);
 
   const cartPanelProps: CartPanelProps = {
     cartItems,

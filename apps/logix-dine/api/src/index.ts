@@ -40,7 +40,8 @@ import { reportRoutes } from './routes/reports';
 import { customerRoutes } from './routes/customers';
 import { customerPortalRoutes } from './routes/customer-portal';
 import { waiterRoutes } from './routes/waiter';
-import { storeSessionPayload, resolveSessionPayload } from './lib/tenancy';
+import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
+import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
 
 type Bindings = AuthEnv & {
@@ -486,6 +487,24 @@ app.get(
 );
 app.get('/api/auth/me', handleGetMe);
 
+// ─── WebSocket Ticket ─────────────────────────────────────────────────────────
+// Must be registered BEFORE the Better Auth catch-all (/auth/*) below.
+// Issues a short-lived (2 min) signed JWT for WebSocket authentication.
+// Browsers cannot set Cookie headers on cross-origin WS upgrades, so we pass
+// the ticket as ?token= which resolveSessionPayload() already supports.
+const handleWsTicket = async (c: any) => {
+  const { payload } = await resolveSessionPayload(c);
+  if (!payload) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  const secret = getSecret(c);
+  const ticket = await signSessionJwt(payload, secret, 120); // 2-minute TTL
+  return c.json({ ticket });
+};
+
+app.get('/auth/ws-ticket', handleWsTicket);
+app.get('/api/auth/ws-ticket', handleWsTicket);
+
 app.on(['GET', 'POST'], `${AUTH_BASE_PATH}/*`, handleBetterAuth);
 app.on(['GET', 'POST'], `/api${AUTH_BASE_PATH}/*`, handleBetterAuth);
 
@@ -527,6 +546,8 @@ app.route('/api/customer', customerPortalRoutes);
 
 app.route('/waiter', waiterRoutes);
 app.route('/api/waiter', waiterRoutes);
+
+
 
 // Real-time Outlet Live Sync via Durable Objects
 const handleLiveWs = async (c: any) => {

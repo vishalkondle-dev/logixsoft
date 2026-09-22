@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
-import { qk } from "./queries";
 
 export interface SyncMessage {
   type: string;
@@ -15,10 +14,34 @@ export interface SyncMessage {
 
 export type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
+
+/**
+ * Fetch a short-lived (2-min) signed JWT from the API that can be passed
+ * as ?token= on the WebSocket URL.  Browsers cannot set Cookie headers on
+ * WebSocket connections when crossing origins, so this ticket approach is
+ * the reliable way to authenticate the upgrade request.
+ */
+async function fetchWsTicket(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/ws-ticket`, {
+      credentials: "include",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.ticket ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Real-time WebSocket hook connected to the Cloudflare Durable Object for the outlet.
  * Automatically receives instant push notifications when tables, orders, or kitchen tickets change,
  * and invalidates React Query caches with 0ms delay.
+ *
+ * Auth: fetches a short-lived JWT ticket via /auth/ws-ticket and passes it as
+ * ?token= on the WS URL — this avoids cross-origin cookie restrictions in browsers.
  *
  * Uses a stable connectRef so that the onclose handler always invokes the latest
  * connect function even after outletId / restaurantId change (fixes stale-closure bug).
@@ -38,7 +61,7 @@ export function useOutletSync(
   // onclose handlers use this so they never capture a stale closure.
   const connectRef = useRef<() => void>(() => {});
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!outletId || typeof window === "undefined") {
       setStatus("disconnected");
       return;
@@ -50,9 +73,8 @@ export function useOutletSync(
       reconnectTimeoutRef.current = null;
     }
 
-    // Close any previous socket cleanly
+    // Close any previous socket cleanly (null handlers first to prevent spurious reconnect)
     if (wsRef.current) {
-      // Remove handlers so onclose won't schedule another reconnect
       wsRef.current.onclose = null;
       wsRef.current.onerror = null;
       try {
@@ -63,11 +85,24 @@ export function useOutletSync(
       wsRef.current = null;
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
-    const wsBase = apiUrl.replace(/^http/, "ws");
-    const wsUrl = `${wsBase}/api/live/outlets/${outletId}`;
-
     setStatus("connecting");
+
+    // Fetch a short-lived WS auth ticket (bypasses cross-origin cookie issue)
+    const ticket = await fetchWsTicket();
+    if (!ticket) {
+      // Not authenticated — don't retry immediately, will retry on reconnect backoff
+      setStatus("disconnected");
+      const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 10000);
+      retryCountRef.current++;
+      reconnectTimeoutRef.current = setTimeout(() => connectRef.current(), delay);
+      return;
+    }
+
+    // Reset retry count on successful ticket fetch
+    retryCountRef.current = 0;
+
+    const wsBase = API_BASE.replace(/^http/, "ws");
+    const wsUrl = `${wsBase}/api/live/outlets/${outletId}?token=${encodeURIComponent(ticket)}`;
 
     try {
       const ws = new WebSocket(wsUrl);

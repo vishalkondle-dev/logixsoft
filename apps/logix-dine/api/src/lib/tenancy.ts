@@ -18,7 +18,7 @@ import { verifySessionJwt } from './jwt';
 
 function kv(c: Context): any { return (c.env as any)?.CACHE; }
 
-function getSecret(c: Context): string {
+export function getSecret(c: Context): string {
   const env = (c.env as any) || {};
   return (
     env.BETTER_AUTH_SECRET ||

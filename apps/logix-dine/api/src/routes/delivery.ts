@@ -393,4 +393,76 @@ app.patch(
   }
 );
 
+// ─── PATCH /delivery/riders/:id/status ───────────────────────────────────────
+const UpdateRiderStatusSchema = z.object({
+  status: z.enum(['AVAILABLE', 'ON_DELIVERY', 'OFFLINE']),
+});
+
+app.patch(
+  '/riders/:id/status',
+  apiDoc({
+    tags: ['Delivery'],
+    summary: 'Update Delivery Rider Status',
+    description: 'Updates rider duty status (AVAILABLE, ON_DELIVERY, OFFLINE).',
+    responses: {
+      200: z.any(),
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const riderId = c.req.param('id');
+    const body = await c.req.json().catch(() => null);
+    const parsed = UpdateRiderStatusSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid status' }, 400);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [rider] = await db
+        .select()
+        .from(appSchema.deliveryRider)
+        .where(
+          and(
+            eq(appSchema.deliveryRider.id, riderId),
+            eq(appSchema.deliveryRider.restaurantId, restaurantId)
+          )
+        );
+
+      if (!rider) {
+        return c.json({ error: 'Not Found', message: 'Rider not found' }, 404);
+      }
+
+      const now = new Date();
+      await db
+        .update(appSchema.deliveryRider)
+        .set({ status: parsed.data.status, updatedAt: now })
+        .where(eq(appSchema.deliveryRider.id, riderId));
+
+      const [updated] = await db
+        .select()
+        .from(appSchema.deliveryRider)
+        .where(eq(appSchema.deliveryRider.id, riderId));
+
+      await broadcastToOutlet(
+        c.env,
+        rider.outletId,
+        {
+          topic: 'ORDERS',
+          type: 'RIDER_STATUS_UPDATED',
+          data: { riderId, status: parsed.data.status, riderName: rider.name },
+        }
+      );
+
+      return c.json(toDeliveryRider(updated));
+    } finally {
+      await close();
+    }
+  }
+);
+
 export const deliveryRoutes = app;

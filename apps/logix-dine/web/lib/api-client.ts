@@ -814,6 +814,19 @@ export const updateDeliveryStatus = (
 ) =>
   apiFetch<DeliveryDetails>(`/delivery/orders/${orderId}/status`, restaurantId, { method: "PATCH", body: JSON.stringify(body) }, outletId);
 
+export const updateDeliveryRiderStatus = (
+  restaurantId: string,
+  riderId: string,
+  status: "AVAILABLE" | "ON_DELIVERY" | "OFFLINE",
+  outletId?: string | null
+) =>
+  apiFetch<DeliveryRider>(
+    `/delivery/riders/${riderId}/status`,
+    restaurantId,
+    { method: "PATCH", body: JSON.stringify({ status }) },
+    outletId
+  );
+
 
 
 

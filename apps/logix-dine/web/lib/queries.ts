@@ -55,6 +55,7 @@ import {
   getDeliveryRiders,
   createDeliveryRider,
   updateDeliveryStatus,
+  updateDeliveryRiderStatus,
   getCustomerAddresses,
   type CustomerPortalData,
   type CustomerMenuResponse,
@@ -716,6 +717,22 @@ export function useUpdateDeliveryStatus(restaurantId: string, outletId: string |
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
       queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
+      queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
+    },
+  });
+}
+
+export function useUpdateDeliveryRiderStatus(restaurantId: string, outletId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      riderId,
+      status,
+    }: {
+      riderId: string;
+      status: "AVAILABLE" | "ON_DELIVERY" | "OFFLINE";
+    }) => updateDeliveryRiderStatus(restaurantId, riderId, status, outletId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
     },
   });

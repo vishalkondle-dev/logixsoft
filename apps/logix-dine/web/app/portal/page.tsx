@@ -89,11 +89,17 @@ function CustomerPortalInner() {
   const activeTab = ["active", "past", "profile"].includes(rawTab) ? rawTab : "active";
 
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
+  const [activeOutletIds, setActiveOutletIds] = useState<string[]>([]);
+
+  // Real-time live sync via Cloudflare Durable Object
+  const { isConnected, isConnecting } = useCustomerSync(
+    isAuthenticated ? user?.phoneNumber : null,
+    { activeOutletIds }
+  );
+
+  // Auto-refreshes in 0ms real-time via Cloudflare Durable Object (30s fallback only when offline)
   const { data, isLoading: dataLoading, isRefetching, refetch } = useCustomerPortal({
-    refetchInterval: (query) => {
-      const active = query.state.data?.activeOrders;
-      return active && active.length > 0 ? 4000 : false;
-    },
+    refetchInterval: isConnected ? false : 30_000,
   });
   const updateProfileMutation = useUpdateCustomerProfile();
 
@@ -187,14 +193,16 @@ ${itemsText}
   const activeOrders = data?.activeOrders || [];
   const pastOrders = data?.pastOrders || [];
 
-  const activeOutletIds = useMemo(() => {
-    return Array.from(new Set(activeOrders.map((o) => o.outletId).filter(Boolean)));
+  useEffect(() => {
+    if (activeOrders.length > 0) {
+      const ids = Array.from(new Set(activeOrders.map((o) => o.outletId).filter(Boolean)));
+      setActiveOutletIds((prev) => {
+        const prevKey = prev.slice().sort().join(",");
+        const nextKey = ids.slice().sort().join(",");
+        return prevKey === nextKey ? prev : ids;
+      });
+    }
   }, [activeOrders]);
-
-  const { isConnected, isConnecting } = useCustomerSync(
-    isAuthenticated ? (customer?.phone || user?.phoneNumber) : null,
-    { activeOutletIds }
-  );
 
   // 1. Auth Loading State
   if (authLoading) {

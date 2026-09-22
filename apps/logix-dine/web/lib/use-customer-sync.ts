@@ -147,6 +147,30 @@ export function useCustomerSync(
                 autoClose: 5000,
               });
             }
+          } else if (msg.type === "ITEM_STATUS_CHANGED") {
+            const d = (msg.data || {}) as any;
+            if (d.targetStatus === "PREPARED") {
+              notifications.show({
+                title: "Dish Ready!",
+                message: "Your dish is freshly prepared and will be served shortly",
+                color: "teal",
+                autoClose: 5000,
+              });
+            } else if (d.targetStatus === "SERVED") {
+              notifications.show({
+                title: "Dish Served",
+                message: "Served to your table. Enjoy your meal!",
+                color: "green",
+                autoClose: 4000,
+              });
+            }
+          } else if (msg.type === "ROUND_ADDED" || msg.type === "NEW_ROUND") {
+            notifications.show({
+              title: "New Round Placed",
+              message: "Your new items have been queued in the kitchen",
+              color: "violet",
+              autoClose: 5000,
+            });
           }
         } catch (e) {
           console.warn("[useCustomerSync] Error processing event:", e);

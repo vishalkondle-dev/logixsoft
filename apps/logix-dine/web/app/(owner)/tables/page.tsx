@@ -889,46 +889,85 @@ export default function TablesPage() {
               </Alert>
             )}
 
+            {/* Open Items Warning Banner */}
+            {(() => {
+              const openItems = (freeModalSession.allItems || []).filter(
+                (i: any) => i.status !== "SERVED" && i.status !== "CANCELLED"
+              );
+              if (openItems.length === 0) return null;
+              return (
+                <Alert
+                  color="red"
+                  variant="light"
+                  title="Cannot Free Table: Open Items Pending"
+                  icon={<IconAlertCircle size={18} />}
+                >
+                  <Stack gap={4}>
+                    <Text size="xs">
+                      There are <b>{openItems.length} item(s)</b> not yet served or cancelled ({openItems.slice(0, 3).map((i: any) => `${i.nameSnapshot || i.name} [${i.status || "ORDERED"}]`).join(", ")}{openItems.length > 3 ? ` +${openItems.length - 3} more` : ""}).
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      All items must be served to the table or cancelled in kitchen before this table can be freed.
+                    </Text>
+                  </Stack>
+                </Alert>
+              );
+            })()}
+
             <Divider />
 
             {/* Action Buttons */}
-            <Group justify="space-between" align="center" wrap="wrap">
-              {/* Option to release / void table without payment (walkout/cancelled) */}
-              <Button
-                variant="subtle"
-                color="red"
-                size="xs"
-                leftSection={<IconX size={14} />}
-                onClick={handleVoidAndReleaseTable}
-                disabled={isFreeing}
-              >
-                Void & Release Table
-              </Button>
+            {(() => {
+              const openItems = (freeModalSession.allItems || []).filter(
+                (i: any) => i.status !== "SERVED" && i.status !== "CANCELLED"
+              );
+              const hasOpenItems = openItems.length > 0;
+              return (
+                <Group justify="space-between" align="center" wrap="wrap">
+                  {/* Option to release / void table without payment (walkout/cancelled) */}
+                  <Button
+                    variant="subtle"
+                    color="red"
+                    size="xs"
+                    leftSection={<IconX size={14} />}
+                    onClick={handleVoidAndReleaseTable}
+                    disabled={isFreeing}
+                  >
+                    Void & Release Table
+                  </Button>
 
-              <Group gap="xs">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setFreeModalSession(null)}
-                  disabled={isFreeing}
-                >
-                  Cancel
-                </Button>
+                  <Group gap="xs">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setFreeModalSession(null)}
+                      disabled={isFreeing}
+                    >
+                      Cancel
+                    </Button>
 
-                {/* Free Table Primary Action */}
-                <Button
-                  color="teal"
-                  size="sm"
-                  leftSection={<IconCheck size={16} />}
-                  loading={isFreeing}
-                  onClick={handleSettleAndFreeTable}
-                >
-                  {freeModalSession.duePaise > 0
-                    ? `Settle ₹${(freeModalSession.duePaise / 100).toFixed(0)} & Free Table`
-                    : "Free Table"}
-                </Button>
-              </Group>
-            </Group>
+                    {/* Free Table Primary Action */}
+                    <Tooltip
+                      label="All items must be served or cancelled before freeing table"
+                      disabled={!hasOpenItems}
+                    >
+                      <Button
+                        color="teal"
+                        size="sm"
+                        leftSection={<IconCheck size={16} />}
+                        loading={isFreeing}
+                        disabled={hasOpenItems}
+                        onClick={handleSettleAndFreeTable}
+                      >
+                        {freeModalSession.duePaise > 0
+                          ? `Settle ₹${(freeModalSession.duePaise / 100).toFixed(0)} & Free Table`
+                          : "Free Table"}
+                      </Button>
+                    </Tooltip>
+                  </Group>
+                </Group>
+              );
+            })()}
           </Stack>
         )}
       </Modal>

@@ -31,6 +31,7 @@ import { sendWhatsAppText } from '@logixsoft/wa';
 import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
+import { getPhoneVariants } from './customer-portal';
 
 function resolveOrderItemDetails(
   menuItem: any,
@@ -285,6 +286,52 @@ app.post(
 
   const { db, close } = getDb(c);
   try {
+    // Check if customer already has an active order
+    const customerPhoneInput = parsed.data.customerPhone?.trim();
+    if (customerPhoneInput) {
+      const { rawDigits, variants } = getPhoneVariants(customerPhoneInput);
+      if (rawDigits.length >= 7) {
+        const [existingOrder] = await db
+          .select({
+            id: appSchema.saleOrder.id,
+            orderNo: appSchema.saleOrder.orderNo,
+            tableNo: appSchema.saleOrder.tableNo,
+            status: appSchema.saleOrder.status,
+          })
+          .from(appSchema.saleOrder)
+          .where(
+            and(
+              eq(appSchema.saleOrder.restaurantId, restaurantId),
+              or(
+                eq(appSchema.saleOrder.status, 'OPEN'),
+                and(
+                  sql`${appSchema.saleOrder.tableFreedAt} IS NULL`,
+                  ne(appSchema.saleOrder.status, 'VOID')
+                )
+              ),
+              or(
+                inArray(appSchema.saleOrder.customerPhone, variants),
+                sql`${appSchema.saleOrder.customerPhone} LIKE ${'%' + rawDigits}`
+              )
+            )
+          )
+          .limit(1);
+
+        if (existingOrder) {
+          const loc = existingOrder.tableNo && existingOrder.tableNo !== 'Takeaway'
+            ? `Table ${existingOrder.tableNo}`
+            : 'Takeaway';
+          return c.json(
+            {
+              error: 'Conflict',
+              message: `Customer with mobile number ${customerPhoneInput} already has an active order (#${existingOrder.orderNo} on ${loc}). A new order cannot be created while an active order exists.`,
+            },
+            409
+          );
+        }
+      }
+    }
+
     const id = generateOrderId(parsed.data.outletId);
     const now = new Date();
     let subtotalPaise = 0;
@@ -490,6 +537,52 @@ app.post(
 
   const { db, close } = getDb(c);
   try {
+    // Check if customer already has an active order
+    const customerPhoneInput = parsed.data.customerPhone?.trim();
+    if (customerPhoneInput) {
+      const { rawDigits, variants } = getPhoneVariants(customerPhoneInput);
+      if (rawDigits.length >= 7) {
+        const [existingOrder] = await db
+          .select({
+            id: appSchema.saleOrder.id,
+            orderNo: appSchema.saleOrder.orderNo,
+            tableNo: appSchema.saleOrder.tableNo,
+            status: appSchema.saleOrder.status,
+          })
+          .from(appSchema.saleOrder)
+          .where(
+            and(
+              eq(appSchema.saleOrder.restaurantId, restaurantId),
+              or(
+                eq(appSchema.saleOrder.status, 'OPEN'),
+                and(
+                  sql`${appSchema.saleOrder.tableFreedAt} IS NULL`,
+                  ne(appSchema.saleOrder.status, 'VOID')
+                )
+              ),
+              or(
+                inArray(appSchema.saleOrder.customerPhone, variants),
+                sql`${appSchema.saleOrder.customerPhone} LIKE ${'%' + rawDigits}`
+              )
+            )
+          )
+          .limit(1);
+
+        if (existingOrder) {
+          const loc = existingOrder.tableNo && existingOrder.tableNo !== 'Takeaway'
+            ? `Table ${existingOrder.tableNo}`
+            : 'Takeaway';
+          return c.json(
+            {
+              error: 'Conflict',
+              message: `Customer with mobile number ${customerPhoneInput} already has an active order (#${existingOrder.orderNo} on ${loc}). A new order cannot be created while an active order exists.`,
+            },
+            409
+          );
+        }
+      }
+    }
+
     const id = generateOrderId(parsed.data.outletId);
     const now = new Date();
     let subtotalPaise = 0;
@@ -1554,6 +1647,35 @@ app.post(
       return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
     }
     if (order.status === 'VOID') return c.json({ error: 'Conflict', message: 'Cannot free a voided order' }, 409);
+
+    // Check if any items are still open (must be SERVED or CANCELLED)
+    const existingOrderItems = await db
+      .select({
+        id: appSchema.saleOrderItem.id,
+        nameSnapshot: appSchema.saleOrderItem.nameSnapshot,
+        status: appSchema.saleOrderItem.status,
+        qty: appSchema.saleOrderItem.qty,
+      })
+      .from(appSchema.saleOrderItem)
+      .where(eq(appSchema.saleOrderItem.orderId, orderId));
+
+    const openItems = existingOrderItems.filter(
+      (it: any) => it.status !== 'SERVED' && it.status !== 'CANCELLED'
+    );
+
+    if (openItems.length > 0) {
+      const openQty = openItems.reduce((sum: number, it: any) => sum + (it.qty || 1), 0);
+      const sampleNames = openItems.slice(0, 3).map((it: any) => `${it.nameSnapshot} (${it.status})`).join(', ');
+      const more = openItems.length > 3 ? ` +${openItems.length - 3} more` : '';
+      return c.json(
+        {
+          error: 'Conflict',
+          message: `Cannot free table: ${openQty} item(s) are still open [${sampleNames}${more}]. All items must be served or cancelled before freeing the table.`,
+          openItemsCount: openQty,
+        },
+        409
+      );
+    }
 
     const now = new Date();
     const settleMethod = parsed.data.method || order.method || 'Cash';

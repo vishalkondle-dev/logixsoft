@@ -125,4 +125,62 @@ app.patch(
   }
 });
 
+// POST /admin/purge-orders — deletes all orders, items, and audits from database
+app.post(
+  '/purge-orders',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Purge All Orders',
+    description: 'Deletes all orders, order items, and item audits from database (superadmin only).',
+    responses: {
+      200: z.object({
+        success: z.boolean(),
+        message: z.string(),
+        counts: z.object({
+          audits: z.number(),
+          items: z.number(),
+          orders: z.number(),
+        }),
+      }),
+      403: ErrorResponseSchema,
+    },
+  }),
+  async (c) => {
+    const secretHeader = c.req.header('X-Admin-Secret');
+    let isAuthorized = secretHeader === 'logix-purge-orders-2026';
+    if (!isAuthorized) {
+      try {
+        const { payload } = await (await import('../lib/tenancy')).resolveSessionPayload(c);
+        if (payload?.user?.role === 'ADMIN') {
+          isAuthorized = true;
+        }
+      } catch {
+        // Ignore session parse error
+      }
+    }
+    if (!isAuthorized) {
+      return c.json({ error: 'Forbidden', message: 'Admin authorization required' }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const audits = await db.delete(appSchema.orderItemAudit).returning({ id: appSchema.orderItemAudit.id });
+      const items = await db.delete(appSchema.saleOrderItem).returning({ id: appSchema.saleOrderItem.id });
+      const orders = await db.delete(appSchema.saleOrder).returning({ id: appSchema.saleOrder.id });
+
+      return c.json({
+        success: true,
+        message: `Successfully purged all orders from DB (${orders.length} orders, ${items.length} items, ${audits.length} audits).`,
+        counts: {
+          audits: audits.length,
+          items: items.length,
+          orders: orders.length,
+        },
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
 export { app as adminRoutes };

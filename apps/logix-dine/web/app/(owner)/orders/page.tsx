@@ -968,16 +968,61 @@ export default function OrdersPage() {
                 </Alert>
               )}
 
+              {/* Open Items Warning Banner */}
+              {(() => {
+                const openItems = (selected.items ?? []).filter(
+                  (i: any) => i.status !== "SERVED" && i.status !== "CANCELLED"
+                );
+                if (openItems.length === 0) return null;
+                return (
+                  <Alert
+                    color="red"
+                    variant="light"
+                    title="Cannot Free Table: Open Items Pending"
+                    icon={<IconAlertCircle size={16} />}
+                  >
+                    <Stack gap={4}>
+                      <Text size="xs">
+                        There are <b>{openItems.length} item(s)</b> not yet served or cancelled ({openItems.slice(0, 3).map((i: any) => `${i.nameSnapshot || i.name} [${i.status || "ORDERED"}]`).join(", ")}{openItems.length > 3 ? ` +${openItems.length - 3} more` : ""}).
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        All items must be served or cancelled in kitchen before freeing this table.
+                      </Text>
+                    </Stack>
+                  </Alert>
+                );
+              })()}
+
               <Divider />
 
-              <Group justify="flex-end" gap="xs">
-                <Button variant="default" size="sm" onClick={() => setFreeModalOpen(false)} disabled={isFreeing}>
-                  Cancel
-                </Button>
-                <Button color="teal" size="sm" loading={isFreeing} onClick={handleFreeTable} leftSection={<IconDoorExit size={16} />}>
-                  {duePaise > 0 ? `Settle ₹${(duePaise / 100).toFixed(0)} & Free Table` : "Free Table"}
-                </Button>
-              </Group>
+              {(() => {
+                const openItems = (selected.items ?? []).filter(
+                  (i: any) => i.status !== "SERVED" && i.status !== "CANCELLED"
+                );
+                const hasOpenItems = openItems.length > 0;
+                return (
+                  <Group justify="flex-end" gap="xs">
+                    <Button variant="default" size="sm" onClick={() => setFreeModalOpen(false)} disabled={isFreeing}>
+                      Cancel
+                    </Button>
+                    <Tooltip
+                      label="All items must be served or cancelled before freeing table"
+                      disabled={!hasOpenItems}
+                    >
+                      <Button
+                        color="teal"
+                        size="sm"
+                        loading={isFreeing}
+                        disabled={hasOpenItems}
+                        onClick={handleFreeTable}
+                        leftSection={<IconDoorExit size={16} />}
+                      >
+                        {duePaise > 0 ? `Settle ₹${(duePaise / 100).toFixed(0)} & Free Table` : "Free Table"}
+                      </Button>
+                    </Tooltip>
+                  </Group>
+                );
+              })()}
             </Stack>
           );
         })()}

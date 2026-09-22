@@ -15,7 +15,7 @@ function getDb(c: any) {
   return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
 }
 
-function getPhoneVariants(input: string): { rawDigits: string; variants: string[] } {
+export function getPhoneVariants(input: string): { rawDigits: string; variants: string[] } {
   const cleaned = input.trim();
   const digits = cleaned.replace(/\D/g, '');
   const last10 = digits.slice(-10);

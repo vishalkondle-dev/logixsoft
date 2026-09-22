@@ -6,7 +6,7 @@ import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
-  UnstyledButton, Tooltip,
+  UnstyledButton, Tooltip, Alert,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,7 +14,7 @@ import {
   IconPlus, IconMinus, IconTrash, IconChevronDown,
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
-  IconUser,
+  IconUser, IconAlertCircle,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useCategories, useItems, useTables, useOrders, qk } from "@/lib/queries";
@@ -89,6 +89,7 @@ interface CartPanelProps {
   nextRound?: number;
   currentRound?: number;
   onViewExistingItems?: () => void;
+  customerActiveOrderConflict?: { orderNo: number; tableNo: string | null; orderId: string } | null;
 }
 
 function CartPanel({
@@ -112,6 +113,7 @@ function CartPanel({
   nextRound = 2,
   currentRound = 1,
   onViewExistingItems,
+  customerActiveOrderConflict,
 }: CartPanelProps) {
   return (
     <Box
@@ -184,6 +186,21 @@ function CartPanel({
               ) : null
             }
           />
+
+          {customerActiveOrderConflict && !activeTableOrder && (
+            <Alert
+              color="red"
+              variant="light"
+              p="xs"
+              icon={<IconAlertCircle size={15} />}
+              title="Customer Has Active Order"
+            >
+              <Text size="xs">
+                This customer already has an active order (<b>Token #{customerActiveOrderConflict.orderNo}</b> on{" "}
+                <b>{customerActiveOrderConflict.tableNo || "Takeaway"}</b>). A new order cannot be placed until that order is settled or freed.
+              </Text>
+            </Alert>
+          )}
 
           {activeTableOrder && (() => {
             const paidPaise = activeTableOrder.order.paidPaise || 0;
@@ -313,47 +330,58 @@ function CartPanel({
         </Group>
 
         {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
-        <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
-          <Button
-            color={activeTableOrder ? "orange" : "dinePrimary"}
-            onClick={handleSend}
-            loading={sending}
-            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
-            disabled={cartItems.length === 0}
-            leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
-          >
-            {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
-          </Button>
-          <Menu position="top-end" withinPortal zIndex={1500}>
-            <Menu.Target>
-              <ActionIcon
-                color={activeTableOrder ? "orange" : "dinePrimary"}
-                variant="filled"
-                size={36}
-                style={{
-                  borderTopLeftRadius: 0,
-                  borderBottomLeftRadius: 0,
-                  borderLeft: "1px solid rgba(255,255,255,0.3)",
-                  flexShrink: 0,
-                  width: 36,
-                  height: 36,
-                }}
-                disabled={cartItems.length === 0 || sending}
-                aria-label="More order options"
-              >
-                <IconChevronDown size={16} />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<IconCash size={16} />}
-                onClick={() => setSettleModal(true)}
-              >
-                {activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
+        {(() => {
+          const isBlockedByConflict = Boolean(customerActiveOrderConflict) && !activeTableOrder;
+          return (
+            <Tooltip
+              label={`Customer has active order #${customerActiveOrderConflict?.orderNo}. Settle or add items to that order.`}
+              disabled={!isBlockedByConflict}
+            >
+              <Group gap={0} wrap="nowrap" style={{ width: "100%" }}>
+                <Button
+                  color={activeTableOrder ? "orange" : "dinePrimary"}
+                  onClick={handleSend}
+                  loading={sending}
+                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
+                  disabled={cartItems.length === 0 || isBlockedByConflict}
+                  leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
+                >
+                  {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
+                </Button>
+                <Menu position="top-end" withinPortal zIndex={1500}>
+                  <Menu.Target>
+                    <ActionIcon
+                      color={activeTableOrder ? "orange" : "dinePrimary"}
+                      variant="filled"
+                      size={36}
+                      style={{
+                        borderTopLeftRadius: 0,
+                        borderBottomLeftRadius: 0,
+                        borderLeft: "1px solid rgba(255,255,255,0.3)",
+                        flexShrink: 0,
+                        width: 36,
+                        height: 36,
+                      }}
+                      disabled={cartItems.length === 0 || sending || isBlockedByConflict}
+                      aria-label="More order options"
+                    >
+                      <IconChevronDown size={16} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      leftSection={<IconCash size={16} />}
+                      onClick={() => setSettleModal(true)}
+                      disabled={isBlockedByConflict}
+                    >
+                      {activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </Group>
+            </Tooltip>
+          );
+        })()}
       </Box>
     </Box>
   );
@@ -655,6 +683,15 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
       } else {
+        if (customerActiveOrderConflict) {
+          notifications.show({
+            title: "Customer Has Active Order",
+            message: `Customer already has active Token #${customerActiveOrderConflict.orderNo} on ${customerActiveOrderConflict.tableNo || "Takeaway"}. Cannot place a new order until that order is settled or freed.`,
+            color: "red",
+          });
+          setSending(false);
+          return;
+        }
         const created = await startOrder(restaurantId, {
           outletId: activeOutlet.id,
           tableNo: tableNo || "Takeaway",
@@ -758,6 +795,15 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
       } else {
+        if (customerActiveOrderConflict) {
+          notifications.show({
+            title: "Customer Has Active Order",
+            message: `Customer already has active Token #${customerActiveOrderConflict.orderNo} on ${customerActiveOrderConflict.tableNo || "Takeaway"}. Cannot place a new order until that order is settled or freed.`,
+            color: "red",
+          });
+          setSettling(false);
+          return;
+        }
         const result = await createSettledOrder(restaurantId, {
           outletId: activeOutlet.id,
           tableNo: tableNo || "Takeaway",
@@ -841,6 +887,22 @@ export default function POSPage() {
     }),
   ];
 
+  const customerActiveOrderConflict = useMemo(() => {
+    const raw = customerPhone.replace(/\D/g, "");
+    if (raw.length < 7) return null;
+    const last10 = raw.slice(-10);
+    const found = openOrders.find((o: any) => {
+      const p = (o.order?.customerPhone || "").replace(/\D/g, "");
+      return p && (p === raw || p.endsWith(last10) || raw.endsWith(p.slice(-10)));
+    });
+    if (!found) return null;
+    return {
+      orderNo: found.order.orderNo,
+      tableNo: found.order.tableNo,
+      orderId: found.order.id,
+    };
+  }, [customerPhone, openOrders]);
+
   const cartPanelProps: CartPanelProps = {
     cartItems,
     cartCount,
@@ -861,6 +923,7 @@ export default function POSPage() {
     nextRound,
     currentRound,
     onViewExistingItems: () => setShowExistingItemsModal(true),
+    customerActiveOrderConflict,
   };
 
   return (

@@ -56,14 +56,19 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  const isPortal = pathname === "/portal";
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
   const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER"].includes(effectiveRole));
   const isCustomer = isAuthenticated && !isStaffOrOwner;
 
-  const visibleNav = isStaffOrOwner
+  // On /portal, the customer portal page already provides its own tabs for Active, Past, and Profile.
+  // Suppress AppShell header and bottom nav on /portal to prevent duplicate navbars.
+  const visibleNav = isPortal
+    ? []
+    : isStaffOrOwner
     ? STAFF_NAV_ITEMS.filter((n) => !n.roles || (effectiveRole && n.roles.includes(effectiveRole)))
     : isCustomer
-    ? CUSTOMER_NAV_ITEMS
+    ? [{ label: "My Orders", href: "/portal", icon: IconReceipt }]
     : [];
 
 
@@ -306,7 +311,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         <LoginModal />
       </AppShell.Main>
 
-      {visibleNav.length > 0 && (
+      {visibleNav.length > 0 && !isPortal && (
         <Box
           component="nav"
           aria-label="Bottom Navigation"

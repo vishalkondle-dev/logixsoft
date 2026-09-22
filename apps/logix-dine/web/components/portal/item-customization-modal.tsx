@@ -19,9 +19,8 @@ import {
 import {
   IconPlus,
   IconMinus,
-  IconMeat,
-  IconLeaf,
 } from "@tabler/icons-react";
+import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type { CustomerMenuItem } from "@/lib/api-client";
 
 export interface SelectedCartItem {
@@ -117,11 +116,7 @@ export function ItemCustomizationModal({
       onClose={onClose}
       title={
         <Group gap="xs" align="center">
-          {item.isNonVeg ? (
-            <IconMeat size={16} color="#e03131" />
-          ) : (
-            <IconLeaf size={16} color="#2f9e44" />
-          )}
+          <VegNonVegIcon isNonVeg={item.isNonVeg} size={16} />
           <div>
             <Title order={4} style={{ fontSize: 16, fontWeight: 700 }}>
               {item.name}

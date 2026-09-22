@@ -81,8 +81,9 @@ export function useCustomerSync(
           const msg = JSON.parse(event.data);
           if (msg.type === "pong") return;
 
-          // Invalidate customer portal query immediately upon any event from Durable Object
+          // Invalidate and immediately refetch customer portal query upon any event from Durable Object
           queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
+          queryClient.refetchQueries({ queryKey: qk.customerPortal() });
         } catch (e) {
           console.warn("[useCustomerSync] Error processing event:", e);
         }
@@ -142,8 +143,9 @@ export function useCustomerSync(
           try {
             const msg = JSON.parse(event.data);
             if (msg.type === "pong") return;
-            // Instantly invalidate customer portal queries
+            // Instantly invalidate and refetch customer portal queries
             queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
+            queryClient.refetchQueries({ queryKey: qk.customerPortal() });
           } catch {
             // ignore
           }

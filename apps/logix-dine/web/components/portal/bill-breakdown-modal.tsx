@@ -18,9 +18,9 @@ import {
   IconReceipt,
   IconBrandWhatsapp,
   IconBellRinging,
-  IconMeat,
-  IconLeaf,
+  IconNotes,
 } from "@tabler/icons-react";
+import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type { CustomerPortalOrder } from "@/lib/api-client";
 
 interface BillBreakdownModalProps {
@@ -117,6 +117,30 @@ Thank you for dining with us!`;
           </Group>
         </Paper>
 
+        {/* Order Note / Special Instructions */}
+        {order.note && (
+          <Paper
+            p="xs"
+            radius="sm"
+            style={{
+              backgroundColor: "rgba(175, 115, 215, 0.08)",
+              border: "1px dashed #af73d7",
+            }}
+          >
+            <Group gap={6} align="flex-start" wrap="nowrap">
+              <IconNotes size={14} color="#af73d7" style={{ marginTop: 2, flexShrink: 0 }} />
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <Text size="xs" fw={700} c="violet.9">
+                  Order Instructions:
+                </Text>
+                <Text size="xs" c="dark.4" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  {order.note}
+                </Text>
+              </Box>
+            </Group>
+          </Paper>
+        )}
+
         {/* Itemized Table */}
         <Box style={{ maxHeight: 260, overflowY: "auto" }}>
           <Table striped highlightOnHover withTableBorder={false} verticalSpacing="xs">
@@ -133,11 +157,9 @@ Thank you for dining with us!`;
                 <Table.Tr key={item.id}>
                   <Table.Td>
                     <Group gap={6} align="flex-start" wrap="nowrap">
-                      {item.isNonVeg ? (
-                        <IconMeat size={13} color="#e03131" style={{ flexShrink: 0, marginTop: 3 }} />
-                      ) : (
-                        <IconLeaf size={13} color="#2f9e44" style={{ flexShrink: 0, marginTop: 3 }} />
-                      )}
+                      <Box style={{ flexShrink: 0, marginTop: 4 }}>
+                        <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
+                      </Box>
                       <div>
                         <Text size="xs" fw={600} lineClamp={1}>
                           {item.name}
@@ -150,6 +172,11 @@ Thank you for dining with us!`;
                         {item.addons && item.addons.length > 0 && (
                           <Text size="10px" c="dimmed">
                             +{item.addons.map((a: any) => a.name).join(", ")}
+                          </Text>
+                        )}
+                        {item.note && (
+                          <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
+                            Note: {item.note}
                           </Text>
                         )}
                       </div>

@@ -57,6 +57,10 @@ export function rateLimiter({ keyPrefix, max, windowMs = DEFAULT_WINDOW_MS }: Ra
       c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ||
       'unknown';
 
+    if ((c.env as any)?.DEV_OTP_BYPASS === 'true') {
+      return next();
+    }
+
     const dbUrl = resolveDbUrl(c);
     if (!dbUrl) return next();
 

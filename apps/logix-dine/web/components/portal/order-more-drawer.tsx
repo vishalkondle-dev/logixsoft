@@ -25,8 +25,6 @@ import {
 } from "@mantine/core";
 import {
   IconSearch,
-  IconMeat,
-  IconLeaf,
   IconPlus,
   IconMinus,
   IconTrash,
@@ -34,7 +32,9 @@ import {
   IconShoppingBag,
   IconCheck,
   IconX,
+  IconNotes,
 } from "@tabler/icons-react";
+import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import { notifications } from "@mantine/notifications";
 import { useCustomerOutletMenu, useAddCustomerOrderItems } from "@/lib/queries";
 import type { CustomerPortalOrder, CustomerMenuItem } from "@/lib/api-client";
@@ -165,6 +165,12 @@ export function OrderMoreDrawer({
     setCartItems((prev) => prev.filter((ci) => ci.cartId !== cartId));
   };
 
+  const handleUpdateNote = (cartId: string, note: string) => {
+    setCartItems((prev) =>
+      prev.map((ci) => (ci.cartId === cartId ? { ...ci, note: note || undefined } : ci))
+    );
+  };
+
   const totalCartPaise = useMemo(() => {
     return cartItems.reduce((sum, ci) => sum + ci.totalPricePaise, 0);
   }, [cartItems]);
@@ -278,7 +284,7 @@ export function OrderMoreDrawer({
               {
                 label: (
                   <Group gap={4} justify="center">
-                    <IconLeaf size={14} color="#2f9e44" />
+                    <VegNonVegIcon isNonVeg={false} size={13} />
                     <span>Veg Only</span>
                   </Group>
                 ),
@@ -287,7 +293,7 @@ export function OrderMoreDrawer({
               {
                 label: (
                   <Group gap={4} justify="center">
-                    <IconMeat size={14} color="#e03131" />
+                    <VegNonVegIcon isNonVeg={true} size={13} />
                     <span>Non-Veg</span>
                   </Group>
                 ),
@@ -376,11 +382,7 @@ export function OrderMoreDrawer({
                     <div>
                       <Group justify="space-between" align="flex-start" wrap="nowrap" mb={4}>
                         <Group gap={6} align="center" wrap="nowrap" style={{ minWidth: 0 }}>
-                          {item.isNonVeg ? (
-                            <IconMeat size={15} color="#e03131" style={{ flexShrink: 0 }} />
-                          ) : (
-                            <IconLeaf size={15} color="#2f9e44" style={{ flexShrink: 0 }} />
-                          )}
+                          <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
                           <Text fw={600} size="sm" lineClamp={1}>
                             {item.name}
                           </Text>
@@ -498,11 +500,7 @@ export function OrderMoreDrawer({
                   <Group justify="space-between" align="center">
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <Group gap={6} align="center" wrap="nowrap">
-                        {ci.item.isNonVeg ? (
-                          <IconMeat size={14} color="#e03131" style={{ flexShrink: 0 }} />
-                        ) : (
-                          <IconLeaf size={14} color="#2f9e44" style={{ flexShrink: 0 }} />
-                        )}
+                        <VegNonVegIcon isNonVeg={ci.item.isNonVeg} size={13} />
                         <Text fw={600} size="sm" lineClamp={1}>
                           {ci.item.name}
                         </Text>
@@ -517,10 +515,51 @@ export function OrderMoreDrawer({
                           +{ci.addonNames.join(", ")}
                         </Text>
                       )}
-                      {ci.note && (
-                        <Text size="xs" c="dimmed" style={{ fontStyle: "italic" }}>
-                          Note: "{ci.note}"
-                        </Text>
+                      {ci.note ? (
+                        <Paper
+                          mt={4}
+                          p="2px 6px"
+                          radius="xs"
+                          withBorder
+                          style={{
+                            backgroundColor: "#fff9db",
+                            borderColor: "#ffe066",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <IconNotes size={11} color="#f59f00" />
+                          <Text size="10px" fw={600} c="yellow.9">
+                            Note: {ci.note}
+                          </Text>
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            color="gray"
+                            onClick={() => handleUpdateNote(ci.cartId, "")}
+                            title="Remove note"
+                          >
+                            <IconX size={10} />
+                          </ActionIcon>
+                        </Paper>
+                      ) : (
+                        <Button
+                          variant="subtle"
+                          color="gray"
+                          size="compact-xs"
+                          leftSection={<IconNotes size={10} />}
+                          mt={2}
+                          style={{ fontSize: "10px", height: "18px", padding: "0 4px" }}
+                          onClick={() => {
+                            const input = window.prompt(`Special instructions for ${ci.item.name}:`);
+                            if (input !== null) {
+                              handleUpdateNote(ci.cartId, input.trim());
+                            }
+                          }}
+                        >
+                          + Add instruction note
+                        </Button>
                       )}
                     </div>
 

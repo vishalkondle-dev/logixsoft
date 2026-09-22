@@ -443,7 +443,7 @@ app.post(
       }
     }
 
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       parsed.data.outletId,
       {
@@ -588,7 +588,7 @@ app.post(
     }
 
     await invalidateReports(kv(c), restaurantId);
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       parsed.data.outletId,
       {
@@ -1080,7 +1080,7 @@ app.post(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       order.outletId,
       {
@@ -1228,13 +1228,18 @@ app.patch(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       order.outletId,
       {
         topic: 'KITCHEN',
         type: 'ITEM_STATUS_CHANGED',
-        data: { orderId, orderItemId, targetStatus },
+        data: {
+          orderId,
+          orderItemId,
+          targetStatus,
+          customerPhone: order.customerPhone,
+        },
       },
       order.customerPhone
     );
@@ -1298,7 +1303,7 @@ app.patch(
 
     await recomputeTotal(db, orderId);
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       order.outletId,
       {
@@ -1358,7 +1363,7 @@ app.delete(
 
     await recomputeTotal(db, orderId);
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       order.outletId,
       {
@@ -1494,7 +1499,7 @@ app.post(
     }
 
     await invalidateReports(kv(c), restaurantId);
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       order.outletId,
       {
@@ -1597,11 +1602,16 @@ app.post(
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
     await invalidateReports(kv(c), restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'ALL',
-      type: 'TABLE_FREED',
-      data: { orderId, tableNo: order.tableNo },
-    });
+    await broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'ALL',
+        type: 'TABLE_FREED',
+        data: { orderId, tableNo: order.tableNo, customerPhone: order.customerPhone },
+      },
+      order.customerPhone
+    );
     return c.json(result);
   } finally {
     await close();
@@ -1719,7 +1729,12 @@ app.post(
   const { db, close } = getDb(c);
   try {
     const [order] = await db
-      .select({ status: appSchema.saleOrder.status, outletId: appSchema.saleOrder.outletId, tableNo: appSchema.saleOrder.tableNo })
+      .select({
+        status: appSchema.saleOrder.status,
+        outletId: appSchema.saleOrder.outletId,
+        tableNo: appSchema.saleOrder.tableNo,
+        customerPhone: appSchema.saleOrder.customerPhone,
+      })
       .from(appSchema.saleOrder)
       .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
     if (!order) return c.json({ error: 'Not Found' }, 404);
@@ -1768,11 +1783,16 @@ app.post(
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
     await invalidateReports(kv(c), restaurantId);
-    broadcastToOutlet(c.env, order.outletId, {
-      topic: 'ALL',
-      type: 'ORDER_VOIDED',
-      data: { orderId, tableNo: order.tableNo },
-    });
+    await broadcastToOutlet(
+      c.env,
+      order.outletId,
+      {
+        topic: 'ALL',
+        type: 'ORDER_VOIDED',
+        data: { orderId, tableNo: order.tableNo, customerPhone: order.customerPhone },
+      },
+      order.customerPhone
+    );
     return c.json(result);
   } finally {
     await close();
@@ -1909,7 +1929,7 @@ app.patch(
     });
 
     const result = await getOrderWithItems(db, orderId, restaurantId);
-    broadcastToOutlet(
+    await broadcastToOutlet(
       c.env,
       order.outletId,
       {

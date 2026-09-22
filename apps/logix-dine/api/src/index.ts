@@ -9,6 +9,7 @@ import { timing } from 'hono/timing';
 import { trimTrailingSlash } from 'hono/trailing-slash';
 import { createOpenApiDocument, openApi } from 'hono-zod-openapi';
 import * as z from 'zod';
+import { generateId } from '@logixsoft/helpers/crypto';
 import { eq, and } from 'drizzle-orm';
 import { HealthResponseSchema } from '@logixsoft/logix-dine/schemas/health';
 import {
@@ -238,6 +239,32 @@ const handleVerifyOtp = async (c: any) => {
 
   const { auth, db, close } = getAuthInstance(c);
   try {
+    // DEV: When bypass is enabled, ensure OTP 123456 exists and is valid
+    const isBypass = (c.env?.DEV_OTP_BYPASS ?? process.env.DEV_OTP_BYPASS) === 'true';
+    if (isBypass && parsed.otp === '123456') {
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
+      const [existingV] = await db
+        .select()
+        .from(verification)
+        .where(eq(verification.identifier, normalizedPhone));
+      if (existingV) {
+        await db
+          .update(verification)
+          .set({ value: '123456:0', expiresAt, updatedAt: now })
+          .where(eq(verification.identifier, normalizedPhone));
+      } else {
+        await db.insert(verification).values({
+          id: generateId('ver'),
+          identifier: normalizedPhone,
+          value: '123456:0',
+          expiresAt,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
     // 1. Call Better Auth to verify phone OTP and establish session
     const verifyRes = await auth.api.verifyPhoneNumber({
       body: {

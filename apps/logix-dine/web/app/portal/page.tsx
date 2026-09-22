@@ -47,11 +47,11 @@ import {
   IconCurrencyRupee,
   IconShieldCheck,
   IconShare,
-  IconMeat,
-  IconLeaf,
   IconRefresh,
   IconBolt,
+  IconNotes,
 } from "@tabler/icons-react";
+import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "@/lib/auth-context";
 import { useCustomerPortal, useUpdateCustomerProfile } from "@/lib/queries";
@@ -89,7 +89,12 @@ function CustomerPortalInner() {
   const activeTab = ["active", "past", "profile"].includes(rawTab) ? rawTab : "active";
 
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
-  const { data, isLoading: dataLoading, isRefetching, refetch } = useCustomerPortal();
+  const { data, isLoading: dataLoading, isRefetching, refetch } = useCustomerPortal({
+    refetchInterval: (query) => {
+      const active = query.state.data?.activeOrders;
+      return active && active.length > 0 ? 4000 : false;
+    },
+  });
   const updateProfileMutation = useUpdateCustomerProfile();
 
   // Profile Edit Modal state
@@ -317,7 +322,7 @@ ${itemsText}
                       variant="light"
                       size="xs"
                       leftSection={
-                        isPureVeg ? <IconLeaf size={11} /> : isNonVeg ? <IconMeat size={11} /> : <IconToolsKitchen2 size={11} />
+                        isPureVeg ? <VegNonVegIcon isNonVeg={false} size={11} /> : isNonVeg ? <VegNonVegIcon isNonVeg={true} size={11} /> : <IconToolsKitchen2 size={11} />
                       }
                       style={{ textTransform: "none" }}
                     >
@@ -655,17 +660,38 @@ ${itemsText}
                               Itemized Receipt
                             </Text>
 
-                            {order.items.map((item) => (
-                              <Group key={item.id} justify="space-between" align="center">
-                                <Group gap="xs" wrap="nowrap">
-                                  <Badge size="xs" circle color="gray" variant="light">
-                                    {item.qty}
-                                  </Badge>
-                                  <Text size="xs" fw={500}>
-                                    {item.name}
+                            {order.note && (
+                              <Paper p="xs" radius="xs" style={{ backgroundColor: "rgba(175, 115, 215, 0.08)", border: "1px dashed #af73d7" }}>
+                                <Group gap={6} align="flex-start" wrap="nowrap">
+                                  <IconNotes size={13} color="#af73d7" style={{ marginTop: 2, flexShrink: 0 }} />
+                                  <Text size="xs" c="dark.4">
+                                    <strong style={{ color: "#af73d7" }}>Order Note:</strong> {order.note}
                                   </Text>
                                 </Group>
-                                <Text size="xs" fw={600}>
+                              </Paper>
+                            )}
+
+                            {order.items.map((item) => (
+                              <Group key={item.id} justify="space-between" align="flex-start">
+                                <Group gap="xs" wrap="nowrap" align="flex-start">
+                                  <Box style={{ flexShrink: 0, marginTop: 3 }}>
+                                    <VegNonVegIcon isNonVeg={item.isNonVeg} size={12} />
+                                  </Box>
+                                  <Badge size="xs" circle color="gray" variant="light" style={{ flexShrink: 0 }}>
+                                    {item.qty}
+                                  </Badge>
+                                  <div>
+                                    <Text size="xs" fw={500}>
+                                      {item.name}
+                                    </Text>
+                                    {item.note && (
+                                      <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
+                                        Note: {item.note}
+                                      </Text>
+                                    )}
+                                  </div>
+                                </Group>
+                                <Text size="xs" fw={600} style={{ flexShrink: 0 }}>
                                   {formatINR(item.pricePaise * item.qty)}
                                 </Text>
                               </Group>
@@ -774,7 +800,7 @@ ${itemsText}
                       color={isPureVeg ? "green" : isNonVeg ? "red" : "violet"}
                       variant="light"
                     >
-                      {isPureVeg ? <IconLeaf size={20} /> : isNonVeg ? <IconMeat size={20} /> : <IconToolsKitchen2 size={20} />}
+                      {isPureVeg ? <VegNonVegIcon isNonVeg={false} size={18} /> : isNonVeg ? <VegNonVegIcon isNonVeg={true} size={18} /> : <IconToolsKitchen2 size={20} />}
                     </ThemeIcon>
                     <div>
                       <Text size="xs" c="dimmed" fw={600}>
@@ -846,15 +872,7 @@ ${itemsText}
                       <Paper key={dish.name} p="xs" withBorder radius="sm" style={{ background: "#fdfdfd" }}>
                         <Group justify="space-between" align="center" wrap="nowrap">
                           <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-                            <ThemeIcon
-                              size="sm"
-                              radius="xl"
-                              color={dish.isNonVeg ? "red" : "green"}
-                              variant="light"
-                              style={{ flexShrink: 0 }}
-                            >
-                              {dish.isNonVeg ? <IconMeat size={12} /> : <IconLeaf size={12} />}
-                            </ThemeIcon>
+                            <VegNonVegIcon isNonVeg={dish.isNonVeg} size={14} />
                             <Box style={{ minWidth: 0 }}>
                               <Text size="xs" fw={700} lineClamp={1}>
                                 {dish.name}

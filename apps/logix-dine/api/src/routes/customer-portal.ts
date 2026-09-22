@@ -156,6 +156,7 @@ app.get(
           outletAddress: outlet?.address || null,
           outletPhone: outlet?.phone || rest?.phone || null,
           tableNo: o.tableNo || 'Takeaway',
+          customerPhone: o.customerPhone,
           status: o.status,
           orderStatus: o.orderStatus || 'ORDERED',
           subtotalPaise: o.subtotalPaise || 0,
@@ -605,11 +606,17 @@ app.post(
 
       const newSubtotal = allActiveItems.reduce((sum: number, it: any) => sum + it.pricePaiseSnapshot * it.qty, 0);
 
+      const trimmedRoundNote = parsed.data.roundNote?.trim();
+      const updatedOrderNote = trimmedRoundNote
+        ? (order.note ? `${order.note}\n[Round ${nextRound}]: ${trimmedRoundNote}` : `[Round ${nextRound}]: ${trimmedRoundNote}`)
+        : order.note;
+
       await db
         .update(appSchema.saleOrder)
         .set({
           subtotalPaise: newSubtotal,
           orderStatus: 'ORDERED',
+          note: updatedOrderNote,
           updatedAt: now,
           updatedBy: phone,
         })

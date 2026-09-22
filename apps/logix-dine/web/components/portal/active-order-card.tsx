@@ -24,14 +24,14 @@ import {
   IconBellRinging,
   IconPlus,
   IconBrandWhatsapp,
-  IconMeat,
-  IconLeaf,
   IconCheck,
   IconChecks,
   IconCircleDot,
   IconAlertCircle,
   IconShare,
+  IconNotes,
 } from "@tabler/icons-react";
+import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type { CustomerPortalOrder, CustomerOrderItem } from "@/lib/api-client";
 import { CallWaiterModal } from "./call-waiter-modal";
 import { BillBreakdownModal } from "./bill-breakdown-modal";
@@ -346,6 +346,33 @@ ${itemsText}
           </Paper>
         )}
 
+        {/* Order Instructions / Kitchen Notes Banner */}
+        {order.note && (
+          <Paper
+            mt="xs"
+            p="xs"
+            radius="md"
+            style={{
+              backgroundColor: "rgba(175, 115, 215, 0.08)",
+              border: "1px dashed #af73d7",
+            }}
+          >
+            <Group gap={8} align="flex-start" wrap="nowrap">
+              <ThemeIcon size={24} radius="md" color="violet" variant="light" style={{ flexShrink: 0, marginTop: 1 }}>
+                <IconNotes size={14} />
+              </ThemeIcon>
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <Text size="xs" fw={700} c="violet.9">
+                  Order Instructions:
+                </Text>
+                <Text size="xs" fw={500} c="dark.4" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  {order.note}
+                </Text>
+              </Box>
+            </Group>
+          </Paper>
+        )}
+
         {/* Quick Action Buttons Bar */}
         <Group justify="space-between" align="center" mt="sm" wrap="wrap" gap="xs">
           <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
@@ -438,11 +465,9 @@ ${itemsText}
                     <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
                       {/* Left: Veg/Non-veg + Qty + Name + Status */}
                       <Group gap="xs" wrap="nowrap" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
-                        {item.isNonVeg ? (
-                          <IconMeat size={15} color="#e03131" style={{ flexShrink: 0, marginTop: 3 }} />
-                        ) : (
-                          <IconLeaf size={15} color="#2f9e44" style={{ flexShrink: 0, marginTop: 3 }} />
-                        )}
+                        <Box style={{ flexShrink: 0, marginTop: 4 }}>
+                          <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
+                        </Box>
 
                         <Badge size="sm" circle color="dinePrimary" variant="light" style={{ flexShrink: 0 }}>
                           {item.qty}
@@ -468,11 +493,27 @@ ${itemsText}
                             </Text>
                           )}
 
-                          {/* Note */}
+                          {/* Item Cooking Note */}
                           {item.note && (
-                            <Text size="xs" c="dimmed" lineClamp={1} style={{ fontStyle: "italic" }}>
-                              Note: {item.note}
-                            </Text>
+                            <Paper
+                              mt={4}
+                              p="3px 8px"
+                              radius="sm"
+                              withBorder
+                              style={{
+                                backgroundColor: "#fff9db",
+                                borderColor: "#ffe066",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 5,
+                                maxWidth: "100%",
+                              }}
+                            >
+                              <IconNotes size={12} color="#f59f00" style={{ flexShrink: 0 }} />
+                              <Text size="xs" fw={600} c="yellow.9" style={{ wordBreak: "break-word" }}>
+                                Note: {item.note}
+                              </Text>
+                            </Paper>
                           )}
                         </Box>
                       </Group>

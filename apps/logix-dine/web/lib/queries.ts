@@ -499,11 +499,14 @@ export function useSendCustomerWhatsApp(restaurantId: string, phone: string) {
 
 // ─── Customer Portal Hooks ───────────────────────────────────────────────────
 
-export function useCustomerPortal() {
+export function useCustomerPortal(options?: {
+  refetchInterval?: number | false | ((query: any) => number | false | undefined);
+}) {
   return useQuery({
     queryKey: qk.customerPortal(),
     queryFn: () => getCustomerPortal(),
-    staleTime: 60_000,
+    staleTime: 5_000,
+    refetchInterval: options?.refetchInterval,
   });
 }
 

@@ -83,14 +83,19 @@ function formatOrderWhatsAppMessage(
   outletName: string | null | undefined,
   order: any,
   items: any[],
-  isSettled = false
+  isSettled = false,
+  delivery?: any
 ): string {
-  const tableStr = order.tableNo
-    ? order.tableNo.toLowerCase() === 'takeaway'
-      ? 'Takeaway'
-      : `Table: ${order.tableNo}`
-    : 'Takeaway';
-  const totalRupees = ((order.subtotalPaise ?? 0) / 100).toFixed(0);
+  const tableStr = order.orderType === 'DELIVERY'
+    ? '🛵 Delivery'
+    : order.tableNo
+      ? order.tableNo.toLowerCase() === 'takeaway'
+        ? 'Takeaway'
+        : `Table: ${order.tableNo}`
+      : 'Takeaway';
+  const pkgPaise = order.packagingChargePaise || 0;
+  const delPaise = order.deliveryChargePaise || 0;
+  const totalRupees = (((order.subtotalPaise ?? 0) + pkgPaise + delPaise) / 100).toFixed(0);
 
   const itemsList = items
     .filter((item) => item.status !== 'CANCELLED')
@@ -108,8 +113,13 @@ function formatOrderWhatsAppMessage(
   const title = isSettled ? '🧾 *Payment Receipt*' : '🍽️ *Order Confirmed!*';
   const header = `*${restaurantName}*${outletName ? ` (${outletName})` : ''}`;
   const paymentLine = isSettled && order.method ? `\n💳 Payment: *${order.method}*` : '';
+  const deliveryAddrLine = delivery?.addressLine1 ? `\n📍 Address: *${delivery.addressLine1}${delivery.landmark ? ` (${delivery.landmark})` : ''}*` : '';
+  const otpLine = delivery?.deliveryOtp ? `\n🔐 Delivery PIN: *${delivery.deliveryOtp}*` : '';
+  const chargesLine = (pkgPaise > 0 || delPaise > 0)
+    ? `\nPackaging: ₹${(pkgPaise / 100).toFixed(0)} | Delivery: ₹${(delPaise / 100).toFixed(0)}`
+    : '';
 
-  return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}\n\n*Items:*\n${itemsList}\n\n*Total:* ₹${totalRupees}\n\nThank you for dining with us!`;
+  return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}${deliveryAddrLine}${otpLine}\n\n*Items:*\n${itemsList}${chargesLine}\n\n*Total:* ₹${totalRupees}\n\nThank you!`;
 }
 
 const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
@@ -129,16 +139,22 @@ async function recomputeTotal(db: any, orderId: string) {
     .from(appSchema.saleOrderItem)
     .where(eq(appSchema.saleOrderItem.orderId, orderId));
   const activeItems = items.filter((item: any) => item.status !== 'CANCELLED');
-  const total = activeItems.reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
+  const itemsTotal = activeItems.reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
   const paidTotal = activeItems
     .filter((item: any) => item.paymentStatus === 'PAID')
     .reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
   const orderStatus = computeOrderStatus(items.map((i: any) => i.status));
 
   const [existingOrder] = await db
-    .select({ status: appSchema.saleOrder.status })
+    .select({
+      status: appSchema.saleOrder.status,
+      packagingChargePaise: appSchema.saleOrder.packagingChargePaise,
+      deliveryChargePaise: appSchema.saleOrder.deliveryChargePaise,
+    })
     .from(appSchema.saleOrder)
     .where(eq(appSchema.saleOrder.id, orderId));
+
+  const total = itemsTotal + (existingOrder?.packagingChargePaise || 0) + (existingOrder?.deliveryChargePaise || 0);
 
   let status = existingOrder?.status;
   if (status !== 'VOID') {
@@ -170,6 +186,11 @@ async function getOrderWithItems(db: any, orderId: string, restaurantId: string)
     .where(eq(appSchema.orderItemAudit.orderId, orderId))
     .orderBy(appSchema.orderItemAudit.createdAt);
 
+  const [del] = await db
+    .select()
+    .from(appSchema.deliveryOrder)
+    .where(eq(appSchema.deliveryOrder.orderId, orderId));
+
   const auditsByItem = new Map<string, any[]>();
   for (const a of audits) {
     const list = auditsByItem.get(a.orderItemId) ?? [];
@@ -186,7 +207,7 @@ async function getOrderWithItems(db: any, orderId: string, restaurantId: string)
     auditsByItem.set(a.orderItemId, list);
   }
 
-  const result = toOrderWithItems(order, items);
+  const result = toOrderWithItems(order, items, del ?? null);
   result.items = result.items.map((item: any) => ({
     ...item,
     audits: auditsByItem.get(item.id) ?? [],
@@ -387,25 +408,116 @@ app.post(
         }
       }
 
-      const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
+      const orderType = parsed.data.orderType || (parsed.data.delivery ? 'DELIVERY' : (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY'));
+      const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
+      const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
+      const isDelivery = orderType === 'DELIVERY';
+      const tableNo = isDelivery ? 'Delivery' : (parsed.data.tableNo ?? null);
+      const customerPhone = parsed.data.customerPhone || parsed.data.delivery?.customerPhone || null;
+      const isTableOrder = Boolean(!isDelivery && tableNo && tableNo.trim() && tableNo !== 'Takeaway');
+      const totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+
       await tx.insert(appSchema.saleOrder).values({
         id,
         restaurantId,
         outletId: parsed.data.outletId,
         orderNo: tokenNo,
-        tableNo: parsed.data.tableNo ?? null,
-        customerPhone: parsed.data.customerPhone ?? null,
+        tableNo,
+        customerPhone,
         status: 'OPEN',
         orderStatus: 'ORDERED',
-        subtotalPaise,
+        subtotalPaise: totalOrderPaise,
         paidPaise: 0,
         note: parsed.data.note ?? null,
+        orderType,
+        packagingChargePaise,
+        deliveryChargePaise,
         tableFreedAt: isTableOrder ? null : now,
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,
         updatedBy: actorPhone,
       });
+
+      let delRow: any = null;
+      if (isDelivery && parsed.data.delivery) {
+        const delInput = parsed.data.delivery;
+        const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
+        let riderName: string | null = null;
+        let riderPhone: string | null = null;
+        let riderVehicleNo: string | null = null;
+        if (delInput.riderId) {
+          const [rider] = await tx.select().from(appSchema.deliveryRider).where(eq(appSchema.deliveryRider.id, delInput.riderId));
+          if (rider) {
+            riderName = rider.name;
+            riderPhone = rider.phone;
+            riderVehicleNo = rider.vehicleNumber;
+          }
+        }
+        delRow = {
+          id: generateId('del'),
+          orderId: id,
+          restaurantId,
+          outletId: parsed.data.outletId,
+          customerName: delInput.customerName,
+          customerPhone: delInput.customerPhone || customerPhone || '',
+          alternatePhone: delInput.alternatePhone || null,
+          addressLine1: delInput.addressLine1,
+          addressLine2: delInput.addressLine2 || null,
+          landmark: delInput.landmark || null,
+          city: delInput.city || '',
+          pincode: delInput.pincode || '',
+          latitude: null,
+          longitude: null,
+          deliveryNotes: delInput.deliveryNotes || null,
+          deliveryMode: delInput.deliveryMode || 'IN_HOUSE',
+          deliveryProvider: null,
+          riderId: delInput.riderId || null,
+          riderName,
+          riderPhone,
+          riderVehicleNo,
+          deliveryOtp,
+          status: delInput.riderId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
+          estimatedMinutes: 35,
+          assignedAt: delInput.riderId ? now : null,
+          pickedUpAt: null,
+          deliveredAt: null,
+          failedReason: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await tx.insert(appSchema.deliveryOrder).values(delRow);
+
+        const custPhone = delInput.customerPhone || customerPhone;
+        if (custPhone && delInput.addressLine1) {
+          const [existingAddr] = await tx
+            .select({ id: appSchema.customerAddress.id })
+            .from(appSchema.customerAddress)
+            .where(and(
+              eq(appSchema.customerAddress.customerPhone, custPhone),
+              eq(appSchema.customerAddress.addressLine1, delInput.addressLine1)
+            ))
+            .limit(1);
+
+          if (!existingAddr) {
+            await tx.insert(appSchema.customerAddress).values({
+              id: generateId('addr'),
+              customerPhone: custPhone,
+              label: 'Home',
+              receiverName: delInput.customerName || null,
+              receiverPhone: custPhone,
+              addressLine1: delInput.addressLine1,
+              addressLine2: delInput.addressLine2 || null,
+              landmark: delInput.landmark || null,
+              city: delInput.city || '',
+              pincode: delInput.pincode || '',
+              isDefault: true,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+        }
+      }
 
       if (orderItemsToInsert.length > 0) {
         await tx.insert(appSchema.saleOrderItem).values(orderItemsToInsert);
@@ -421,20 +533,40 @@ app.post(
         }));
         await tx.insert(appSchema.orderItemAudit).values(audits);
       }
+
+      (tx as any)._delRow = delRow;
+      (tx as any)._orderType = orderType;
+      (tx as any)._packagingChargePaise = packagingChargePaise;
+      (tx as any)._deliveryChargePaise = deliveryChargePaise;
+      (tx as any)._tableNo = tableNo;
+      (tx as any)._customerPhone = customerPhone;
+      (tx as any)._isTableOrder = isTableOrder;
+      (tx as any)._totalOrderPaise = totalOrderPaise;
     });
 
-    // Build response from inserted data — no extra SELECT round-trip
-    const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
+    const orderType = parsed.data.orderType || (parsed.data.delivery ? 'DELIVERY' : (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY'));
+    const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
+    const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
+    const isDelivery = orderType === 'DELIVERY';
+    const tableNo = isDelivery ? 'Delivery' : (parsed.data.tableNo ?? null);
+    const customerPhone = parsed.data.customerPhone || parsed.data.delivery?.customerPhone || null;
+    const isTableOrder = Boolean(!isDelivery && tableNo && tableNo.trim() && tableNo !== 'Takeaway');
+    const totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+
+    let [insertedDel] = isDelivery
+      ? await db.select().from(appSchema.deliveryOrder).where(eq(appSchema.deliveryOrder.orderId, id))
+      : [null];
+
     const orderRow = {
       id,
       restaurantId,
       outletId: parsed.data.outletId,
       orderNo: tokenNo,
-      tableNo: parsed.data.tableNo ?? null,
-      customerPhone: parsed.data.customerPhone ?? null,
+      tableNo,
+      customerPhone,
       status: 'OPEN',
       orderStatus: 'ORDERED',
-      subtotalPaise,
+      subtotalPaise: totalOrderPaise,
       paidPaise: 0,
       note: parsed.data.note ?? null,
       method: null,
@@ -443,17 +575,24 @@ app.post(
       settledAt: null,
       settledByUserId: null,
       tableFreedAt: isTableOrder ? null : now,
+      orderType,
+      packagingChargePaise,
+      deliveryChargePaise,
       createdAt: now,
       updatedAt: now,
       createdBy: actorPhone,
       updatedBy: actorPhone,
     };
-    const result = toOrderWithItems(orderRow, orderItemsToInsert.map((oi) => ({
-      ...oi,
-      id: oi.id,
-      orderId: id,
-      updatedAt: now,
-    })));
+    const result = toOrderWithItems(
+      orderRow,
+      orderItemsToInsert.map((oi) => ({
+        ...oi,
+        id: oi.id,
+        orderId: id,
+        updatedAt: now,
+      })),
+      insertedDel ?? null
+    );
 
     // ── Update KV sequence ───────────────────────────────────────────────────
     await cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq);
@@ -471,7 +610,8 @@ app.post(
             parsed.data.outletId,
             result.order,
             result.items,
-            false
+            false,
+            insertedDel
           );
           await sendWhatsAppText(
             parsed.data.customerPhone!,
@@ -617,18 +757,108 @@ app.post(
           });
         }
       }
-      const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
+      const orderType = parsed.data.orderType || (parsed.data.delivery ? 'DELIVERY' : (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY'));
+      const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
+      const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
+      const isDelivery = orderType === 'DELIVERY';
+      const tableNo = isDelivery ? 'Delivery' : (parsed.data.tableNo ?? null);
+      const customerPhone = parsed.data.customerPhone || parsed.data.delivery?.customerPhone || null;
+      const isTableOrder = Boolean(!isDelivery && tableNo && tableNo.trim() && tableNo !== 'Takeaway');
+      const totalToPayPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+
       // Insert as PAID directly — no intermediate OPEN state
       await tx.insert(appSchema.saleOrder).values({
         id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
-        tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
+        tableNo, customerPhone,
         status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash',
-        subtotalPaise, paidPaise: subtotalPaise,
+        subtotalPaise: totalToPayPaise, paidPaise: totalToPayPaise,
         note: parsed.data.note ?? null, settledAt: now, settledByUserId: user.id,
         tableFreedAt: isTableOrder ? null : now,
+        orderType, packagingChargePaise, deliveryChargePaise,
         kotPrintedAt: now, createdAt: now, updatedAt: now,
         createdBy: actorPhone, updatedBy: actorPhone,
       });
+
+      let delRow: any = null;
+      if (isDelivery && parsed.data.delivery) {
+        const delInput = parsed.data.delivery;
+        const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
+        let riderName: string | null = null;
+        let riderPhone: string | null = null;
+        let riderVehicleNo: string | null = null;
+        if (delInput.riderId) {
+          const [rider] = await tx.select().from(appSchema.deliveryRider).where(eq(appSchema.deliveryRider.id, delInput.riderId));
+          if (rider) {
+            riderName = rider.name;
+            riderPhone = rider.phone;
+            riderVehicleNo = rider.vehicleNumber;
+          }
+        }
+        delRow = {
+          id: generateId('del'),
+          orderId: id,
+          restaurantId,
+          outletId: parsed.data.outletId,
+          customerName: delInput.customerName,
+          customerPhone: delInput.customerPhone || customerPhone || '',
+          alternatePhone: delInput.alternatePhone || null,
+          addressLine1: delInput.addressLine1,
+          addressLine2: delInput.addressLine2 || null,
+          landmark: delInput.landmark || null,
+          city: delInput.city || '',
+          pincode: delInput.pincode || '',
+          latitude: null,
+          longitude: null,
+          deliveryNotes: delInput.deliveryNotes || null,
+          deliveryMode: delInput.deliveryMode || 'IN_HOUSE',
+          deliveryProvider: null,
+          riderId: delInput.riderId || null,
+          riderName,
+          riderPhone,
+          riderVehicleNo,
+          deliveryOtp,
+          status: delInput.riderId ? 'ASSIGNED' : 'PENDING_ASSIGNMENT',
+          estimatedMinutes: 35,
+          assignedAt: delInput.riderId ? now : null,
+          pickedUpAt: null,
+          deliveredAt: null,
+          failedReason: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await tx.insert(appSchema.deliveryOrder).values(delRow);
+
+        const custPhone = delInput.customerPhone || customerPhone;
+        if (custPhone && delInput.addressLine1) {
+          const [existingAddr] = await tx
+            .select({ id: appSchema.customerAddress.id })
+            .from(appSchema.customerAddress)
+            .where(and(
+              eq(appSchema.customerAddress.customerPhone, custPhone),
+              eq(appSchema.customerAddress.addressLine1, delInput.addressLine1)
+            ))
+            .limit(1);
+
+          if (!existingAddr) {
+            await tx.insert(appSchema.customerAddress).values({
+              id: generateId('addr'),
+              customerPhone: custPhone,
+              label: 'Home',
+              receiverName: delInput.customerName || null,
+              receiverPhone: custPhone,
+              addressLine1: delInput.addressLine1,
+              addressLine2: delInput.addressLine2 || null,
+              landmark: delInput.landmark || null,
+              city: delInput.city || '',
+              pincode: delInput.pincode || '',
+              isDefault: true,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
+        }
+      }
+
       if (orderItemsToInsert.length > 0) {
         await tx.insert(appSchema.saleOrderItem).values(orderItemsToInsert);
         const audits = orderItemsToInsert.map((oi) => ({
@@ -648,30 +878,51 @@ app.post(
     // Update KV sequence
     await cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq);
 
-    // Build response from inserted data — no SELECT round-trip
-    const isTableOrder = Boolean(parsed.data.tableNo && parsed.data.tableNo.trim() && parsed.data.tableNo !== 'Takeaway');
+    const orderType = parsed.data.orderType || (parsed.data.delivery ? 'DELIVERY' : (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY'));
+    const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
+    const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
+    const isDelivery = orderType === 'DELIVERY';
+    const tableNo = isDelivery ? 'Delivery' : (parsed.data.tableNo ?? null);
+    const customerPhone = parsed.data.customerPhone || parsed.data.delivery?.customerPhone || null;
+    const isTableOrder = Boolean(!isDelivery && tableNo && tableNo.trim() && tableNo !== 'Takeaway');
+    const totalToPayPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+
+    let [insertedDel] = isDelivery
+      ? await db.select().from(appSchema.deliveryOrder).where(eq(appSchema.deliveryOrder.orderId, id))
+      : [null];
+
     const orderRow = {
       id, restaurantId, outletId: parsed.data.outletId, orderNo: tokenNo,
-      tableNo: parsed.data.tableNo ?? null, customerPhone: parsed.data.customerPhone ?? null,
+      tableNo, customerPhone,
       status: 'PAID', orderStatus: 'ORDERED', method: parsed.data.method ?? 'Cash',
-      subtotalPaise, paidPaise: subtotalPaise,
+      subtotalPaise: totalToPayPaise, paidPaise: totalToPayPaise,
       note: parsed.data.note ?? null, kotPrintedAt: now, readyAt: null,
       settledAt: now, settledByUserId: user.id,
       tableFreedAt: isTableOrder ? null : now,
+      orderType, packagingChargePaise, deliveryChargePaise,
       createdAt: now, updatedAt: now,
       createdBy: actorPhone, updatedBy: actorPhone,
     };
-    const result = toOrderWithItems(orderRow, orderItemsToInsert.map((oi) => ({ ...oi, updatedAt: now })));
+    const result = toOrderWithItems(
+      orderRow,
+      orderItemsToInsert.map((oi) => ({ ...oi, updatedAt: now })),
+      insertedDel ?? null
+    );
 
     // WA notification (non-blocking)
-    const targetPhone = parsed.data.customerPhone;
+    const targetPhone = customerPhone || parsed.data.customerPhone;
     if (targetPhone && result) {
       const waWork = (async () => {
         try {
           const [rest] = await db.select({ name: appSchema.restaurant.name })
             .from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
           const message = formatOrderWhatsAppMessage(
-            rest?.name ?? 'Restaurant', parsed.data.outletId, result.order, result.items, true
+            rest?.name ?? 'Restaurant',
+            parsed.data.outletId,
+            result.order,
+            result.items,
+            true,
+            insertedDel
           );
           await sendWhatsAppText(targetPhone, message, undefined,
             { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
@@ -767,6 +1018,10 @@ app.get(
     const allAudits = orderIds.length
       ? await db.select().from(appSchema.orderItemAudit).where(sql`${appSchema.orderItemAudit.orderId} IN ${orderIds}`)
       : [];
+    const allDeliveries = orderIds.length
+      ? await db.select().from(appSchema.deliveryOrder).where(sql`${appSchema.deliveryOrder.orderId} IN ${orderIds}`)
+      : [];
+    const deliveriesByOrder = new Map<string, any>(allDeliveries.map((d: any) => [d.orderId, d]));
 
     const itemsByOrder = new Map<string, any[]>();
     for (const item of allItems) {
@@ -792,7 +1047,7 @@ app.get(
     }
 
     const results = orders.map((order: any) => {
-      const res = toOrderWithItems(order, itemsByOrder.get(order.id) ?? []);
+      const res = toOrderWithItems(order, itemsByOrder.get(order.id) ?? [], deliveriesByOrder.get(order.id) ?? null);
       res.items = res.items.map((it: any) => ({
         ...it,
         audits: auditsByItem.get(it.id) ?? [],
@@ -858,6 +1113,10 @@ app.get(
     const items = orderIds.length
       ? await db.select().from(appSchema.saleOrderItem).where(sql`${appSchema.saleOrderItem.orderId} IN ${orderIds}`)
       : [];
+    const allDeliveries = orderIds.length
+      ? await db.select().from(appSchema.deliveryOrder).where(sql`${appSchema.deliveryOrder.orderId} IN ${orderIds}`)
+      : [];
+    const deliveriesByOrder = new Map<string, any>(allDeliveries.map((d: any) => [d.orderId, d]));
 
     const itemsByOrder = new Map<string, any[]>();
     for (const item of items) {
@@ -866,7 +1125,7 @@ app.get(
       itemsByOrder.set(item.orderId, list);
     }
 
-    const result = orders.map((order: any) => toOrderWithItems(order, itemsByOrder.get(order.id) ?? []));
+    const result = orders.map((order: any) => toOrderWithItems(order, itemsByOrder.get(order.id) ?? [], deliveriesByOrder.get(order.id) ?? null));
     return c.json(result);
   } finally {
     await close();

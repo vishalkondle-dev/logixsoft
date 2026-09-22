@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Title, Stack, Paper, Group, Text, Badge, Select, Button,
   Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip, Radio,
@@ -58,22 +58,29 @@ export default function OrdersPage() {
 
   const enabled = !!restaurantId && (allOutlets || !!outletId);
 
-  // Distinguish whether statusFilter is an orderStatus (ORDERED, PREPARING, etc.) or a billing status (OPEN, PARTIAL, PAID, VOID)
+  const isDeliveryFilter = statusFilter === "DELIVERY";
   const isBillingStatus =
     statusFilter === "OPEN" ||
     statusFilter === "PARTIAL" ||
     statusFilter === "PAID" ||
     statusFilter === "VOID";
-  const { data: orders = [], isLoading: loading, refetch } = useOrders(
+  const { data: rawOrders = [], isLoading: loading, refetch } = useOrders(
     restaurantId,
     {
       status: isBillingStatus ? statusFilter : undefined,
-      orderStatus: !isBillingStatus && statusFilter ? statusFilter : undefined,
+      orderStatus: !isBillingStatus && !isDeliveryFilter && statusFilter ? statusFilter : undefined,
       outletId: outletId ?? undefined,
       limit: 100,
     },
     enabled,
   );
+
+  const orders = useMemo(() => {
+    if (!isDeliveryFilter) return rawOrders;
+    return rawOrders.filter((entry: any) =>
+      entry.order?.orderType === "DELIVERY" || Boolean(entry.delivery) || entry.order?.tableNo === "Delivery"
+    );
+  }, [rawOrders, isDeliveryFilter]);
 
   const handleReprint = async (type: "KOT" | "BILL") => {
     if (!selected || !restaurant) return;
@@ -249,6 +256,9 @@ export default function OrdersPage() {
             value={statusFilter}
             onChange={setStatusFilter}
             data={[
+              { group: "Order Type", items: [
+                { value: "DELIVERY", label: "🛵 Delivery" },
+              ]},
               { group: "Order Lifecycle", items: [
                 { value: "ORDERED", label: "Ordered" },
                 { value: "PREPARING", label: "Preparing" },
@@ -284,7 +294,8 @@ export default function OrdersPage() {
             const paidPaise = order.paidPaise ?? (order.status === "PAID" ? order.subtotalPaise : 0);
             const duePaise = Math.max(0, (order.subtotalPaise || 0) - paidPaise);
             const maxRound = (items || []).reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
-            const isTable = Boolean(order.tableNo && order.tableNo !== "Takeaway");
+            const isDelivery = order.orderType === "DELIVERY" || Boolean(entry.delivery) || order.tableNo === "Delivery";
+            const isTable = Boolean(!isDelivery && order.tableNo && order.tableNo !== "Takeaway");
             const isTableFreed = Boolean(order.tableFreedAt);
 
             return (
@@ -303,11 +314,32 @@ export default function OrdersPage() {
                         {order.id}
                       </Badge>
                     )}
-                    {order.tableNo && (
+                    {isDelivery ? (
+                      <Badge size="xs" color="teal" variant="filled">
+                        🛵 Delivery
+                      </Badge>
+                    ) : order.tableNo ? (
                       <Badge size="xs" variant="outline">
                         {order.tableNo === "Takeaway" ? "Takeaway" : `T: ${order.tableNo}`}
                       </Badge>
+                    ) : null}
+
+                    {isDelivery && entry.delivery?.status && (
+                      <Badge
+                        size="xs"
+                        variant="light"
+                        color={entry.delivery.status === "DELIVERED" ? "green" : entry.delivery.status === "OUT_FOR_DELIVERY" ? "orange" : "blue"}
+                      >
+                        {entry.delivery.status === "OUT_FOR_DELIVERY" ? "🛵 Out" : entry.delivery.status === "DELIVERED" ? "Delivered" : entry.delivery.status}
+                      </Badge>
                     )}
+
+                    {isDelivery && entry.delivery?.riderName && (
+                      <Badge size="xs" variant="outline" color="blue">
+                        👤 {entry.delivery.riderName}
+                      </Badge>
+                    )}
+
                     {isTable && (
                       <Badge
                         size="xs"
@@ -481,6 +513,51 @@ export default function OrdersPage() {
                     View Profile
                   </Button>
                 </Group>
+              )}
+
+              {/* Delivery Details Card if delivery order */}
+              {(Boolean(selected.delivery) || selected.order?.orderType === "DELIVERY" || selected.order?.tableNo === "Delivery") && (
+                <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }}>
+                  <Group justify="space-between" align="center" mb={6}>
+                    <Text size="xs" fw={700} c="teal.9">
+                      🛵 DELIVERY DETAILS
+                    </Text>
+                    {selected.delivery?.status && (
+                      <Badge size="xs" color="teal" variant="filled">
+                        {selected.delivery.status}
+                      </Badge>
+                    )}
+                  </Group>
+
+                  <Stack gap={4}>
+                    {selected.delivery?.customerName && (
+                      <Text size="xs">Recipient: <b>{selected.delivery.customerName}</b></Text>
+                    )}
+                    {selected.delivery?.addressLine1 && (
+                      <Text size="xs">📍 Address: {selected.delivery.addressLine1}{selected.delivery.landmark ? ` (${selected.delivery.landmark})` : ""}</Text>
+                    )}
+                    {selected.delivery?.pincode && (
+                      <Text size="xs">Pincode: {selected.delivery.pincode}</Text>
+                    )}
+                    {selected.delivery?.deliveryNotes && (
+                      <Text size="xs" c="orange.8">📝 Note: {selected.delivery.deliveryNotes}</Text>
+                    )}
+                    {selected.delivery?.riderName && (
+                      <Text size="xs" c="blue.8">👤 Rider: <b>{selected.delivery.riderName}</b> {selected.delivery.riderPhone ? `(${selected.delivery.riderPhone})` : ""}</Text>
+                    )}
+                    {selected.delivery?.deliveryOtp && (
+                      <Group gap={6} mt={2}>
+                        <Text size="xs" fw={600}>Delivery PIN:</Text>
+                        <Badge size="xs" color="teal" variant="outline">{selected.delivery.deliveryOtp}</Badge>
+                      </Group>
+                    )}
+                    {((selected.order?.packagingChargePaise || 0) > 0 || (selected.order?.deliveryChargePaise || 0) > 0) && (
+                      <Text size="xs" c="dimmed" mt={2}>
+                        Packaging: ₹{((selected.order?.packagingChargePaise || 0) / 100).toFixed(0)} | Delivery Fee: ₹{((selected.order?.deliveryChargePaise || 0) / 100).toFixed(0)}
+                      </Text>
+                    )}
+                  </Stack>
+                </Paper>
               )}
 
               <Divider my="xs" label={`Order Items (${items.length})`} labelPosition="center" />

@@ -18,6 +18,12 @@ import type {
   JsonSaleOrderRow,
   JsonSaleOrderItemRow,
   OrderWithItems,
+  DeliveryOrderRow,
+  JsonDeliveryOrderRow,
+  CustomerAddressRow,
+  JsonCustomerAddressRow,
+  DeliveryRiderRow,
+  JsonDeliveryRiderRow,
 } from '../types/pos-schema';
 
 function toIso(d: Date | null | undefined): string | null {
@@ -110,12 +116,42 @@ export function toOrderItem(i: SaleOrderItemRow): JsonSaleOrderItemRow {
   };
 }
 
+export function toDeliveryOrder(d: DeliveryOrderRow): JsonDeliveryOrderRow {
+  return {
+    ...d,
+    assignedAt: toIso(d.assignedAt),
+    pickedUpAt: toIso(d.pickedUpAt),
+    deliveredAt: toIso(d.deliveredAt),
+    createdAt: toIsoRequired(d.createdAt),
+    updatedAt: toIsoRequired(d.updatedAt),
+  };
+}
+
+export function toCustomerAddress(a: CustomerAddressRow): JsonCustomerAddressRow {
+  return {
+    ...a,
+    createdAt: toIsoRequired(a.createdAt),
+    updatedAt: toIsoRequired(a.updatedAt),
+  };
+}
+
+export function toDeliveryRider(r: DeliveryRiderRow): JsonDeliveryRiderRow {
+  return {
+    ...r,
+    lastLocationAt: toIso(r.lastLocationAt),
+    createdAt: toIsoRequired(r.createdAt),
+    updatedAt: toIsoRequired(r.updatedAt),
+  };
+}
+
 export function toOrderWithItems(
   order: SaleOrderRow,
   items: SaleOrderItemRow[],
+  delivery?: DeliveryOrderRow | null,
 ): OrderWithItems {
   return {
     order: toOrder(order),
     items: items.map(toOrderItem),
+    delivery: delivery ? toDeliveryOrder(delivery) : null,
   };
 }

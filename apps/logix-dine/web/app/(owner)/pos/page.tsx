@@ -14,12 +14,17 @@ import {
   IconPlus, IconMinus, IconTrash, IconChevronDown,
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
-  IconUser, IconAlertCircle,
+  IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
+  IconTruckDelivery,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { useCategories, useItems, useTables, useOrders, qk } from "@/lib/queries";
+import {
+  useCategories, useItems, useTables, useOrders, qk,
+  useDeliveryRiders, useCustomerAddresses,
+} from "@/lib/queries";
 import {
   startOrder, settleOrder, markKotPrinted, createSettledOrder, addOrderRound,
+  createDeliveryRider, updateDeliveryStatus,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
@@ -71,11 +76,32 @@ function checkIsNonVeg(name?: string | null): boolean {
 interface CartPanelProps {
   cartItems: LocalCartItem[];
   cartCount: number;
-  total: number;
+  itemsSubtotal: number;
+  grandTotal: number;
   tableNo: string;
   setTableNo: (table: string) => void;
+  orderType: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  setOrderType: (type: "DINE_IN" | "TAKEAWAY" | "DELIVERY") => void;
   customerPhone: string;
   setCustomerPhone: (phone: string) => void;
+  deliveryCustomerName: string;
+  setDeliveryCustomerName: (name: string) => void;
+  deliveryAddressLine1: string;
+  setDeliveryAddressLine1: (addr: string) => void;
+  deliveryLandmark: string;
+  setDeliveryLandmark: (landmark: string) => void;
+  deliveryPincode: string;
+  setDeliveryPincode: (pin: string) => void;
+  deliveryNotes: string;
+  setDeliveryNotes: (notes: string) => void;
+  selectedRiderId: string | null;
+  setSelectedRiderId: (id: string | null) => void;
+  packagingCharge: number;
+  setPackagingCharge: (charge: number) => void;
+  deliveryCharge: number;
+  setDeliveryCharge: (charge: number) => void;
+  savedAddresses?: any[];
+  riders?: any[];
   tableSelectData: { value: string; label: string }[];
   handleClearCart: () => void;
   openNoteModal: (item: LocalCartItem) => void;
@@ -95,11 +121,30 @@ interface CartPanelProps {
 function CartPanel({
   cartItems,
   cartCount,
-  total,
+  itemsSubtotal,
+  grandTotal,
   tableNo,
   setTableNo,
+  orderType,
+  setOrderType,
   customerPhone,
   setCustomerPhone,
+  deliveryCustomerName,
+  setDeliveryCustomerName,
+  deliveryAddressLine1,
+  setDeliveryAddressLine1,
+  deliveryLandmark,
+  setDeliveryLandmark,
+  deliveryPincode,
+  setDeliveryPincode,
+  deliveryNotes,
+  setDeliveryNotes,
+  selectedRiderId,
+  setSelectedRiderId,
+  packagingCharge,
+  deliveryCharge,
+  savedAddresses,
+  riders,
   tableSelectData,
   handleClearCart,
   openNoteModal,
@@ -134,7 +179,7 @@ function CartPanel({
             {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
           </Group>
           <Group gap="xs" align="center">
-            {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway") && (
+            {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway" || orderType !== "TAKEAWAY") && (
               <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
                 Clear
               </Button>
@@ -145,22 +190,48 @@ function CartPanel({
           </Group>
         </Group>
 
-        {/* Cart Selection: Table select (default to Takeaway) + optional Customer Phone */}
+        {/* Order Mode Segmented Control */}
+        <SegmentedControl
+          value={orderType}
+          onChange={(val) => {
+            const nextType = val as "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+            setOrderType(nextType);
+            if (nextType === "TAKEAWAY") setTableNo("Takeaway");
+            else if (nextType === "DELIVERY") setTableNo("Delivery");
+            else if (tableNo === "Takeaway" || tableNo === "Delivery") {
+              const firstTable = tableSelectData.find((t) => t.value !== "Takeaway" && t.value !== "Delivery")?.value;
+              setTableNo(firstTable || "");
+            }
+          }}
+          data={[
+            { label: "🍽️ Dine-In", value: "DINE_IN" },
+            { label: "🛍️ Takeaway", value: "TAKEAWAY" },
+            { label: "🛵 Delivery", value: "DELIVERY" },
+          ]}
+          fullWidth
+          size="xs"
+          mb="xs"
+          radius="md"
+        />
+
+        {/* Cart Selection: Table select (if Dine-In) + Customer Phone + Delivery fields */}
         <Stack gap="xs" mb="xs">
-          <Select
-            label="Table / Order Type"
-            placeholder="Select table"
-            size="sm"
-            value={tableNo}
-            onChange={(v) => setTableNo(v || "Takeaway")}
-            data={tableSelectData}
-            leftSection={<IconTableAlias size={16} />}
-            allowDeselect={false}
-            comboboxProps={{ withinPortal: true, zIndex: 1500 }}
-          />
+          {orderType === "DINE_IN" && (
+            <Select
+              label="Table"
+              placeholder="Select table"
+              size="sm"
+              value={tableNo}
+              onChange={(v) => setTableNo(v || "")}
+              data={tableSelectData.filter((t) => t.value !== "Delivery")}
+              leftSection={<IconTableAlias size={16} />}
+              allowDeselect={false}
+              comboboxProps={{ withinPortal: true, zIndex: 1500 }}
+            />
+          )}
 
           <TextInput
-            label="Customer Phone (optional)"
+            label={orderType === "DELIVERY" ? "Customer Phone (Required)" : "Customer Phone (optional)"}
             placeholder="WhatsApp number (e.g. 9876543210)"
             type="tel"
             inputMode="numeric"
@@ -186,6 +257,95 @@ function CartPanel({
               ) : null
             }
           />
+
+          {orderType === "DELIVERY" && (
+            <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#fbfcfe" }}>
+              <Group justify="space-between" align="center" mb={6}>
+                <Text size="xs" fw={700} c="dimmed">
+                  DELIVERY ADDRESS
+                </Text>
+                {savedAddresses && savedAddresses.length > 0 && (
+                  <Badge size="xs" color="teal" variant="light">
+                    {savedAddresses.length} saved
+                  </Badge>
+                )}
+              </Group>
+
+              {savedAddresses && savedAddresses.length > 0 && (
+                <Box mb="xs">
+                  <Group gap={4} wrap="wrap">
+                    {savedAddresses.map((addr: any) => (
+                      <Badge
+                        key={addr.id}
+                        size="xs"
+                        variant="outline"
+                        color="teal"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => {
+                          if (addr.receiverName) setDeliveryCustomerName(addr.receiverName);
+                          setDeliveryAddressLine1(addr.addressLine1);
+                          if (addr.landmark) setDeliveryLandmark(addr.landmark);
+                          if (addr.pincode) setDeliveryPincode(addr.pincode);
+                        }}
+                      >
+                        📍 {addr.label || "Home"}: {addr.addressLine1.slice(0, 16)}...
+                      </Badge>
+                    ))}
+                  </Group>
+                </Box>
+              )}
+
+              <Stack gap={6}>
+                <TextInput
+                  placeholder="Recipient Name *"
+                  size="xs"
+                  value={deliveryCustomerName}
+                  onChange={(e) => setDeliveryCustomerName(e.target.value)}
+                />
+                <TextInput
+                  placeholder="House/Flat/Street Address *"
+                  size="xs"
+                  value={deliveryAddressLine1}
+                  onChange={(e) => setDeliveryAddressLine1(e.target.value)}
+                  leftSection={<IconMapPin size={13} />}
+                />
+                <Group grow gap={6}>
+                  <TextInput
+                    placeholder="Landmark (opt)"
+                    size="xs"
+                    value={deliveryLandmark}
+                    onChange={(e) => setDeliveryLandmark(e.target.value)}
+                  />
+                  <TextInput
+                    placeholder="Pincode (opt)"
+                    size="xs"
+                    value={deliveryPincode}
+                    onChange={(e) => setDeliveryPincode(e.target.value)}
+                  />
+                </Group>
+                <TextInput
+                  placeholder="Delivery Notes (e.g. Leave at door)"
+                  size="xs"
+                  value={deliveryNotes}
+                  onChange={(e) => setDeliveryNotes(e.target.value)}
+                />
+                {riders && riders.length > 0 && (
+                  <Select
+                    placeholder="Assign Rider (optional)"
+                    size="xs"
+                    data={riders.map((r: any) => ({
+                      value: r.id,
+                      label: `${r.name} (${r.status === "AVAILABLE" ? "🟢" : "🟠"} ${r.vehicleType || "Bike"})`,
+                    }))}
+                    value={selectedRiderId}
+                    onChange={setSelectedRiderId}
+                    clearable
+                    leftSection={<IconMotorbike size={13} />}
+                  />
+                )}
+              </Stack>
+            </Paper>
+          )}
 
           {customerActiveOrderConflict && !activeTableOrder && (
             <Alert
@@ -324,9 +484,26 @@ function CartPanel({
       {/* Bottom Fixed Section */}
       <Box style={{ flexShrink: 0, marginTop: "auto" }}>
         <Divider my="xs" />
+        {orderType === "DELIVERY" && (
+          <Stack gap={2} mb="xs">
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">Items Subtotal</Text>
+              <Text size="xs" fw={500}>₹{(itemsSubtotal / 100).toFixed(0)}</Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">Packaging Fee</Text>
+              <Text size="xs" fw={500}>₹{packagingCharge}</Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">Delivery Fee</Text>
+              <Text size="xs" fw={500}>₹{deliveryCharge}</Text>
+            </Group>
+            <Divider variant="dashed" my={2} />
+          </Stack>
+        )}
         <Group justify="space-between" mb="xs">
           <Text fw={700}>Total</Text>
-          <Text fw={700} c="dinePrimary" size="lg">₹{(total / 100).toFixed(0)}</Text>
+          <Text fw={700} c="dinePrimary" size="lg">₹{(grandTotal / 100).toFixed(0)}</Text>
         </Group>
 
         {/* Split button: Send (primary) + small compact chevron down → Settle & Send */}
@@ -422,9 +599,60 @@ export default function POSPage() {
   const [tableNo, setTableNo] = useState<string>("Takeaway");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
+  // Delivery state
+  const [orderType, setOrderType] = useState<"DINE_IN" | "TAKEAWAY" | "DELIVERY">("TAKEAWAY");
+  const [deliveryCustomerName, setDeliveryCustomerName] = useState("");
+  const [deliveryAddressLine1, setDeliveryAddressLine1] = useState("");
+  const [deliveryLandmark, setDeliveryLandmark] = useState("");
+  const [deliveryPincode, setDeliveryPincode] = useState("");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
+  const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
+  const [packagingCharge, setPackagingCharge] = useState(20);
+  const [deliveryCharge, setDeliveryCharge] = useState(40);
+
+  // Delivery Drawer & Add Rider modal state
+  const [deliveryDrawerOpen, setDeliveryDrawerOpen] = useState(false);
+  const [deliveryDrawerTab, setDeliveryDrawerTab] = useState<"active" | "fleet">("active");
+  const [addRiderModalOpen, setAddRiderModalOpen] = useState(false);
+  const [newRiderName, setNewRiderName] = useState("");
+  const [newRiderPhone, setNewRiderPhone] = useState("");
+  const [newRiderVehicle, setNewRiderVehicle] = useState("Bike");
+  const [creatingRider, setCreatingRider] = useState(false);
+
+  // OTP Verification Modal state
+  const [otpModalOrder, setOtpModalOrder] = useState<any | null>(null);
+  const [otpInput, setOtpInput] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  // Assign Rider state
+  const [assigningOrder, setAssigningOrder] = useState<any | null>(null);
+  const [assignRiderId, setAssignRiderId] = useState<string | null>(null);
+  const [assigningRider, setAssigningRider] = useState(false);
+
+  // Delivery queries
+  const { data: riders = [] } = useDeliveryRiders(restaurantId, outletId);
+  const { data: savedAddresses = [] } = useCustomerAddresses(restaurantId, customerPhone);
+
+  // All recent orders for active delivery tracking
+  const { data: allRecentOrders = [] } = useOrders(
+    restaurantId,
+    { outletId: outletId ?? undefined, limit: 100 },
+    Boolean(restaurantId && outletId),
+    { refetchInterval: isConnected ? false : 20_000 }
+  );
+
+  const activeDeliveryOrders = useMemo(() => {
+    return (allRecentOrders as any[]).filter((entry) => {
+      const isDeliv = entry.order?.orderType === "DELIVERY" || Boolean(entry.delivery) || entry.order?.tableNo === "Delivery";
+      if (!isDeliv) return false;
+      const status = entry.delivery?.status;
+      return status !== "DELIVERED" && status !== "CANCELLED" && entry.order?.status !== "VOID";
+    });
+  }, [allRecentOrders]);
+
   // Active table order matching & round computation
   const activeTableOrder = useMemo(() => {
-    if (!tableNo || tableNo === "Takeaway") return null;
+    if (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery") return null;
     return openOrders.find((entry: any) => isTableMatch(tableNo, entry.order?.tableNo)) ?? null;
   }, [openOrders, tableNo]);
 
@@ -531,6 +759,13 @@ export default function POSPage() {
     setCartItems([]);
     setTableNo("Takeaway");
     setCustomerPhone("");
+    setDeliveryCustomerName("");
+    setDeliveryAddressLine1("");
+    setDeliveryLandmark("");
+    setDeliveryPincode("");
+    setDeliveryNotes("");
+    setSelectedRiderId(null);
+    setOrderType("TAKEAWAY");
     if (cartOpen) setCartOpen(false);
   };
 
@@ -700,7 +935,26 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
       } else {
-        if (customerActiveOrderConflict) {
+        if (orderType === "DELIVERY") {
+          if (!customerPhone.trim() || customerPhone.replace(/\D/g, "").length < 10) {
+            notifications.show({
+              title: "Customer Phone Required",
+              message: "Please enter a valid 10-digit customer phone number for delivery orders.",
+              color: "red",
+            });
+            setSending(false);
+            return;
+          }
+          if (!deliveryAddressLine1.trim()) {
+            notifications.show({
+              title: "Delivery Address Required",
+              message: "Please enter the delivery address.",
+              color: "red",
+            });
+            setSending(false);
+            return;
+          }
+        } else if (customerActiveOrderConflict) {
           notifications.show({
             title: "Customer Has Active Order",
             message: `Customer already has active Token #${customerActiveOrderConflict.orderNo} on ${customerActiveOrderConflict.tableNo || "Takeaway"}. Cannot place a new order until that order is settled or freed.`,
@@ -709,10 +963,25 @@ export default function POSPage() {
           setSending(false);
           return;
         }
+
+        const deliveryPayload = orderType === "DELIVERY" ? {
+          customerName: deliveryCustomerName.trim() || undefined,
+          customerPhone: customerPhone.trim(),
+          addressLine1: deliveryAddressLine1.trim(),
+          landmark: deliveryLandmark.trim() || undefined,
+          pincode: deliveryPincode.trim() || undefined,
+          deliveryNotes: deliveryNotes.trim() || undefined,
+          riderId: selectedRiderId || undefined,
+        } : undefined;
+
         const created = await startOrder(restaurantId, {
           outletId: activeOutlet.id,
-          tableNo: tableNo || "Takeaway",
+          tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
           customerPhone: customerPhone.trim() || undefined,
+          orderType,
+          packagingChargePaise: orderType === "DELIVERY" ? packagingCharge * 100 : 0,
+          deliveryChargePaise: orderType === "DELIVERY" ? deliveryCharge * 100 : 0,
+          delivery: deliveryPayload,
           items: cartItems.map((i) => ({
             itemId: i.itemId,
             qty: i.qty,
@@ -725,7 +994,14 @@ export default function POSPage() {
         // Reset cart immediately — don't wait for print
         setCartItems([]);
         setCustomerPhone("");
+        setDeliveryCustomerName("");
+        setDeliveryAddressLine1("");
+        setDeliveryLandmark("");
+        setDeliveryPincode("");
+        setDeliveryNotes("");
+        setSelectedRiderId(null);
         setTableNo("Takeaway");
+        setOrderType("TAKEAWAY");
         if (cartOpen) setCartOpen(false);
 
         // Print KOT + mark printed in background (non-blocking)
@@ -803,7 +1079,7 @@ export default function POSPage() {
 
         notifications.show({
           title: `Round ${currentRoundNum} Settled & Sent!`,
-          message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) — ₹${(total / 100).toFixed(0)} paid via ${settleMethod}. Table remains occupied.`,
+          message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) — ₹${(grandTotal / 100).toFixed(0)} paid via ${settleMethod}. Table remains occupied.`,
           color: "green",
           icon: <IconCheck size={16} />,
         });
@@ -812,7 +1088,26 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
       } else {
-        if (customerActiveOrderConflict) {
+        if (orderType === "DELIVERY") {
+          if (!customerPhone.trim() || customerPhone.replace(/\D/g, "").length < 10) {
+            notifications.show({
+              title: "Customer Phone Required",
+              message: "Please enter a valid 10-digit customer phone number for delivery orders.",
+              color: "red",
+            });
+            setSettling(false);
+            return;
+          }
+          if (!deliveryAddressLine1.trim()) {
+            notifications.show({
+              title: "Delivery Address Required",
+              message: "Please enter the delivery address.",
+              color: "red",
+            });
+            setSettling(false);
+            return;
+          }
+        } else if (customerActiveOrderConflict) {
           notifications.show({
             title: "Customer Has Active Order",
             message: `Customer already has active Token #${customerActiveOrderConflict.orderNo} on ${customerActiveOrderConflict.tableNo || "Takeaway"}. Cannot place a new order until that order is settled or freed.`,
@@ -821,10 +1116,25 @@ export default function POSPage() {
           setSettling(false);
           return;
         }
+
+        const deliveryPayload = orderType === "DELIVERY" ? {
+          customerName: deliveryCustomerName.trim() || undefined,
+          customerPhone: customerPhone.trim(),
+          addressLine1: deliveryAddressLine1.trim(),
+          landmark: deliveryLandmark.trim() || undefined,
+          pincode: deliveryPincode.trim() || undefined,
+          deliveryNotes: deliveryNotes.trim() || undefined,
+          riderId: selectedRiderId || undefined,
+        } : undefined;
+
         const result = await createSettledOrder(restaurantId, {
           outletId: activeOutlet.id,
-          tableNo: tableNo || "Takeaway",
+          tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
           customerPhone: customerPhone.trim() || undefined,
+          orderType,
+          packagingChargePaise: orderType === "DELIVERY" ? packagingCharge * 100 : 0,
+          deliveryChargePaise: orderType === "DELIVERY" ? deliveryCharge * 100 : 0,
+          delivery: deliveryPayload,
           method: settleMethod,
           items: cartItems.map((i) => ({
             itemId: i.itemId,
@@ -838,7 +1148,14 @@ export default function POSPage() {
         // Success — close modal and clear cart
         setCartItems([]);
         setCustomerPhone("");
+        setDeliveryCustomerName("");
+        setDeliveryAddressLine1("");
+        setDeliveryLandmark("");
+        setDeliveryPincode("");
+        setDeliveryNotes("");
+        setSelectedRiderId(null);
         setTableNo("Takeaway");
+        setOrderType("TAKEAWAY");
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
 
@@ -865,6 +1182,93 @@ export default function POSPage() {
     }
   };
 
+  const handleAssignRider = async (orderId: string, riderId: string) => {
+    if (!riderId) return;
+    setAssigningRider(true);
+    try {
+      await updateDeliveryStatus(restaurantId, orderId, { status: "ASSIGNED", riderId }, outletId);
+      notifications.show({
+        title: "Rider Assigned",
+        message: "Delivery rider assigned successfully.",
+        color: "teal",
+      });
+      setAssigningOrder(null);
+      setAssignRiderId(null);
+      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+      queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
+    } catch (err: any) {
+      notifications.show({ title: "Error assigning rider", message: err.message, color: "red" });
+    } finally {
+      setAssigningRider(false);
+    }
+  };
+
+  const handleMarkOutForDelivery = async (orderId: string, riderId?: string) => {
+    try {
+      await updateDeliveryStatus(restaurantId, orderId, { status: "OUT_FOR_DELIVERY", riderId }, outletId);
+      notifications.show({
+        title: "Out for Delivery",
+        message: "Order marked as Out for Delivery.",
+        color: "orange",
+      });
+      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
+  };
+
+  const handleConfirmDelivered = async (orderId: string, otp?: string) => {
+    setVerifyingOtp(true);
+    try {
+      await updateDeliveryStatus(
+        restaurantId,
+        orderId,
+        { status: "DELIVERED", deliveryOtp: otp?.trim() || undefined },
+        outletId
+      );
+      notifications.show({
+        title: "Order Delivered!",
+        message: "Delivery marked as complete and settled.",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+      setOtpModalOrder(null);
+      setOtpInput("");
+      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+      queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
+    } catch (err: any) {
+      notifications.show({ title: "Verification Failed", message: err.message || "Invalid OTP", color: "red" });
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleCreateRider = async () => {
+    if (!newRiderName.trim() || !newRiderPhone.trim()) {
+      notifications.show({ title: "Validation Error", message: "Rider Name and Phone are required", color: "red" });
+      return;
+    }
+    setCreatingRider(true);
+    try {
+      await createDeliveryRider(restaurantId, {
+        name: newRiderName.trim(),
+        phone: newRiderPhone.trim(),
+        vehicleType: newRiderVehicle,
+        outletId,
+      }, outletId);
+      notifications.show({ title: "Rider Added", message: `${newRiderName.trim()} added to fleet`, color: "green" });
+      setNewRiderName("");
+      setNewRiderPhone("");
+      setNewRiderVehicle("Bike");
+      setAddRiderModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
+    } catch (err: any) {
+      notifications.show({ title: "Failed to add rider", message: err.message, color: "red" });
+    } finally {
+      setCreatingRider(false);
+    }
+  };
+
   if (loading) return <Center py={100}><Loader size="lg" color="dinePrimary" /></Center>;
   if (!categories.length && !loading) {
     return (
@@ -888,7 +1292,10 @@ export default function POSPage() {
       return true;
     });
 
-  const total = cartItems.reduce((s, i) => s + i.pricePaise * i.qty, 0);
+  const itemsSubtotal = cartItems.reduce((s, i) => s + i.pricePaise * i.qty, 0);
+  const extraCharges = orderType === "DELIVERY" ? (packagingCharge + deliveryCharge) * 100 : 0;
+  const grandTotal = itemsSubtotal + extraCharges;
+  const total = grandTotal;
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
 
   const tableSelectData = [
@@ -907,11 +1314,32 @@ export default function POSPage() {
   const cartPanelProps: CartPanelProps = {
     cartItems,
     cartCount,
-    total,
+    itemsSubtotal,
+    grandTotal,
     tableNo,
     setTableNo,
+    orderType,
+    setOrderType,
     customerPhone,
     setCustomerPhone,
+    deliveryCustomerName,
+    setDeliveryCustomerName,
+    deliveryAddressLine1,
+    setDeliveryAddressLine1,
+    deliveryLandmark,
+    setDeliveryLandmark,
+    deliveryPincode,
+    setDeliveryPincode,
+    deliveryNotes,
+    setDeliveryNotes,
+    selectedRiderId,
+    setSelectedRiderId,
+    packagingCharge,
+    setPackagingCharge,
+    deliveryCharge,
+    setDeliveryCharge,
+    savedAddresses,
+    riders,
     tableSelectData,
     handleClearCart,
     openNoteModal,
@@ -1102,6 +1530,22 @@ export default function POSPage() {
                     Non-Veg
                   </Text>
                 </UnstyledButton>
+
+                {/* Delivery Quick Drawer Button */}
+                <Button
+                  size="xs"
+                  variant={activeDeliveryOrders.length > 0 ? "filled" : "light"}
+                  color="teal"
+                  leftSection={<IconMotorbike size={15} />}
+                  onClick={() => setDeliveryDrawerOpen(true)}
+                  style={{
+                    flexShrink: 0,
+                    fontWeight: 600,
+                    height: 29,
+                  }}
+                >
+                  Deliveries {activeDeliveryOrders.length > 0 ? `(${activeDeliveryOrders.length})` : ""}
+                </Button>
               </Group>
             </Group>
 
@@ -1909,6 +2353,479 @@ export default function POSPage() {
             </Stack>
           );
         })()}
+      </Modal>
+
+      {/* 🛵 Delivery Management Drawer */}
+      <Drawer
+        opened={deliveryDrawerOpen}
+        onClose={() => setDeliveryDrawerOpen(false)}
+        position="right"
+        size="lg"
+        title={
+          <Group gap="xs">
+            <IconMotorbike size={22} color="#0ca678" />
+            <Text fw={700} size="md">
+              Delivery Management
+            </Text>
+            {activeDeliveryOrders.length > 0 && (
+              <Badge color="teal" variant="filled" size="sm">
+                {activeDeliveryOrders.length} Active
+              </Badge>
+            )}
+          </Group>
+        }
+        zIndex={1300}
+      >
+        <Stack gap="md" style={{ height: "100%" }}>
+          <SegmentedControl
+            value={deliveryDrawerTab}
+            onChange={(val) => setDeliveryDrawerTab(val as "active" | "fleet")}
+            data={[
+              { label: `🛵 Active Deliveries (${activeDeliveryOrders.length})`, value: "active" },
+              { label: `👥 Fleet Riders (${riders.length})`, value: "fleet" },
+            ]}
+            fullWidth
+            size="sm"
+          />
+
+          {deliveryDrawerTab === "active" ? (
+            <ScrollArea style={{ flex: 1 }}>
+              {activeDeliveryOrders.length === 0 ? (
+                <Center py={60}>
+                  <Stack align="center" gap="xs">
+                    <IconTruckDelivery size={40} color="#adb5bd" />
+                    <Text fw={600} c="dimmed">No Active Delivery Orders</Text>
+                    <Text size="xs" c="dimmed" ta="center" style={{ maxWidth: 280 }}>
+                      Choose "🛵 Delivery" mode in POS cart when taking orders to dispatch and track riders here.
+                    </Text>
+                  </Stack>
+                </Center>
+              ) : (
+                <Stack gap="sm">
+                  {activeDeliveryOrders.map((entry: any) => {
+                    const { order, items, delivery } = entry;
+                    const dStatus = delivery?.status || "PENDING_ASSIGNMENT";
+                    const isOut = dStatus === "OUT_FOR_DELIVERY";
+                    const isAssigned = dStatus === "ASSIGNED";
+                    const isPending = dStatus === "PENDING_ASSIGNMENT";
+                    const isPaid = order.status === "PAID";
+                    const customerName = delivery?.customerName || "Customer";
+                    const customerPhone = delivery?.customerPhone || order.customerPhone || "";
+                    const fullAddr = [delivery?.addressLine1, delivery?.landmark, delivery?.pincode].filter(Boolean).join(", ");
+
+                    return (
+                      <Paper key={order.id} p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+                        <Stack gap="xs">
+                          {/* Order header */}
+                          <Group justify="space-between" align="center">
+                            <Group gap="xs">
+                              <Badge color="teal" variant="filled" size="md">
+                                #{order.orderNo}
+                              </Badge>
+                              <Text fw={700} size="sm">{customerName}</Text>
+                            </Group>
+                            <Badge
+                              color={isOut ? "orange" : isAssigned ? "blue" : "yellow"}
+                              variant="light"
+                              size="sm"
+                            >
+                              {isOut ? "🛵 Out for Delivery" : isAssigned ? "👤 Rider Assigned" : "⏳ Unassigned"}
+                            </Badge>
+                          </Group>
+
+                          {/* Customer Phone & Quick Contact */}
+                          <Group justify="space-between" align="center">
+                            <Text size="xs" fw={600} c="dimmed">
+                              📞 {customerPhone}
+                            </Text>
+                            <Group gap={6}>
+                              {customerPhone && (
+                                <>
+                                  <Button
+                                    component="a"
+                                    href={`tel:${customerPhone}`}
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="gray"
+                                    leftSection={<IconPhoneCall size={12} />}
+                                  >
+                                    Call
+                                  </Button>
+                                  <Button
+                                    component="a"
+                                    href={`https://wa.me/91${customerPhone.replace(/\D/g, "").slice(-10)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="teal"
+                                    leftSection={<IconBrandWhatsapp size={12} />}
+                                  >
+                                    WhatsApp
+                                  </Button>
+                                </>
+                              )}
+                            </Group>
+                          </Group>
+
+                          {/* Delivery Address */}
+                          {fullAddr && (
+                            <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#f8f9fa" }}>
+                              <Text size="xs" fw={500} c="dark.6">
+                                📍 {fullAddr}
+                              </Text>
+                              {delivery?.deliveryNotes && (
+                                <Text size="xs" c="orange.8" mt={2}>
+                                  📝 Note: {delivery.deliveryNotes}
+                                </Text>
+                              )}
+                            </Paper>
+                          )}
+
+                          {/* Rider Info & OTP */}
+                          <Group justify="space-between" align="center">
+                            <div>
+                              {delivery?.riderName ? (
+                                <Text size="xs" fw={600} c="blue.8">
+                                  Rider: {delivery.riderName} {delivery.riderPhone ? `(${delivery.riderPhone})` : ""}
+                                </Text>
+                              ) : (
+                                <Text size="xs" c="dimmed">No rider assigned yet</Text>
+                              )}
+                            </div>
+                            {delivery?.deliveryOtp && (
+                              <Badge color="teal" variant="outline" size="sm">
+                                PIN: {delivery.deliveryOtp}
+                              </Badge>
+                            )}
+                          </Group>
+
+                          {/* Order Items & Amount */}
+                          <Divider variant="dashed" />
+                          <Group justify="space-between" align="center">
+                            <Text size="xs" c="dimmed">
+                              {items?.length || 0} items · ₹{(order.subtotalPaise / 100).toFixed(0)}
+                            </Text>
+                            <Badge color={isPaid ? "green" : "orange"} variant="light" size="xs">
+                              {isPaid ? "Paid Online" : "Cash on Delivery"}
+                            </Badge>
+                          </Group>
+
+                          {/* Delivery Actions */}
+                          <Group justify="space-between" align="center" mt={4} wrap="wrap" gap={6}>
+                            <Button
+                              size="xs"
+                              variant="subtle"
+                              color="gray"
+                              onClick={() => {
+                                printTicketSilent(buildBillPayload(entry, restaurant)).catch(() => {});
+                                notifications.show({ title: "Printed", message: "Delivery slip printed", color: "teal" });
+                              }}
+                            >
+                              Reprint Bill
+                            </Button>
+
+                            <Group gap={6}>
+                              {isPending && (
+                                <Button
+                                  size="xs"
+                                  color="blue"
+                                  onClick={() => {
+                                    setAssigningOrder(entry);
+                                    setAssignRiderId(null);
+                                  }}
+                                >
+                                  Assign Rider
+                                </Button>
+                              )}
+
+                              {isAssigned && (
+                                <>
+                                  <Button
+                                    size="xs"
+                                    variant="light"
+                                    color="blue"
+                                    onClick={() => {
+                                      setAssigningOrder(entry);
+                                      setAssignRiderId(delivery?.riderId || null);
+                                    }}
+                                  >
+                                    Change Rider
+                                  </Button>
+                                  <Button
+                                    size="xs"
+                                    color="orange"
+                                    leftSection={<IconMotorbike size={14} />}
+                                    onClick={() => handleMarkOutForDelivery(order.id, delivery?.riderId)}
+                                  >
+                                    Out for Delivery
+                                  </Button>
+                                </>
+                              )}
+
+                              {isOut && (
+                                <Button
+                                  size="xs"
+                                  color="green"
+                                  leftSection={<IconCheck size={14} />}
+                                  onClick={() => {
+                                    setOtpModalOrder(entry);
+                                    setOtpInput("");
+                                  }}
+                                >
+                                  Mark Delivered
+                                </Button>
+                              )}
+                            </Group>
+                          </Group>
+                        </Stack>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              )}
+            </ScrollArea>
+          ) : (
+            /* Fleet Tab */
+            <Stack gap="md" style={{ flex: 1 }}>
+              <Group justify="space-between" align="center">
+                <Text size="sm" fw={600} c="dimmed">
+                  Riders in fleet: {riders.length}
+                </Text>
+                <Button
+                  size="xs"
+                  color="teal"
+                  leftSection={<IconPlus size={14} />}
+                  onClick={() => setAddRiderModalOpen(true)}
+                >
+                  Add Rider
+                </Button>
+              </Group>
+
+              <ScrollArea style={{ flex: 1 }}>
+                {riders.length === 0 ? (
+                  <Center py={60}>
+                    <Stack align="center" gap="xs">
+                      <IconMotorbike size={40} color="#adb5bd" />
+                      <Text fw={600} c="dimmed">No Riders Added</Text>
+                      <Button size="xs" color="teal" onClick={() => setAddRiderModalOpen(true)}>
+                        + Add First Fleet Rider
+                      </Button>
+                    </Stack>
+                  </Center>
+                ) : (
+                  <Stack gap="xs">
+                    {riders.map((r: any) => (
+                      <Paper key={r.id} p="sm" radius="md" withBorder>
+                        <Group justify="space-between" align="center">
+                          <div>
+                            <Group gap="xs">
+                              <Text fw={700} size="sm">{r.name}</Text>
+                              <Badge
+                                size="xs"
+                                color={r.status === "AVAILABLE" ? "green" : r.status === "ON_DELIVERY" ? "orange" : "gray"}
+                                variant="light"
+                              >
+                                {r.status === "AVAILABLE" ? "🟢 Available" : r.status === "ON_DELIVERY" ? "🛵 On Delivery" : "Offline"}
+                              </Badge>
+                            </Group>
+                            <Text size="xs" c="dimmed" mt={2}>
+                              📞 {r.phone} · 🛵 {r.vehicleType || "Bike"} {r.vehicleNumber ? `(${r.vehicleNumber})` : ""}
+                            </Text>
+                          </div>
+                          {r.phone && (
+                            <Button
+                              component="a"
+                              href={`tel:${r.phone}`}
+                              size="compact-xs"
+                              variant="light"
+                              color="gray"
+                            >
+                              Call
+                            </Button>
+                          )}
+                        </Group>
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </ScrollArea>
+            </Stack>
+          )}
+        </Stack>
+      </Drawer>
+
+      {/* 🔐 Verify Delivery & OTP Modal */}
+      <Modal
+        opened={Boolean(otpModalOrder)}
+        onClose={() => {
+          setOtpModalOrder(null);
+          setOtpInput("");
+        }}
+        title={<Text fw={700}>Complete Order #{otpModalOrder?.order?.orderNo} Delivery</Text>}
+        size="sm"
+        centered
+        zIndex={1400}
+      >
+        {otpModalOrder && (
+          <Stack gap="sm">
+            <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#f8f9fa" }}>
+              <Text size="xs" fw={700}>
+                {otpModalOrder.delivery?.customerName || "Customer"} · {otpModalOrder.delivery?.customerPhone}
+              </Text>
+              <Text size="xs" c="dimmed">
+                📍 {otpModalOrder.delivery?.addressLine1}
+              </Text>
+              <Divider my={4} />
+              <Group justify="space-between">
+                <Text size="xs" fw={700}>Total Amount:</Text>
+                <Text size="sm" fw={800} c="dinePrimary">
+                  ₹{(otpModalOrder.order?.subtotalPaise / 100).toFixed(0)} ({otpModalOrder.order?.status === "PAID" ? "Paid" : "Collect COD"})
+                </Text>
+              </Group>
+            </Paper>
+
+            <TextInput
+              label="Delivery PIN / OTP"
+              description={`Expected PIN: ${otpModalOrder.delivery?.deliveryOtp || "—"}`}
+              placeholder="Enter 4-digit PIN"
+              value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value)}
+              size="md"
+              type="tel"
+              maxLength={6}
+            />
+
+            <Group grow mt="xs">
+              <Button
+                variant="light"
+                color="gray"
+                loading={verifyingOtp}
+                onClick={() => handleConfirmDelivered(otpModalOrder.order.id)}
+              >
+                Bypass PIN & Settle
+              </Button>
+              <Button
+                color="green"
+                loading={verifyingOtp}
+                disabled={!otpInput.trim()}
+                onClick={() => handleConfirmDelivered(otpModalOrder.order.id, otpInput)}
+              >
+                Verify & Complete
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+
+      {/* 👤 Assign Rider Modal */}
+      <Modal
+        opened={Boolean(assigningOrder)}
+        onClose={() => {
+          setAssigningOrder(null);
+          setAssignRiderId(null);
+        }}
+        title={<Text fw={700}>Assign Rider for Order #{assigningOrder?.order?.orderNo}</Text>}
+        size="sm"
+        centered
+        zIndex={1400}
+      >
+        {assigningOrder && (
+          <Stack gap="sm">
+            <Text size="xs" c="dimmed">
+              Delivery to: <b>{assigningOrder.delivery?.customerName}</b> ({assigningOrder.delivery?.addressLine1})
+            </Text>
+
+            {riders.length === 0 ? (
+              <Alert color="orange" title="No Riders Available">
+                You have no riders in your fleet. Add a rider first.
+              </Alert>
+            ) : (
+              <Select
+                label="Select Rider"
+                placeholder="Choose rider"
+                data={riders.map((r: any) => ({
+                  value: r.id,
+                  label: `${r.name} (${r.status === "AVAILABLE" ? "🟢 Available" : "🟠 Busy"} · ${r.vehicleType || "Bike"})`,
+                }))}
+                value={assignRiderId}
+                onChange={setAssignRiderId}
+              />
+            )}
+
+            <Group justify="flex-end" mt="xs">
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => {
+                  setAssigningOrder(null);
+                  setAssignRiderId(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="teal"
+                loading={assigningRider}
+                disabled={!assignRiderId}
+                onClick={() => assignRiderId && handleAssignRider(assigningOrder.order.id, assignRiderId)}
+              >
+                Confirm Rider
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+
+      {/* ➕ Add Fleet Rider Modal */}
+      <Modal
+        opened={addRiderModalOpen}
+        onClose={() => setAddRiderModalOpen(false)}
+        title={<Text fw={700}>Add Fleet Delivery Rider</Text>}
+        size="sm"
+        centered
+        zIndex={1400}
+      >
+        <Stack gap="sm">
+          <TextInput
+            label="Rider Name *"
+            placeholder="e.g. Ramesh Kumar"
+            value={newRiderName}
+            onChange={(e) => setNewRiderName(e.target.value)}
+            required
+          />
+          <TextInput
+            label="Phone Number *"
+            placeholder="10-digit mobile number"
+            type="tel"
+            value={newRiderPhone}
+            onChange={(e) => setNewRiderPhone(e.target.value)}
+            required
+          />
+          <Select
+            label="Vehicle Type"
+            value={newRiderVehicle}
+            onChange={(val) => setNewRiderVehicle(val || "Bike")}
+            data={[
+              { value: "Bike", label: "Motorcycle" },
+              { value: "Scooter", label: "Scooter" },
+              { value: "Bicycle", label: "Bicycle" },
+              { value: "Car", label: "Car" },
+            ]}
+          />
+          <Group justify="flex-end" mt="sm">
+            <Button variant="subtle" color="gray" onClick={() => setAddRiderModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="teal"
+              loading={creatingRider}
+              onClick={handleCreateRider}
+            >
+              Add Rider
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Box>
   );

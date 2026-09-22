@@ -69,6 +69,18 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
   push(twoCol(`Time: ${p.time}`, `Date: ${p.date}`));
   push(dashes());
 
+  if (p.orderType === "DELIVERY" || p.delivery) {
+    push(BOLD_ON);
+    push(centered("*** DELIVERY ORDER ***"));
+    push(BOLD_OFF);
+    if (p.delivery?.customerName) push(row(`Cust: ${p.delivery.customerName}`));
+    if (p.delivery?.customerPhone) push(row(`Phone: ${p.delivery.customerPhone}`));
+    if (p.delivery?.address) push(row(`Addr: ${p.delivery.address}`));
+    if (p.delivery?.landmark) push(row(`Landmark: ${p.delivery.landmark}`));
+    if (p.delivery?.deliveryNotes) push(row(`Notes: ${p.delivery.deliveryNotes}`));
+    push(dashes());
+  }
+
   if (p.type === "KOT") {
     // ── KOT items: Qty  Item ──
     push(row("Qty  Item"));
@@ -91,6 +103,15 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
       push(row(name + qty + amt + "  "));
     }
     push(dashes());
+
+    if (p.packagingChargePaise && p.packagingChargePaise > 0) {
+      const pkgAmt = `Rs${(p.packagingChargePaise / 100).toFixed(0)}`;
+      push(twoCol("Packaging:", pkgAmt));
+    }
+    if (p.deliveryChargePaise && p.deliveryChargePaise > 0) {
+      const delAmt = `Rs${(p.deliveryChargePaise / 100).toFixed(0)}`;
+      push(twoCol("Delivery:", delAmt));
+    }
 
     // Total
     const totalAmt = `Rs${(p.subtotalPaise / 100).toFixed(0)}`;

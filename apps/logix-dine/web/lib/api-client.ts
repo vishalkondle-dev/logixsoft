@@ -28,6 +28,78 @@ async function apiFetch<T>(
 
 // ─── Billing ──────────────────────────────────────────────────────────────────
 
+export interface DeliveryDetailsInput {
+  customerName?: string;
+  customerPhone?: string;
+  alternatePhone?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  landmark?: string;
+  city?: string;
+  pincode?: string;
+  deliveryNotes?: string;
+  deliveryMode?: "IN_HOUSE" | "THIRD_PARTY";
+  riderId?: string;
+}
+
+export interface DeliveryDetails {
+  id: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  alternatePhone?: string | null;
+  addressLine1: string;
+  addressLine2?: string | null;
+  landmark?: string | null;
+  city: string;
+  pincode: string;
+  deliveryNotes?: string | null;
+  deliveryMode: string;
+  riderId?: string | null;
+  riderName?: string | null;
+  riderPhone?: string | null;
+  riderVehicleNo?: string | null;
+  deliveryOtp: string;
+  status: "PENDING_ASSIGNMENT" | "ASSIGNED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED";
+  estimatedMinutes?: number | null;
+  assignedAt?: string | null;
+  pickedUpAt?: string | null;
+  deliveredAt?: string | null;
+  failedReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerAddress {
+  id: string;
+  customerPhone: string;
+  label: string;
+  receiverName?: string | null;
+  receiverPhone?: string | null;
+  addressLine1: string;
+  addressLine2?: string | null;
+  landmark?: string | null;
+  city: string;
+  pincode: string;
+  isDefault?: boolean | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeliveryRider {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  name: string;
+  phone: string;
+  vehicleType: string;
+  vehicleNumber?: string | null;
+  status: "AVAILABLE" | "ON_DELIVERY" | "OFFLINE" | "INACTIVE";
+  activeOrderId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const getBootstrap = (restaurantId: string, outletId?: string | null) =>
   apiFetch<any>(`/billing/bootstrap${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
 
@@ -38,6 +110,10 @@ export const startOrder = (
     tableNo?: string;
     customerPhone?: string;
     note?: string;
+    orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+    packagingChargePaise?: number;
+    deliveryChargePaise?: number;
+    delivery?: DeliveryDetailsInput;
     items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }
 ) => apiFetch<any>("/billing/orders", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
@@ -115,6 +191,10 @@ export const createSettledOrder = (
     customerPhone?: string;
     note?: string;
     method?: string;
+    orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+    packagingChargePaise?: number;
+    deliveryChargePaise?: number;
+    delivery?: DeliveryDetailsInput;
     items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }
 ) => apiFetch<any>("/billing/orders/create-settled", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
@@ -488,6 +568,8 @@ export interface CustomerPortalOrder {
     percentComplete: number;
   };
   items: CustomerOrderItem[];
+  orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | string;
+  delivery?: DeliveryDetails | null;
   activeWaiterRequest?: {
     id: string;
     serviceType: string;
@@ -704,6 +786,34 @@ export const updateWaiterRequestStatus = (
     { method: "PATCH", body: JSON.stringify({ status }) },
     outletId
   );
+
+// ─── Delivery Module ──────────────────────────────────────────────────────────
+
+export const getCustomerAddresses = (restaurantId: string, phone: string, outletId?: string | null) =>
+  apiFetch<CustomerAddress[]>(`/delivery/addresses/${encodeURIComponent(phone)}`, restaurantId, {}, outletId);
+
+export const saveCustomerAddress = (restaurantId: string, body: any, outletId?: string | null) =>
+  apiFetch<CustomerAddress>("/delivery/addresses", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
+export const getDeliveryRiders = (restaurantId: string, outletId?: string | null) =>
+  apiFetch<DeliveryRider[]>(`/delivery/riders${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
+
+export const createDeliveryRider = (restaurantId: string, body: any, outletId?: string | null) =>
+  apiFetch<DeliveryRider>("/delivery/riders", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId ?? body.outletId);
+
+export const updateDeliveryStatus = (
+  restaurantId: string,
+  orderId: string,
+  body: {
+    status: "ASSIGNED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED";
+    riderId?: string;
+    deliveryOtp?: string;
+    failedReason?: string;
+  },
+  outletId?: string | null
+) =>
+  apiFetch<DeliveryDetails>(`/delivery/orders/${orderId}/status`, restaurantId, { method: "PATCH", body: JSON.stringify(body) }, outletId);
+
 
 
 

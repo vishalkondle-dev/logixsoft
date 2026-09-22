@@ -74,8 +74,17 @@ export function printHtml(payload: TicketPayload): void {
         )
         .join("");
 
+  const packagingRow = (payload.packagingChargePaise && payload.packagingChargePaise > 0)
+    ? `<tr><td colspan="2">Packaging</td><td style="text-align:right">Rs${(payload.packagingChargePaise / 100).toFixed(0)}</td></tr>`
+    : "";
+  const deliveryRow = (payload.deliveryChargePaise && payload.deliveryChargePaise > 0)
+    ? `<tr><td colspan="2">Delivery</td><td style="text-align:right">Rs${(payload.deliveryChargePaise / 100).toFixed(0)}</td></tr>`
+    : "";
+
   const totalSection = !isKot
     ? `<tr><td colspan="3"><hr style="border:none;border-top:1px dashed #000;margin:3px 0"/></td></tr>
+       ${packagingRow}
+       ${deliveryRow}
        <tr>
          <td colspan="2"><b>TOTAL</b></td>
          <td style="text-align:right"><b>Rs${(payload.subtotalPaise / 100).toFixed(0)}</b></td>
@@ -85,6 +94,17 @@ export function printHtml(payload: TicketPayload): void {
            ? `<tr><td colspan="3" style="padding-top:4px;font-size:10px">Payment: ${esc(payload.method)}</td></tr>`
            : ""
        }`
+    : "";
+
+  const deliverySection = (payload.orderType === "DELIVERY" || payload.delivery)
+    ? `<div style="margin:4px 0;padding:4px;border:1px solid #000;font-size:11px">
+         <div class="c"><b>*** DELIVERY ORDER ***</b></div>
+         ${payload.delivery?.customerName ? `<div><b>Cust:</b> ${esc(payload.delivery.customerName)}</div>` : ""}
+         ${payload.delivery?.customerPhone ? `<div><b>Phone:</b> ${esc(payload.delivery.customerPhone)}</div>` : ""}
+         ${payload.delivery?.address ? `<div><b>Addr:</b> ${esc(payload.delivery.address)}</div>` : ""}
+         ${payload.delivery?.landmark ? `<div><b>Landmark:</b> ${esc(payload.delivery.landmark)}</div>` : ""}
+         ${payload.delivery?.deliveryNotes ? `<div><b>Notes:</b> ${esc(payload.delivery.deliveryNotes)}</div>` : ""}
+       </div>`
     : "";
 
   const colHeaders = isKot
@@ -114,6 +134,7 @@ ${payload.restaurantAddress ? `<div class="c" style="font-size:10px">${esc(paylo
   ${payload.orderId ? `<tr><td colspan="2" style="font-size:10px;color:#555">Order ID: ${esc(payload.orderId)}</td></tr>` : ""}
   <tr><td>${payload.time}</td><td style="text-align:right">${payload.date}</td></tr>
 </table>
+${deliverySection}
 <hr class="d"/>
 <table>${colHeaders}${itemRows}${totalSection}</table>
 <hr class="d"/>

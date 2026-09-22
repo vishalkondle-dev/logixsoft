@@ -11,6 +11,9 @@ import {
   saleOrderItem,
   orderItemAudit,
   waiterRequest,
+  deliveryOrder,
+  customerAddress,
+  deliveryRider,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -153,6 +156,7 @@ export type JsonSaleOrderItemRow = Omit<SaleOrderItemRow, 'createdAt' | 'updated
 export type OrderWithItems = {
   order: JsonSaleOrderRow;
   items: JsonSaleOrderItemRow[];
+  delivery?: JsonDeliveryOrderRow | null;
 };
 
 export type WaiterRequestRow = InferSelectModel<typeof waiterRequest>;
@@ -161,5 +165,33 @@ export type JsonWaiterRequestRow = Omit<WaiterRequestRow, 'createdAt' | 'updated
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+};
+
+export type DeliveryOrderRow = InferSelectModel<typeof deliveryOrder>;
+export type NewDeliveryOrderRow = InferInsertModel<typeof deliveryOrder>;
+export type JsonDeliveryOrderRow = Omit<
+  DeliveryOrderRow,
+  'createdAt' | 'updatedAt' | 'assignedAt' | 'pickedUpAt' | 'deliveredAt'
+> & {
+  createdAt: string;
+  updatedAt: string;
+  assignedAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
+};
+
+export type CustomerAddressRow = InferSelectModel<typeof customerAddress>;
+export type NewCustomerAddressRow = InferInsertModel<typeof customerAddress>;
+export type JsonCustomerAddressRow = Omit<CustomerAddressRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryRiderRow = InferSelectModel<typeof deliveryRider>;
+export type NewDeliveryRiderRow = InferInsertModel<typeof deliveryRider>;
+export type JsonDeliveryRiderRow = Omit<DeliveryRiderRow, 'createdAt' | 'updatedAt' | 'lastLocationAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  lastLocationAt: string | null;
 };
 

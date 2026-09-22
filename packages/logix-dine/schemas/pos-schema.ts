@@ -1,5 +1,5 @@
 import {
-  pgTable, text, timestamp, boolean, integer, bigint, index, unique, jsonb,
+  pgTable, text, timestamp, boolean, integer, bigint, index, unique, jsonb, doublePrecision,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth-schema';
 
@@ -234,6 +234,9 @@ export const saleOrder = pgTable(
     settledAt: timestamp('settledAt'),
     settledByUserId: text('settledByUserId').references(() => user.id),
     tableFreedAt: timestamp('tableFreedAt'),
+    orderType: text('orderType').notNull().default('DINE_IN'), // DINE_IN | TAKEAWAY | DELIVERY
+    packagingChargePaise: integer('packagingChargePaise').notNull().default(0),
+    deliveryChargePaise: integer('deliveryChargePaise').notNull().default(0),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
@@ -344,6 +347,110 @@ export const waiterRequest = pgTable(
   ],
 );
 
+// ─── Delivery Order ──────────────────────────────────────────────────────────
+
+export const deliveryOrder = pgTable(
+  'deliveryOrder',
+  {
+    id: text('id').primaryKey(),
+    orderId: text('orderId')
+      .notNull()
+      .references(() => saleOrder.id, { onDelete: 'cascade' }),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    customerName: text('customerName').notNull(),
+    customerPhone: text('customerPhone').notNull(),
+    alternatePhone: text('alternatePhone'),
+    addressLine1: text('addressLine1').notNull(),
+    addressLine2: text('addressLine2'),
+    landmark: text('landmark'),
+    city: text('city').notNull().default(''),
+    pincode: text('pincode').notNull().default(''),
+    latitude: doublePrecision('latitude'),
+    longitude: doublePrecision('longitude'),
+    deliveryNotes: text('deliveryNotes'),
+    deliveryMode: text('deliveryMode').notNull().default('IN_HOUSE'), // IN_HOUSE | THIRD_PARTY
+    deliveryProvider: text('deliveryProvider'),
+    riderId: text('riderId'),
+    riderName: text('riderName'),
+    riderPhone: text('riderPhone'),
+    riderVehicleNo: text('riderVehicleNo'),
+    deliveryOtp: text('deliveryOtp').notNull(),
+    status: text('status').notNull().default('PENDING_ASSIGNMENT'), // PENDING_ASSIGNMENT | ASSIGNED | OUT_FOR_DELIVERY | DELIVERED | CANCELLED
+    estimatedMinutes: integer('estimatedMinutes').default(35),
+    assignedAt: timestamp('assignedAt'),
+    pickedUpAt: timestamp('pickedUpAt'),
+    deliveredAt: timestamp('deliveredAt'),
+    failedReason: text('failedReason'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('deliveryOrder_orderId_idx').on(t.orderId),
+    index('deliveryOrder_outletId_status_idx').on(t.outletId, t.status),
+    index('deliveryOrder_customerPhone_idx').on(t.customerPhone),
+  ]
+);
+
+// ─── Customer Address ────────────────────────────────────────────────────────
+
+export const customerAddress = pgTable(
+  'customerAddress',
+  {
+    id: text('id').primaryKey(),
+    customerPhone: text('customerPhone').notNull(),
+    label: text('label').notNull().default('Home'),
+    receiverName: text('receiverName'),
+    receiverPhone: text('receiverPhone'),
+    addressLine1: text('addressLine1').notNull(),
+    addressLine2: text('addressLine2'),
+    landmark: text('landmark'),
+    city: text('city').notNull().default(''),
+    pincode: text('pincode').notNull().default(''),
+    latitude: doublePrecision('latitude'),
+    longitude: doublePrecision('longitude'),
+    isDefault: boolean('isDefault').default(false),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('customerAddress_customerPhone_idx').on(t.customerPhone),
+  ]
+);
+
+// ─── Delivery Rider (Fleet) ──────────────────────────────────────────────────
+
+export const deliveryRider = pgTable(
+  'deliveryRider',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    phone: text('phone').notNull(),
+    vehicleType: text('vehicleType').notNull().default('BIKE'),
+    vehicleNumber: text('vehicleNumber'),
+    status: text('status').notNull().default('AVAILABLE'), // AVAILABLE | ON_DELIVERY | OFFLINE | INACTIVE
+    currentLatitude: doublePrecision('currentLatitude'),
+    currentLongitude: doublePrecision('currentLongitude'),
+    lastLocationAt: timestamp('lastLocationAt'),
+    activeOrderId: text('activeOrderId'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('deliveryRider_outletId_status_idx').on(t.outletId, t.status),
+  ]
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
@@ -358,5 +465,9 @@ export const posSchema = {
   saleOrderItem,
   orderItemAudit,
   waiterRequest,
+  deliveryOrder,
+  customerAddress,
+  deliveryRider,
 };
+
 

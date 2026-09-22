@@ -12,6 +12,9 @@ import type {
   JsonSaleOrderRow,
   JsonSaleOrderItemRow,
   JsonOrderItemAuditRow,
+  JsonDeliveryOrderRow,
+  JsonCustomerAddressRow,
+  JsonDeliveryRiderRow,
 } from '../types/pos-schema';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -157,6 +160,9 @@ export const SaleOrderSchema = z.object({
   settledAt: z.string().nullable(),
   settledByUserId: z.string().nullable(),
   tableFreedAt: z.string().nullable(),
+  orderType: z.string(),
+  packagingChargePaise: z.number().int(),
+  deliveryChargePaise: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),
@@ -197,6 +203,77 @@ export const OrderItemAuditSchema = z.object({
   createdAt: z.string(),
 });
 type _OrderItemAuditAssert = Expect<AssertSame<z.infer<typeof OrderItemAuditSchema>, JsonOrderItemAuditRow>>;
+
+export const DeliveryOrderSchema = z.object({
+  id: z.string(),
+  orderId: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  customerName: z.string(),
+  customerPhone: z.string(),
+  alternatePhone: z.string().nullable(),
+  addressLine1: z.string(),
+  addressLine2: z.string().nullable(),
+  landmark: z.string().nullable(),
+  city: z.string(),
+  pincode: z.string(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  deliveryNotes: z.string().nullable(),
+  deliveryMode: z.string(),
+  deliveryProvider: z.string().nullable(),
+  riderId: z.string().nullable(),
+  riderName: z.string().nullable(),
+  riderPhone: z.string().nullable(),
+  riderVehicleNo: z.string().nullable(),
+  deliveryOtp: z.string(),
+  status: z.string(),
+  estimatedMinutes: z.number().nullable(),
+  assignedAt: z.string().nullable(),
+  pickedUpAt: z.string().nullable(),
+  deliveredAt: z.string().nullable(),
+  failedReason: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+type _DeliveryOrderAssert = Expect<AssertSame<z.infer<typeof DeliveryOrderSchema>, JsonDeliveryOrderRow>>;
+
+export const CustomerAddressSchema = z.object({
+  id: z.string(),
+  customerPhone: z.string(),
+  label: z.string(),
+  receiverName: z.string().nullable(),
+  receiverPhone: z.string().nullable(),
+  addressLine1: z.string(),
+  addressLine2: z.string().nullable(),
+  landmark: z.string().nullable(),
+  city: z.string(),
+  pincode: z.string(),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+  isDefault: z.boolean().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+type _CustomerAddressAssert = Expect<AssertSame<z.infer<typeof CustomerAddressSchema>, JsonCustomerAddressRow>>;
+
+export const DeliveryRiderSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  vehicleType: z.string(),
+  vehicleNumber: z.string().nullable(),
+  status: z.string(),
+  currentLatitude: z.number().nullable(),
+  currentLongitude: z.number().nullable(),
+  lastLocationAt: z.string().nullable(),
+  activeOrderId: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+type _DeliveryRiderAssert = Expect<AssertSame<z.infer<typeof DeliveryRiderSchema>, JsonDeliveryRiderRow>>;
 
 export const UpdateOrderItemStatusSchema = z.object({
   status: z.enum(['ORDERED', 'PREPARING', 'PREPARED', 'SERVED', 'CANCELLED']).optional(),
@@ -285,11 +362,29 @@ export const OrderItemInputSchema = z.object({
   addonIds: z.array(z.string()).optional(),
 });
 
+export const DeliveryInputSchema = z.object({
+  customerName: z.string().min(1).max(100),
+  customerPhone: z.string().max(25).optional(),
+  alternatePhone: z.string().max(25).optional(),
+  addressLine1: z.string().min(1).max(255),
+  addressLine2: z.string().max(255).optional(),
+  landmark: z.string().max(100).optional(),
+  city: z.string().max(100).optional(),
+  pincode: z.string().max(10).optional(),
+  deliveryNotes: z.string().max(255).optional(),
+  deliveryMode: z.string().optional().default('IN_HOUSE'),
+  riderId: z.string().optional(),
+});
+
 export const StartOrderSchema = z.object({
   outletId: z.string(),
   tableNo: z.string().max(50).optional(),
   customerPhone: z.string().max(25).optional(),
   note: z.string().max(255).optional(),
+  orderType: z.string().optional().default('DINE_IN'),
+  packagingChargePaise: z.number().int().nonnegative().optional().default(0),
+  deliveryChargePaise: z.number().int().nonnegative().optional().default(0),
+  delivery: DeliveryInputSchema.optional(),
   items: z.array(OrderItemInputSchema).optional(),
 });
 
@@ -330,6 +425,10 @@ export const CreateSettledSchema = z.object({
   tableNo: z.string().max(50).optional(),
   customerPhone: z.string().max(25).optional(),
   note: z.string().max(255).optional(),
+  orderType: z.string().optional().default('DINE_IN'),
+  packagingChargePaise: z.number().int().nonnegative().optional().default(0),
+  deliveryChargePaise: z.number().int().nonnegative().optional().default(0),
+  delivery: DeliveryInputSchema.optional(),
   method: z.enum(['Cash', 'UPI', 'QR']).optional(),
   items: z.array(OrderItemInputSchema).optional(),
 });
@@ -346,4 +445,5 @@ export const BillingBootstrapSchema = z.object({
 export const OrderWithItemsSchema = z.object({
   order: SaleOrderSchema,
   items: z.array(SaleOrderItemSchema),
+  delivery: DeliveryOrderSchema.nullable().optional(),
 });

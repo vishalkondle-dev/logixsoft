@@ -30,6 +30,8 @@ import {
   IconAlertCircle,
   IconShare,
   IconNotes,
+  IconMotorbike,
+  IconPhoneCall,
 } from "@tabler/icons-react";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type { CustomerPortalOrder, CustomerOrderItem } from "@/lib/api-client";
@@ -248,6 +250,8 @@ ${itemsText}
     }
   };
 
+  const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+
   return (
     <>
       <Card
@@ -256,8 +260,8 @@ ${itemsText}
         shadow="sm"
         p={{ base: "sm", sm: "md" }}
         style={{
-          borderColor: "rgba(175, 115, 215, 0.35)",
-          borderLeft: "5px solid #af73d7",
+          borderColor: isDelivery ? "rgba(12, 166, 120, 0.4)" : "rgba(175, 115, 215, 0.35)",
+          borderLeft: isDelivery ? "5px solid #0ca678" : "5px solid #af73d7",
           backgroundColor: "#fff",
         }}
       >
@@ -276,9 +280,15 @@ ${itemsText}
               <Badge color="violet" variant="light" size="sm">
                 Token #{order.tokenNo || "—"}
               </Badge>
-              <Badge color="dark" variant="light" size="sm">
-                Table: {order.tableNo}
-              </Badge>
+              {isDelivery ? (
+                <Badge color="teal" variant="filled" size="sm" leftSection={<IconMotorbike size={12} />}>
+                  🛵 Delivery
+                </Badge>
+              ) : (
+                <Badge color="dark" variant="light" size="sm">
+                  Table: {order.tableNo}
+                </Badge>
+              )}
               {renderOrderStatusBadge(order.orderStatus)}
             </Group>
           </div>
@@ -287,11 +297,73 @@ ${itemsText}
             <Text size="xs" c="dimmed" fw={500}>
               Running Bill
             </Text>
-            <Text fw={800} size="xl" style={{ color: "#af73d7" }}>
+            <Text fw={800} size="xl" style={{ color: isDelivery ? "#0ca678" : "#af73d7" }}>
               {formatINR(order.subtotalPaise)}
             </Text>
           </Box>
         </Group>
+
+        {/* Delivery Order Info Banner */}
+        {isDelivery && (
+          <Paper
+            mt="sm"
+            p="xs"
+            radius="md"
+            style={{
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+              <Group gap={8} align="flex-start">
+                <ThemeIcon size={28} radius="xl" color="teal" variant="light" mt={2}>
+                  <IconMotorbike size={16} />
+                </ThemeIcon>
+                <div>
+                  <Group gap={6} align="center">
+                    <Text size="xs" fw={700} c="teal.9">
+                      {order.delivery?.status === "OUT_FOR_DELIVERY"
+                        ? "Rider is Out for Delivery! 🛵"
+                        : order.delivery?.status === "ASSIGNED"
+                        ? "Rider Assigned"
+                        : order.delivery?.status === "DELIVERED"
+                        ? "Order Delivered ✅"
+                        : "Delivery Order Confirmed"}
+                    </Text>
+                    {order.delivery?.deliveryOtp && (
+                      <Badge color="teal" variant="filled" size="xs">
+                        Delivery PIN: {order.delivery.deliveryOtp}
+                      </Badge>
+                    )}
+                  </Group>
+                  {order.delivery?.riderName && (
+                    <Text size="xs" c="dimmed">
+                      Rider: {order.delivery.riderName} {order.delivery.riderPhone ? `(${order.delivery.riderPhone})` : ""}
+                    </Text>
+                  )}
+                  {order.delivery?.addressLine1 && (
+                    <Text size="xs" c="dimmed" lineClamp={1}>
+                      📍 {order.delivery.addressLine1}{order.delivery.landmark ? ` (${order.delivery.landmark})` : ""}
+                    </Text>
+                  )}
+                </div>
+              </Group>
+
+              {order.delivery?.riderPhone && (
+                <Button
+                  component="a"
+                  href={`tel:${order.delivery.riderPhone}`}
+                  size="xs"
+                  variant="light"
+                  color="teal"
+                  leftSection={<IconPhoneCall size={12} />}
+                >
+                  Call Rider
+                </Button>
+              )}
+            </Group>
+          </Paper>
+        )}
 
         {/* Live Progress Bar Section */}
         <Paper
@@ -449,29 +521,47 @@ ${itemsText}
         {/* Quick Action Buttons Bar */}
         <Group justify="space-between" align="center" mt="sm" wrap="wrap" gap="xs">
           <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
-            <Button
-              color="orange"
-              variant="filled"
-              size="xs"
-              radius="md"
-              leftSection={<IconBellRinging size={14} />}
-              onClick={() => setIsWaiterModalOpen(true)}
-            >
-              <Text span visibleFrom="xs">Call Waiter</Text>
-              <Text span hiddenFrom="xs">Waiter</Text>
-            </Button>
+            {!isDelivery && (
+              <Button
+                color="orange"
+                variant="filled"
+                size="xs"
+                radius="md"
+                leftSection={<IconBellRinging size={14} />}
+                onClick={() => setIsWaiterModalOpen(true)}
+              >
+                <Text span visibleFrom="xs">Call Waiter</Text>
+                <Text span hiddenFrom="xs">Waiter</Text>
+              </Button>
+            )}
 
-            <Button
-              color="dinePrimary"
-              variant="filled"
-              size="xs"
-              radius="md"
-              leftSection={<IconPlus size={14} />}
-              onClick={() => setIsOrderMoreOpen(true)}
-            >
-              <Text span visibleFrom="xs">Order More Items</Text>
-              <Text span hiddenFrom="xs">+ Order Items</Text>
-            </Button>
+            {!isDelivery && (
+              <Button
+                color="dinePrimary"
+                variant="filled"
+                size="xs"
+                radius="md"
+                leftSection={<IconPlus size={14} />}
+                onClick={() => setIsOrderMoreOpen(true)}
+              >
+                <Text span visibleFrom="xs">Order More Items</Text>
+                <Text span hiddenFrom="xs">+ Order Items</Text>
+              </Button>
+            )}
+
+            {isDelivery && order.delivery?.riderPhone && (
+              <Button
+                component="a"
+                href={`tel:${order.delivery.riderPhone}`}
+                color="teal"
+                variant="filled"
+                size="xs"
+                radius="md"
+                leftSection={<IconPhoneCall size={14} />}
+              >
+                Call Rider
+              </Button>
+            )}
 
             <Button
               variant="light"

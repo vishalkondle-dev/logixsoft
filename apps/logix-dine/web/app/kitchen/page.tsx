@@ -8,7 +8,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconCheck, IconClock, IconLogout, IconTableAlias,
-  IconArrowRight, IconX, IconBan,
+  IconArrowRight, IconX, IconBan, IconMotorbike,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -201,11 +201,15 @@ export default function KitchenPage() {
                   </Group>
                 </Group>
 
-                {order.tableNo && (
+                {order.orderType === "DELIVERY" ? (
+                  <Badge size="sm" variant="filled" color="teal" mb="sm" leftSection={<IconMotorbike size={12} />}>
+                    DELIVERY
+                  </Badge>
+                ) : order.tableNo ? (
                   <Badge size="sm" variant="light" color="gray" mb="sm" leftSection={<IconTableAlias size={12} />}>
                     {order.tableNo === "Takeaway" ? "Takeaway" : `Table ${order.tableNo}`}
                   </Badge>
-                )}
+                ) : null}
 
                 {/* Items List with Next and Close buttons */}
                 <Stack gap={6} mb="md">

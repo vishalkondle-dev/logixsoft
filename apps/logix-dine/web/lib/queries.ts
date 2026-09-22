@@ -52,6 +52,10 @@ import {
   getWaiterStats,
   createWaiterRequest,
   updateWaiterRequestStatus,
+  getDeliveryRiders,
+  createDeliveryRider,
+  updateDeliveryStatus,
+  getCustomerAddresses,
   type CustomerPortalData,
   type CustomerMenuResponse,
 } from "@/lib/api-client";
@@ -87,6 +91,10 @@ export const qk = {
     ["waiterRequests", restaurantId, outletId, params ?? {}] as const,
   waiterStats: (restaurantId: string, outletId: string | null) =>
     ["waiterStats", restaurantId, outletId] as const,
+  deliveryRiders: (restaurantId: string, outletId: string | null) =>
+    ["deliveryRiders", restaurantId, outletId] as const,
+  customerAddresses: (restaurantId: string, phone: string) =>
+    ["customerAddresses", restaurantId, phone] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -656,6 +664,59 @@ export function useUpdateWaiterRequestStatus() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["waiterRequests", vars.restaurantId] });
       queryClient.invalidateQueries({ queryKey: ["waiterStats", vars.restaurantId] });
+    },
+  });
+}
+
+// ─── Delivery Module Hooks ────────────────────────────────────────────────────
+
+export function useDeliveryRiders(restaurantId: string, outletId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: qk.deliveryRiders(restaurantId, outletId),
+    queryFn: () => getDeliveryRiders(restaurantId, outletId),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useCustomerAddresses(restaurantId: string, phone: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.customerAddresses(restaurantId, phone),
+    queryFn: () => getCustomerAddresses(restaurantId, phone),
+    enabled: !!restaurantId && phone.replace(/\D/g, "").length >= 10 && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateDeliveryRider(restaurantId: string, outletId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: any) => createDeliveryRider(restaurantId, body, outletId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
+    },
+  });
+}
+
+export function useUpdateDeliveryStatus(restaurantId: string, outletId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      body,
+    }: {
+      orderId: string;
+      body: {
+        status: "ASSIGNED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED";
+        riderId?: string;
+        deliveryOtp?: string;
+        failedReason?: string;
+      };
+    }) => updateDeliveryStatus(restaurantId, orderId, body, outletId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
+      queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
     },
   });
 }

@@ -140,6 +140,17 @@ app.get(
         }
       });
 
+      // 3c. Fetch latest delivery details for these orders
+      const deliveryOrders = orderIds.length > 0
+        ? await db
+            .select()
+            .from(appSchema.deliveryOrder)
+            .where(inArray(appSchema.deliveryOrder.orderId, orderIds))
+        : [];
+      const deliveryByOrderId = new Map<string, any>(
+        deliveryOrders.map((d: any) => [d.orderId, d])
+      );
+
       // 4. Categorize active and past orders
       const activeOrdersList: any[] = [];
       const pastOrdersList: any[] = [];
@@ -173,6 +184,7 @@ app.get(
           }
         }
 
+        const deliveryDetails = deliveryByOrderId.get(o.id) || null;
         const activeDishItems = ordItems.filter((it: any) => it.status !== 'CANCELLED');
         const servedItemsCount = activeDishItems.filter((it: any) => it.status === 'SERVED').reduce((sum: number, it: any) => sum + it.qty, 0);
         const preparedItemsCount = activeDishItems.filter((it: any) => it.status === 'PREPARED').reduce((sum: number, it: any) => sum + it.qty, 0);
@@ -180,6 +192,8 @@ app.get(
         const orderedItemsCount = activeDishItems.filter((it: any) => it.status === 'ORDERED' || !it.status).reduce((sum: number, it: any) => sum + it.qty, 0);
         const totalDishQty = activeDishItems.reduce((sum: number, it: any) => sum + it.qty, 0);
         const maxRound = ordItems.reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
+
+        const orderType = o.orderType || (deliveryDetails ? 'DELIVERY' : (o.tableNo && o.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY'));
 
         const mappedOrder = {
           id: o.id,
@@ -192,15 +206,40 @@ app.get(
           outletName: outlet?.name || 'Restaurant Outlet',
           outletAddress: outlet?.address || null,
           outletPhone: outlet?.phone || rest?.phone || null,
-          tableNo: o.tableNo || 'Takeaway',
+          tableNo: o.tableNo || (orderType === 'DELIVERY' ? 'Delivery' : 'Takeaway'),
           customerPhone: o.customerPhone,
           status: o.status,
           orderStatus: o.orderStatus || 'ORDERED',
+          orderType,
+          packagingChargePaise: o.packagingChargePaise || 0,
+          deliveryChargePaise: o.deliveryChargePaise || 0,
           subtotalPaise: o.subtotalPaise || 0,
           paidPaise: o.paidPaise || 0,
           method: o.method || 'Cash',
           note: o.note,
           activeWaiterRequest,
+          delivery: deliveryDetails ? {
+            id: deliveryDetails.id,
+            customerName: deliveryDetails.customerName,
+            customerPhone: deliveryDetails.customerPhone,
+            addressLine1: deliveryDetails.addressLine1,
+            addressLine2: deliveryDetails.addressLine2,
+            landmark: deliveryDetails.landmark,
+            city: deliveryDetails.city,
+            pincode: deliveryDetails.pincode,
+            deliveryNotes: deliveryDetails.deliveryNotes,
+            deliveryMode: deliveryDetails.deliveryMode,
+            riderId: deliveryDetails.riderId,
+            riderName: deliveryDetails.riderName,
+            riderPhone: deliveryDetails.riderPhone,
+            riderVehicleNo: deliveryDetails.riderVehicleNo,
+            deliveryOtp: deliveryDetails.deliveryOtp,
+            status: deliveryDetails.status,
+            estimatedMinutes: deliveryDetails.estimatedMinutes,
+            assignedAt: deliveryDetails.assignedAt ? new Date(deliveryDetails.assignedAt).toISOString() : null,
+            pickedUpAt: deliveryDetails.pickedUpAt ? new Date(deliveryDetails.pickedUpAt).toISOString() : null,
+            deliveredAt: deliveryDetails.deliveredAt ? new Date(deliveryDetails.deliveredAt).toISOString() : null,
+          } : null,
           createdAt: o.createdAt ? new Date(o.createdAt).toISOString() : null,
           settledAt: o.settledAt ? new Date(o.settledAt).toISOString() : null,
           itemsCount: totalDishQty,
@@ -229,7 +268,11 @@ app.get(
           })),
         };
 
-        if (o.status === 'OPEN') {
+        const isDelivery = orderType === 'DELIVERY';
+        const isDeliveryActive = isDelivery && o.status !== 'VOID' && (!deliveryDetails || (deliveryDetails.status !== 'DELIVERED' && deliveryDetails.status !== 'CANCELLED'));
+        const isDineInActive = !isDelivery && o.status === 'OPEN';
+
+        if (isDeliveryActive || isDineInActive) {
           activeOrdersList.push(mappedOrder);
         } else {
           pastOrdersList.push(mappedOrder);

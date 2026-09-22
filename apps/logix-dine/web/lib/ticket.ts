@@ -14,6 +14,16 @@ export interface TicketPayload {
   method: string | null;
   type: "KOT" | "BILL";
   round?: number;
+  orderType?: string;
+  packagingChargePaise?: number;
+  deliveryChargePaise?: number;
+  delivery?: {
+    customerName?: string;
+    customerPhone?: string;
+    address?: string;
+    landmark?: string;
+    deliveryNotes?: string;
+  } | null;
 }
 
 /** Format an ISO timestamp in IST (UTC+5:30). */
@@ -37,12 +47,23 @@ export function buildKotPayload(
 ): TicketPayload {
   const { date, time } = formatIST(order.order.createdAt);
   const itemsToPrint = options?.items ?? order.items ?? [];
+  const del = order.delivery;
   return {
     orderId: order.order.id,
     restaurantName: restaurant.name,
     restaurantAddress: restaurant.address ?? "",
     orderNo: order.order.orderNo,
     tableNo: order.order.tableNo ?? null,
+    orderType: order.order.orderType,
+    packagingChargePaise: order.order.packagingChargePaise,
+    deliveryChargePaise: order.order.deliveryChargePaise,
+    delivery: del ? {
+      customerName: del.customerName,
+      customerPhone: del.customerPhone,
+      address: [del.addressLine1, del.addressLine2].filter(Boolean).join(", "),
+      landmark: del.landmark || undefined,
+      deliveryNotes: del.deliveryNotes || undefined,
+    } : null,
     date,
     time,
     items: itemsToPrint.map((i: any) => {
@@ -70,12 +91,23 @@ export function buildBillPayload(
 ): TicketPayload {
   const { date, time } = formatIST(order.order.createdAt);
   const itemsToPrint = options?.items ?? order.items ?? [];
+  const del = order.delivery;
   return {
     orderId: order.order.id,
     restaurantName: restaurant.name,
     restaurantAddress: restaurant.address ?? "",
     orderNo: order.order.orderNo,
     tableNo: order.order.tableNo ?? null,
+    orderType: order.order.orderType,
+    packagingChargePaise: order.order.packagingChargePaise,
+    deliveryChargePaise: order.order.deliveryChargePaise,
+    delivery: del ? {
+      customerName: del.customerName,
+      customerPhone: del.customerPhone,
+      address: [del.addressLine1, del.addressLine2].filter(Boolean).join(", "),
+      landmark: del.landmark || undefined,
+      deliveryNotes: del.deliveryNotes || undefined,
+    } : null,
     date,
     time,
     items: itemsToPrint.map((i: any) => {
@@ -88,7 +120,7 @@ export function buildBillPayload(
       };
     }),
     subtotalPaise: options?.subtotalPaise ?? order.order.subtotalPaise,
-    method: order.order.paymentMethod ?? null,
+    method: order.order.method ?? order.order.paymentMethod ?? null,
     type: "BILL",
   };
 }

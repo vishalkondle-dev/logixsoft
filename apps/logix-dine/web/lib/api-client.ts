@@ -442,8 +442,24 @@ export const sendCustomerWhatsApp = (
 
 // ─── Customer Portal API ─────────────────────────────────────────────────────
 
+export interface CustomerOrderItem {
+  id: string;
+  itemId?: string;
+  name: string;
+  pricePaise: number;
+  qty: number;
+  variant?: any;
+  addons?: any;
+  status?: string;
+  round?: number;
+  note?: string;
+  isNonVeg?: boolean;
+  createdAt?: string | null;
+}
+
 export interface CustomerPortalOrder {
   id: string;
+  orderNo?: number;
   tokenNo: number | null;
   restaurantId: string;
   restaurantName: string;
@@ -451,8 +467,10 @@ export interface CustomerPortalOrder {
   outletId: string;
   outletName: string;
   outletAddress: string | null;
+  outletPhone?: string | null;
   tableNo: string;
   status: string;
+  orderStatus?: string;
   subtotalPaise: number;
   paidPaise: number;
   method: string;
@@ -460,16 +478,41 @@ export interface CustomerPortalOrder {
   createdAt: string | null;
   settledAt: string | null;
   itemsCount: number;
-  items: Array<{
-    id: string;
-    name: string;
-    pricePaise: number;
-    qty: number;
-    variant?: any;
-    addons?: any;
-    status?: string;
-    note?: string;
-  }>;
+  maxRound?: number;
+  progress?: {
+    totalQty: number;
+    servedQty: number;
+    preparedQty: number;
+    preparingQty: number;
+    orderedQty: number;
+    percentComplete: number;
+  };
+  items: CustomerOrderItem[];
+}
+
+export interface CustomerMenuItem {
+  id: string;
+  categoryId: string;
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  pricePaise: number;
+  isNonVeg: boolean;
+  variants: Array<{ id: string; name: string; pricePaise: number }>;
+  addons: Array<{ id: string; name: string; pricePaise: number }>;
+}
+
+export interface CustomerMenuCategory {
+  id: string;
+  name: string;
+  description?: string | null;
+  sortOrder?: number;
+}
+
+export interface CustomerMenuResponse {
+  outlet: { id: string; name: string };
+  categories: CustomerMenuCategory[];
+  items: CustomerMenuItem[];
 }
 
 export interface CustomerPortalData {
@@ -534,4 +577,69 @@ export const updateCustomerProfile = async (body: {
   }
   return res.json();
 };
+
+export const getCustomerOutletMenu = async (outletId: string): Promise<CustomerMenuResponse> => {
+  const res = await fetch(`${API_BASE}/customer/menu?outletId=${encodeURIComponent(outletId)}`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+export const addCustomerOrderItems = async (
+  orderId: string,
+  body: {
+    items: Array<{
+      itemId: string;
+      qty: number;
+      variantId?: string;
+      addonIds?: string[];
+      note?: string;
+    }>;
+    roundNote?: string;
+  }
+): Promise<{ success: boolean; message: string; round: number; addedCount: number; subtotalPaise: number }> => {
+  const res = await fetch(`${API_BASE}/customer/orders/${encodeURIComponent(orderId)}/items`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+export const callWaiterAssistance = async (
+  orderId: string,
+  body: {
+    serviceType: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER";
+    note?: string;
+  }
+): Promise<{ success: boolean; message: string; serviceType: string; serviceLabel: string; timestamp: number }> => {
+  const res = await fetch(`${API_BASE}/customer/orders/${encodeURIComponent(orderId)}/call-waiter`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
 

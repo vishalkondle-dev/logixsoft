@@ -45,7 +45,11 @@ import {
   sendCustomerWhatsApp,
   getCustomerPortal,
   updateCustomerProfile,
+  getCustomerOutletMenu,
+  addCustomerOrderItems,
+  callWaiterAssistance,
   type CustomerPortalData,
+  type CustomerMenuResponse,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
@@ -74,6 +78,7 @@ export const qk = {
   customer: (restaurantId: string, phone: string, outletId?: string | null) =>
     ["customer", restaurantId, phone, outletId ?? "all"] as const,
   customerPortal: () => ["customerPortal"] as const,
+  customerMenu: (outletId: string) => ["customerMenu", outletId] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -511,4 +516,54 @@ export function useUpdateCustomerProfile() {
     },
   });
 }
+
+export function useCustomerOutletMenu(outletId: string | null | undefined) {
+  return useQuery({
+    queryKey: outletId ? qk.customerMenu(outletId) : ["customerMenu", "none"],
+    queryFn: () => getCustomerOutletMenu(outletId!),
+    enabled: Boolean(outletId),
+    staleTime: 60_000,
+  });
+}
+
+export function useAddCustomerOrderItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      body,
+    }: {
+      orderId: string;
+      body: {
+        items: Array<{
+          itemId: string;
+          qty: number;
+          variantId?: string;
+          addonIds?: string[];
+          note?: string;
+        }>;
+        roundNote?: string;
+      };
+    }) => addCustomerOrderItems(orderId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.customerPortal() });
+    },
+  });
+}
+
+export function useCallWaiter() {
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      body,
+    }: {
+      orderId: string;
+      body: {
+        serviceType: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER";
+        note?: string;
+      };
+    }) => callWaiterAssistance(orderId, body),
+  });
+}
+
 

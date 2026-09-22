@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import { qk } from "./queries";
 
 export interface SyncMessage {
@@ -87,6 +88,24 @@ export function useOutletSync(
           if (topic === "KITCHEN" || topic === "ALL") {
             queryClient.invalidateQueries({ queryKey: ["kitchenOrders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+          }
+
+          if (msg.type === "WAITER_CALL") {
+            const d = (msg.data || {}) as any;
+            notifications.show({
+              title: `🛎️ Table ${d.tableNo || "Guest"} Service Call`,
+              message: `${d.serviceLabel || "Staff Assistance"}${d.note ? `: "${d.note}"` : ""}`,
+              color: "yellow",
+              autoClose: 12000,
+            });
+          } else if (msg.type === "NEW_ROUND") {
+            const d = (msg.data || {}) as any;
+            notifications.show({
+              title: `🍽️ Table ${d.tableNo || "Guest"} - Round ${d.round || ""}`,
+              message: `${d.itemsCount || 1} new item(s) ordered from table!`,
+              color: "teal",
+              autoClose: 8000,
+            });
           }
         } catch (e) {
           console.warn("[useOutletSync] Error processing event:", e);

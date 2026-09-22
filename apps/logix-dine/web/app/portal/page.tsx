@@ -57,6 +57,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCustomerPortal, useUpdateCustomerProfile } from "@/lib/queries";
 import { useCustomerSync } from "@/lib/use-customer-sync";
 import type { CustomerPortalOrder } from "@/lib/api-client";
+import { ActiveOrderCard } from "@/components/portal/active-order-card";
 
 // Format paise to INR string
 function formatINR(paise?: number | null): string {
@@ -498,105 +499,11 @@ ${itemsText}
                 </Group>
 
                 {activeOrders.map((order) => (
-                  <Card
+                  <ActiveOrderCard
                     key={order.id}
-                    radius="lg"
-                    withBorder
-                    shadow="sm"
-                    p={{ base: "sm", sm: "md" }}
-                    style={{
-                      borderColor: "rgba(175, 115, 215, 0.35)",
-                      borderLeft: "5px solid #af73d7",
-                      background: "#fff",
-                    }}
-                  >
-                    {/* Header */}
-                    <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs">
-                      <div>
-                        <Group gap={6} align="center">
-                          <Text fw={700} size="md">
-                            {order.restaurantName}
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            • {order.outletName}
-                          </Text>
-                        </Group>
-                        <Group gap={6} mt={4} wrap="wrap">
-                          <Badge color="violet" variant="filled" size="sm">
-                            Token #{order.tokenNo || "—"}
-                          </Badge>
-                          <Badge color="gray" variant="light" size="sm">
-                            Table: {order.tableNo}
-                          </Badge>
-                          <Badge color="orange" variant="light" size="sm" leftSection={<IconClock size={12} />}>
-                            Order in Progress
-                          </Badge>
-                        </Group>
-                      </div>
-
-                      <Box style={{ textAlign: "right" }}>
-                        <Text size="xs" c="dimmed" fw={500}>
-                          Running Bill
-                        </Text>
-                        <Text fw={800} size="lg" style={{ color: "#af73d7" }}>
-                          {formatINR(order.subtotalPaise)}
-                        </Text>
-                      </Box>
-                    </Group>
-
-                    <Divider my="sm" />
-
-                    {/* Items List */}
-                    <Stack gap="xs">
-                      <Text size="xs" fw={700} c="dimmed" style={{ textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                        Ordered Items ({order.itemsCount})
-                      </Text>
-                      {order.items.map((item) => (
-                        <Group key={item.id} justify="space-between" align="center" wrap="nowrap">
-                          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
-                            <Badge size="sm" circle color="dinePrimary" variant="light" style={{ flexShrink: 0 }}>
-                              {item.qty}
-                            </Badge>
-                            <Box style={{ minWidth: 0 }}>
-                              <Text size="sm" fw={600} lineClamp={1}>
-                                {item.name}
-                              </Text>
-                              {item.note && (
-                                <Text size="xs" c="dimmed" lineClamp={1}>
-                                  Note: {item.note}
-                                </Text>
-                              )}
-                            </Box>
-                          </Group>
-                          <Text size="sm" fw={700} style={{ flexShrink: 0 }}>
-                            {formatINR(item.pricePaise * item.qty)}
-                          </Text>
-                        </Group>
-                      ))}
-                    </Stack>
-
-                    {/* Order Footer */}
-                    <Divider my="sm" />
-                    <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                      <Text size="xs" c="dimmed">
-                        Placed at: {formatDate(order.createdAt)}
-                      </Text>
-                      {order.restaurantPhone && (
-                        <Button
-                          component="a"
-                          href={`https://wa.me/${order.restaurantPhone.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          size="xs"
-                          variant="light"
-                          color="teal"
-                          leftSection={<IconBrandWhatsapp size={14} />}
-                        >
-                          Help / Contact Outlet
-                        </Button>
-                      )}
-                    </Group>
-                  </Card>
+                    order={order}
+                    onRefresh={refetch}
+                  />
                 ))}
               </Stack>
             )}

@@ -32,15 +32,25 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
       }
       return;
     }
-    // KITCHEN role never sees the owner-area nav/pages — dedicated /kitchen
-    // screen only. Redirect away from any (owner) route immediately.
+    // KITCHEN role can only access /kitchen
     if (restaurant && role === "KITCHEN" && !redirected.current && pathname !== "/kitchen") {
       redirected.current = true;
       router.replace("/kitchen");
       return;
     }
-    // WAITER role can access /waiter, /rider, /pos, /orders, /tables, and /customers
-    if (restaurant && role === "WAITER" && !redirected.current && !pathname.startsWith("/waiter") && !pathname.startsWith("/rider") && !pathname.startsWith("/pos") && !pathname.startsWith("/orders") && !pathname.startsWith("/tables") && !pathname.startsWith("/customers")) {
+    // WAITER role can access /waiter, /rider, /pos, /orders, /tables, /kitchen, and /customers
+    if (
+      restaurant &&
+      role === "WAITER" &&
+      !redirected.current &&
+      !pathname.startsWith("/waiter") &&
+      !pathname.startsWith("/rider") &&
+      !pathname.startsWith("/pos") &&
+      !pathname.startsWith("/orders") &&
+      !pathname.startsWith("/tables") &&
+      !pathname.startsWith("/kitchen") &&
+      !pathname.startsWith("/customers")
+    ) {
       redirected.current = true;
       router.replace("/waiter");
       return;
@@ -77,7 +87,16 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
   }
 
   // Authenticated but no restaurant yet, or KITCHEN/WAITER restricted role being redirected — show loader
-  const isRestrictedRole = role === "KITCHEN" || (role === "WAITER" && !pathname.startsWith("/waiter") && !pathname.startsWith("/rider") && !pathname.startsWith("/pos") && !pathname.startsWith("/orders") && !pathname.startsWith("/tables") && !pathname.startsWith("/customers"));
+  const isRestrictedRole =
+    (role === "KITCHEN" && pathname !== "/kitchen") ||
+    (role === "WAITER" &&
+      !pathname.startsWith("/waiter") &&
+      !pathname.startsWith("/rider") &&
+      !pathname.startsWith("/pos") &&
+      !pathname.startsWith("/orders") &&
+      !pathname.startsWith("/tables") &&
+      !pathname.startsWith("/kitchen") &&
+      !pathname.startsWith("/customers"));
   if (!restaurant || isRestrictedRole) {
     return (
       <Center py={100}>

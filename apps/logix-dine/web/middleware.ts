@@ -10,6 +10,8 @@ const PROTECTED_PREFIXES = [
   '/settings',
   '/customers',
   '/kitchen',
+  '/waiter',
+  '/rider',
   '/admin',
 ];
 
@@ -53,6 +55,8 @@ export const config = {
     '/settings/:path*',
     '/customers/:path*',
     '/kitchen/:path*',
+    '/waiter/:path*',
+    '/rider/:path*',
     '/admin/:path*',
   ],
 };

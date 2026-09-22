@@ -12,6 +12,7 @@ import {
   IconBook, IconSettings, IconBuildingStore, IconReceipt,
   IconChartBar, IconTableAlias, IconChevronDown, IconCheck,
   IconFlame, IconHistory, IconUser, IconBellRinging, IconMotorbike,
+  IconToolsKitchen2,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -22,6 +23,7 @@ const STAFF_NAV_ITEMS = [
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
+  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "WAITER", "KITCHEN"] },
   { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
@@ -49,18 +51,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
   const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
 
-  if (pathname?.startsWith("/kitchen")) {
-    return (
-      <main style={{ minHeight: "100dvh", background: "#1a1a1a" }}>
-        {children}
-        <LoginModal />
-      </main>
-    );
-  }
-
   const isPortal = pathname === "/portal";
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
-  const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER"].includes(effectiveRole));
+  const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER", "KITCHEN"].includes(effectiveRole));
   const isCustomer = isAuthenticated && !isStaffOrOwner;
 
   // On /portal, the customer portal page already provides its own tabs for Active, Past, and Profile.

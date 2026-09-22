@@ -19,6 +19,9 @@ export type ConnectionStatus = "connected" | "connecting" | "disconnected";
  * Real-time WebSocket hook connected to the Cloudflare Durable Object for the outlet.
  * Automatically receives instant push notifications when tables, orders, or kitchen tickets change,
  * and invalidates React Query caches with 0ms delay.
+ *
+ * Uses a stable connectRef so that the onclose handler always invokes the latest
+ * connect function even after outletId / restaurantId change (fixes stale-closure bug).
  */
 export function useOutletSync(
   restaurantId: string | undefined | null,
@@ -31,14 +34,27 @@ export function useOutletSync(
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const retryCountRef = useRef(0);
 
+  // Stable ref that always holds the latest connect function.
+  // onclose handlers use this so they never capture a stale closure.
+  const connectRef = useRef<() => void>(() => {});
+
   const connect = useCallback(() => {
     if (!outletId || typeof window === "undefined") {
       setStatus("disconnected");
       return;
     }
 
+    // Cancel any pending reconnect before opening a new socket
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
     // Close any previous socket cleanly
     if (wsRef.current) {
+      // Remove handlers so onclose won't schedule another reconnect
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
       try {
         wsRef.current.close();
       } catch {
@@ -130,12 +146,16 @@ export function useOutletSync(
 
       ws.onclose = () => {
         setStatus("disconnected");
-        if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
 
         // Exponential backoff reconnect: 1s, 2s, 4s, 8s, capped at 10s
+        // Always call connectRef.current so we use the latest closure (avoids stale outletId)
         const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 10000);
         retryCountRef.current++;
-        reconnectTimeoutRef.current = setTimeout(connect, delay);
+        reconnectTimeoutRef.current = setTimeout(() => connectRef.current(), delay);
       };
 
       ws.onerror = () => {
@@ -147,6 +167,11 @@ export function useOutletSync(
     }
   }, [restaurantId, outletId, queryClient]);
 
+  // Keep the ref in sync with the latest connect function
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
+
   useEffect(() => {
     connect();
 
@@ -154,6 +179,8 @@ export function useOutletSync(
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
         try {
           wsRef.current.close();
         } catch {

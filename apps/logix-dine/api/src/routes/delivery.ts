@@ -43,7 +43,7 @@ app.get(
     description: 'Retrieves saved delivery addresses for a customer phone number.',
     responses: { 200: z.array(z.any()), 401: ErrorResponseSchema },
   }),
-  requirePermission('order:read'),
+  requirePermission('delivery:read'),
   handleGetCustomerAddresses
 );
 
@@ -114,12 +114,9 @@ app.post(
     body: SaveAddressSchema,
     responses: { 201: z.any(), 400: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('delivery:write'),
   handleSaveAddress
 );
-
-// Alias
-app.post('/addresses', requirePermission('order:create'), handleSaveAddress);
 
 // ─── GET /delivery/riders ─────────────────────────────────────────────────────
 app.get(
@@ -131,7 +128,7 @@ app.get(
     query: z.object({ outletId: z.string().optional() }),
     responses: { 200: z.array(z.any()), 403: ErrorResponseSchema },
   }),
-  requirePermission('order:read'),
+  requirePermission('delivery:read'),
   async (c) => {
     const tenant = c.get('tenant');
     const { restaurantId } = tenant;
@@ -218,7 +215,7 @@ app.post(
     body: CreateRiderSchema,
     responses: { 201: z.any(), 400: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('delivery:write'),
   handleRegisterRider
 );
 
@@ -282,7 +279,7 @@ app.post(
     body: UpdateRiderDutySchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:read'),
+  requirePermission('delivery:write'),
   async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = UpdateRiderDutySchema.safeParse(body);
@@ -424,7 +421,7 @@ app.post(
     body: AssignRiderSchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('delivery:write'),
   async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = AssignRiderSchema.safeParse(body);
@@ -448,7 +445,7 @@ app.post(
     body: DispatchOrderSchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('delivery:write'),
   async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = DispatchOrderSchema.safeParse(body);
@@ -472,7 +469,7 @@ app.post(
     body: VerifyOtpActionSchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('delivery:write'),
   async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = VerifyOtpActionSchema.safeParse(body);

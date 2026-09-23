@@ -110,12 +110,9 @@ app.get(
     }),
     responses: { 200: z.array(z.any()), 403: ErrorResponseSchema },
   }),
-  requirePermission('order:read'),
+  requirePermission('waiter:read'),
   handleListRequests
 );
-
-// Alias
-app.get('/requests', requirePermission('order:read'), handleListRequests);
 
 // ─── GET /waiter/stats ────────────────────────────────────────────────────────
 app.get(
@@ -127,7 +124,7 @@ app.get(
     query: z.object({ outletId: z.string().optional() }),
     responses: { 200: z.any(), 403: ErrorResponseSchema },
   }),
-  requirePermission('order:read'),
+  requirePermission('waiter:read'),
   async (c) => {
     const tenant = c.get('tenant');
     const { restaurantId } = tenant;
@@ -281,12 +278,9 @@ app.post(
     body: CreateWaiterRequestSchema,
     responses: { 201: z.any(), 400: ErrorResponseSchema, 403: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('waiter:write'),
   handleCreateRequest
 );
-
-// Alias
-app.post('/requests', requirePermission('order:create'), handleCreateRequest);
 
 // ─── POST /waiter/attend-request ──────────────────────────────────────────────
 app.post(
@@ -298,7 +292,7 @@ app.post(
     body: RequestActionSchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('waiter:write'),
   async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = RequestActionSchema.safeParse(body);
@@ -318,7 +312,7 @@ app.post(
     body: RequestActionSchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('waiter:write'),
   async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = RequestActionSchema.safeParse(body);
@@ -338,7 +332,7 @@ app.post(
     body: UpdateRequestStatusSchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('waiter:write'),
   async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = UpdateRequestStatusSchema.safeParse(body);
@@ -433,7 +427,7 @@ app.post(
     body: MarkItemServedSchema,
     responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
+  requirePermission('waiter:write'),
   async (c) => {
     const tenant = c.get('tenant');
     const user = c.get('sessionUser');

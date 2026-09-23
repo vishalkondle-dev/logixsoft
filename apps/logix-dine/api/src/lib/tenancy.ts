@@ -283,6 +283,84 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
   };
 }
 
+// ─── requireRole ───────────────────────────────────────────────────────────────
+
+export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRole[]): MiddlewareHandler {
+  const rolesArray = (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]) as readonly string[];
+  return async (c, next) => {
+    const { payload } = await resolveSessionPayload(c);
+    if (!payload) {
+      return c.json({ error: 'Unauthorized', message: 'Authentication required' }, 401);
+    }
+
+    const { user, memberships } = payload;
+    c.set('sessionUser', user);
+    c.set('actorPhone', user.phoneNumber ?? null);
+    c.set('memberships', memberships);
+
+    const headerOutletId = c.req.header('X-Outlet-Id') || null;
+
+    // Platform ADMIN bypasses everything
+    if (user.role === 'ADMIN') {
+      const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      c.set('tenant', {
+        restaurantId,
+        role: 'OWNER',
+        member: null,
+        outletId: headerOutletId,
+        outletIds: headerOutletId ? [headerOutletId] : [],
+        allOutlets: true,
+      });
+      return next();
+    }
+
+    const restaurantId = c.req.header('X-Restaurant-Id');
+    if (!restaurantId) {
+      return c.json({ error: 'Bad Request', message: 'X-Restaurant-Id header required' }, 400);
+    }
+
+    const membership = memberships.find((m) => m.restaurantId === restaurantId);
+    if (!membership) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this restaurant' }, 403);
+    }
+
+    // Role check — in-memory
+    if (!rolesArray.includes(membership.role)) {
+      return c.json({
+        error: 'Forbidden',
+        message: `Role '${membership.role}' not authorized. Required: ${rolesArray.join(', ')}`,
+      }, 403);
+    }
+
+    // Strict Outlet scope check
+    if (headerOutletId) {
+      if (!membership.outletIds.includes(headerOutletId)) {
+        return c.json({
+          error: 'Forbidden',
+          message: `You do not have access to outlet '${headerOutletId}'`,
+        }, 403);
+      }
+    }
+
+    c.set('tenant', {
+      restaurantId,
+      role: membership.role,
+      member: { id: membership.memberId, restaurantId, role: membership.role, userId: user.id },
+      outletId: headerOutletId,
+      outletIds: membership.outletIds,
+      allOutlets: membership.allOutlets,
+    });
+    await next();
+  };
+}
+
+// ─── Role-Based Convenience Middlewares ───────────────────────────────────────
+
+export const requireOwner = (): MiddlewareHandler => requireRole(['OWNER']);
+export const requireManager = (): MiddlewareHandler => requireRole(['OWNER', 'MANAGER']);
+export const requireWaiter = (): MiddlewareHandler => requireRole(['OWNER', 'MANAGER', 'WAITER']);
+export const requireKitchen = (): MiddlewareHandler => requireRole(['OWNER', 'MANAGER', 'KITCHEN']);
+
 // ─── requireAdmin ─────────────────────────────────────────────────────────────
 
 export function requireAdmin(): MiddlewareHandler {

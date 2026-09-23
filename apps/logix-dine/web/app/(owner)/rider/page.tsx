@@ -273,137 +273,122 @@ export default function RiderPage() {
   const loading = ridersLoading || ordersLoading;
 
   return (
-    <Box
-      style={{
-        minHeight: "calc(100dvh - var(--app-shell-header-offset, 60px))",
-        backgroundColor: "#f8f9fa",
-      }}
-      px={{ base: "xs", sm: "md" }}
-      py="sm"
-    >
-      <Stack gap="md" style={{ maxWidth: 1000, margin: "0 auto" }}>
-        {/* Top Header Card */}
-        <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
-          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+      <Stack gap="lg">
+        {/* ─── Top Header ─── */}
+        <Group justify="space-between" align="center" wrap="wrap" gap="md" mb="xs">
+          <div>
             <Group gap="xs" align="center">
-              <Box
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: "rgba(12, 166, 120, 0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#0ca678",
-                }}
+              <Title order={2}>Rider Delivery Portal</Title>
+              <Badge
+                size="sm"
+                variant="dot"
+                color={isConnected ? "teal" : isConnecting ? "yellow" : "gray"}
               >
-                <IconMotorbike size={22} stroke={2.2} />
-              </Box>
-              <div>
-                <Title order={4} style={{ lineHeight: 1.1 }}>
-                  Rider Delivery Portal
-                </Title>
-                <Group gap={6} mt={2}>
-                  <Badge
-                    size="xs"
-                    color={isConnected ? "teal" : isConnecting ? "yellow" : "gray"}
-                    variant="dot"
-                  >
-                    {isConnected ? "Live Synced" : isConnecting ? "Connecting..." : "Offline"}
-                  </Badge>
-                  {activeOutlet && (
-                    <Text size="xs" c="dimmed">
-                      • {activeOutlet.name}
-                    </Text>
-                  )}
-                </Group>
-              </div>
+                {isConnected ? "Live Synced" : isConnecting ? "Connecting..." : "Offline"}
+              </Badge>
             </Group>
+            <Text size="sm" c="dimmed">
+              {activeOutlet ? activeOutlet.name : "All Outlets"} · Real-time order dispatch, navigation & OTP verification
+            </Text>
+          </div>
 
-            <Group gap="xs" align="center" wrap="wrap">
-              {/* Rider Selector */}
-              {riders.length > 0 && (
-                <Select
-                  size="xs"
-                  placeholder="Choose rider"
-                  value={selectedRiderId}
-                  onChange={handleSelectRider}
-                  data={riders.map((r: any) => ({
-                    value: r.id,
-                    label: `${r.name} (${r.vehicleType || "Bike"})`,
-                  }))}
-                  leftSection={<IconUser size={13} />}
-                  w={180}
-                  allowDeselect={false}
-                />
-              )}
+          <Group gap="xs" align="center" wrap="wrap">
+            {outlets.length > 1 && (
+              <Select
+                size="sm"
+                data={outlets.map((o) => ({ value: o.id, label: o.name }))}
+                value={activeOutlet?.id ?? null}
+                onChange={(val) => {
+                  const found = outlets.find((o) => o.id === val);
+                  if (found) setActiveOutlet(found.id);
+                }}
+                w={180}
+              />
+            )}
 
-              {/* Sound Toggle */}
-              <Tooltip label={soundEnabled ? "Mute notification sound" : "Enable notification chime"}>
-                <ActionIcon
-                  variant="light"
-                  color={soundEnabled ? "teal" : "gray"}
-                  size="sm"
-                  onClick={() => setSoundEnabled((v) => !v)}
-                  aria-label="Toggle chime sound"
-                >
-                  {soundEnabled ? <IconVolume size={14} /> : <IconVolumeOff size={14} />}
-                </ActionIcon>
-              </Tooltip>
+            {/* Rider Selector */}
+            {riders.length > 0 && (
+              <Select
+                size="sm"
+                placeholder="Choose rider"
+                value={selectedRiderId}
+                onChange={handleSelectRider}
+                data={riders.map((r: any) => ({
+                  value: r.id,
+                  label: `${r.name} (${r.vehicleType || "Bike"})`,
+                }))}
+                leftSection={<IconUser size={14} />}
+                w={190}
+                allowDeselect={false}
+              />
+            )}
 
-              <Tooltip label="Refresh orders">
-                <ActionIcon
-                  variant="subtle"
-                  color="gray"
-                  size="sm"
-                  onClick={() => {
-                    refetchOrders();
-                    notifications.show({ title: "Refreshed", message: "Orders list updated", color: "teal" });
-                  }}
-                  aria-label="Refresh orders"
-                >
-                  <IconRefresh size={14} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
+            {/* Sound Toggle */}
+            <Tooltip label={soundEnabled ? "Mute notification sound" : "Enable notification chime"}>
+              <ActionIcon
+                variant={soundEnabled ? "filled" : "light"}
+                color={soundEnabled ? "teal" : "gray"}
+                size="lg"
+                radius="md"
+                onClick={() => setSoundEnabled((v) => !v)}
+                aria-label="Toggle chime sound"
+              >
+                {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
+              </ActionIcon>
+            </Tooltip>
+
+            <Tooltip label="Refresh orders">
+              <ActionIcon
+                variant="light"
+                color="teal"
+                size="lg"
+                radius="md"
+                onClick={() => {
+                  refetchOrders();
+                  notifications.show({ title: "Refreshed", message: "Orders list updated", color: "teal" });
+                }}
+                aria-label="Refresh orders"
+              >
+                <IconRefresh size={18} />
+              </ActionIcon>
+            </Tooltip>
           </Group>
+        </Group>
 
-          {/* Active Rider Status Banner & Duty Switch */}
-          {activeRider && (
-            <>
-              <Divider my="xs" />
-              <Group justify="space-between" align="center" wrap="wrap">
-                <Group gap="xs">
-                  <Text size="sm" fw={700}>
-                    {activeRider.name}
-                  </Text>
-                  <Badge
-                    size="xs"
-                    color={activeRider.status === "AVAILABLE" ? "green" : activeRider.status === "ON_DELIVERY" ? "orange" : "gray"}
-                    variant="filled"
-                  >
-                    {activeRider.status === "AVAILABLE" ? "🟢 On Duty (Available)" : activeRider.status === "ON_DELIVERY" ? "🛵 On Delivery" : "⚪ Off Duty"}
-                  </Badge>
-                  <Text size="xs" c="dimmed">
-                    🛵 {activeRider.vehicleType || "Bike"} {activeRider.vehicleNumber ? `(${activeRider.vehicleNumber})` : ""}
-                  </Text>
-                </Group>
-
-                <Group gap="xs" align="center">
-                  <Text size="xs" fw={600} c="dimmed">Duty Status:</Text>
-                  <Switch
-                    size="sm"
-                    color="teal"
-                    checked={activeRider.status !== "OFFLINE"}
-                    onChange={(e) => handleToggleDuty(e.currentTarget.checked)}
-                    label={activeRider.status !== "OFFLINE" ? "On Duty" : "Off Duty"}
-                  />
-                </Group>
+        {/* Active Rider Status Banner & Duty Switch */}
+        {activeRider && (
+          <Paper p="sm" radius="md" withBorder>
+            <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+              <Group gap="xs">
+                <Text size="sm" fw={700}>
+                  {activeRider.name}
+                </Text>
+                <Badge
+                  size="xs"
+                  color={activeRider.status === "AVAILABLE" ? "green" : activeRider.status === "ON_DELIVERY" ? "orange" : "gray"}
+                  variant="filled"
+                >
+                  {activeRider.status === "AVAILABLE" ? "🟢 On Duty (Available)" : activeRider.status === "ON_DELIVERY" ? "🛵 On Delivery" : "⚪ Off Duty"}
+                </Badge>
+                <Text size="xs" c="dimmed">
+                  🛵 {activeRider.vehicleType || "Bike"} {activeRider.vehicleNumber ? `(${activeRider.vehicleNumber})` : ""}
+                </Text>
               </Group>
-            </>
-          )}
-        </Paper>
+
+              <Group gap="xs" align="center">
+                <Text size="xs" fw={600} c="dimmed">Duty Status:</Text>
+                <Switch
+                  size="sm"
+                  color="teal"
+                  checked={activeRider.status !== "OFFLINE"}
+                  onChange={(e) => handleToggleDuty(e.currentTarget.checked)}
+                  label={activeRider.status !== "OFFLINE" ? "On Duty" : "Off Duty"}
+                />
+              </Group>
+            </Group>
+          </Paper>
+        )}
 
         {/* Quick Duty Metrics */}
         {activeRider && (

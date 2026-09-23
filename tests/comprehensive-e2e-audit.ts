@@ -21,7 +21,7 @@ let testDeliveryOrderId = '';
 let testRiderId = '';
 let testWaiterRequestId = '';
 
-const testCustomerPhone = '+919988776655';
+const testCustomerPhone = `+9199887${Date.now().toString().slice(-5)}`;
 
 async function api(path: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers || {});
@@ -48,9 +48,9 @@ async function api(path: string, options: RequestInit = {}) {
   return { status: res.status, ok: res.ok, headers: res.headers, data: json };
 }
 
-function assert(condition: boolean, msg: string) {
+function assert(condition: boolean, msg: string, detail?: any) {
   if (!condition) {
-    console.error(`❌ ASSERTION FAILED: ${msg}`);
+    console.error(`❌ ASSERTION FAILED: ${msg}`, detail ? JSON.stringify(detail) : '');
     throw new Error(msg);
   }
   console.log(`  ✅ ${msg}`);
@@ -101,7 +101,7 @@ async function runFullAudit() {
   // ─── 4. Tables Management ───────────────────────────────────────────────────
   console.log('\n--- PHASE 4: Dining Tables Management ---');
   // Create a temporary table
-  const createTableRes = await api('/tables', {
+  const createTableRes = await api('/tables/create', {
     method: 'POST',
     body: JSON.stringify({
       outletId,
@@ -115,13 +115,13 @@ async function runFullAudit() {
   testTableId = createTableRes.data.id;
 
   // Verify table is listed
-  const tablesRes = await api(`/tables?outletId=${outletId}`);
+  const tablesRes = await api(`/tables/list?outletId=${outletId}`);
   assert(tablesRes.status === 200 && tablesRes.data.some((t: any) => t.id === testTableId), 'Test table is listed');
 
-  // ─── 5. POS & Billing: Dine-In Multi-Round Order ────────────────────────────
+  // ─── 5. POS & Orders: Dine-In Multi-Round Order ────────────────────────────
   console.log('\n--- PHASE 5: POS Dine-In Order with Multi-Round & Settle ---');
   // Round 1
-  const startOrderRes = await api('/billing/orders', {
+  const startOrderRes = await api('/orders/send-to-kitchen', {
     method: 'POST',
     body: JSON.stringify({
       outletId,
@@ -132,59 +132,62 @@ async function runFullAudit() {
       note: 'Dine-In Audit Round 1',
     }),
   });
-  assert(startOrderRes.status === 201 && startOrderRes.data.order, 'Dine-in Order Round 1 started');
+  assert(startOrderRes.status === 201 && startOrderRes.data.order, 'Dine-in Order Round 1 started', startOrderRes.data);
   testDineInOrderId = startOrderRes.data.order.id;
   const tokenNo1 = startOrderRes.data.order.orderNo;
   console.log(`  Created Dine-In Order #${tokenNo1} (ID: ${testDineInOrderId})`);
 
   // Verify Table is Occupied
-  const occupiedRes = await api(`/billing/orders?outletId=${outletId}&tableOccupied=true`);
+  const occupiedRes = await api(`/orders/list?outletId=${outletId}&tableOccupied=true`);
   assert(
     occupiedRes.status === 200 && occupiedRes.data.some((o: any) => o.order.id === testDineInOrderId),
     'Table correctly detected as occupied'
   );
 
   // Round 2: Add additional round of items
-  const round2Res = await api(`/billing/orders/${testDineInOrderId}/round`, {
+  const round2Res = await api('/orders/add-round', {
     method: 'POST',
     body: JSON.stringify({
+      orderId: testDineInOrderId,
       items: [{ itemId: sampleItemId, qty: 1, note: 'Less spicy' }],
     }),
   });
-  assert(round2Res.status === 200 && round2Res.data.round === 2, 'Added Round 2 to Dine-In Order');
+  assert(
+    round2Res.status === 200 && (round2Res.data.round === 2 || round2Res.data.items?.some((it: any) => it.round === 2)),
+    'Added Round 2 to Dine-In Order'
+  );
 
   // Settle Order
-  const settleDineRes = await api(`/billing/orders/${testDineInOrderId}/settle`, {
+  const settleDineRes = await api('/orders/settle-bill', {
     method: 'POST',
-    body: JSON.stringify({ method: 'UPI' }),
+    body: JSON.stringify({ orderId: testDineInOrderId, method: 'UPI' }),
   });
   assert(settleDineRes.status === 200 && settleDineRes.data.order.status === 'PAID', 'Dine-in Order settled via UPI');
 
-  // Free Table
-  // First advance items to SERVED so table can be freed
-  const orderDetails = await api(`/billing/orders/${testDineInOrderId}`);
+  // Free Table: advance items to SERVED so table can be freed
+  const orderDetails = await api(`/orders/${testDineInOrderId}`);
   for (const it of orderDetails.data.items) {
-    await api(`/billing/orders/${testDineInOrderId}/items/${it.id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'SERVED' }),
+    await api('/kitchen/advance-item-status', {
+      method: 'POST',
+      body: JSON.stringify({ orderId: testDineInOrderId, orderItemId: it.id, status: 'SERVED' }),
     });
   }
-  const freeTableRes = await api(`/billing/orders/${testDineInOrderId}/free-table`, {
+  const freeTableRes = await api('/orders/free-table', {
     method: 'POST',
-    body: JSON.stringify({ method: 'UPI' }),
+    body: JSON.stringify({ orderId: testDineInOrderId, method: 'UPI', autoSettle: true }),
   });
   assert(freeTableRes.status === 200 && freeTableRes.data.order.tableFreedAt !== null, 'Table freed successfully');
 
   // Verify Table is NO LONGER Occupied
-  const afterFreeRes = await api(`/billing/orders?outletId=${outletId}&tableOccupied=true`);
+  const afterFreeRes = await api(`/orders/list?outletId=${outletId}&tableOccupied=true`);
   assert(
     afterFreeRes.status === 200 && !afterFreeRes.data.some((o: any) => o.order.id === testDineInOrderId),
     'Table occupancy cleared'
   );
 
-  // ─── 6. POS & Billing: Takeaway Order (Instant Settle & Send) ───────────────
+  // ─── 6. POS Takeaway Order (Instant Settle & Send) ──────────────────────────
   console.log('\n--- PHASE 6: POS Takeaway Order (Settle & Send) ---');
-  const takeawayRes = await api('/billing/orders/create-settled', {
+  const takeawayRes = await api('/orders/create-settled', {
     method: 'POST',
     body: JSON.stringify({
       outletId,
@@ -210,7 +213,7 @@ async function runFullAudit() {
   if (ridersRes.data.length > 0) {
     testRiderId = ridersRes.data[0].id;
   } else {
-    const createRiderRes = await api('/delivery/riders', {
+    const createRiderRes = await api('/delivery/register-rider', {
       method: 'POST',
       body: JSON.stringify({
         outletId,
@@ -226,14 +229,14 @@ async function runFullAudit() {
   console.log(`  Rider ID: ${testRiderId}`);
 
   // Set Rider to AVAILABLE (On Duty)
-  const riderDutyRes = await api(`/delivery/riders/${testRiderId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: 'AVAILABLE' }),
+  const riderDutyRes = await api('/delivery/update-rider-duty', {
+    method: 'POST',
+    body: JSON.stringify({ riderId: testRiderId, status: 'AVAILABLE' }),
   });
   assert(riderDutyRes.status === 200 && riderDutyRes.data.status === 'AVAILABLE', 'Rider marked On Duty (AVAILABLE)');
 
   // Save Customer Address
-  const saveAddrRes = await api('/delivery/addresses', {
+  const saveAddrRes = await api('/delivery/save-address', {
     method: 'POST',
     body: JSON.stringify({
       customerPhone: testCustomerPhone,
@@ -246,14 +249,14 @@ async function runFullAudit() {
       isDefault: true,
     }),
   });
-  assert(saveAddrRes.status === 200, 'Saved customer delivery address');
+  assert(saveAddrRes.status === 201 && saveAddrRes.data.id, 'Saved customer delivery address');
 
   // Fetch saved customer addresses
-  const getAddrRes = await api(`/delivery/addresses/${encodeURIComponent(testCustomerPhone)}`);
+  const getAddrRes = await api(`/delivery/customer-addresses/${encodeURIComponent(testCustomerPhone)}`);
   assert(getAddrRes.status === 200 && getAddrRes.data.length > 0, 'Fetched customer saved addresses');
 
   // Place Delivery Order from POS
-  const delivOrderRes = await api('/billing/orders', {
+  const delivOrderRes = await api('/orders/send-to-kitchen', {
     method: 'POST',
     body: JSON.stringify({
       outletId,
@@ -275,39 +278,39 @@ async function runFullAudit() {
       note: 'Delivery Audit Order',
     }),
   });
-  assert(delivOrderRes.status === 201 && delivOrderRes.data.order, 'Delivery Order created successfully');
+  assert(delivOrderRes.status === 201 && delivOrderRes.data.order, 'Delivery Order created successfully', delivOrderRes.data);
   testDeliveryOrderId = delivOrderRes.data.order.id;
   const delivDetails = delivOrderRes.data.delivery;
   assert(delivDetails && delivDetails.deliveryOtp, 'Delivery OTP generated');
   const deliveryOtp = delivDetails.deliveryOtp;
   console.log(`  Created Delivery Order #${delivOrderRes.data.order.orderNo} with PIN: ${deliveryOtp}`);
 
-  // Advance Delivery: OUT_FOR_DELIVERY
-  const startDelRes = await api(`/delivery/orders/${testDeliveryOrderId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: 'OUT_FOR_DELIVERY', riderId: testRiderId }),
+  // Advance Delivery: Dispatch
+  const startDelRes = await api('/delivery/dispatch-order', {
+    method: 'POST',
+    body: JSON.stringify({ orderId: testDeliveryOrderId }),
   });
-  assert(startDelRes.status === 200 && startDelRes.data.status === 'OUT_FOR_DELIVERY', 'Delivery marked OUT_FOR_DELIVERY');
+  assert(startDelRes.status === 200 && startDelRes.data.status === 'OUT_FOR_DELIVERY', 'Delivery dispatched OUT_FOR_DELIVERY');
 
   // Complete Delivery with OTP
-  const completeDelRes = await api(`/delivery/orders/${testDeliveryOrderId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: 'DELIVERED', deliveryOtp }),
+  const completeDelRes = await api('/delivery/verify-otp-and-complete', {
+    method: 'POST',
+    body: JSON.stringify({ orderId: testDeliveryOrderId, deliveryOtp }),
   });
   assert(completeDelRes.status === 200 && completeDelRes.data.status === 'DELIVERED', 'Delivery completed with OTP');
 
   // Verify SaleOrder was automatically settled upon delivery
-  const verifyOrderSettled = await api(`/billing/orders/${testDeliveryOrderId}`);
+  const verifyOrderSettled = await api(`/orders/${testDeliveryOrderId}`);
   assert(verifyOrderSettled.status === 200 && verifyOrderSettled.data.order.status === 'PAID', 'Delivery order auto-settled on delivery');
 
   // ─── 8. Kitchen Display System (KDS) ────────────────────────────────────────
   console.log('\n--- PHASE 8: Kitchen Display System (KDS) ---');
-  const kitchenRes = await api(`/billing/orders/kitchen?outletId=${outletId}`);
+  const kitchenRes = await api(`/kitchen/active-tickets?outletId=${outletId}`);
   assert(kitchenRes.status === 200 && Array.isArray(kitchenRes.data), 'Kitchen orders query returned active tickets');
 
   // ─── 9. Waiter Assistance ───────────────────────────────────────────────────
   console.log('\n--- PHASE 9: Waiter Assistance & Floor Requests ---');
-  const waiterReqRes = await api('/waiter/requests', {
+  const waiterReqRes = await api('/waiter/call-assistance', {
     method: 'POST',
     body: JSON.stringify({
       outletId,
@@ -321,16 +324,16 @@ async function runFullAudit() {
   testWaiterRequestId = waiterReqRes.data.id;
 
   // Advance status: IN_PROGRESS
-  const inProgRes = await api(`/waiter/requests/${testWaiterRequestId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: 'IN_PROGRESS' }),
+  const inProgRes = await api('/waiter/update-request-status', {
+    method: 'POST',
+    body: JSON.stringify({ requestId: testWaiterRequestId, status: 'IN_PROGRESS' }),
   });
   assert(inProgRes.status === 200 && inProgRes.data.status === 'IN_PROGRESS', 'Waiter Request status updated to IN_PROGRESS');
 
   // Complete request: COMPLETED
-  const compRes = await api(`/waiter/requests/${testWaiterRequestId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status: 'COMPLETED' }),
+  const compRes = await api('/waiter/update-request-status', {
+    method: 'POST',
+    body: JSON.stringify({ requestId: testWaiterRequestId, status: 'COMPLETED' }),
   });
   assert(compRes.status === 200 && compRes.data.status === 'COMPLETED', 'Waiter Request marked COMPLETED');
 
@@ -340,7 +343,7 @@ async function runFullAudit() {
 
   // ─── 10. Customer Self-Service Portal ───────────────────────────────────────
   console.log('\n--- PHASE 10: Customer Self-Service Portal ---');
-  const portalRes = await api('/customer/portal');
+  const portalRes = await api('/portal/session');
   assert(portalRes.status === 200 && portalRes.data.customer, 'Customer portal loaded successfully');
   assert(Array.isArray(portalRes.data.activeOrders), 'Portal activeOrders array present');
   assert(Array.isArray(portalRes.data.pastOrders), 'Portal pastOrders array present');
@@ -382,7 +385,7 @@ async function runFullAudit() {
 
   // ─── Cleanup ────────────────────────────────────────────────────────────────
   console.log('\n--- Cleanup: Soft-deleting test table ---');
-  const delTableRes = await api(`/tables/${testTableId}`, { method: 'DELETE' });
+  const delTableRes = await api(`/tables/delete/${testTableId}`, { method: 'POST' });
   assert(delTableRes.status === 200 && delTableRes.data.success, 'Test table soft-deleted cleanly');
 
   console.log('\n================================================================');

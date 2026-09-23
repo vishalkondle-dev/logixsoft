@@ -101,7 +101,7 @@ export interface DeliveryRider {
 }
 
 export const getBootstrap = (restaurantId: string, outletId?: string | null) =>
-  apiFetch<any>(`/billing/bootstrap${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
+  apiFetch<any>(`/orders/bootstrap${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
 
 export const startOrder = (
   restaurantId: string,
@@ -116,16 +116,16 @@ export const startOrder = (
     delivery?: DeliveryDetailsInput;
     items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }
-) => apiFetch<any>("/billing/orders", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
+) => apiFetch<any>("/orders/send-to-kitchen", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
 
 export const getOrder = (restaurantId: string, orderId: string, outletId?: string | null) =>
-  apiFetch<any>(`/billing/orders/${orderId}`, restaurantId, {}, outletId);
+  apiFetch<any>(`/orders/${orderId}`, restaurantId, {}, outletId);
 
 export const listOrders = (restaurantId: string, params?: { status?: string; orderStatus?: string; outletId?: string; limit?: number; tableOccupied?: boolean }) => {
   const qs = new URLSearchParams(
     Object.fromEntries(Object.entries(params ?? {}).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))
   ).toString();
-  return apiFetch<any[]>(`/billing/orders${qs ? `?${qs}` : ""}`, restaurantId, {}, params?.outletId);
+  return apiFetch<any[]>(`/orders/list${qs ? `?${qs}` : ""}`, restaurantId, {}, params?.outletId);
 };
 
 export const addOrderItem = (
@@ -134,7 +134,18 @@ export const addOrderItem = (
   body: { itemId: string; qty?: number; note?: string; variantId?: string; addonIds?: string[] },
   outletId?: string | null
 ) =>
-  apiFetch<any>(`/billing/orders/${orderId}/items`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+  apiFetch<any>(
+    "/orders/add-round",
+    restaurantId,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        orderId,
+        items: [{ itemId: body.itemId, qty: body.qty || 1, note: body.note, variantId: body.variantId, addonIds: body.addonIds }],
+      }),
+    },
+    outletId
+  );
 
 export const addOrderRound = (
   restaurantId: string,
@@ -145,7 +156,12 @@ export const addOrderRound = (
   },
   outletId?: string | null
 ) =>
-  apiFetch<any>(`/billing/orders/${orderId}/round`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+  apiFetch<any>(
+    "/orders/add-round",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, items: body.items, settle: body.settle }) },
+    outletId
+  );
 
 export const freeTableOrder = (
   restaurantId: string,
@@ -153,10 +169,20 @@ export const freeTableOrder = (
   body?: { method?: string },
   outletId?: string | null
 ) =>
-  apiFetch<any>(`/billing/orders/${orderId}/free-table`, restaurantId, { method: "POST", body: JSON.stringify(body ?? {}) }, outletId);
+  apiFetch<any>(
+    "/orders/free-table",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, method: body?.method, autoSettle: true }) },
+    outletId
+  );
 
 export const updateOrderItemQty = (restaurantId: string, orderId: string, orderItemId: string, qty: number, outletId?: string | null) =>
-  apiFetch<any>(`/billing/orders/${orderId}/items/${orderItemId}`, restaurantId, { method: "PATCH", body: JSON.stringify({ qty }) }, outletId);
+  apiFetch<any>(
+    "/kitchen/advance-item-status",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, orderItemId, action: "qty", qty }) },
+    outletId
+  );
 
 export const updateOrderItemStatus = (
   restaurantId: string,
@@ -164,23 +190,43 @@ export const updateOrderItemStatus = (
   orderItemId: string,
   body: { status?: string; action?: "next" | "close" | "cancel" },
   outletId?: string | null
-) =>
-  apiFetch<any>(
-    `/billing/orders/${orderId}/items/${orderItemId}/status`,
+) => {
+  if (body.action === "cancel") {
+    return apiFetch<any>(
+      "/kitchen/cancel-item",
+      restaurantId,
+      { method: "POST", body: JSON.stringify({ orderId, orderItemId, reason: "Cancelled from KDS" }) },
+      outletId
+    );
+  }
+  return apiFetch<any>(
+    "/kitchen/advance-item-status",
     restaurantId,
-    { method: "PATCH", body: JSON.stringify(body) },
+    { method: "POST", body: JSON.stringify({ orderId, orderItemId, status: body.status, action: body.action }) },
     outletId
   );
+};
 
 export const removeOrderItem = (restaurantId: string, orderId: string, orderItemId: string, outletId?: string | null) =>
-  apiFetch<any>(`/billing/orders/${orderId}/items/${orderItemId}`, restaurantId, { method: "DELETE" }, outletId);
+  apiFetch<any>(
+    "/kitchen/cancel-item",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, orderItemId, reason: "Removed item" }) },
+    outletId
+  );
 
 export const settleOrder = (
   restaurantId: string,
   orderId: string,
   body: { method?: string; customerPhone?: string },
   outletId?: string | null
-) => apiFetch<any>(`/billing/orders/${orderId}/settle`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+) =>
+  apiFetch<any>(
+    "/orders/settle-bill",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, method: body.method, customerPhone: body.customerPhone }) },
+    outletId
+  );
 
 /** Create + settle in a single API call — faster Settle & Send. */
 export const createSettledOrder = (
@@ -197,28 +243,50 @@ export const createSettledOrder = (
     delivery?: DeliveryDetailsInput;
     items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }
-) => apiFetch<any>("/billing/orders/create-settled", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
+) =>
+  apiFetch<any>("/orders/create-settled", restaurantId, { method: "POST", body: JSON.stringify(body) }, body.outletId);
 
 export const sendOrderWhatsApp = (
   restaurantId: string,
   orderId: string,
   body: { phone?: string },
   outletId?: string | null
-) => apiFetch<any>(`/billing/orders/${orderId}/whatsapp`, restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+) =>
+  apiFetch<any>(
+    "/orders/send-whatsapp-receipt",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, phone: body.phone }) },
+    outletId
+  );
 
 export const voidOrder = (restaurantId: string, orderId: string, outletId?: string | null) =>
-  apiFetch<any>(`/billing/orders/${orderId}/void`, restaurantId, { method: "POST", body: JSON.stringify({}) }, outletId);
+  apiFetch<any>(
+    "/orders/void",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, reason: "Voided by staff" }) },
+    outletId
+  );
 
 export const markKotPrinted = (restaurantId: string, orderId: string, outletId?: string | null) =>
-  apiFetch<any>(`/billing/orders/${orderId}/mark-kot-printed`, restaurantId, { method: "PATCH" }, outletId);
+  apiFetch<any>(
+    "/orders/mark-kot-printed",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId }) },
+    outletId
+  );
 
 // ─── Kitchen Display (KDS) ──────────────────────────────────────────────────────
 
 export const getKitchenOrders = (restaurantId: string, outletId?: string | null) =>
-  apiFetch<any[]>("/billing/orders/kitchen", restaurantId, {}, outletId);
+  apiFetch<any[]>("/kitchen/active-tickets", restaurantId, {}, outletId);
 
 export const markOrderReady = (restaurantId: string, orderId: string, outletId?: string | null) =>
-  apiFetch<any>(`/billing/orders/${orderId}/mark-ready`, restaurantId, { method: "PATCH" }, outletId);
+  apiFetch<any>(
+    "/kitchen/mark-order-ready",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId }) },
+    outletId
+  );
 
 // ─── Menu ─────────────────────────────────────────────────────────────────────
 
@@ -640,7 +708,7 @@ export interface CustomerPortalData {
 }
 
 export const getCustomerPortal = async (): Promise<CustomerPortalData> => {
-  const res = await fetch(`${API_BASE}/customer/portal`, {
+  const res = await fetch(`${API_BASE}/portal/session`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
@@ -657,8 +725,8 @@ export const updateCustomerProfile = async (body: {
   name?: string;
   email?: string;
 }): Promise<{ success: boolean; message: string }> => {
-  const res = await fetch(`${API_BASE}/customer/profile`, {
-    method: "PATCH",
+  const res = await fetch(`${API_BASE}/portal/update-profile`, {
+    method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
@@ -673,7 +741,7 @@ export const updateCustomerProfile = async (body: {
 };
 
 export const getCustomerOutletMenu = async (outletId: string): Promise<CustomerMenuResponse> => {
-  const res = await fetch(`${API_BASE}/customer/menu?outletId=${encodeURIComponent(outletId)}`, {
+  const res = await fetch(`${API_BASE}/portal/menu/${encodeURIComponent(outletId)}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
@@ -699,13 +767,13 @@ export const addCustomerOrderItems = async (
     roundNote?: string;
   }
 ): Promise<{ success: boolean; message: string; round: number; addedCount: number; subtotalPaise: number }> => {
-  const res = await fetch(`${API_BASE}/customer/orders/${encodeURIComponent(orderId)}/items`, {
+  const res = await fetch(`${API_BASE}/portal/add-round`, {
     method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ orderId, items: body.items, roundNote: body.roundNote }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
@@ -719,15 +787,17 @@ export const callWaiterAssistance = async (
   body: {
     serviceType: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER";
     note?: string;
+    outletId?: string;
+    tableNo?: string;
   }
 ): Promise<{ success: boolean; message: string; serviceType: string; serviceLabel: string; timestamp: number }> => {
-  const res = await fetch(`${API_BASE}/customer/orders/${encodeURIComponent(orderId)}/call-waiter`, {
+  const res = await fetch(`${API_BASE}/portal/call-waiter`, {
     method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ orderId, ...body }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
@@ -750,7 +820,7 @@ export const getWaiterRequests = (
         .map(([k, v]) => [k, String(v)])
     )
   ).toString();
-  return apiFetch<any[]>(`/waiter/requests${qs ? `?${qs}` : ""}`, restaurantId, {}, outletId);
+  return apiFetch<any[]>(`/waiter/active-requests${qs ? `?${qs}` : ""}`, restaurantId, {}, outletId);
 };
 
 export const getWaiterStats = (restaurantId: string, outletId?: string | null) =>
@@ -770,7 +840,7 @@ export const createWaiterRequest = (
   outletId?: string | null
 ) =>
   apiFetch<any>(
-    "/waiter/requests",
+    "/waiter/call-assistance",
     restaurantId,
     { method: "POST", body: JSON.stringify({ ...body, outletId: outletId || body.outletId }) },
     outletId || body.outletId
@@ -783,25 +853,25 @@ export const updateWaiterRequestStatus = (
   outletId?: string | null
 ) =>
   apiFetch<any>(
-    `/waiter/requests/${encodeURIComponent(requestId)}/status`,
+    "/waiter/update-request-status",
     restaurantId,
-    { method: "PATCH", body: JSON.stringify({ status }) },
+    { method: "POST", body: JSON.stringify({ requestId, status }) },
     outletId
   );
 
 // ─── Delivery Module ──────────────────────────────────────────────────────────
 
 export const getCustomerAddresses = (restaurantId: string, phone: string, outletId?: string | null) =>
-  apiFetch<CustomerAddress[]>(`/delivery/addresses/${encodeURIComponent(phone)}`, restaurantId, {}, outletId);
+  apiFetch<CustomerAddress[]>(`/delivery/customer-addresses/${encodeURIComponent(phone)}`, restaurantId, {}, outletId);
 
 export const saveCustomerAddress = (restaurantId: string, body: any, outletId?: string | null) =>
-  apiFetch<CustomerAddress>("/delivery/addresses", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+  apiFetch<CustomerAddress>("/delivery/save-address", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
 
 export const getDeliveryRiders = (restaurantId: string, outletId?: string | null) =>
   apiFetch<DeliveryRider[]>(`/delivery/riders${outletId ? `?outletId=${outletId}` : ""}`, restaurantId, {}, outletId);
 
 export const createDeliveryRider = (restaurantId: string, body: any, outletId?: string | null) =>
-  apiFetch<DeliveryRider>("/delivery/riders", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId ?? body.outletId);
+  apiFetch<DeliveryRider>("/delivery/register-rider", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId ?? body.outletId);
 
 export const updateDeliveryStatus = (
   restaurantId: string,
@@ -813,8 +883,30 @@ export const updateDeliveryStatus = (
     failedReason?: string;
   },
   outletId?: string | null
-) =>
-  apiFetch<DeliveryDetails>(`/delivery/orders/${orderId}/status`, restaurantId, { method: "PATCH", body: JSON.stringify(body) }, outletId);
+) => {
+  if (body.deliveryOtp) {
+    return apiFetch<DeliveryDetails>(
+      "/delivery/verify-otp-and-complete",
+      restaurantId,
+      { method: "POST", body: JSON.stringify({ orderId, deliveryOtp: body.deliveryOtp }) },
+      outletId
+    );
+  }
+  if (body.status === "OUT_FOR_DELIVERY") {
+    return apiFetch<DeliveryDetails>(
+      "/delivery/dispatch-order",
+      restaurantId,
+      { method: "POST", body: JSON.stringify({ orderId }) },
+      outletId
+    );
+  }
+  return apiFetch<DeliveryDetails>(
+    "/delivery/assign-rider",
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ orderId, riderId: body.riderId }) },
+    outletId
+  );
+};
 
 export const updateDeliveryRiderStatus = (
   restaurantId: string,
@@ -823,9 +915,9 @@ export const updateDeliveryRiderStatus = (
   outletId?: string | null
 ) =>
   apiFetch<DeliveryRider>(
-    `/delivery/riders/${riderId}/status`,
+    "/delivery/update-rider-duty",
     restaurantId,
-    { method: "PATCH", body: JSON.stringify({ status }) },
+    { method: "POST", body: JSON.stringify({ riderId, status }) },
     outletId
   );
 

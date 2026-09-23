@@ -62,7 +62,7 @@ header.mantine-AppShell-header {
 }
 
 /* Inputs: white background with clean border and no shadow */
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea,
 .mantine-Input-input,
@@ -79,7 +79,7 @@ textarea,
   box-shadow: none !important;
 }
 
-input:focus,
+input:not([type="checkbox"]):not([type="radio"]):focus,
 select:focus,
 textarea:focus,
 .mantine-Input-input:focus,
@@ -92,6 +92,16 @@ textarea:focus,
 .mantine-PinInput-input:focus,
 .mantine-Textarea-input:focus {
   border-color: #af73d7 !important;
+}
+
+/* Ensure Checkbox and Radio controls render their checked state cleanly */
+.mantine-Checkbox-input:checked {
+  background-color: var(--mantine-primary-color-filled, #af73d7) !important;
+  border-color: var(--mantine-primary-color-filled, #af73d7) !important;
+}
+
+.mantine-Radio-input:checked {
+  border-color: var(--mantine-primary-color-filled, #af73d7) !important;
 }
 
 /* Buttons: keep border ONLY where background is white (default, white, outline) */

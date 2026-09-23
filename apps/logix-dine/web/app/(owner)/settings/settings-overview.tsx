@@ -161,7 +161,7 @@ export function SettingsOverview() {
           description: "Configure accepted payments, UPI IDs, and dynamic QR",
           icon: IconCreditCard,
           color: "blue",
-          href: "/settings/restaurant",
+          href: "/settings/payments",
           isAvailable: true,
         },
         {

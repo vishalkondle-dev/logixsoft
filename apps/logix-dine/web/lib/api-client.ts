@@ -884,7 +884,7 @@ export const updateDeliveryStatus = (
   },
   outletId?: string | null
 ) => {
-  if (body.deliveryOtp) {
+  if (body.status === "DELIVERED" || body.deliveryOtp) {
     return apiFetch<DeliveryDetails>(
       "/delivery/verify-otp-and-complete",
       restaurantId,

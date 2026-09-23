@@ -136,7 +136,7 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
 
     const message = `🧾 *Logix Dine Bill Summary*
 🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || "N/A"} | Table: ${order.tableNo}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
 --------------------------------
 ${itemsText}
 --------------------------------
@@ -278,7 +278,7 @@ ${itemsText}
             </Group>
             <Group gap={6} mt={4} wrap="wrap">
               <Badge color="violet" variant="light" size="sm">
-                Token #{order.tokenNo || "—"}
+                Token #{order.tokenNo || order.orderNo || "—"}
               </Badge>
               {isDelivery ? (
                 <Badge color="teal" variant="filled" size="sm" leftSection={<IconMotorbike size={12} />}>

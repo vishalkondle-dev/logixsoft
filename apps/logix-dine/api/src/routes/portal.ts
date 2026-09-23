@@ -145,6 +145,7 @@ async function handleGetPortalSession(c: any) {
       const mappedOrder = {
         id: ord.id,
         orderNo: ord.orderNo,
+        tokenNo: ord.orderNo,
         tableNo: ord.tableNo,
         orderType: ord.orderType || (isDelivery ? 'DELIVERY' : isTakeaway ? 'TAKEAWAY' : 'DINE_IN'),
         subtotalPaise: ord.subtotalPaise,
@@ -348,12 +349,7 @@ app.post(
       const restaurantId = outlet.restaurantId;
       const orderId = generateOrderId(parsed.data.outletId);
       const now = new Date();
-
-      const [maxRow] = await db
-        .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
-        .from(appSchema.saleOrder)
-        .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
-      const tokenNo = Number(maxRow?.maxNo ?? 0) + 1;
+      let tokenNo = 1;
 
       const menuItems = await db
         .select()
@@ -393,6 +389,14 @@ app.post(
       const isTableOrder = Boolean(orderType === 'DINE_IN' && parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway');
 
       await db.transaction(async (tx: any) => {
+        // Lock outlet row to serialize order sequence generation under concurrency
+        await tx.execute(sql`SELECT id FROM "restaurantOutlet" WHERE id = ${parsed.data.outletId} FOR UPDATE`);
+        const [maxRow] = await tx
+          .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
+          .from(appSchema.saleOrder)
+          .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
+        tokenNo = Number(maxRow?.maxNo ?? 0) + 1;
+
         await tx.insert(appSchema.saleOrder).values({
           id: orderId,
           restaurantId,

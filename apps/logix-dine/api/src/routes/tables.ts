@@ -74,7 +74,7 @@ async function handleListTables(c: any) {
 }
 
 app.get(
-  '/list',
+  '/',
   apiDoc({
     tags: ['Tables'],
     summary: 'List Dining Tables',
@@ -86,7 +86,13 @@ app.get(
   handleListTables
 );
 
-// ─── POST /tables/create ──────────────────────────────────────────────────────
+app.get(
+  '/list',
+  requirePermission('table:read'),
+  handleListTables
+);
+
+// ─── POST /tables/create & POST /tables ───────────────────────────────────────
 async function handleCreateTable(c: any) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
@@ -132,7 +138,7 @@ async function handleCreateTable(c: any) {
 }
 
 app.post(
-  '/create',
+  '/',
   apiDoc({
     tags: ['Tables'],
     summary: 'Create Dining Table',
@@ -144,7 +150,13 @@ app.post(
   handleCreateTable
 );
 
-// ─── POST /tables/update/:id ──────────────────────────────────────────────────
+app.post(
+  '/create',
+  requirePermission('table:write'),
+  handleCreateTable
+);
+
+// ─── POST /tables/update/:id & PUT /tables/:id ────────────────────────────────
 async function handleUpdateTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
@@ -183,8 +195,8 @@ async function handleUpdateTable(c: any, tableId: string) {
   }
 }
 
-app.post(
-  '/update/:id',
+app.put(
+  '/:id',
   apiDoc({
     tags: ['Tables'],
     summary: 'Update Dining Table',
@@ -196,7 +208,13 @@ app.post(
   async (c) => handleUpdateTable(c, c.req.param('id'))
 );
 
-// ─── POST /tables/toggle-active/:id ───────────────────────────────────────────
+app.post(
+  '/update/:id',
+  requirePermission('table:write'),
+  async (c) => handleUpdateTable(c, c.req.param('id'))
+);
+
+// ─── POST /tables/toggle-active/:id & PATCH /tables/:id/toggle ────────────────
 async function handleToggleTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
@@ -232,8 +250,8 @@ async function handleToggleTable(c: any, tableId: string) {
   }
 }
 
-app.post(
-  '/toggle-active/:id',
+app.patch(
+  '/:id/toggle',
   apiDoc({
     tags: ['Tables'],
     summary: 'Toggle Table Active Status',
@@ -244,7 +262,13 @@ app.post(
   async (c) => handleToggleTable(c, c.req.param('id'))
 );
 
-// ─── POST /tables/delete/:id ──────────────────────────────────────────────────
+app.post(
+  '/toggle-active/:id',
+  requirePermission('table:write'),
+  async (c) => handleToggleTable(c, c.req.param('id'))
+);
+
+// ─── POST /tables/delete/:id & DELETE /tables/:id ─────────────────────────────
 async function handleDeleteTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
@@ -279,8 +303,8 @@ async function handleDeleteTable(c: any, tableId: string) {
   }
 }
 
-app.post(
-  '/delete/:id',
+app.delete(
+  '/:id',
   apiDoc({
     tags: ['Tables'],
     summary: 'Delete Dining Table',
@@ -291,8 +315,11 @@ app.post(
   async (c) => handleDeleteTable(c, c.req.param('id'))
 );
 
-// Alias
-app.delete('/:id', requirePermission('table:write'), async (c) => handleDeleteTable(c, c.req.param('id')));
+app.post(
+  '/delete/:id',
+  requirePermission('table:write'),
+  async (c) => handleDeleteTable(c, c.req.param('id'))
+);
 
 // ─── POST /tables/transfer ────────────────────────────────────────────────────
 app.post(

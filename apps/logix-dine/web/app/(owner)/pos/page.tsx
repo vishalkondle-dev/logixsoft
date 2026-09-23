@@ -484,7 +484,7 @@ function CartPanel({
       {/* Bottom Fixed Section */}
       <Box style={{ flexShrink: 0, marginTop: "auto" }}>
         <Divider my="xs" />
-        {orderType === "DELIVERY" && (
+        {orderType === "DELIVERY" && cartItems.length > 0 && (
           <Stack gap={2} mb="xs">
             <Group justify="space-between">
               <Text size="xs" c="dimmed">Items Subtotal</Text>
@@ -1293,7 +1293,7 @@ export default function POSPage() {
     });
 
   const itemsSubtotal = cartItems.reduce((s, i) => s + i.pricePaise * i.qty, 0);
-  const extraCharges = orderType === "DELIVERY" ? (packagingCharge + deliveryCharge) * 100 : 0;
+  const extraCharges = orderType === "DELIVERY" && cartItems.length > 0 ? (packagingCharge + deliveryCharge) * 100 : 0;
   const grandTotal = itemsSubtotal + extraCharges;
   const total = grandTotal;
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
@@ -2082,7 +2082,8 @@ export default function POSPage() {
                             <Group gap="xs">
                               <Checkbox
                                 checked={isChecked}
-                                onChange={() => {}}
+                                readOnly
+                                style={{ pointerEvents: "none" }}
                                 color="dinePrimary"
                                 size="xs"
                               />

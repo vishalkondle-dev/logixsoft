@@ -232,8 +232,8 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
 
   // Server data via React Query — shared cache with POS page
-  const { data: categories = [] } = useCategories(restaurantId, outletId);
-  const { data: items = [] } = useItems(restaurantId, outletId);
+  const { data: categories = [], isLoading: catsLoading } = useCategories(restaurantId, outletId);
+  const { data: items = [], isLoading: itemsLoading } = useItems(restaurantId, outletId);
 
   // Auto-select first category when data loads
   useEffect(() => {
@@ -397,7 +397,11 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
     <>
       {!embedded && <Title order={2} mb="md">Menu Catalog</Title>}
 
-      {!categories.length ? (
+      {catsLoading || itemsLoading ? (
+        <Paper p="xl" radius="md" ta="center" my="md">
+          <Loader size="md" color="dinePrimary" />
+        </Paper>
+      ) : !categories.length ? (
         <Paper p="xl" radius="md" ta="center" my="md">
           <Text size="sm" c="dimmed">
             No menu categories yet. Create one to get started.

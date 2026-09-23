@@ -10,6 +10,7 @@ export const VALID_SETTINGS_TABS = [
   "reports",
   "staff",
   "printing",
+  "payments",
 ] as const;
 
 export function generateStaticParams() {
@@ -24,6 +25,9 @@ export default async function SettingsTabPage({
   const { tab } = await params;
   if (tab === "outlets") {
     redirect("/settings/restaurant");
+  }
+  if (tab === "payment-types") {
+    redirect("/settings/payments");
   }
   return <SettingsView currentTab={tab} />;
 }

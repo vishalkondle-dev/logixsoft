@@ -175,7 +175,7 @@ function CustomerPortalInner() {
 
     const message = `🧾 *Logix Dine Bill Receipt*
 🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || "N/A"} | Table: ${order.tableNo}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
 📅 Date: ${formatDate(order.settledAt || order.createdAt)}
 --------------------------------
 ${itemsText}
@@ -619,7 +619,7 @@ ${itemsText}
                                 </Text>
                                 <Text size="xs" c="dimmed">•</Text>
                                 <Text size="xs" c="dimmed">
-                                  Token #{order.tokenNo || "—"}
+                                  Token #{order.tokenNo || order.orderNo || "—"}
                                 </Text>
                                 <Text size="xs" c="dimmed">•</Text>
                                 <Badge size="xs" color="gray" variant="outline">

@@ -141,18 +141,27 @@ export default function WaiterPage() {
       orderId: string;
       orderNo: number;
       tableNo: string;
+      orderType: string;
       item: any;
     }> = [];
 
     for (const o of openOrders) {
       const order = o.order;
       const items = o.items || [];
+      const orderType =
+        order.orderType ||
+        ((order.tableNo || "").toLowerCase() === "delivery"
+          ? "DELIVERY"
+          : (order.tableNo || "").toLowerCase() === "takeaway"
+          ? "TAKEAWAY"
+          : "DINE_IN");
       for (const it of items) {
         if (it.status === "PREPARED") {
           list.push({
             orderId: order.id,
             orderNo: order.orderNo,
-            tableNo: order.tableNo || "Takeaway",
+            tableNo: order.tableNo || (orderType === "DELIVERY" ? "Delivery" : "Takeaway"),
+            orderType,
             item: it,
           });
         }
@@ -528,57 +537,63 @@ export default function WaiterPage() {
             </Paper>
           ) : (
             <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="md">
-              {readyDishes.map(({ orderId, orderNo, tableNo, item }) => (
-                <Card key={item.id} p="md" radius="md" withBorder shadow="sm">
-                  <Group justify="space-between" align="flex-start" mb="xs">
-                    <Group gap="xs">
-                      <Badge size="lg" color="dark" radius="sm">
-                        {tableNo}
-                      </Badge>
-                      <Badge size="sm" variant="light" color="gray">
-                        Order #{orderNo}
+              {readyDishes.map(({ orderId, orderNo, tableNo, orderType, item }) => {
+                const isDelivery = orderType === "DELIVERY" || (tableNo || "").toLowerCase() === "delivery";
+                const isTakeaway = orderType === "TAKEAWAY" || (tableNo || "").toLowerCase() === "takeaway";
+                const buttonLabel = isDelivery ? "Ready for Rider Pickup" : isTakeaway ? "Ready for Pickup" : "Mark as Served";
+                const badgeLabel = isDelivery ? "Delivery" : isTakeaway ? "Takeaway" : tableNo;
+                return (
+                  <Card key={item.id} p="md" radius="md" withBorder shadow="sm">
+                    <Group justify="space-between" align="flex-start" mb="xs">
+                      <Group gap="xs">
+                        <Badge size="lg" color={isDelivery ? "teal" : isTakeaway ? "orange" : "dark"} radius="sm">
+                          {badgeLabel}
+                        </Badge>
+                        <Badge size="sm" variant="light" color="gray">
+                          Order #{orderNo}
+                        </Badge>
+                      </Group>
+                      <Badge color="orange" variant="light" leftSection={<IconClock size={12} />}>
+                        Kitchen Prepared
                       </Badge>
                     </Group>
-                    <Badge color="orange" variant="light" leftSection={<IconClock size={12} />}>
-                      Kitchen Prepared
-                    </Badge>
-                  </Group>
 
-                  <Text fw={700} size="md" mb={4}>
-                    {item.qty}x {item.nameSnapshot}
-                  </Text>
-
-                  {item.variant?.name && (
-                    <Text size="xs" c="dimmed">
-                      Variant: <strong>{item.variant.name}</strong>
+                    <Text fw={700} size="md" mb={4}>
+                      {item.qty}x {item.nameSnapshot}
                     </Text>
-                  )}
 
-                  {item.addons?.length > 0 && (
-                    <Text size="xs" c="dimmed">
-                      Add-ons: {item.addons.map((a: any) => a.name).join(", ")}
-                    </Text>
-                  )}
+                    {item.variant?.name && (
+                      <Text size="xs" c="dimmed">
+                        Variant: <strong>{item.variant.name}</strong>
+                      </Text>
+                    )}
 
-                  {item.note && (
-                    <Alert color="yellow" p="xs" mt="xs" radius="sm">
-                      <Text size="xs" fw={500}>Note: {item.note}</Text>
-                    </Alert>
-                  )}
+                    {item.addons?.length > 0 && (
+                      <Text size="xs" c="dimmed">
+                        Add-ons: {item.addons.map((a: any) => a.name).join(", ")}
+                      </Text>
+                    )}
 
-                  <Divider my="sm" />
+                    {item.note && (
+                      <Alert color="yellow" p="xs" mt="xs" radius="sm">
+                        <Text size="xs" fw={500}>Note: {item.note}</Text>
+                      </Alert>
+                    )}
 
-                  <Button
-                    fullWidth
-                    color="teal"
-                    leftSection={<IconCheck size={16} />}
-                    loading={servingItemId === item.id}
-                    onClick={() => handleServeItem(orderId, item.id, item.nameSnapshot, tableNo)}
-                  >
-                    Mark as Served
-                  </Button>
-                </Card>
-              ))}
+                    <Divider my="sm" />
+
+                    <Button
+                      fullWidth
+                      color="teal"
+                      leftSection={<IconCheck size={16} />}
+                      loading={servingItemId === item.id}
+                      onClick={() => handleServeItem(orderId, item.id, item.nameSnapshot, tableNo)}
+                    >
+                      {buttonLabel}
+                    </Button>
+                  </Card>
+                );
+              })}
             </SimpleGrid>
           )}
         </Stack>

@@ -133,7 +133,7 @@ export function CallWaiterModal({ opened, onClose, order, onSuccess }: CallWaite
               Call Waiter & Assistance
             </Title>
             <Text size="xs" c="dimmed">
-              Table: {order.tableNo} • Token #{order.tokenNo || "—"}
+              Table: {order.tableNo} • Token #{order.tokenNo || order.orderNo || "—"}
             </Text>
           </div>
         </Group>

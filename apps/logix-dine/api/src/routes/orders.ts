@@ -165,15 +165,17 @@ app.post(
       const orderItemsToInsert: any[] = [];
 
       const seqKey = CacheKey.outletSeq(parsed.data.outletId);
-      const kvSeq = await cacheGet<number>(kv(c), seqKey);
-      const [maxRow] = await db
-        .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
-        .from(appSchema.saleOrder)
-        .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
-      const dbMax = Number(maxRow?.maxNo ?? 0);
-      const tokenNo = Math.max(kvSeq ?? 0, dbMax) + 1;
+      let tokenNo = 1;
 
       await db.transaction(async (tx: any) => {
+        // Lock outlet row to serialize order sequence generation under concurrency
+        await tx.execute(sql`SELECT id FROM "restaurantOutlet" WHERE id = ${parsed.data.outletId} FOR UPDATE`);
+        const [maxRow] = await tx
+          .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
+          .from(appSchema.saleOrder)
+          .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
+        tokenNo = Number(maxRow?.maxNo ?? 0) + 1;
+
         if (parsed.data.items && parsed.data.items.length > 0) {
           const menuItems = await tx
             .select()
@@ -371,15 +373,17 @@ app.post(
       const orderItemsToInsert: any[] = [];
 
       const seqKey = CacheKey.outletSeq(parsed.data.outletId);
-      const kvSeq = await cacheGet<number>(kv(c), seqKey);
-      const [maxRow] = await db
-        .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
-        .from(appSchema.saleOrder)
-        .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
-      const dbMax = Number(maxRow?.maxNo ?? 0);
-      const tokenNo = Math.max(kvSeq ?? 0, dbMax) + 1;
+      let tokenNo = 1;
 
       await db.transaction(async (tx: any) => {
+        // Lock outlet row to serialize order sequence generation under concurrency
+        await tx.execute(sql`SELECT id FROM "restaurantOutlet" WHERE id = ${parsed.data.outletId} FOR UPDATE`);
+        const [maxRow] = await tx
+          .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
+          .from(appSchema.saleOrder)
+          .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
+        tokenNo = Number(maxRow?.maxNo ?? 0) + 1;
+
         if (parsed.data.items && parsed.data.items.length > 0) {
           const menuItems = await tx
             .select()

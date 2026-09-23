@@ -110,8 +110,10 @@ export default function TablesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<any | null>(null);
   const [tableName, setTableName] = useState("");
+  const [tableNameError, setTableNameError] = useState<string | null>(null);
   const [section, setSection] = useState("");
   const [capacity, setCapacity] = useState<number | string>(4);
+  const [deleteTableConfirm, setDeleteTableConfirm] = useState<any | null>(null);
 
   // ─── Free Table (Settle & Clear) Modal State ─────────────────────────────────
   const [freeModalSession, setFreeModalSession] = useState<TableSession | null>(null);
@@ -265,6 +267,7 @@ export default function TablesPage() {
   const handleOpenCreate = () => {
     setEditingTable(null);
     setTableName("");
+    setTableNameError(null);
     setSection("");
     setCapacity(4);
     setModalOpen(true);
@@ -273,13 +276,22 @@ export default function TablesPage() {
   const handleOpenEdit = (table: any) => {
     setEditingTable(table);
     setTableName(table.name);
+    setTableNameError(null);
     setSection(table.section || "");
     setCapacity(table.capacity || 4);
     setModalOpen(true);
   };
 
   const handleSaveTable = async () => {
-    if (!outletId || !tableName.trim()) return;
+    if (!tableName.trim()) {
+      setTableNameError("Table name is required");
+      return;
+    }
+    if (!outletId) {
+      notifications.show({ title: "No outlet selected", message: "Please select an outlet first", color: "orange" });
+      return;
+    }
+    setTableNameError(null);
     try {
       if (editingTable) {
         await updateTableMut.mutateAsync({
@@ -306,11 +318,16 @@ export default function TablesPage() {
     }
   };
 
-  const handleDeleteTable = async (table: any) => {
-    if (!confirm(`Delete table "${table.name}"?`)) return;
+  const handleDeleteTable = (table: any) => {
+    setDeleteTableConfirm(table);
+  };
+
+  const handleConfirmDeleteTable = async () => {
+    if (!deleteTableConfirm) return;
     try {
-      await deleteTableMut.mutateAsync(table.id);
-      notifications.show({ title: "Table deleted", message: `Table "${table.name}" removed`, color: "green" });
+      await deleteTableMut.mutateAsync(deleteTableConfirm.id);
+      notifications.show({ title: "Table deleted", message: `Table "${deleteTableConfirm.name}" removed`, color: "green" });
+      setDeleteTableConfirm(null);
     } catch (err: any) {
       notifications.show({ title: "Failed to delete table", message: err.message || "An error occurred", color: "red" });
     }
@@ -1178,7 +1195,11 @@ export default function TablesPage() {
             placeholder="e.g. T1, Table 4, Window 2..."
             required
             value={tableName}
-            onChange={(e) => setTableName(e.currentTarget.value)}
+            error={tableNameError}
+            onChange={(e) => {
+              setTableName(e.currentTarget.value);
+              if (tableNameError) setTableNameError(null);
+            }}
           />
 
           <TextInput
@@ -1203,6 +1224,36 @@ export default function TablesPage() {
             </Button>
             <Button color="dinePrimary" onClick={handleSaveTable} loading={isSaving}>
               {editingTable ? "Save Changes" : "Create Table"}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* ─── Delete Table Confirmation Modal ─── */}
+      <Modal
+        opened={Boolean(deleteTableConfirm)}
+        onClose={() => setDeleteTableConfirm(null)}
+        title="Delete Table Confirmation"
+        size="sm"
+        zIndex={1400}
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to delete table <b>"{deleteTableConfirm?.name}"</b>?
+            This will remove it from the floor layout.
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" size="sm" onClick={() => setDeleteTableConfirm(null)} disabled={deleteTableMut.isPending}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              size="sm"
+              loading={deleteTableMut.isPending}
+              onClick={handleConfirmDeleteTable}
+              leftSection={<IconTrash size={16} />}
+            >
+              Delete Table
             </Button>
           </Group>
         </Stack>

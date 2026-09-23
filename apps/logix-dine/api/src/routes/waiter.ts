@@ -348,13 +348,6 @@ app.post(
   }
 );
 
-// Alias
-app.patch('/requests/:id/status', requirePermission('order:create'), async (c) => {
-  const id = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
-  return updateStatusHelper(c, id, body.status);
-});
-
 async function updateStatusHelper(c: any, requestId: string, nextStatus: any) {
   const tenant = c.get('tenant');
   const user = c.get('sessionUser');

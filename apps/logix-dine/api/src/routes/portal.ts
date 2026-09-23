@@ -295,8 +295,6 @@ app.get(
   handleGetCustomerMenu
 );
 
-app.get('/menu', handleGetCustomerMenu);
-
 // ─── POST /portal/send-order ──────────────────────────────────────────────────
 const CustomerSendOrderSchema = z.object({
   outletId: z.string(),

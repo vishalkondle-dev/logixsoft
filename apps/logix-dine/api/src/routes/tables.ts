@@ -86,9 +86,6 @@ app.get(
   handleListTables
 );
 
-// Alias
-app.get('/', requirePermission('table:read'), handleListTables);
-
 // ─── POST /tables/create ──────────────────────────────────────────────────────
 async function handleCreateTable(c: any) {
   const tenant = c.get('tenant');
@@ -147,9 +144,6 @@ app.post(
   handleCreateTable
 );
 
-// Alias
-app.post('/', requirePermission('table:write'), handleCreateTable);
-
 // ─── POST /tables/update/:id ──────────────────────────────────────────────────
 async function handleUpdateTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
@@ -202,9 +196,6 @@ app.post(
   async (c) => handleUpdateTable(c, c.req.param('id'))
 );
 
-// Alias
-app.patch('/:id', requirePermission('table:write'), async (c) => handleUpdateTable(c, c.req.param('id')));
-
 // ─── POST /tables/toggle-active/:id ───────────────────────────────────────────
 async function handleToggleTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
@@ -252,9 +243,6 @@ app.post(
   requirePermission('table:write'),
   async (c) => handleToggleTable(c, c.req.param('id'))
 );
-
-// Alias
-app.patch('/:id/toggle', requirePermission('table:write'), async (c) => handleToggleTable(c, c.req.param('id')));
 
 // ─── POST /tables/delete/:id ──────────────────────────────────────────────────
 async function handleDeleteTable(c: any, tableId: string) {

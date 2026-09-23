@@ -47,9 +47,6 @@ app.get(
   handleGetCustomerAddresses
 );
 
-// Alias
-app.get('/addresses/:phone', requirePermission('order:read'), handleGetCustomerAddresses);
-
 // ─── POST /delivery/save-address ──────────────────────────────────────────────
 const SaveAddressSchema = z.object({
   customerPhone: z.string().min(10).max(25),
@@ -225,9 +222,6 @@ app.post(
   handleRegisterRider
 );
 
-// Alias
-app.post('/riders', requirePermission('order:create'), handleRegisterRider);
-
 // ─── POST /delivery/update-rider-duty ─────────────────────────────────────────
 const UpdateRiderDutySchema = z.object({
   riderId: z.string(),
@@ -296,13 +290,6 @@ app.post(
     return handleUpdateRiderDuty(c, parsed.data.riderId, parsed.data.status);
   }
 );
-
-// Alias
-app.patch('/riders/:id/status', requirePermission('order:read'), async (c) => {
-  const riderId = c.req.param('id');
-  const body = await c.req.json().catch(() => null);
-  return handleUpdateRiderDuty(c, riderId, body?.status);
-});
 
 // Helper for delivery status transitions
 async function transitionDeliveryStatus(c: any, orderId: string, newStatus: any, riderId?: string, deliveryOtp?: string) {
@@ -493,12 +480,5 @@ app.post(
     return transitionDeliveryStatus(c, parsed.data.orderId, 'DELIVERED', undefined, parsed.data.deliveryOtp);
   }
 );
-
-// Alias
-app.patch('/orders/:id/status', requirePermission('order:create'), async (c) => {
-  const orderId = c.req.param('id');
-  const body = await c.req.json().catch(() => null);
-  return transitionDeliveryStatus(c, orderId, body?.status, body?.riderId, body?.deliveryOtp);
-});
 
 export const deliveryRoutes = app;

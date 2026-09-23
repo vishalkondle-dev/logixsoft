@@ -634,8 +634,6 @@ app.post(
   handleUploadItemImage
 );
 
-app.post('/:id/image', requirePermission('menu:write'), handleUploadItemImage);
-
 app.delete(
   '/items/:id/image',
   apiDoc({
@@ -651,8 +649,6 @@ app.delete(
   requirePermission('menu:write'),
   handleDeleteItemImage
 );
-
-app.delete('/:id/image', requirePermission('menu:write'), handleDeleteItemImage);
 
 const handleToggleItem = async (c: any) => {
   const tenant = c.get('tenant');

@@ -807,7 +807,7 @@ app.post(
         .where(eq(appSchema.saleOrderItem.orderId, orderId));
 
       const unservedItems = items.filter((i: any) => i.status !== 'SERVED' && i.status !== 'CANCELLED');
-      if (unservedItems.length > 0) {
+      if (unservedItems.length > 0 && !autoSettle && order.status !== 'PAID') {
         return c.json(
           {
             error: 'Bad Request',
@@ -823,6 +823,19 @@ app.post(
         const itemsSubtotal = activeItems.reduce((sum: number, it: any) => sum + it.pricePaiseSnapshot * it.qty, 0);
         const totalAmount = itemsSubtotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0);
 
+        // Auto-serve any remaining active items when concluding the table
+        if (unservedItems.length > 0) {
+          await tx
+            .update(appSchema.saleOrderItem)
+            .set({ status: 'SERVED', servedAt: now, updatedAt: now })
+            .where(
+              and(
+                eq(appSchema.saleOrderItem.orderId, orderId),
+                sql`${appSchema.saleOrderItem.status} NOT IN ('SERVED', 'CANCELLED')`
+              )
+            );
+        }
+
         if (order.status !== 'PAID') {
           const settleMethod = method || order.method || 'Cash';
           await tx
@@ -834,6 +847,7 @@ app.post(
             .update(appSchema.saleOrder)
             .set({
               status: 'PAID',
+              orderStatus: 'SERVED',
               method: settleMethod,
               subtotalPaise: totalAmount,
               paidPaise: totalAmount,
@@ -845,7 +859,7 @@ app.post(
         } else {
           await tx
             .update(appSchema.saleOrder)
-            .set({ tableFreedAt: now, updatedAt: now, updatedBy: actorPhone })
+            .set({ orderStatus: 'SERVED', tableFreedAt: now, updatedAt: now, updatedBy: actorPhone })
             .where(eq(appSchema.saleOrder.id, orderId));
         }
       });

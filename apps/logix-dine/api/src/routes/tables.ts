@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, isNull } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
@@ -328,7 +328,7 @@ app.post(
             eq(appSchema.saleOrder.outletId, outletId),
             eq(appSchema.saleOrder.tableNo, fromTableNo),
             eq(appSchema.saleOrder.status, 'OPEN'),
-            eq(appSchema.saleOrder.tableFreedAt, null as any)
+            isNull(appSchema.saleOrder.tableFreedAt)
           )
         )
         .limit(1);

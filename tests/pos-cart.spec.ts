@@ -147,7 +147,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     // Get restaurant ID and initial order count
     const [restaurant] = await apiGet('/restaurants');
     const restaurantId = restaurant.id;
-    const initialOrders = await apiGet('/billing/orders?limit=100', restaurantId);
+    const initialOrders = await apiGet('/orders/list?limit=100', restaurantId);
     const initialCount = Array.isArray(initialOrders) ? initialOrders.length : 0;
     console.log('Initial orders count:', initialCount);
 
@@ -159,7 +159,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     await expect(cartItem).toBeVisible();
 
     // CRITICAL CHECK: Verify order was NOT created in backend yet!
-    const ordersAfterAdd = await apiGet('/billing/orders?limit=100', restaurantId);
+    const ordersAfterAdd = await apiGet('/orders/list?limit=100', restaurantId);
     expect(ordersAfterAdd.length).toBe(initialCount);
     console.log('Verified: Order was NOT created in DB when adding items to cart!');
 
@@ -169,7 +169,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     await page.waitForTimeout(300);
 
     // Still no order created
-    const ordersAfterQty = await apiGet('/billing/orders?limit=100', restaurantId);
+    const ordersAfterQty = await apiGet('/orders/list?limit=100', restaurantId);
     expect(ordersAfterQty.length).toBe(initialCount);
 
     // 3. Fill customer phone number
@@ -192,7 +192,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     const expectedOrderNo = matchNo ? parseInt(matchNo[1], 10) : undefined;
 
     // 6. Verify order IS now created in backend!
-    const ordersAfterSend = await apiGet('/billing/orders?limit=100', restaurantId);
+    const ordersAfterSend = await apiGet('/orders/list?limit=100', restaurantId);
     expect(ordersAfterSend.length).toBeGreaterThanOrEqual(initialCount + 1);
 
     const latestOrder = expectedOrderNo
@@ -431,7 +431,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     expect(item).toBeDefined();
 
     // 2. Create an order in outlet2 via API
-    const res = await fetch(`${API_BASE}/billing/orders`, {
+    const res = await fetch(`${API_BASE}/orders/send-to-kitchen`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -455,7 +455,7 @@ test.describe('POS Cart Selection & Order Creation E2E', () => {
     expect(created.order.orderNo).toBeGreaterThanOrEqual(1);
 
     // 5. Create another order in outlet2 and verify token ID increments by 1
-    const res2 = await fetch(`${API_BASE}/billing/orders`, {
+    const res2 = await fetch(`${API_BASE}/orders/send-to-kitchen`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

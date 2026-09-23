@@ -16,7 +16,7 @@ async function fetchAuthCookie(): Promise<{ name: string; value: string; domain:
       const cached = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'));
       if (cached && cached.value) {
         // Quick verify with /auth/session or restaurant
-        const testRes = await fetch(`${API_BASE}/billing/restaurants/active`, {
+        const testRes = await fetch(`${API_BASE}/restaurants/active`, {
           headers: { Cookie: `${cached.name}=${cached.value}` },
         });
         if (testRes.ok) {

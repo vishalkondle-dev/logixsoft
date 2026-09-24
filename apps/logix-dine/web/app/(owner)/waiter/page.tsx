@@ -77,7 +77,7 @@ export default function WaiterPage() {
   const [newModalOpen, setNewModalOpen] = useState(false);
 
   // New Request Form State
-  const [newTableNo, setNewTableNo] = useState("Table 1");
+  const [newTableNo, setNewTableNo] = useState("");
   const [newServiceType, setNewServiceType] = useState<"WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER">("WATER");
   const [newNote, setNewNote] = useState("");
 
@@ -107,6 +107,13 @@ export default function WaiterPage() {
 
   // Fetch Tables for new request picker
   const { data: tables = [] } = useTables(restaurantId, outletId);
+
+  // Auto-select first dining table when tables are loaded
+  useEffect(() => {
+    if (tables.length > 0 && (!newTableNo || newTableNo === "Takeaway" || !tables.some((t: any) => t.name === newTableNo))) {
+      setNewTableNo(tables[0].name);
+    }
+  }, [tables, newTableNo]);
 
   // Fetch Orders to find dishes marked PREPARED by Kitchen
   const { data: openOrders = [] } = useOrders(
@@ -813,16 +820,15 @@ export default function WaiterPage() {
           <Select
             label="Table"
             description="Select the dining table requesting service"
-            data={[
-              ...tables.map((t: any) => ({
-                value: t.name,
-                label: t.section ? `${t.name} · ${t.section}` : t.name,
-              })),
-              { value: "Takeaway", label: "Takeaway Counter" },
-            ]}
-            value={newTableNo}
-            onChange={(val) => setNewTableNo(val || "Table 1")}
+            data={tables.map((t: any) => ({
+              value: t.name,
+              label: t.section ? `${t.name} · ${t.section}` : t.name,
+            }))}
+            value={newTableNo && newTableNo !== "Takeaway" ? newTableNo : null}
+            onChange={(val) => setNewTableNo(val || (tables[0]?.name ?? ""))}
+            placeholder={tables.length === 0 ? "No tables configured" : "Select table"}
             required
+            nothingFoundMessage="No tables found"
           />
 
           <Select

@@ -198,8 +198,8 @@ function CartPanel({
             setOrderType(nextType);
             if (nextType === "TAKEAWAY") setTableNo("Takeaway");
             else if (nextType === "DELIVERY") setTableNo("Delivery");
-            else if (tableNo === "Takeaway" || tableNo === "Delivery") {
-              const firstTable = tableSelectData.find((t) => t.value !== "Takeaway" && t.value !== "Delivery")?.value;
+            else if (tableNo === "Takeaway" || tableNo === "Delivery" || !tableNo) {
+              const firstTable = tableSelectData[0]?.value;
               setTableNo(firstTable || "");
             }
           }}
@@ -219,14 +219,15 @@ function CartPanel({
           {orderType === "DINE_IN" && (
             <Select
               label="Table"
-              placeholder="Select table"
+              placeholder={tableSelectData.length === 0 ? "No tables configured" : "Select table"}
               size="sm"
-              value={tableNo}
+              value={tableNo && tableNo !== "Takeaway" && tableNo !== "Delivery" ? tableNo : null}
               onChange={(v) => setTableNo(v || "")}
-              data={tableSelectData.filter((t) => t.value !== "Delivery")}
+              data={tableSelectData}
               leftSection={<IconTableAlias size={16} />}
               allowDeselect={false}
               comboboxProps={{ withinPortal: true, zIndex: 1500 }}
+              nothingFoundMessage="No tables found"
             />
           )}
 
@@ -689,6 +690,7 @@ export default function POSPage() {
       const tableParam = params.get("table");
       if (tableParam) {
         setTableNo(tableParam);
+        setOrderType("DINE_IN");
       }
       const phoneParam = params.get("phone");
       if (phoneParam) {
@@ -696,6 +698,13 @@ export default function POSPage() {
       }
     }
   }, []);
+
+  // Auto-select first dining table when in DINE_IN mode if current tableNo is invalid
+  useEffect(() => {
+    if (orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery") && tables.length > 0) {
+      setTableNo(tables[0].name);
+    }
+  }, [orderType, tableNo, tables]);
 
   // Settle modal state
   const [settleModal, setSettleModal] = useState(false);
@@ -954,6 +963,14 @@ export default function POSPage() {
             setSending(false);
             return;
           }
+        } else if (orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery")) {
+          notifications.show({
+            title: "Table Required",
+            message: "Please select a dining table for Dine-In orders.",
+            color: "red",
+          });
+          setSending(false);
+          return;
         } else if (customerActiveOrderConflict) {
           notifications.show({
             title: "Customer Has Active Order",
@@ -1107,6 +1124,14 @@ export default function POSPage() {
             setSettling(false);
             return;
           }
+        } else if (orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery")) {
+          notifications.show({
+            title: "Table Required",
+            message: "Please select a dining table for Dine-In orders.",
+            color: "red",
+          });
+          setSettling(false);
+          return;
         } else if (customerActiveOrderConflict) {
           notifications.show({
             title: "Customer Has Active Order",
@@ -1298,18 +1323,15 @@ export default function POSPage() {
   const total = grandTotal;
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
 
-  const tableSelectData = [
-    { value: "Takeaway", label: "Takeaway" },
-    ...tables.map((t: any) => {
-      const occ = openOrders.find((entry: any) => isTableMatch(t.name, entry.order?.tableNo));
-      let label = t.section ? `${t.name} · ${t.section}` : t.name;
-      if (occ) {
-        const r = (occ.items ?? []).reduce((m: number, i: any) => Math.max(m, i.round || 1), 1);
-        label += ` (Occupied · Round ${r})`;
-      }
-      return { value: t.name, label };
-    }),
-  ];
+  const tableSelectData = tables.map((t: any) => {
+    const occ = openOrders.find((entry: any) => isTableMatch(t.name, entry.order?.tableNo));
+    let label = t.section ? `${t.name} · ${t.section}` : t.name;
+    if (occ) {
+      const r = (occ.items ?? []).reduce((m: number, i: any) => Math.max(m, i.round || 1), 1);
+      label += ` (Occupied · Round ${r})`;
+    }
+    return { value: t.name, label };
+  });
 
   const cartPanelProps: CartPanelProps = {
     cartItems,

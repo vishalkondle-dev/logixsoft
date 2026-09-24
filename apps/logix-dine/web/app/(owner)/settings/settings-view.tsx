@@ -12,7 +12,8 @@ import {
   IconBuildingStore, IconCheck, IconTrash,
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
   IconBook, IconChartBar, IconArrowLeft, IconClock, IconReceiptTax,
-  IconCreditCard,
+  IconCreditCard, IconCoffee, IconQrcode, IconBrandWhatsapp, IconCalendarEvent,
+  IconMotorbike,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -29,6 +30,11 @@ import { MenuManagement } from "../menu/menu-management";
 import { ReportsManagement } from "../reports/reports-management";
 import { StoreHoursManagement } from "./store-hours-management";
 import { InvoiceTaxManagement } from "./invoice-tax-management";
+import { DiningOptionsManagement } from "./dining-options-management";
+import { QrMenuManagement } from "./qr-menu-management";
+import { WhatsappManagement } from "./whatsapp-management";
+import { ReservationsManagement } from "./reservations-management";
+import { RidersManagement } from "./riders-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -46,6 +52,11 @@ export const VALID_SETTINGS_TABS = [
   "staff",
   "printing",
   "payments",
+  "dining",
+  "qr-menu",
+  "whatsapp",
+  "reservations",
+  "riders",
 ] as const;
 
 export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
@@ -384,6 +395,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />}>Staff & Team</Tabs.Tab>}
             <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />}>Printing</Tabs.Tab>
             <Tabs.Tab value="payments" leftSection={<IconCreditCard size={16} />}>Payment Types & UPI</Tabs.Tab>
+            <Tabs.Tab value="dining" leftSection={<IconCoffee size={16} />}>Dining Options</Tabs.Tab>
+            <Tabs.Tab value="qr-menu" leftSection={<IconQrcode size={16} />}>QR Menu</Tabs.Tab>
+            <Tabs.Tab value="whatsapp" leftSection={<IconBrandWhatsapp size={16} />}>WhatsApp Alerts</Tabs.Tab>
+            <Tabs.Tab value="reservations" leftSection={<IconCalendarEvent size={16} />}>Reservations</Tabs.Tab>
+            <Tabs.Tab value="riders" leftSection={<IconMotorbike size={16} />}>Delivery & Riders</Tabs.Tab>
           </Tabs.List>
         </ScrollArea>
 
@@ -705,6 +721,31 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               </Stack>
             </Paper>
           </Stack>
+        </Tabs.Panel>
+
+        {/* Dining Options tab */}
+        <Tabs.Panel value="dining">
+          <DiningOptionsManagement />
+        </Tabs.Panel>
+
+        {/* QR Menu tab */}
+        <Tabs.Panel value="qr-menu">
+          <QrMenuManagement />
+        </Tabs.Panel>
+
+        {/* WhatsApp tab */}
+        <Tabs.Panel value="whatsapp">
+          <WhatsappManagement />
+        </Tabs.Panel>
+
+        {/* Reservations tab */}
+        <Tabs.Panel value="reservations">
+          <ReservationsManagement />
+        </Tabs.Panel>
+
+        {/* Riders tab */}
+        <Tabs.Panel value="riders">
+          <RidersManagement />
         </Tabs.Panel>
       </Tabs>
 

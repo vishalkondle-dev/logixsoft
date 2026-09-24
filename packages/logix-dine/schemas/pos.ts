@@ -15,6 +15,7 @@ import type {
   JsonDeliveryOrderRow,
   JsonCustomerAddressRow,
   JsonDeliveryRiderRow,
+  JsonTableReservationRow,
 } from '../types/pos-schema';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -71,6 +72,9 @@ export const RestaurantOutletSchema = z.object({
   openingHours: z.unknown().nullable(),
   invoiceSettings: z.unknown().nullable(),
   taxSettings: z.unknown().nullable(),
+  diningSettings: z.unknown().nullable(),
+  qrMenuSettings: z.unknown().nullable(),
+  whatsappSettings: z.unknown().nullable(),
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -275,6 +279,28 @@ export const DeliveryRiderSchema = z.object({
 });
 type _DeliveryRiderAssert = Expect<AssertSame<z.infer<typeof DeliveryRiderSchema>, JsonDeliveryRiderRow>>;
 
+export const TableReservationSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  tableId: z.string().nullable(),
+  tableName: z.string().nullable(),
+  guestName: z.string(),
+  guestPhone: z.string(),
+  guestEmail: z.string().nullable(),
+  partySize: z.number().int(),
+  reservationDate: z.string(),
+  startTime: z.string(),
+  endTime: z.string().nullable(),
+  status: z.string(),
+  notes: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
+});
+type _ReservationAssert = Expect<AssertSame<z.infer<typeof TableReservationSchema>, JsonTableReservationRow>>;
+
 export const UpdateOrderItemStatusSchema = z.object({
   status: z.enum(['ORDERED', 'PREPARING', 'PREPARED', 'SERVED', 'CANCELLED']).optional(),
   action: z.enum(['next', 'close', 'cancel']).optional(),
@@ -310,6 +336,9 @@ export const UpdateOutletSchema = z.object({
   openingHours: z.any().nullable().optional(),
   invoiceSettings: z.any().nullable().optional(),
   taxSettings: z.any().nullable().optional(),
+  diningSettings: z.any().nullable().optional(),
+  qrMenuSettings: z.any().nullable().optional(),
+  whatsappSettings: z.any().nullable().optional(),
 });
 
 export const CreateCategorySchema = z.object({
@@ -446,4 +475,32 @@ export const OrderWithItemsSchema = z.object({
   order: SaleOrderSchema,
   items: z.array(SaleOrderItemSchema),
   delivery: DeliveryOrderSchema.nullable().optional(),
+});
+
+export const CreateReservationSchema = z.object({
+  outletId: z.string(),
+  tableId: z.string().nullable().optional(),
+  tableName: z.string().nullable().optional(),
+  guestName: z.string().min(1).max(100),
+  guestPhone: z.string().min(5).max(20),
+  guestEmail: z.string().email().nullable().optional().or(z.literal('')),
+  partySize: z.number().int().min(1).default(2),
+  reservationDate: z.string(),
+  startTime: z.string().min(1),
+  endTime: z.string().nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
+});
+
+export const UpdateReservationSchema = z.object({
+  tableId: z.string().nullable().optional(),
+  tableName: z.string().nullable().optional(),
+  guestName: z.string().min(1).max(100).optional(),
+  guestPhone: z.string().min(5).max(20).optional(),
+  guestEmail: z.string().email().nullable().optional().or(z.literal('')),
+  partySize: z.number().int().min(1).optional(),
+  reservationDate: z.string().optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().nullable().optional(),
+  status: z.enum(['CONFIRMED', 'SEATED', 'CANCELLED', 'COMPLETED']).optional(),
+  notes: z.string().max(500).nullable().optional(),
 });

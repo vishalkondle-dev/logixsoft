@@ -24,6 +24,8 @@ import type {
   JsonCustomerAddressRow,
   DeliveryRiderRow,
   JsonDeliveryRiderRow,
+  TableReservationRow,
+  JsonTableReservationRow,
 } from '../types/pos-schema';
 
 function toIso(d: Date | null | undefined): string | null {
@@ -153,5 +155,13 @@ export function toOrderWithItems(
     order: toOrder(order),
     items: items.map(toOrderItem),
     delivery: delivery ? toDeliveryOrder(delivery) : null,
+  };
+}
+
+export function toReservation(r: TableReservationRow): JsonTableReservationRow {
+  return {
+    ...r,
+    createdAt: toIsoRequired(r.createdAt),
+    updatedAt: toIsoRequired(r.updatedAt),
   };
 }

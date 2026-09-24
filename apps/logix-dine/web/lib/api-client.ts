@@ -921,6 +921,104 @@ export const updateDeliveryRiderStatus = (
     outletId
   );
 
+// ─── Reservations ─────────────────────────────────────────────────────────────
+
+export interface TableReservation {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  tableId?: string | null;
+  tableName?: string | null;
+  guestName: string;
+  guestPhone: string;
+  guestEmail?: string | null;
+  partySize: number;
+  reservationDate: string;
+  startTime: string;
+  endTime?: string | null;
+  status: "CONFIRMED" | "SEATED" | "CANCELLED" | "COMPLETED";
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const getReservations = (
+  restaurantId: string,
+  params?: { outletId?: string | null; date?: string; status?: string }
+) => {
+  const query = new URLSearchParams();
+  if (params?.outletId) query.set("outletId", params.outletId);
+  if (params?.date) query.set("date", params.date);
+  if (params?.status) query.set("status", params.status);
+  const qs = query.toString();
+  return apiFetch<TableReservation[]>(
+    `/reservations${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    params?.outletId || undefined
+  );
+};
+
+export const createReservation = (
+  restaurantId: string,
+  body: {
+    outletId: string;
+    tableId?: string | null;
+    tableName?: string | null;
+    guestName: string;
+    guestPhone: string;
+    guestEmail?: string | null;
+    partySize: number;
+    reservationDate: string;
+    startTime: string;
+    endTime?: string | null;
+    notes?: string | null;
+  }
+) =>
+  apiFetch<TableReservation>(
+    "/reservations",
+    restaurantId,
+    { method: "POST", body: JSON.stringify(body) },
+    body.outletId
+  );
+
+export const updateReservation = (
+  restaurantId: string,
+  id: string,
+  body: Partial<{
+    tableId?: string | null;
+    tableName?: string | null;
+    guestName?: string;
+    guestPhone?: string;
+    guestEmail?: string | null;
+    partySize?: number;
+    reservationDate?: string;
+    startTime?: string;
+    endTime?: string | null;
+    status?: "CONFIRMED" | "SEATED" | "CANCELLED" | "COMPLETED";
+    notes?: string | null;
+  }>,
+  outletId?: string | null
+) =>
+  apiFetch<TableReservation>(
+    `/reservations/${id}`,
+    restaurantId,
+    { method: "PATCH", body: JSON.stringify(body) },
+    outletId || undefined
+  );
+
+export const deleteReservation = (
+  restaurantId: string,
+  id: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; message: string }>(
+    `/reservations/${id}`,
+    restaurantId,
+    { method: "DELETE" },
+    outletId || undefined
+  );
+
 
 
 

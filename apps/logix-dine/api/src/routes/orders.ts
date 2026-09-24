@@ -1024,6 +1024,9 @@ app.post(
     try {
       const orderData = await getOrderWithItems(db, orderId, restaurantId);
       if (!orderData) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
+      if (!assertOutletAccess(tenant, orderData.order.outletId)) {
+        return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+      }
 
       const recipientPhone = phone?.trim() || orderData.order.customerPhone;
       if (!recipientPhone) {
@@ -1085,6 +1088,16 @@ app.post(
 
     const { db, close } = getDb(c);
     try {
+      const [order] = await db
+        .select()
+        .from(appSchema.saleOrder)
+        .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+
+      if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
+      if (!assertOutletAccess(tenant, order.outletId)) {
+        return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+      }
+
       const now = new Date();
       await db
         .update(appSchema.saleOrder)
@@ -1212,6 +1225,10 @@ app.get(
     const { restaurantId } = tenant;
     const outletId = c.req.query('outletId') || tenant.outletId;
 
+    if (outletId && !assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
     const { db, close } = getDb(c);
     try {
       const conditions: any[] = [
@@ -1226,6 +1243,14 @@ app.get(
 
       if (outletId) {
         conditions.push(eq(appSchema.saleOrder.outletId, outletId));
+      } else if (!isAllOutletRole(tenant.role as RestaurantRole)) {
+        if (tenant.outletIds && tenant.outletIds.length > 0) {
+          conditions.push(inArray(appSchema.saleOrder.outletId, tenant.outletIds));
+        } else {
+          return c.json({ error: 'Forbidden', message: 'No outlets assigned to your role' }, 403);
+        }
+      } else if (tenant.outletIds && tenant.outletIds.length > 0) {
+        conditions.push(inArray(appSchema.saleOrder.outletId, tenant.outletIds));
       }
 
       const orders = await db

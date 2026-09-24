@@ -4,6 +4,7 @@ import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
+import { isAllOutletRole, type RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import { toCustomerAddress, toDeliveryRider, toDeliveryOrder } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
@@ -134,13 +135,25 @@ app.get(
     const { restaurantId } = tenant;
     const headerOutletId = c.req.header('X-Outlet-Id');
     const queryOutletId = c.req.query('outletId');
-    const outletId = queryOutletId || headerOutletId || tenant.outletId || tenant.outletIds?.[0];
+    const outletId = queryOutletId || headerOutletId;
+
+    if (outletId && !assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
 
     const { db, close } = getDb(c);
     try {
-      const conditions = [eq(appSchema.deliveryRider.restaurantId, restaurantId)];
+      const conditions: any[] = [eq(appSchema.deliveryRider.restaurantId, restaurantId)];
       if (outletId) {
         conditions.push(eq(appSchema.deliveryRider.outletId, outletId));
+      } else if (!isAllOutletRole(tenant.role as RestaurantRole)) {
+        if (tenant.outletIds && tenant.outletIds.length > 0) {
+          conditions.push(inArray(appSchema.deliveryRider.outletId, tenant.outletIds));
+        } else {
+          return c.json({ error: 'Forbidden', message: 'No outlets assigned to your role' }, 403);
+        }
+      } else if (tenant.outletIds && tenant.outletIds.length > 0) {
+        conditions.push(inArray(appSchema.deliveryRider.outletId, tenant.outletIds));
       }
 
       const riders = await db
@@ -242,6 +255,9 @@ async function handleUpdateRiderDuty(c: any, riderId: string, status: any) {
       );
 
     if (!rider) return c.json({ error: 'Not Found', message: 'Rider not found' }, 404);
+    if (!assertOutletAccess(tenant, rider.outletId)) {
+      return c.json({ error: 'Forbidden', message: "You do not have access to this rider's outlet" }, 403);
+    }
 
     const now = new Date();
     await db
@@ -328,6 +344,9 @@ async function transitionDeliveryStatus(c: any, orderId: string, newStatus: any,
         .from(appSchema.deliveryRider)
         .where(eq(appSchema.deliveryRider.id, riderId));
       if (rider) {
+        if (!assertOutletAccess(tenant, rider.outletId) || rider.outletId !== existingDelivery.outletId) {
+          return c.json({ error: 'Forbidden', message: 'Rider does not belong to this outlet' }, 403);
+        }
         riderToAssign = rider;
         updates.riderId = rider.id;
         updates.riderName = rider.name;

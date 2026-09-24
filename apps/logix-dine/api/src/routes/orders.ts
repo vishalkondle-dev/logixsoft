@@ -24,6 +24,8 @@ import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 import {
   getDb,
   generateOrderId,
+  getNextDailyTokenNo,
+  getTodayISTDateString,
   getPhoneVariants,
   resolveOrderItemDetails,
   recomputeTotal,
@@ -164,17 +166,14 @@ app.post(
       let subtotalPaise = 0;
       const orderItemsToInsert: any[] = [];
 
-      const seqKey = CacheKey.outletSeq(parsed.data.outletId);
+      const istDate = getTodayISTDateString();
+      const seqKey = CacheKey.outletSeq(parsed.data.outletId, istDate);
       let tokenNo = 1;
 
       await db.transaction(async (tx: any) => {
         // Lock outlet row to serialize order sequence generation under concurrency
         await tx.execute(sql`SELECT id FROM "restaurantOutlet" WHERE id = ${parsed.data.outletId} FOR UPDATE`);
-        const [maxRow] = await tx
-          .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
-          .from(appSchema.saleOrder)
-          .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
-        tokenNo = Number(maxRow?.maxNo ?? 0) + 1;
+        tokenNo = await getNextDailyTokenNo(tx, parsed.data.outletId);
 
         if (parsed.data.items && parsed.data.items.length > 0) {
           const menuItems = await tx
@@ -372,17 +371,14 @@ app.post(
       let subtotalPaise = 0;
       const orderItemsToInsert: any[] = [];
 
-      const seqKey = CacheKey.outletSeq(parsed.data.outletId);
+      const istDate = getTodayISTDateString();
+      const seqKey = CacheKey.outletSeq(parsed.data.outletId, istDate);
       let tokenNo = 1;
 
       await db.transaction(async (tx: any) => {
         // Lock outlet row to serialize order sequence generation under concurrency
         await tx.execute(sql`SELECT id FROM "restaurantOutlet" WHERE id = ${parsed.data.outletId} FOR UPDATE`);
-        const [maxRow] = await tx
-          .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
-          .from(appSchema.saleOrder)
-          .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
-        tokenNo = Number(maxRow?.maxNo ?? 0) + 1;
+        tokenNo = await getNextDailyTokenNo(tx, parsed.data.outletId);
 
         if (parsed.data.items && parsed.data.items.length > 0) {
           const menuItems = await tx

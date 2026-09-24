@@ -11,6 +11,7 @@ import {
   getDb,
   getPhoneVariants,
   generateOrderId,
+  getNextDailyTokenNo,
   resolveOrderItemDetails,
   recomputeTotal,
 } from '../lib/order-helpers';
@@ -391,11 +392,7 @@ app.post(
       await db.transaction(async (tx: any) => {
         // Lock outlet row to serialize order sequence generation under concurrency
         await tx.execute(sql`SELECT id FROM "restaurantOutlet" WHERE id = ${parsed.data.outletId} FOR UPDATE`);
-        const [maxRow] = await tx
-          .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
-          .from(appSchema.saleOrder)
-          .where(eq(appSchema.saleOrder.outletId, parsed.data.outletId));
-        tokenNo = Number(maxRow?.maxNo ?? 0) + 1;
+        tokenNo = await getNextDailyTokenNo(tx, parsed.data.outletId);
 
         await tx.insert(appSchema.saleOrder).values({
           id: orderId,

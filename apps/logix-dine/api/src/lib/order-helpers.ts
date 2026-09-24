@@ -16,7 +16,34 @@ export function generateOrderId(outletId: string): string {
     now = lastOrderTime + 1;
   }
   lastOrderTime = now;
-  return `ord_${outletId}_${now}`;
+  return `${outletId}-${now}`;
+}
+
+/**
+ * Computes the next daily token number for a given outlet.
+ * Resets to 1 each day (IST / Asia/Kolkata date boundary).
+ * Must be executed within a transaction where the outlet row is locked FOR UPDATE.
+ */
+export async function getNextDailyTokenNo(tx: any, outletId: string): Promise<number> {
+  const [maxRow] = await tx
+    .select({ maxNo: sql<number>`COALESCE(MAX("orderNo"), 0)` })
+    .from(appSchema.saleOrder)
+    .where(
+      and(
+        eq(appSchema.saleOrder.outletId, outletId),
+        sql`("createdAt" AT TIME ZONE 'Asia/Kolkata')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date`
+      )
+    );
+  return Number(maxRow?.maxNo ?? 0) + 1;
+}
+
+export function getTodayISTDateString(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
 export function getPhoneVariants(input: string): { rawDigits: string; variants: string[] } {

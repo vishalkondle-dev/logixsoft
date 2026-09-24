@@ -9,7 +9,7 @@ import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function OwnerLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
-  const { restaurant, isLoading: restLoading, role } = useRestaurant();
+  const { restaurant, myRestaurants, activeOutlet, isLoading: restLoading, role } = useRestaurant();
   const router = useRouter();
   const pathname = usePathname();
   const redirected = useRef(false);
@@ -22,8 +22,8 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     // Only redirect after BOTH auth and restaurant have fully loaded
     if (authLoading || restLoading) return;
     if (!isAuthenticated) return; // handled below in render
-    // Authenticated but no restaurant → send to onboarding (or portal if customer)
-    if (!restaurant && !redirected.current) {
+    // Authenticated but no restaurant and no memberships → send to onboarding (or portal if customer)
+    if (!restaurant && !myRestaurants.length && !redirected.current) {
       redirected.current = true;
       if (user?.role === "CUSTOMER") {
         router.replace("/portal");
@@ -35,7 +35,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     // KITCHEN role can only access /kitchen
     if (restaurant && role === "KITCHEN" && !redirected.current && pathname !== "/kitchen") {
       redirected.current = true;
-      router.replace("/kitchen");
+      router.replace(activeOutlet ? `/kitchen?outletId=${activeOutlet.id}` : "/kitchen");
       return;
     }
     // WAITER role can access /waiter, /rider, /pos, /orders, /tables, /kitchen, and /customers
@@ -52,10 +52,10 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
       !pathname.startsWith("/customers")
     ) {
       redirected.current = true;
-      router.replace("/waiter");
+      router.replace(activeOutlet ? `/waiter?outletId=${activeOutlet.id}` : "/waiter");
       return;
     }
-  }, [authLoading, restLoading, isAuthenticated, restaurant, role, pathname, router]);
+  }, [authLoading, restLoading, isAuthenticated, restaurant, myRestaurants, activeOutlet, role, pathname, router]);
 
   // Still loading either auth or restaurant context
   if (authLoading || (isAuthenticated && restLoading)) {

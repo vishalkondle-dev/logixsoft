@@ -50,10 +50,17 @@ import {
   IconRefresh,
   IconBolt,
   IconNotes,
+  IconArrowRight,
+  IconBellRinging,
+  IconMotorbike,
+  IconShoppingCart,
+  IconBuildingStore,
 } from "@tabler/icons-react";
+import Link from "next/link";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import { notifications } from "@mantine/notifications";
 import { useAuth } from "@/lib/auth-context";
+import { useRestaurant } from "@/lib/restaurant-context";
 import { useCustomerPortal, useUpdateCustomerProfile } from "@/lib/queries";
 import { useCustomerSync } from "@/lib/use-customer-sync";
 import type { CustomerPortalOrder } from "@/lib/api-client";
@@ -89,6 +96,7 @@ function CustomerPortalInner() {
   const activeTab = ["active", "past", "profile"].includes(rawTab) ? rawTab : "active";
 
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
+  const { restaurant, activeOutlet, role } = useRestaurant();
   const [activeOutletIds, setActiveOutletIds] = useState<string[]>([]);
 
   // Real-time live sync via Cloudflare Durable Object
@@ -272,6 +280,53 @@ ${itemsText}
   return (
     <Container size="md" py={{ base: "sm", sm: "lg" }} pb={120}>
       <Stack gap="md">
+        {/* ─── Staff Role Quick-Switch Banner ─── */}
+        {role && ["WAITER", "KITCHEN", "RIDER", "OWNER", "MANAGER"].includes(role) && (
+          <Paper
+            p="sm"
+            radius="md"
+            withBorder
+            style={{
+              background: "rgba(175, 115, 215, 0.08)",
+              borderColor: "rgba(175, 115, 215, 0.4)",
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+              <Group gap="xs">
+                <ThemeIcon size={34} radius="md" color="dinePrimary" variant="filled">
+                  {role === "WAITER" ? <IconBellRinging size={18} /> :
+                   role === "KITCHEN" ? <IconToolsKitchen2 size={18} /> :
+                   role === "RIDER" ? <IconMotorbike size={18} /> :
+                   <IconBuildingStore size={18} />}
+                </ThemeIcon>
+                <div>
+                  <Text size="xs" fw={700} c="dark.9">
+                    Staff Account: {role} {restaurant ? `• ${restaurant.name}` : ""}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    You have staff access for this restaurant. Ready for your shift?
+                  </Text>
+                </div>
+              </Group>
+              <Button
+                component={Link}
+                href={
+                  role === "WAITER" ? (activeOutlet ? `/waiter?outletId=${activeOutlet.id}` : "/waiter") :
+                  role === "KITCHEN" ? (activeOutlet ? `/kitchen?outletId=${activeOutlet.id}` : "/kitchen") :
+                  role === "RIDER" ? (activeOutlet ? `/rider?outletId=${activeOutlet.id}` : "/rider") :
+                  (activeOutlet ? `/pos?outletId=${activeOutlet.id}` : "/pos")
+                }
+                size="xs"
+                color="dinePrimary"
+                rightSection={<IconArrowRight size={14} />}
+                radius="md"
+              >
+                Go to {role === "WAITER" ? "Waiter Floor" : role === "KITCHEN" ? "Kitchen KDS" : role === "RIDER" ? "Rider Deliveries" : "POS Billing"}
+              </Button>
+            </Group>
+          </Paper>
+        )}
+
         {/* ─── Hero / Customer Identity Banner ─── */}
         <Paper
           p={{ base: "md", sm: "lg" }}

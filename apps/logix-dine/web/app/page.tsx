@@ -14,17 +14,27 @@ import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function HomePage() {
-  const { isAuthenticated, openLoginModal } = useAuth();
+  const { user, isAuthenticated, openLoginModal } = useAuth();
   const { restaurant, activeOutlet, role, isLoading } = useRestaurant();
   const router = useRouter();
 
   React.useEffect(() => {
-    if (isAuthenticated && restaurant && role === "KITCHEN") {
-      router.replace(activeOutlet ? `/kitchen?outletId=${activeOutlet.id}` : "/kitchen");
+    if (isAuthenticated && restaurant) {
+      const oId = activeOutlet?.id;
+      const q = oId ? `?outletId=${oId}` : "";
+      if (role === "KITCHEN") {
+        router.replace(`/kitchen${q}`);
+      } else if (role === "WAITER") {
+        router.replace(`/waiter${q}`);
+      } else if (role === "RIDER") {
+        router.replace(`/rider${q}`);
+      } else if (role === "OWNER" || role === "MANAGER" || (user as any)?.role === "ADMIN") {
+        router.replace(`/pos${q}`);
+      }
     }
-  }, [isAuthenticated, restaurant, activeOutlet, role, router]);
+  }, [isAuthenticated, restaurant, activeOutlet, role, user, router]);
 
-  if (isAuthenticated && restaurant && role === "KITCHEN") {
+  if (isAuthenticated && (isLoading || (restaurant && ["KITCHEN", "WAITER", "RIDER", "OWNER", "MANAGER"].includes(role || "")))) {
     return (
       <Center py={100} style={{ minHeight: "60vh" }}>
         <Loader size="lg" color="dinePrimary" />
@@ -32,22 +42,30 @@ export default function HomePage() {
     );
   }
 
-  // Redirect owners directly to POS
+  // Fallback for owners / managers if not yet redirected
   if (isAuthenticated && restaurant) {
+    const oId = activeOutlet?.id;
+    const q = oId ? `?outletId=${oId}` : "";
+    const isWaiter = role === "WAITER";
+    const isKitchen = role === "KITCHEN";
+    const isRider = role === "RIDER";
+    const primaryHref = isWaiter ? `/waiter${q}` : isKitchen ? `/kitchen${q}` : isRider ? `/rider${q}` : `/pos${q}`;
+    const primaryLabel = isWaiter ? "Go to Waiter Floor" : isKitchen ? "Go to Kitchen KDS" : isRider ? "Go to Deliveries" : "Go to POS";
+
     return (
       <Box pt="md" pb={100} px={{ base: "xs", sm: "md" }}>
         <Stack align="center" gap="md" style={{ textAlign: "center" }}>
           <Badge color="dinePrimary" variant="light" size="lg" radius="xl" px="md">
-            {restaurant.name}
+            {restaurant.name} {role ? `(${role})` : ""}
           </Badge>
           <Title order={1} style={{ fontSize: "2rem", fontWeight: 800 }}>
-            Welcome back! Ready to start billing?
+            Welcome back! Ready for shift?
           </Title>
           <Group justify="center">
-            <Button component={Link} href={activeOutlet ? `/pos?outletId=${activeOutlet.id}` : "/pos"} size="lg" color="dinePrimary" leftSection={<IconShoppingCart size={20} />}>
-              Go to POS
+            <Button component={Link} href={primaryHref} size="lg" color="dinePrimary" leftSection={<IconShoppingCart size={20} />}>
+              {primaryLabel}
             </Button>
-            <Button component={Link} href={activeOutlet ? `/orders?outletId=${activeOutlet.id}` : "/orders"} size="lg" variant="default" leftSection={<IconReceipt size={20} />}>
+            <Button component={Link} href={`/orders${q}`} size="lg" variant="default" leftSection={<IconReceipt size={20} />}>
               View Orders
             </Button>
           </Group>

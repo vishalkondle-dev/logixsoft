@@ -66,6 +66,24 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     ? [{ label: "My Orders", href: "/portal", icon: IconReceipt }]
     : [];
 
+  const staffHomeHref = React.useMemo(() => {
+    const oId = activeOutlet?.id;
+    const q = oId ? `?outletId=${oId}` : "";
+    if (effectiveRole === "WAITER") return `/waiter${q}`;
+    if (effectiveRole === "KITCHEN") return `/kitchen${q}`;
+    if (effectiveRole === "RIDER") return `/rider${q}`;
+    return `/pos${q}`;
+  }, [effectiveRole, activeOutlet]);
+
+  const staffRoleLabel = React.useMemo(() => {
+    if (effectiveRole === "WAITER") return "Waiter Floor";
+    if (effectiveRole === "KITCHEN") return "Kitchen KDS";
+    if (effectiveRole === "RIDER") return "Rider Deliveries";
+    if (effectiveRole === "MANAGER") return "Manager Dashboard";
+    if (effectiveRole === "OWNER") return "POS Billing";
+    return "Staff Dashboard";
+  }, [effectiveRole]);
+
 
   return (
     <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0}>
@@ -167,6 +185,26 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
             </Box>
 
             <Group gap="xs" wrap="nowrap" align="center">
+              {isPortal && isStaffOrOwner && (
+                <Button
+                  component={Link}
+                  href={staffHomeHref}
+                  size="xs"
+                  variant="filled"
+                  color="dinePrimary"
+                  radius="xl"
+                  leftSection={
+                    effectiveRole === "WAITER" ? <IconBellRinging size={14} /> :
+                    effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={14} /> :
+                    effectiveRole === "RIDER" ? <IconMotorbike size={14} /> :
+                    <IconShoppingCart size={14} />
+                  }
+                  style={{ fontWeight: 600, boxShadow: "0 2px 6px rgba(175, 115, 215, 0.25)" }}
+                >
+                  Go to {staffRoleLabel}
+                </Button>
+              )}
+
               {outlets.length > 0 && (
                 <Menu
                   position="bottom-end"
@@ -257,7 +295,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               {authLoading ? (
                 <Loader size="sm" color="dinePrimary" />
               ) : isAuthenticated && user ? (
-                <Menu width={220} position="bottom-end">
+                <Menu width={240} position="bottom-end">
                   <Menu.Target>
                     <UnstyledButton style={{ padding: "4px 8px", borderRadius: "8px" }}>
                       <Group gap="xs" wrap="nowrap">
@@ -266,7 +304,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         </Avatar>
                         <Box visibleFrom="xs">
                           <Text size="sm" fw={600} lh={1.2} lineClamp={1}>{user.name || "User"}</Text>
-                          <Text size="xs" c="dimmed" lh={1}>{(user as any).role}</Text>
+                          <Text size="xs" c="dimmed" lh={1}>{effectiveRole || (user as any).role || "CUSTOMER"}</Text>
                         </Box>
                       </Group>
                     </UnstyledButton>
@@ -274,16 +312,38 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   <Menu.Dropdown>
                     <Menu.Label>
                       <Group justify="space-between">
-                        <Text size="xs" fw={700}>{user.name || "Customer"}</Text>
-                        <Badge size="xs" color="dinePrimary" variant="light">{(user as any).role || (isCustomer ? "CUSTOMER" : "USER")}</Badge>
+                        <Text size="xs" fw={700} lineClamp={1}>{user.name || "Customer"}</Text>
+                        <Badge size="xs" color="dinePrimary" variant="light">{effectiveRole || (user as any).role || "CUSTOMER"}</Badge>
                       </Group>
+                      {restaurant && (
+                        <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
+                          {restaurant.name}
+                        </Text>
+                      )}
                     </Menu.Label>
+
+                    {isStaffOrOwner && (
+                      <Menu.Item
+                        component={Link}
+                        href={staffHomeHref}
+                        leftSection={
+                          effectiveRole === "WAITER" ? <IconBellRinging size={16} color="#af73d7" /> :
+                          effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={16} color="#af73d7" /> :
+                          effectiveRole === "RIDER" ? <IconMotorbike size={16} color="#af73d7" /> :
+                          <IconShoppingCart size={16} color="#af73d7" />
+                        }
+                        style={{ fontWeight: 600, color: "#af73d7", backgroundColor: "rgba(175, 115, 215, 0.08)" }}
+                      >
+                        Switch to {staffRoleLabel}
+                      </Menu.Item>
+                    )}
+
                     <Menu.Item
                       component={Link}
                       href="/portal"
-                      leftSection={<IconUser size={16} color="#af73d7" />}
+                      leftSection={<IconUser size={16} color="#868e96" />}
                     >
-                      My Orders & Profile
+                      Customer Portal (My Orders)
                     </Menu.Item>
                     <Menu.Divider />
                     <Menu.Item color="red" leftSection={<IconLogout size={16} />} onClick={() => signOut()}>Sign Out</Menu.Item>

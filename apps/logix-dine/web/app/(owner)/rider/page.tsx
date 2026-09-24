@@ -82,7 +82,7 @@ export default function RiderPage() {
   // Fetch Delivery Riders
   const { data: riders = [], isLoading: ridersLoading } = useDeliveryRiders(restaurantId, outletId);
 
-  // Fetch recent orders for active delivery tracking
+  // Fetch recent orders for active delivery tracking (real-time push via Durable Object)
   const {
     data: allOrders = [],
     isLoading: ordersLoading,
@@ -91,7 +91,7 @@ export default function RiderPage() {
     restaurantId,
     { outletId: outletId ?? undefined, limit: 100 },
     Boolean(restaurantId && outletId),
-    { refetchInterval: isConnected ? false : 15_000 }
+    { refetchInterval: false }
   );
 
   // Persist selected rider in localStorage

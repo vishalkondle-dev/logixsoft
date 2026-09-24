@@ -78,14 +78,14 @@ export default function TablesPage() {
   // Live WebSocket sync via Cloudflare Durable Object
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
-  // Table Definitions (zero polling when connected, 30s safety fallback when disconnected)
+  // Table Definitions (Real-time live sync via Cloudflare Durable Object)
   const {
     data: tables = [],
     isLoading: tablesLoading,
     refetch: refetchTables,
-  } = useTables(restaurantId, outletId, { refetchInterval: isConnected ? false : 30_000 });
+  } = useTables(restaurantId, outletId, { refetchInterval: false });
 
-  // Occupied Table Orders (zero polling when connected, 30s safety fallback when disconnected)
+  // Occupied Table Orders (Real-time live sync via Cloudflare Durable Object)
   const {
     data: orders = [],
     isLoading: ordersLoading,
@@ -98,7 +98,7 @@ export default function TablesPage() {
       limit: 100,
     },
     !!restaurantId && !!outletId,
-    { refetchInterval: isConnected ? false : 30_000 },
+    { refetchInterval: false },
   );
 
   // ─── Filter States ────────────────────────────────────────────────────────────

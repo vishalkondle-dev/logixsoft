@@ -135,16 +135,48 @@ export function useOutletSync(
           }
           if (topic === "ORDERS" || topic === "ALL") {
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["kitchenOrders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["deliveryOrders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["riders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["waiterRequests", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["waiterStats", restaurantId] });
           }
           if (topic === "KITCHEN" || topic === "ALL") {
             queryClient.invalidateQueries({ queryKey: ["kitchenOrders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["waiterStats", restaurantId] });
           }
 
-          if (msg.type === "WAITER_CALL" || msg.type === "WAITER_REQUEST_UPDATED") {
+          if (
+            msg.type === "WAITER_CALL" ||
+            msg.type === "WAITER_REQUEST_UPDATED" ||
+            msg.type === "WAITER_CALL_STATUS_CHANGED"
+          ) {
             queryClient.invalidateQueries({ queryKey: ["waiterRequests", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["waiterStats", restaurantId] });
+          }
+
+          if (
+            msg.type === "RIDER_STATUS_UPDATED" ||
+            msg.type === "DELIVERY_STATUS_UPDATED" ||
+            msg.type === "RIDER_ASSIGNED"
+          ) {
+            queryClient.invalidateQueries({ queryKey: ["riders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["deliveryOrders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+          }
+
+          if (
+            msg.type === "MENU_UPDATED" ||
+            msg.type === "ITEM_TOGGLED" ||
+            msg.type === "ITEM_CREATED" ||
+            msg.type === "ITEM_DELETED"
+          ) {
+            queryClient.invalidateQueries({ queryKey: ["items", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["categories", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["posBootstrap", restaurantId] });
           }
 
           if (msg.type === "WAITER_CALL") {

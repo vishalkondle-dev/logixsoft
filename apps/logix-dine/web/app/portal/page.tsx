@@ -97,9 +97,9 @@ function CustomerPortalInner() {
     { activeOutletIds }
   );
 
-  // Auto-refreshes in 0ms real-time via Cloudflare Durable Object (30s fallback only when offline)
+  // Auto-refreshes in 0ms real-time via Cloudflare Durable Object
   const { data, isLoading: dataLoading, isRefetching, refetch } = useCustomerPortal({
-    refetchInterval: isConnected ? false : 30_000,
+    refetchInterval: false,
   });
   const updateProfileMutation = useUpdateCustomerProfile();
 

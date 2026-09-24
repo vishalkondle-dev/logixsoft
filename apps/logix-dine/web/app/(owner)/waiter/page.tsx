@@ -88,7 +88,7 @@ export default function WaiterPage() {
   // Durable Object Live Sync
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
-  // Fetch Waiter Requests (Auto-updates via DO or 15s polling fallback)
+  // Fetch Waiter Requests (Auto-updates via Cloudflare Durable Object)
   const {
     data: requests = [],
     isLoading: requestsLoading,
@@ -97,12 +97,12 @@ export default function WaiterPage() {
     restaurantId,
     outletId,
     {},
-    { refetchInterval: isConnected ? false : 15_000 }
+    { refetchInterval: false }
   );
 
-  // Fetch Waiter Stats
+  // Fetch Waiter Stats (Auto-updates via Cloudflare Durable Object)
   const { data: stats } = useWaiterStats(restaurantId, outletId, {
-    refetchInterval: isConnected ? false : 15_000,
+    refetchInterval: false,
   });
 
   // Fetch Tables for new request picker
@@ -115,12 +115,12 @@ export default function WaiterPage() {
     }
   }, [tables, newTableNo]);
 
-  // Fetch Orders to find dishes marked PREPARED by Kitchen
+  // Fetch Orders to find dishes marked PREPARED by Kitchen (Auto-updates via Cloudflare Durable Object)
   const { data: openOrders = [] } = useOrders(
     restaurantId,
     { outletId: outletId || undefined, status: "OPEN" },
     true,
-    { refetchInterval: isConnected ? false : 20_000 }
+    { refetchInterval: false }
   );
 
   const createMutation = useCreateWaiterRequest();

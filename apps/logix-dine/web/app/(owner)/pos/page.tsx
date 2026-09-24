@@ -581,12 +581,12 @@ export default function POSPage() {
   // Real-time live sync via Cloudflare Durable Object
   const { isConnected } = useOutletSync(restaurantId, outletId);
 
-  // Table orders for instant occupancy and active table matching (real-time push, 30s safety fallback when offline)
+  // Table orders for instant occupancy and active table matching (real-time push via Durable Object)
   const { data: openOrders = [] } = useOrders(
     restaurantId,
     { tableOccupied: true, outletId: outletId ?? undefined },
     Boolean(restaurantId && outletId),
-    { refetchInterval: isConnected ? false : 30_000 }
+    { refetchInterval: false }
   );
 
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
@@ -634,12 +634,12 @@ export default function POSPage() {
   const { data: riders = [] } = useDeliveryRiders(restaurantId, outletId);
   const { data: savedAddresses = [] } = useCustomerAddresses(restaurantId, customerPhone);
 
-  // All recent orders for active delivery tracking
+  // All recent orders for active delivery tracking (real-time push via Durable Object)
   const { data: allRecentOrders = [] } = useOrders(
     restaurantId,
     { outletId: outletId ?? undefined, limit: 100 },
     Boolean(restaurantId && outletId),
-    { refetchInterval: isConnected ? false : 20_000 }
+    { refetchInterval: false }
   );
 
   const activeDeliveryOrders = useMemo(() => {

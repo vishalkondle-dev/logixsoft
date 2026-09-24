@@ -138,7 +138,7 @@ export function useKitchenOrders(
     queryFn: () => getKitchenOrders(restaurantId, outletId ?? undefined),
     enabled: !!restaurantId && !!outletId,
     staleTime: 5_000,
-    refetchInterval: options?.refetchInterval !== undefined ? options.refetchInterval : 30_000,
+    refetchInterval: options?.refetchInterval ?? false,
   });
 }
 

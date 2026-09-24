@@ -69,11 +69,11 @@ export default function KitchenPage() {
   // Real-time live sync via Cloudflare Durable Object
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
-  // Auto-refreshes in real-time via WebSocket (30s fallback when offline)
+  // Auto-refreshes in real-time via Cloudflare Durable Object
   const { data: rawOrders = [], isLoading: loading, refetch } = useKitchenOrders(
     restaurantId,
     outletId,
-    { refetchInterval: isConnected ? false : 30_000 }
+    { refetchInterval: false }
   );
 
   const orders = useMemo(() => {

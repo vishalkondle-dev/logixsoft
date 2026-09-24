@@ -258,11 +258,14 @@ export default function KitchenPage() {
           </Group>
 
           <Group gap="xs" wrap="wrap">
-            {outlets.length > 1 && (
+            {outlets.length > 0 && (
               <Select
                 size="sm"
                 data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-                value={activeOutlet?.id ?? null}
+                value={activeOutlet?.id ?? outlets[0]?.id ?? null}
+                readOnly={outlets.length <= 1}
+                rightSection={outlets.length <= 1 ? null : undefined}
+                styles={outlets.length <= 1 ? { input: { cursor: "default" } } : undefined}
                 onChange={(val) => {
                   const found = outlets.find((o) => o.id === val);
                   if (found) setActiveOutlet(found.id);

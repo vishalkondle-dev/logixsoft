@@ -564,6 +564,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                             onChange={(v) => handleOutletsChange(m, v)}
                             data={outlets.map((o) => ({ value: o.id, label: o.name }))}
                             maxDropdownHeight={200}
+                            readOnly={outlets.length <= 1}
+                            rightSection={outlets.length <= 1 ? null : undefined}
                           />
                         </Grid.Col>
                       </Grid>
@@ -752,6 +754,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             value={inviteForm.outletIds}
             onChange={(v) => setInviteForm((f) => ({ ...f, outletIds: v }))}
             data={outlets.map((o) => ({ value: o.id, label: o.name }))}
+            readOnly={outlets.length <= 1}
+            rightSection={outlets.length <= 1 ? null : undefined}
           />
           <Text size="xs" c="dimmed">
             They'll be notified on WhatsApp with a link to sign in using this number. No password needed — same OTP login as you.

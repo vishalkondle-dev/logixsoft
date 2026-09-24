@@ -212,11 +212,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   shadow="md"
                   radius="md"
                   withinPortal
+                  disabled={outlets.length <= 1}
                   transitionProps={{ transition: "pop-top-right", duration: 150 }}
                 >
                   <Menu.Target>
                     <UnstyledButton
-                      aria-label="Switch outlet"
+                      aria-label={outlets.length > 1 ? "Switch outlet" : "Active outlet"}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -225,17 +226,21 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         borderRadius: "9999px",
                         backgroundColor: "rgba(175, 115, 215, 0.08)",
                         border: "1px solid rgba(175, 115, 215, 0.35)",
-                        cursor: "pointer",
+                        cursor: outlets.length > 1 ? "pointer" : "default",
                         transition: "all 0.15s ease",
                         maxWidth: 200,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(175, 115, 215, 0.16)";
-                        e.currentTarget.style.borderColor = "rgba(175, 115, 215, 0.6)";
+                        if (outlets.length > 1) {
+                          e.currentTarget.style.backgroundColor = "rgba(175, 115, 215, 0.16)";
+                          e.currentTarget.style.borderColor = "rgba(175, 115, 215, 0.6)";
+                        }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(175, 115, 215, 0.08)";
-                        e.currentTarget.style.borderColor = "rgba(175, 115, 215, 0.35)";
+                        if (outlets.length > 1) {
+                          e.currentTarget.style.backgroundColor = "rgba(175, 115, 215, 0.08)";
+                          e.currentTarget.style.borderColor = "rgba(175, 115, 215, 0.35)";
+                        }
                       }}
                     >
                       <Box
@@ -260,7 +265,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       >
                         {activeOutlet?.name || outlets[0]?.name || "Select Outlet"}
                       </Text>
-                      <IconChevronDown size={13} color="#af73d7" style={{ flexShrink: 0 }} />
+                      {outlets.length > 1 && (
+                        <IconChevronDown size={13} color="#af73d7" style={{ flexShrink: 0 }} />
+                      )}
                     </UnstyledButton>
                   </Menu.Target>
                   <Menu.Dropdown style={{ minWidth: 200, padding: 6 }}>

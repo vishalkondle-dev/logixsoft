@@ -83,7 +83,7 @@ export default function TablesPage() {
     data: tables = [],
     isLoading: tablesLoading,
     refetch: refetchTables,
-  } = useTables(restaurantId, outletId, { refetchInterval: isConnected ? undefined : 30_000 });
+  } = useTables(restaurantId, outletId, { refetchInterval: isConnected ? false : 30_000 });
 
   // Occupied Table Orders (zero polling when connected, 30s safety fallback when disconnected)
   const {
@@ -98,7 +98,7 @@ export default function TablesPage() {
       limit: 100,
     },
     !!restaurantId && !!outletId,
-    { refetchInterval: isConnected ? undefined : 30_000 },
+    { refetchInterval: isConnected ? false : 30_000 },
   );
 
   // ─── Filter States ────────────────────────────────────────────────────────────

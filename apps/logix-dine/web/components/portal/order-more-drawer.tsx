@@ -386,12 +386,18 @@ export function OrderMoreDrawer({
                   >
                     <div>
                       <Group justify="space-between" align="flex-start" wrap="nowrap" mb={4}>
-                        <Group gap={6} align="center" wrap="nowrap" style={{ minWidth: 0 }}>
-                          <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
-                          <Text fw={600} size="sm" lineClamp={1}>
-                            {item.name}
-                          </Text>
-                        </Group>
+                        <Text fw={600} size="sm" lineClamp={1} style={{ minWidth: 0 }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              verticalAlign: "text-top",
+                              marginRight: 6,
+                            }}
+                          >
+                            <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
+                          </span>
+                          {item.name}
+                        </Text>
                         {inCartQty > 0 && (
                           <Badge size="xs" circle color="dinePrimary">
                             {inCartQty}
@@ -504,14 +510,18 @@ export function OrderMoreDrawer({
                 <Paper key={ci.cartId} p="xs" radius="md" withBorder>
                   <Group justify="space-between" align="center">
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <Group gap={6} align="flex-start" wrap="nowrap">
-                        <Box style={{ flexShrink: 0, marginTop: 2 }}>
+                      <Text fw={600} size="sm" lineClamp={2} style={{ lineHeight: 1.35 }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            verticalAlign: "text-top",
+                            marginRight: 6,
+                          }}
+                        >
                           <VegNonVegIcon isNonVeg={ci.item.isNonVeg} size={13} />
-                        </Box>
-                        <Text fw={600} size="sm" lineClamp={2} style={{ lineHeight: 1.35 }}>
-                          {ci.item.name}
-                        </Text>
-                      </Group>
+                        </span>
+                        {ci.item.name}
+                      </Text>
                       {ci.variantName && (
                         <Badge size="xs" variant="light" color="gray" mt={2}>
                           {ci.variantName}

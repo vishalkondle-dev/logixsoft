@@ -848,25 +848,29 @@ ${chargesLines.join("\n")}
                                     {item.qty} ×
                                   </Badge>
                                   <Box style={{ minWidth: 0, flex: 1 }}>
-                                    <Group gap={6} align="flex-start" wrap="nowrap">
-                                      <Box style={{ flexShrink: 0, marginTop: 2 }}>
+                                    <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                                      <span
+                                        style={{
+                                          display: "inline-flex",
+                                          verticalAlign: "text-top",
+                                          marginRight: 6,
+                                        }}
+                                      >
                                         <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
-                                      </Box>
-                                      <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
-                                        {item.name}
-                                        {(() => {
-                                          const vName = item.variant?.name || (typeof item.variant === "object" ? item.variant?.name : item.variant) || "";
-                                          return vName && !item.name.toLowerCase().includes(String(vName).toLowerCase()) ? ` (${vName})` : "";
-                                        })()}
-                                      </Text>
-                                    </Group>
+                                      </span>
+                                      {item.name}
+                                      {(() => {
+                                        const vName = item.variant?.name || (typeof item.variant === "object" ? item.variant?.name : item.variant) || "";
+                                        return vName && !item.name.toLowerCase().includes(String(vName).toLowerCase()) ? ` (${vName})` : "";
+                                      })()}
+                                    </Text>
                                     {Array.isArray(item.addons) && item.addons.length > 0 && (
-                                      <Text size="10px" c="dimmed" pl={19}>
+                                      <Text size="10px" c="dimmed">
                                         + {item.addons.map((a: any) => typeof a === "object" ? a.name : a).join(", ")}
                                       </Text>
                                     )}
                                     {item.note && (
-                                      <Text size="10px" fw={600} c="yellow.9" pl={19} style={{ fontStyle: "italic" }}>
+                                      <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
                                         Note: {item.note}
                                       </Text>
                                     )}

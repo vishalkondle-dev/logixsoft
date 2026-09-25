@@ -198,31 +198,35 @@ Thank you for dining with us!`;
               {order.items.map((item) => (
                 <Table.Tr key={item.id}>
                   <Table.Td>
-                    <Group gap={6} align="flex-start" wrap="nowrap">
-                      <Box style={{ flexShrink: 0, marginTop: 2 }}>
-                        <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
-                      </Box>
-                      <div>
-                        <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
-                          {item.name}
+                    <div>
+                      <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            verticalAlign: "text-top",
+                            marginRight: 6,
+                          }}
+                        >
+                          <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
+                        </span>
+                        {item.name}
+                      </Text>
+                      {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (
+                        <Badge size="xs" variant="outline" color="gray">
+                          {item.variant.name}
+                        </Badge>
+                      )}
+                      {item.addons && item.addons.length > 0 && (
+                        <Text size="10px" c="dimmed">
+                          +{item.addons.map((a: any) => a.name).join(", ")}
                         </Text>
-                        {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (
-                          <Badge size="xs" variant="outline" color="gray">
-                            {item.variant.name}
-                          </Badge>
-                        )}
-                        {item.addons && item.addons.length > 0 && (
-                          <Text size="10px" c="dimmed">
-                            +{item.addons.map((a: any) => a.name).join(", ")}
-                          </Text>
-                        )}
-                        {item.note && (
-                          <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
-                            Note: {item.note}
-                          </Text>
-                        )}
-                      </div>
-                    </Group>
+                      )}
+                      {item.note && (
+                        <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
+                          Note: {item.note}
+                        </Text>
+                      )}
+                    </div>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "center", fontSize: 12, fontWeight: 600 }}>
                     {item.qty}

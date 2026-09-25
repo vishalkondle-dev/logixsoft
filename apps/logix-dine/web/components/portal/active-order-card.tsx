@@ -687,18 +687,20 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
                         </Badge>
 
                         <Box style={{ minWidth: 0, flex: 1 }}>
-                          <Group gap={6} align="flex-start" wrap="nowrap">
-                            <Box style={{ flexShrink: 0, marginTop: 2 }}>
-                              <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
-                            </Box>
-                            <Box style={{ minWidth: 0, flex: 1 }}>
-                              <Group gap={6} align="center" wrap="wrap">
-                                <Text size="sm" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
-                                  {item.name}
-                                </Text>
-                                {renderItemStatusBadge(item.status)}
-                              </Group>
-                            </Box>
+                          <Group gap={6} align="flex-start" wrap="wrap">
+                            <Text size="sm" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  verticalAlign: "text-top",
+                                  marginRight: 6,
+                                }}
+                              >
+                                <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
+                              </span>
+                              {item.name}
+                            </Text>
+                            {renderItemStatusBadge(item.status)}
                           </Group>
 
                           {/* Variant & Addons */}

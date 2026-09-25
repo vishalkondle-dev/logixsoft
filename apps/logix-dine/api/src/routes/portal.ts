@@ -60,6 +60,8 @@ async function handleGetPortalSession(c: any) {
             address: appSchema.restaurantOutlet.address,
             phone: appSchema.restaurantOutlet.phone,
             upiId: appSchema.restaurantOutlet.upiId,
+            diningSettings: appSchema.restaurantOutlet.diningSettings,
+            qrMenuSettings: appSchema.restaurantOutlet.qrMenuSettings,
           })
           .from(appSchema.restaurantOutlet)
           .where(inArray(appSchema.restaurantOutlet.id, outletIds as string[]))
@@ -157,6 +159,8 @@ async function handleGetPortalSession(c: any) {
         deliveryChargePaise: ord.deliveryChargePaise || 0,
         createdAt: ord.createdAt instanceof Date ? ord.createdAt.toISOString() : ord.createdAt,
         updatedAt: ord.updatedAt instanceof Date ? ord.updatedAt.toISOString() : ord.updatedAt,
+        qrMenuSettings: outletInfo.qrMenuSettings || null,
+        diningSettings: outletInfo.diningSettings || null,
         outlet: {
           id: ord.outletId,
           name: outletInfo.name,
@@ -164,6 +168,8 @@ async function handleGetPortalSession(c: any) {
           phone: outletInfo.phone,
           restaurantName: restInfo.name,
           upiId: outletInfo.upiId || null,
+          qrMenuSettings: outletInfo.qrMenuSettings || null,
+          diningSettings: outletInfo.diningSettings || null,
         },
         items: items.map((it: any) => ({
           id: it.id,
@@ -497,6 +503,20 @@ app.post(
 
       if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
 
+      let qrSettings: any = null;
+      if (order.outletId) {
+        const [outlet] = await db
+          .select({ qrMenuSettings: appSchema.restaurantOutlet.qrMenuSettings })
+          .from(appSchema.restaurantOutlet)
+          .where(eq(appSchema.restaurantOutlet.id, order.outletId))
+          .limit(1);
+        qrSettings = outlet?.qrMenuSettings;
+      }
+
+      if (qrSettings && qrSettings.allowCustomerOrdering === false) {
+        return c.json({ error: 'Disabled', message: 'Customer ordering is currently disabled for this outlet.' }, 403);
+      }
+
       const existingItems = await db
         .select({ round: appSchema.saleOrderItem.round })
         .from(appSchema.saleOrderItem)
@@ -637,6 +657,11 @@ app.post(
         .limit(1);
 
       if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+
+      const qrSettings = (outlet.qrMenuSettings as any) || null;
+      if (qrSettings && qrSettings.allowCallWaiter === false) {
+        return c.json({ error: 'Disabled', message: 'Floor service calls are currently disabled for this outlet.' }, 403);
+      }
 
       const id = `wr_${generateId()}`;
       const now = new Date();

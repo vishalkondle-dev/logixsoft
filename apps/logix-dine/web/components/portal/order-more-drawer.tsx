@@ -72,6 +72,9 @@ export function OrderMoreDrawer({
   // Customization modal state
   const [customizingItem, setCustomizingItem] = useState<CustomerMenuItem | null>(null);
 
+  const qrSettings = order?.outlet?.qrMenuSettings || (order as any)?.qrMenuSettings;
+  const allowOrderNotes = qrSettings?.allowOrderNotes !== false;
+
   const { data: menuData, isLoading: menuLoading } = useCustomerOutletMenu(order?.outletId);
   const addItemsMutation = useAddCustomerOrderItems();
 
@@ -515,51 +518,53 @@ export function OrderMoreDrawer({
                           +{ci.addonNames.join(", ")}
                         </Text>
                       )}
-                      {ci.note ? (
-                        <Paper
-                          mt={4}
-                          p="2px 6px"
-                          radius="xs"
-                          withBorder
-                          style={{
-                            backgroundColor: "#fff9db",
-                            borderColor: "#ffe066",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          <IconNotes size={11} color="#f59f00" />
-                          <Text size="10px" fw={600} c="yellow.9">
-                            Note: {ci.note}
-                          </Text>
-                          <ActionIcon
-                            size="xs"
+                      {allowOrderNotes && (
+                        ci.note ? (
+                          <Paper
+                            mt={4}
+                            p="2px 6px"
+                            radius="xs"
+                            withBorder
+                            style={{
+                              backgroundColor: "#fff9db",
+                              borderColor: "#ffe066",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
+                            <IconNotes size={11} color="#f59f00" />
+                            <Text size="10px" fw={600} c="yellow.9">
+                              Note: {ci.note}
+                            </Text>
+                            <ActionIcon
+                              size="xs"
+                              variant="subtle"
+                              color="gray"
+                              onClick={() => handleUpdateNote(ci.cartId, "")}
+                              title="Remove note"
+                            >
+                              <IconX size={10} />
+                            </ActionIcon>
+                          </Paper>
+                        ) : (
+                          <Button
                             variant="subtle"
                             color="gray"
-                            onClick={() => handleUpdateNote(ci.cartId, "")}
-                            title="Remove note"
+                            size="compact-xs"
+                            leftSection={<IconNotes size={10} />}
+                            mt={2}
+                            style={{ fontSize: "10px", height: "18px", padding: "0 4px" }}
+                            onClick={() => {
+                              const input = window.prompt(`Special instructions for ${ci.item.name}:`);
+                              if (input !== null) {
+                                handleUpdateNote(ci.cartId, input.trim());
+                              }
+                            }}
                           >
-                            <IconX size={10} />
-                          </ActionIcon>
-                        </Paper>
-                      ) : (
-                        <Button
-                          variant="subtle"
-                          color="gray"
-                          size="compact-xs"
-                          leftSection={<IconNotes size={10} />}
-                          mt={2}
-                          style={{ fontSize: "10px", height: "18px", padding: "0 4px" }}
-                          onClick={() => {
-                            const input = window.prompt(`Special instructions for ${ci.item.name}:`);
-                            if (input !== null) {
-                              handleUpdateNote(ci.cartId, input.trim());
-                            }
-                          }}
-                        >
-                          + Add instruction note
-                        </Button>
+                            + Add instruction note
+                          </Button>
+                        )
                       )}
                     </div>
 
@@ -601,14 +606,16 @@ export function OrderMoreDrawer({
             </Stack>
           </Box>
 
-          <TextInput
-            label="Special Cooking Instruction for this Round"
-            placeholder="e.g. Please serve all breads hot together"
-            value={roundNote}
-            onChange={(e) => setRoundNote(e.currentTarget.value)}
-            size="sm"
-            maxLength={150}
-          />
+          {allowOrderNotes && (
+            <TextInput
+              label="Special Cooking Instruction for this Round"
+              placeholder="e.g. Please serve all breads hot together"
+              value={roundNote}
+              onChange={(e) => setRoundNote(e.currentTarget.value)}
+              size="sm"
+              maxLength={150}
+            />
+          )}
 
           <Divider />
 

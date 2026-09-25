@@ -650,6 +650,34 @@ export interface CustomerPortalOrder {
     updatedAt: string | null;
     completedAt: string | null;
   } | null;
+  qrMenuSettings?: {
+    allowCustomerOrdering?: boolean;
+    requireCustomerAuth?: boolean;
+    allowCallWaiter?: boolean;
+    allowPayAtTable?: boolean;
+    allowOrderNotes?: boolean;
+    welcomeMessage?: string;
+  } | null;
+  diningSettings?: {
+    dineInEnabled?: boolean;
+    takeawayEnabled?: boolean;
+    deliveryEnabled?: boolean;
+    defaultOrderType?: string;
+    packagingChargePaise?: number;
+    deliveryFeePaise?: number;
+    freeDeliveryThresholdPaise?: number;
+    minDeliveryOrderPaise?: number;
+  } | null;
+  outlet?: {
+    id: string;
+    name: string;
+    address?: string | null;
+    phone?: string | null;
+    restaurantName?: string | null;
+    upiId?: string | null;
+    qrMenuSettings?: any;
+    diningSettings?: any;
+  } | null;
 }
 
 export interface CustomerMenuItem {

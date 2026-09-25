@@ -161,6 +161,29 @@ app.post(
         }
       }
 
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(eq(appSchema.restaurantOutlet.id, parsed.data.outletId))
+        .limit(1);
+
+      if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+
+      const diningSettings = (outlet.diningSettings as any) || null;
+      const computedOrderType = parsed.data.orderType || (parsed.data.delivery ? 'DELIVERY' : (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY'));
+
+      if (diningSettings) {
+        if (computedOrderType === 'DELIVERY' && diningSettings.deliveryEnabled === false) {
+          return c.json({ error: 'Channel Disabled', message: 'Delivery ordering is currently disabled for this outlet.' }, 400);
+        }
+        if (computedOrderType === 'TAKEAWAY' && diningSettings.takeawayEnabled === false) {
+          return c.json({ error: 'Channel Disabled', message: 'Takeaway ordering is currently disabled for this outlet.' }, 400);
+        }
+        if (computedOrderType === 'DINE_IN' && diningSettings.dineInEnabled === false) {
+          return c.json({ error: 'Channel Disabled', message: 'Dine-In ordering is currently disabled for this outlet.' }, 400);
+        }
+      }
+
       const id = generateOrderId(parsed.data.outletId);
       const now = new Date();
       let subtotalPaise = 0;
@@ -210,7 +233,7 @@ app.post(
           }
         }
 
-        const orderType = parsed.data.orderType || (parsed.data.delivery ? 'DELIVERY' : (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY'));
+        const orderType = computedOrderType;
         const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
         const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
         const isDelivery = orderType === 'DELIVERY';
@@ -218,6 +241,10 @@ app.post(
         const customerPhone = parsed.data.customerPhone || parsed.data.delivery?.customerPhone || null;
         const isTableOrder = Boolean(!isDelivery && tableNo && tableNo.trim() && tableNo !== 'Takeaway');
         const totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+
+        if (diningSettings && orderType === 'DELIVERY' && diningSettings.minDeliveryOrderPaise && totalOrderPaise < diningSettings.minDeliveryOrderPaise) {
+          throw new Error(`Minimum order for delivery is ₹${Math.round(diningSettings.minDeliveryOrderPaise / 100)}.`);
+        }
 
         await tx.insert(appSchema.saleOrder).values({
           id,
@@ -331,6 +358,29 @@ app.post(
         parsed.data.customerPhone
       );
 
+      const whatsappSettings = (outlet.whatsappSettings as any) || null;
+      if (whatsappSettings?.enabled && whatsappSettings?.sendOnOrderCreated && parsed.data.customerPhone) {
+        c.executionCtx?.waitUntil?.(
+          (async () => {
+            try {
+              const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
+              const msg = formatOrderWhatsAppMessage(
+                rest?.name || 'Restaurant',
+                outlet.name,
+                { id, orderNo: tokenNo, tableNo: parsed.data.tableNo, orderType: computedOrderType, subtotalPaise: totalOrderPaise, packagingChargePaise, deliveryChargePaise },
+                orderItemsToInsert,
+                false,
+                delRow,
+                whatsappSettings.customFooterNote
+              );
+              await sendWhatsAppText(parsed.data.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+            } catch (err) {
+              console.error('[WhatsApp] sendOnOrderCreated error:', err);
+            }
+          })()
+        );
+      }
+
       return c.json(result, 201);
     } finally {
       await close();
@@ -366,6 +416,26 @@ app.post(
 
     const { db, close } = getDb(c);
     try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(eq(appSchema.restaurantOutlet.id, parsed.data.outletId))
+        .limit(1);
+
+      if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+
+      const diningSettings = (outlet.diningSettings as any) || null;
+      const computedOrderType = parsed.data.orderType || (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY');
+
+      if (diningSettings) {
+        if (computedOrderType === 'TAKEAWAY' && diningSettings.takeawayEnabled === false) {
+          return c.json({ error: 'Channel Disabled', message: 'Takeaway ordering is currently disabled for this outlet.' }, 400);
+        }
+        if (computedOrderType === 'DINE_IN' && diningSettings.dineInEnabled === false) {
+          return c.json({ error: 'Channel Disabled', message: 'Dine-In ordering is currently disabled for this outlet.' }, 400);
+        }
+      }
+
       const id = generateOrderId(parsed.data.outletId);
       const now = new Date();
       let subtotalPaise = 0;
@@ -474,6 +544,29 @@ app.post(
         },
         parsed.data.customerPhone
       );
+
+      const whatsappSettings = (outlet.whatsappSettings as any) || null;
+      if (whatsappSettings?.enabled && (whatsappSettings?.sendOnBillSettled || whatsappSettings?.sendOnOrderCreated) && parsed.data.customerPhone) {
+        c.executionCtx?.waitUntil?.(
+          (async () => {
+            try {
+              const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
+              const msg = formatOrderWhatsAppMessage(
+                rest?.name || 'Restaurant',
+                outlet.name,
+                { id, orderNo: tokenNo, tableNo: parsed.data.tableNo ?? 'Takeaway', orderType: computedOrderType, status: 'PAID', method: parsed.data.method, subtotalPaise: totalOrderPaise, packagingChargePaise, deliveryChargePaise },
+                orderItemsToInsert,
+                true,
+                undefined,
+                whatsappSettings.customFooterNote
+              );
+              await sendWhatsAppText(parsed.data.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+            } catch (err) {
+              console.error('[WhatsApp] create-settled dispatch failed:', err);
+            }
+          })()
+        );
+      }
 
       return c.json(result, 201);
     } finally {
@@ -750,6 +843,33 @@ app.post(
         },
         order.customerPhone
       );
+
+      if (order.outletId) {
+        const [out] = await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.id, order.outletId));
+        const whatsappSettings = (out?.whatsappSettings as any) || null;
+        const targetPhone = customerPhone?.trim() || order.customerPhone;
+        if (whatsappSettings?.enabled && whatsappSettings?.sendOnBillSettled && targetPhone) {
+          c.executionCtx?.waitUntil?.(
+            (async () => {
+              try {
+                const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
+                const msg = formatOrderWhatsAppMessage(
+                  rest?.name || 'Restaurant',
+                  out?.name,
+                  { ...order, status: 'PAID', method, subtotalPaise: totalAmount },
+                  activeItems,
+                  true,
+                  undefined,
+                  whatsappSettings.customFooterNote
+                );
+                await sendWhatsAppText(targetPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+              } catch (err) {
+                console.error('[WhatsApp] sendOnBillSettled failed:', err);
+              }
+            })()
+          );
+        }
+      }
 
       return c.json(result);
     } finally {
@@ -1038,7 +1158,8 @@ app.post(
         orderData.order,
         orderData.items || [],
         orderData.order.status === 'PAID',
-        orderData.delivery
+        orderData.delivery,
+        (out?.whatsappSettings as any)?.customFooterNote
       );
 
       await sendWhatsAppText(

@@ -201,7 +201,8 @@ export function formatOrderWhatsAppMessage(
   order: any,
   items: any[],
   isSettled = false,
-  delivery?: any
+  delivery?: any,
+  customFooter?: string | null
 ): string {
   const tableStr = order.orderType === 'DELIVERY'
     ? '🛵 Delivery'
@@ -236,5 +237,6 @@ export function formatOrderWhatsAppMessage(
     ? `\nPackaging: ₹${(pkgPaise / 100).toFixed(0)} | Delivery: ₹${(delPaise / 100).toFixed(0)}`
     : '';
 
-  return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}${deliveryAddrLine}${otpLine}\n\n*Items:*\n${itemsList}${chargesLine}\n\n*Total:* ₹${totalRupees}\n\nThank you!`;
+  const footer = customFooter?.trim() ? `\n\n${customFooter.trim()}` : '\n\nThank you!';
+  return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}${deliveryAddrLine}${otpLine}\n\n*Items:*\n${itemsList}${chargesLine}\n\n*Total:* ₹${totalRupees}${footer}`;
 }

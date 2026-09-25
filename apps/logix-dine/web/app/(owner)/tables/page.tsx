@@ -19,7 +19,7 @@ import {
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useTables, useOrders, useCreateTable, useUpdateTable,
-  useDeleteTable, qk,
+  useDeleteTable, useReservations, useUpdateReservation, qk,
 } from "@/lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { freeTableOrder, voidOrder } from "@/lib/api-client";
@@ -131,6 +131,15 @@ export default function TablesPage() {
   const createTableMut = useCreateTable(restaurantId, outletId);
   const updateTableMut = useUpdateTable(restaurantId, outletId);
   const deleteTableMut = useDeleteTable(restaurantId, outletId);
+
+  // ─── Reservations Integration ────────────────────────────────────────────────
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const { data: reservations = [] } = useReservations(restaurantId, outletId, { date: todayStr });
+  const updateReservationMut = useUpdateReservation(restaurantId, outletId);
+
+  // ─── Dining Settings Integration ─────────────────────────────────────────────
+  const diningSettings = (activeOutlet?.diningSettings as any) || null;
+  const isDineInDisabled = diningSettings?.dineInEnabled === false;
 
   // ─── Multi-Order / Multi-Round Active Orders for Table ────────────────────────
   const getTableActiveOrders = (table: any): any[] => {
@@ -582,6 +591,13 @@ export default function TablesPage() {
       </Paper>
 
       {/* ─── Tables Grid ───────────────────────────────────────────────────────── */}
+      {isDineInDisabled && (
+        <Alert color="orange" icon={<IconAlertCircle size={16} />} radius="md" mb="md">
+          <Text size="sm" fw={600}>Dine-In channel is disabled</Text>
+          <Text size="xs">Dine-in dining is turned off in Settings &gt; Dining Options. New table orders and customer self-ordering are restricted.</Text>
+        </Alert>
+      )}
+
       {!outletId ? (
         <Text c="dimmed" ta="center" py={60}>
           Please select an outlet from the top navigation bar to view tables.
@@ -617,6 +633,12 @@ export default function TablesPage() {
           {filteredTables.map((table: any) => {
             const session = getTableSession(table);
             const isOccupied = session.isOccupied;
+
+            const activeRes = (reservations as any[]).find(
+              (r: any) =>
+                (r.tableId === table.id || (r.tableName && isTableMatch(table.name, r.tableName)) || isTableMatch(table.name, r.tableId)) &&
+                (r.status === "CONFIRMED" || r.status === "SEATED")
+            );
 
             const orderVisual = isOccupied
               ? getStatusVisual(session.orderStatus || "ORDERED")
@@ -658,6 +680,20 @@ export default function TablesPage() {
                     </div>
 
                     <Group gap={4} align="center">
+                      {/* Active Reservation Badge */}
+                      {activeRes && (
+                        <Badge
+                          size="sm"
+                          variant="filled"
+                          color={activeRes.status === "CONFIRMED" ? "grape" : "indigo"}
+                          leftSection={<IconArmchair size={11} />}
+                        >
+                          {activeRes.status === "CONFIRMED"
+                            ? `Resv: ${activeRes.guestName} (${activeRes.reservationTime || "Today"})`
+                            : `Seated: ${activeRes.guestName}`}
+                        </Badge>
+                      )}
+
                       {/* Status Badge: Free vs Occupied (Paid or Due) */}
                       <Badge
                         size="sm"
@@ -676,6 +712,37 @@ export default function TablesPage() {
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
+                          {activeRes && activeRes.status === "CONFIRMED" && (
+                            <>
+                              <Menu.Item
+                                color="grape"
+                                leftSection={<IconArmchair size={14} />}
+                                onClick={async () => {
+                                  try {
+                                    await updateReservationMut.mutateAsync({
+                                      id: activeRes.id,
+                                      body: { status: "SEATED" },
+                                    });
+                                    notifications.show({
+                                      title: "Guest Seated",
+                                      message: `${activeRes.guestName} (${activeRes.partySize} guests) seated at ${table.name}`,
+                                      color: "teal",
+                                      icon: <IconCheck size={16} />,
+                                    });
+                                  } catch (e: any) {
+                                    notifications.show({
+                                      title: "Failed to seat guest",
+                                      message: e.message || "Could not update reservation",
+                                      color: "red",
+                                    });
+                                  }
+                                }}
+                              >
+                                Seat Reserved Guest ({activeRes.guestName})
+                              </Menu.Item>
+                              <Menu.Divider />
+                            </>
+                          )}
                           <Menu.Item
                             leftSection={<IconQrcode size={14} />}
                             onClick={() => setQrModalTable(table)}

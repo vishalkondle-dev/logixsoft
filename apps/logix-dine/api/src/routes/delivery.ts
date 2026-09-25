@@ -10,6 +10,7 @@ import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 import { getDb, getPhoneVariants } from '../lib/order-helpers';
+import { sendWhatsAppText } from '@logixsoft/wa';
 
 const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
@@ -418,6 +419,28 @@ async function transitionDeliveryStatus(c: any, orderId: string, newStatus: any,
       },
       existingDelivery.customerPhone
     );
+
+    if (newStatus === 'OUT_FOR_DELIVERY' && existingDelivery.customerPhone && existingDelivery.outletId) {
+      c.executionCtx?.waitUntil?.(
+        (async () => {
+          try {
+            const [out] = await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.id, existingDelivery.outletId));
+            const ws = (out?.whatsappSettings as any) || null;
+            if (ws?.enabled && ws?.sendOnDispatched) {
+              const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, existingDelivery.restaurantId));
+              const riderText = updatedDelivery?.riderName
+                ? `\nRider: *${updatedDelivery.riderName}*${updatedDelivery.riderPhone ? ` (${updatedDelivery.riderPhone})` : ''}`
+                : '';
+              const pinText = existingDelivery.deliveryOtp ? `\nDelivery PIN: *${existingDelivery.deliveryOtp}*` : '';
+              const msg = `🛵 *Order Out for Delivery!*\n*${rest?.name || 'Restaurant'}* (${out?.name || ''})${riderText}${pinText}\nYour order is on the way! Please share PIN with rider upon delivery.${ws.customFooterNote ? `\n\n${ws.customFooterNote}` : ''}`;
+              await sendWhatsAppText(existingDelivery.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+            }
+          } catch (err) {
+            console.error('[WhatsApp] sendOnDispatched failed:', err);
+          }
+        })()
+      );
+    }
 
     return c.json(toDeliveryOrder(updatedDelivery));
   } finally {

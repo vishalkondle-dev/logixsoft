@@ -539,6 +539,25 @@ ${itemsText}
               </Paper>
             ) : (
               <Stack gap="md">
+                {(() => {
+                  const welcome = activeOrders[0]?.outlet?.qrMenuSettings?.welcomeMessage || (activeOrders[0] as any)?.qrMenuSettings?.welcomeMessage;
+                  if (!welcome) return null;
+                  return (
+                    <Paper
+                      p="xs"
+                      px="md"
+                      radius="md"
+                      style={{
+                        backgroundColor: "#fdf4ff",
+                        border: "1px solid #f0abfc",
+                      }}
+                    >
+                      <Text size="xs" fw={600} c="grape.9">
+                        ✨ {welcome}
+                      </Text>
+                    </Paper>
+                  );
+                })()}
                 <Group justify="space-between" align="center" wrap="wrap" gap="xs">
                   <Group gap={6} align="center">
                     <Box

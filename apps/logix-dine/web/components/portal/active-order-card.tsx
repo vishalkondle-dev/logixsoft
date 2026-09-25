@@ -127,6 +127,12 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
   };
 
   const shareReceiptWhatsApp = () => {
+    const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+    const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+    const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+    const outletName = order.outletName || order.outlet?.name || "";
+    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+
     const itemsText = order.items
       .map(
         (it) =>
@@ -135,8 +141,8 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
       .join("\n");
 
     const message = `🧾 *Logix Dine Bill Summary*
-🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
+🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 --------------------------------
 ${itemsText}
 --------------------------------
@@ -251,6 +257,9 @@ ${itemsText}
   };
 
   const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+  const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+  const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+  const outletName = order.outletName || order.outlet?.name || "";
   const qrSettings = order.outlet?.qrMenuSettings || (order as any).qrMenuSettings;
   const allowCallWaiter = qrSettings?.allowCallWaiter !== false;
   const allowCustomerOrdering = qrSettings?.allowCustomerOrdering !== false;
@@ -272,13 +281,15 @@ ${itemsText}
         {/* Card Header */}
         <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs">
           <div>
-            <Group gap={6} align="center">
+            <Group gap={6} align="center" wrap="wrap">
               <Text fw={800} size="md">
-                {order.restaurantName}
+                {restaurantName}
               </Text>
-              <Text size="xs" c="dimmed">
-                • {order.outletName}
-              </Text>
+              {outletName && (
+                <Text size="xs" c="dimmed">
+                  • {outletName}
+                </Text>
+              )}
             </Group>
             <Group gap={6} mt={4} wrap="wrap">
               <Badge color="violet" variant="light" size="sm">
@@ -288,9 +299,13 @@ ${itemsText}
                 <Badge color="teal" variant="filled" size="sm" leftSection={<IconMotorbike size={12} />}>
                   🛵 Delivery
                 </Badge>
+              ) : isTakeaway ? (
+                <Badge color="teal" variant="light" size="sm">
+                  🛍️ Takeaway
+                </Badge>
               ) : (
                 <Badge color="dark" variant="light" size="sm">
-                  Table: {order.tableNo}
+                  🍽️ Table: {order.tableNo}
                 </Badge>
               )}
               {renderOrderStatusBadge(order.orderStatus)}
@@ -525,7 +540,7 @@ ${itemsText}
         {/* Quick Action Buttons Bar */}
         <Group justify="space-between" align="center" mt="sm" wrap="wrap" gap="xs">
           <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
-            {!isDelivery && allowCallWaiter && (
+            {!isDelivery && !isTakeaway && allowCallWaiter && (
               <Button
                 color="orange"
                 variant="filled"

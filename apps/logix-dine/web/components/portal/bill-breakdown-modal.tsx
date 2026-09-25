@@ -61,9 +61,15 @@ export function BillBreakdownModal({
       )
       .join("\n");
 
+    const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+    const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+    const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+    const outletName = order.outletName || order.outlet?.name || "";
+    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+
     const message = `🧾 *Logix Dine Bill Summary*
-🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
+🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 --------------------------------
 ${itemsText}
 --------------------------------
@@ -78,6 +84,12 @@ Thank you for dining with us!`;
     window.open(url, "_blank");
   };
 
+  const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+  const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+  const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+  const outletName = order.outletName || order.outlet?.name || "";
+  const channelTitle = isDelivery ? "🛵 Delivery" : isTakeaway ? "🛍️ Takeaway" : `Table ${order.tableNo}`;
+
   return (
     <Modal
       opened={opened}
@@ -90,7 +102,7 @@ Thank you for dining with us!`;
               Running Bill & Tax Breakdown
             </Title>
             <Text size="xs" c="dimmed">
-              Table {order.tableNo} • Token #{order.tokenNo || order.orderNo || "—"}
+              {channelTitle} • Token #{order.tokenNo || order.orderNo || "—"}
             </Text>
           </div>
         </Group>
@@ -105,15 +117,27 @@ Thank you for dining with us!`;
           <Group justify="space-between" align="center">
             <div>
               <Text fw={700} size="sm">
-                {order.restaurantName}
+                {restaurantName}
               </Text>
-              <Text size="xs" c="dimmed">
-                {order.outletName} {order.outletAddress ? `• ${order.outletAddress}` : ""}
-              </Text>
+              {outletName && (
+                <Text size="xs" c="dimmed">
+                  {outletName} {order.outletAddress ? `• ${order.outletAddress}` : ""}
+                </Text>
+              )}
             </div>
-            <Badge color="violet" variant="light">
-              Table: {order.tableNo}
-            </Badge>
+            {isDelivery ? (
+              <Badge color="teal" variant="light">
+                🛵 Delivery
+              </Badge>
+            ) : isTakeaway ? (
+              <Badge color="teal" variant="light">
+                🛍️ Takeaway
+              </Badge>
+            ) : (
+              <Badge color="violet" variant="light">
+                🍽️ Table: {order.tableNo}
+              </Badge>
+            )}
           </Group>
         </Paper>
 
@@ -271,7 +295,7 @@ Thank you for dining with us!`;
           </Button>
 
           <Group gap="xs">
-            {onRequestBill && (
+            {onRequestBill && !isDelivery && !isTakeaway && (
               <Button
                 variant="filled"
                 color="orange"

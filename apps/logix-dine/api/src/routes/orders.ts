@@ -188,6 +188,10 @@ app.post(
       const now = new Date();
       let subtotalPaise = 0;
       const orderItemsToInsert: any[] = [];
+      const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
+      const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
+      let totalOrderPaise = 0;
+      let delRow: any = null;
 
       const istDate = getTodayISTDateString();
       const seqKey = CacheKey.outletSeq(parsed.data.outletId, istDate);
@@ -234,13 +238,11 @@ app.post(
         }
 
         const orderType = computedOrderType;
-        const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
-        const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
         const isDelivery = orderType === 'DELIVERY';
         const tableNo = isDelivery ? 'Delivery' : (parsed.data.tableNo ?? null);
         const customerPhone = parsed.data.customerPhone || parsed.data.delivery?.customerPhone || null;
         const isTableOrder = Boolean(!isDelivery && tableNo && tableNo.trim() && tableNo !== 'Takeaway');
-        const totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+        totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
 
         if (diningSettings && orderType === 'DELIVERY' && diningSettings.minDeliveryOrderPaise && totalOrderPaise < diningSettings.minDeliveryOrderPaise) {
           throw new Error(`Minimum order for delivery is ₹${Math.round(diningSettings.minDeliveryOrderPaise / 100)}.`);
@@ -268,7 +270,6 @@ app.post(
           updatedBy: actorPhone,
         });
 
-        let delRow: any = null;
         if (isDelivery && parsed.data.delivery) {
           const delInput = parsed.data.delivery;
           const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
@@ -359,7 +360,8 @@ app.post(
       );
 
       const whatsappSettings = (outlet.whatsappSettings as any) || null;
-      if (whatsappSettings?.enabled && whatsappSettings?.sendOnOrderCreated && parsed.data.customerPhone) {
+      const custPhone = parsed.data.customerPhone;
+      if (whatsappSettings?.enabled && whatsappSettings?.sendOnOrderCreated && custPhone) {
         c.executionCtx?.waitUntil?.(
           (async () => {
             try {
@@ -373,7 +375,7 @@ app.post(
                 delRow,
                 whatsappSettings.customFooterNote
               );
-              await sendWhatsAppText(parsed.data.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+              await sendWhatsAppText(custPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
             } catch (err) {
               console.error('[WhatsApp] sendOnOrderCreated error:', err);
             }
@@ -440,6 +442,9 @@ app.post(
       const now = new Date();
       let subtotalPaise = 0;
       const orderItemsToInsert: any[] = [];
+      const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
+      const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
+      let totalOrderPaise = 0;
 
       const istDate = getTodayISTDateString();
       const seqKey = CacheKey.outletSeq(parsed.data.outletId, istDate);
@@ -485,9 +490,7 @@ app.post(
           }
         }
 
-        const packagingChargePaise = parsed.data.packagingChargePaise ?? 0;
-        const deliveryChargePaise = parsed.data.deliveryChargePaise ?? 0;
-        const totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+        totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
         const customerPhone = parsed.data.customerPhone || null;
         const orderType = parsed.data.orderType || (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY');
 
@@ -546,7 +549,8 @@ app.post(
       );
 
       const whatsappSettings = (outlet.whatsappSettings as any) || null;
-      if (whatsappSettings?.enabled && (whatsappSettings?.sendOnBillSettled || whatsappSettings?.sendOnOrderCreated) && parsed.data.customerPhone) {
+      const settledCustPhone = parsed.data.customerPhone;
+      if (whatsappSettings?.enabled && (whatsappSettings?.sendOnBillSettled || whatsappSettings?.sendOnOrderCreated) && settledCustPhone) {
         c.executionCtx?.waitUntil?.(
           (async () => {
             try {
@@ -560,7 +564,7 @@ app.post(
                 undefined,
                 whatsappSettings.customFooterNote
               );
-              await sendWhatsAppText(parsed.data.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+              await sendWhatsAppText(settledCustPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
             } catch (err) {
               console.error('[WhatsApp] create-settled dispatch failed:', err);
             }

@@ -181,9 +181,15 @@ function CustomerPortalInner() {
       )
       .join("\n");
 
+    const isDelivery = order.orderType === "DELIVERY" || (order.tableNo || "").toLowerCase() === "delivery" || Boolean(order.delivery);
+    const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+    const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+    const outletName = order.outletName || order.outlet?.name || "";
+    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+
     const message = `🧾 *Logix Dine Bill Receipt*
-🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
+🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 📅 Date: ${formatDate(order.settledAt || order.createdAt)}
 --------------------------------
 ${itemsText}
@@ -651,6 +657,10 @@ ${itemsText}
                 {pastOrders.map((order) => {
                   const isExpanded = !!expandedOrders[order.id];
                   const totalPaid = order.paidPaise || order.subtotalPaise || 0;
+                  const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+                  const outletName = order.outletName || order.outlet?.name || "";
+                  const isDelivery = order.orderType === "DELIVERY" || (order.tableNo || "").toLowerCase() === "delivery" || Boolean(order.delivery);
+                  const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
 
                   return (
                     <Card
@@ -680,11 +690,13 @@ ${itemsText}
                             <Box style={{ minWidth: 0 }}>
                               <Group gap={6} align="center" wrap="wrap">
                                 <Text fw={700} size="sm" lineClamp={1}>
-                                  {order.restaurantName}
+                                  {restaurantName}
                                 </Text>
-                                <Badge size="xs" variant="light" color="gray">
-                                  {order.outletName}
-                                </Badge>
+                                {outletName && (
+                                  <Badge size="xs" variant="light" color="gray">
+                                    {outletName}
+                                  </Badge>
+                                )}
                               </Group>
 
                               <Group gap={6} mt={2} align="center" wrap="wrap">
@@ -692,13 +704,23 @@ ${itemsText}
                                   {formatDate(order.settledAt || order.createdAt)}
                                 </Text>
                                 <Text size="xs" c="dimmed">•</Text>
-                                <Text size="xs" c="dimmed">
+                                <Badge color="violet" variant="light" size="xs">
                                   Token #{order.tokenNo || order.orderNo || "—"}
-                                </Text>
-                                <Text size="xs" c="dimmed">•</Text>
-                                <Badge size="xs" color="gray" variant="outline">
-                                  {order.tableNo}
                                 </Badge>
+                                <Text size="xs" c="dimmed">•</Text>
+                                {isDelivery ? (
+                                  <Badge size="xs" color="teal" variant="light" leftSection={<IconMotorbike size={11} />}>
+                                    🛵 Delivery
+                                  </Badge>
+                                ) : isTakeaway ? (
+                                  <Badge size="xs" color="teal" variant="light">
+                                    🛍️ Takeaway
+                                  </Badge>
+                                ) : (
+                                  <Badge size="xs" color="gray" variant="outline">
+                                    🍽️ Table {order.tableNo}
+                                  </Badge>
+                                )}
                                 <Badge size="xs" color="green" variant="light">
                                   {order.method || "Paid"}
                                 </Badge>

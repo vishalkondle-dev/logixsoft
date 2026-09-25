@@ -245,9 +245,11 @@ export function OrderMoreDrawer({
                 Table: {order.tableNo} • Round {nextRoundNumber}
               </Text>
             </div>
-            <Badge color="violet" variant="light" size="sm">
-              {order.outletName}
-            </Badge>
+            {(order.outletName || order.outlet?.name) && (
+              <Badge color="violet" variant="light" size="sm">
+                {order.outletName || order.outlet?.name}
+              </Badge>
+            )}
           </Group>
         }
         styles={{

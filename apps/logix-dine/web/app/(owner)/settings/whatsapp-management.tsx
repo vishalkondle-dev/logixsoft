@@ -143,7 +143,7 @@ export function WhatsappManagement() {
   };
 
   return (
-    <Stack gap="lg" maw={900}>
+    <Stack gap="lg" w="100%">
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
           <Title order={3} fw={700}>WhatsApp Alerts & Digital Receipts</Title>
@@ -178,7 +178,10 @@ export function WhatsappManagement() {
           <Switch
             size="md"
             checked={config.enabled}
-            onChange={(e) => setConfig((p) => ({ ...p, enabled: e.currentTarget.checked }))}
+            onChange={(e) => {
+              const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+              setConfig((p) => ({ ...p, enabled: checked }));
+            }}
             color="green"
             aria-label="Toggle WhatsApp Notifications"
           />
@@ -205,7 +208,10 @@ export function WhatsappManagement() {
             <Switch
               disabled={!config.enabled}
               checked={config.sendOnBillSettled}
-              onChange={(e) => setConfig((p) => ({ ...p, sendOnBillSettled: e.currentTarget.checked }))}
+              onChange={(e) => {
+                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                setConfig((p) => ({ ...p, sendOnBillSettled: checked }));
+              }}
               color="teal"
             />
           </Group>
@@ -227,7 +233,10 @@ export function WhatsappManagement() {
             <Switch
               disabled={!config.enabled}
               checked={config.sendOnOrderCreated}
-              onChange={(e) => setConfig((p) => ({ ...p, sendOnOrderCreated: e.currentTarget.checked }))}
+              onChange={(e) => {
+                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                setConfig((p) => ({ ...p, sendOnOrderCreated: checked }));
+              }}
               color="blue"
             />
           </Group>
@@ -249,7 +258,10 @@ export function WhatsappManagement() {
             <Switch
               disabled={!config.enabled}
               checked={config.sendOnKdsReady}
-              onChange={(e) => setConfig((p) => ({ ...p, sendOnKdsReady: e.currentTarget.checked }))}
+              onChange={(e) => {
+                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                setConfig((p) => ({ ...p, sendOnKdsReady: checked }));
+              }}
               color="orange"
             />
           </Group>
@@ -271,7 +283,10 @@ export function WhatsappManagement() {
             <Switch
               disabled={!config.enabled}
               checked={config.sendOnDispatched}
-              onChange={(e) => setConfig((p) => ({ ...p, sendOnDispatched: e.currentTarget.checked }))}
+              onChange={(e) => {
+                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                setConfig((p) => ({ ...p, sendOnDispatched: checked }));
+              }}
               color="violet"
             />
           </Group>

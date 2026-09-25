@@ -620,7 +620,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
         {/* Printing tab */}
         <Tabs.Panel value="printing">
-          <Paper p="xl" radius="md" maw={{ base: "100%", md: 560 }}>
+          <Paper p="xl" radius="md" w="100%">
             <Stack gap="md">
               <Text fw={600}>Bluetooth Printer</Text>
               <Text size="sm" c="dimmed">

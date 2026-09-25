@@ -120,7 +120,7 @@ export function RidersManagement() {
   const offlineCount = riders.filter((r) => r.status === "OFFLINE").length;
 
   return (
-    <Stack gap="lg" maw={950}>
+    <Stack gap="lg" w="100%">
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
           <Title order={3} fw={700}>Delivery Fleet & Dispatch</Title>

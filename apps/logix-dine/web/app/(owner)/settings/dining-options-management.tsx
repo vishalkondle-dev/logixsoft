@@ -167,7 +167,7 @@ export function DiningOptionsManagement() {
     : defaultModeOptions[0]?.value || "TAKEAWAY";
 
   return (
-    <Stack gap="lg" maw={900}>
+    <Stack gap="lg" w="100%">
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
           <Title order={3} fw={700}>Dining & Fulfillment Channels</Title>

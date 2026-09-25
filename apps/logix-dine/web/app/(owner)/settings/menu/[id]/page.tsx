@@ -208,7 +208,7 @@ export default function MenuItemPage() {
 
   if (itemError || (!itemLoading && !item)) {
     return (
-      <Box py="xl" px={{ base: "xs", sm: "md" }} maw={560} mx="auto">
+      <Box py="xl" px={{ base: "xs", sm: "md" }} w="100%">
         <Paper p="xl" radius="md" ta="center">
           <IconAlertCircle size={40} color="#e03131" style={{ margin: "0 auto 12px" }} />
           <Title order={3} mb="xs">Item Not Found</Title>
@@ -298,7 +298,10 @@ export default function MenuItemPage() {
             <Switch
               label={form.available ? "Available in POS & Online" : "Hidden from POS"}
               checked={form.available}
-              onChange={(e) => setForm((f) => ({ ...f, available: e.currentTarget.checked }))}
+              onChange={(e) => {
+                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                setForm((f) => ({ ...f, available: checked }));
+              }}
               color="teal"
             />
           </Group>

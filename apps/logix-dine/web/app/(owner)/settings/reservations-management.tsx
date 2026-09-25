@@ -190,7 +190,7 @@ export function ReservationsManagement() {
   const cancelledCount = reservations.filter((r) => r.status === "CANCELLED").length;
 
   return (
-    <Stack gap="lg" maw={1050}>
+    <Stack gap="lg" w="100%">
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
           <Title order={3} fw={700}>Table Reservations</Title>

@@ -123,7 +123,7 @@ export function QrMenuManagement() {
     : `https://dine.logixsoft.in/menu?outletId=${currentOutlet?.id || ""}&table=${encodeURIComponent(previewTable)}`;
 
   return (
-    <Stack gap="lg" maw={900}>
+    <Stack gap="lg" w="100%">
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
           <Title order={3} fw={700}>QR Menu & Table Ordering</Title>
@@ -159,7 +159,10 @@ export function QrMenuManagement() {
                   </div>
                   <Switch
                     checked={config.allowCustomerOrdering}
-                    onChange={(e) => setConfig((p) => ({ ...p, allowCustomerOrdering: e.currentTarget.checked }))}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, allowCustomerOrdering: checked }));
+                    }}
                     color="teal"
                   />
                 </Group>
@@ -173,7 +176,10 @@ export function QrMenuManagement() {
                   </div>
                   <Switch
                     checked={config.requireCustomerAuth}
-                    onChange={(e) => setConfig((p) => ({ ...p, requireCustomerAuth: e.currentTarget.checked }))}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, requireCustomerAuth: checked }));
+                    }}
                     color="teal"
                   />
                 </Group>
@@ -187,7 +193,10 @@ export function QrMenuManagement() {
                   </div>
                   <Switch
                     checked={config.allowCallWaiter}
-                    onChange={(e) => setConfig((p) => ({ ...p, allowCallWaiter: e.currentTarget.checked }))}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, allowCallWaiter: checked }));
+                    }}
                     color="teal"
                   />
                 </Group>
@@ -201,7 +210,10 @@ export function QrMenuManagement() {
                   </div>
                   <Switch
                     checked={config.allowPayAtTable}
-                    onChange={(e) => setConfig((p) => ({ ...p, allowPayAtTable: e.currentTarget.checked }))}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, allowPayAtTable: checked }));
+                    }}
                     color="teal"
                   />
                 </Group>
@@ -215,7 +227,10 @@ export function QrMenuManagement() {
                   </div>
                   <Switch
                     checked={config.allowOrderNotes}
-                    onChange={(e) => setConfig((p) => ({ ...p, allowOrderNotes: e.currentTarget.checked }))}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, allowOrderNotes: checked }));
+                    }}
                     color="teal"
                   />
                 </Group>

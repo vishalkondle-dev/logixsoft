@@ -485,7 +485,8 @@ export interface CustomerProfileData {
     visitFrequencyDays: number | null;
     dineInCount: number;
     takeawayCount: number;
-    preferredDineMode: "Dine-In" | "Takeaway";
+    deliveryCount?: number;
+    preferredDineMode: "Dine-In" | "Takeaway" | "Delivery";
     preferredTable: string | null;
     preferredPaymentMethod: string | null;
     paymentMethodsBreakdown: Array<{ method: string; count: number; totalPaise: number }>;
@@ -525,6 +526,7 @@ export interface CustomerProfileData {
     outletId: string;
     outletName: string;
     tableNo: string;
+    orderType?: string;
     customerPhone: string | null;
     status: string;
     orderStatus: string;

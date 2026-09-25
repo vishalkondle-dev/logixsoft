@@ -213,8 +213,28 @@ export default function CustomerProfilePage() {
     if (orderFilterStatus === "ALL") return profile.orders;
     if (orderFilterStatus === "PAID") return profile.orders.filter((o) => o.status === "PAID");
     if (orderFilterStatus === "OPEN") return profile.orders.filter((o) => o.status === "OPEN");
-    if (orderFilterStatus === "DINE_IN") return profile.orders.filter((o) => o.tableNo.toLowerCase() !== "takeaway");
-    if (orderFilterStatus === "TAKEAWAY") return profile.orders.filter((o) => o.tableNo.toLowerCase() === "takeaway");
+    if (orderFilterStatus === "DELIVERY") {
+      return profile.orders.filter(
+        (o) => o.orderType === "DELIVERY" || (o.tableNo || "").toLowerCase() === "delivery"
+      );
+    }
+    if (orderFilterStatus === "TAKEAWAY") {
+      return profile.orders.filter(
+        (o) =>
+          o.orderType !== "DELIVERY" &&
+          (o.tableNo || "").toLowerCase() !== "delivery" &&
+          ((o.tableNo || "").toLowerCase() === "takeaway" || o.orderType === "TAKEAWAY")
+      );
+    }
+    if (orderFilterStatus === "DINE_IN") {
+      return profile.orders.filter(
+        (o) =>
+          o.orderType !== "DELIVERY" &&
+          (o.tableNo || "").toLowerCase() !== "delivery" &&
+          (o.tableNo || "").toLowerCase() !== "takeaway" &&
+          o.orderType !== "TAKEAWAY"
+      );
+    }
     return profile.orders;
   }, [profile?.orders, orderFilterStatus]);
 
@@ -645,8 +665,20 @@ export default function CustomerProfilePage() {
                       </Badge>
 
                       {/* Preferred Dining Mode */}
-                      <Badge size="sm" variant="dot" color="blue">
-                        {metrics.preferredDineMode === "Dine-In"
+                      <Badge
+                        size="sm"
+                        variant="dot"
+                        color={
+                          metrics.preferredDineMode === "Delivery"
+                            ? "teal"
+                            : metrics.preferredDineMode === "Dine-In"
+                            ? "blue"
+                            : "gray"
+                        }
+                      >
+                        {metrics.preferredDineMode === "Delivery"
+                          ? `🛵 Delivery (${metrics.deliveryCount || 0})`
+                          : metrics.preferredDineMode === "Dine-In"
                           ? `🍽️ Dine-In (${metrics.dineInCount})`
                           : `🛍️ Takeaway (${metrics.takeawayCount})`}
                       </Badge>
@@ -666,6 +698,7 @@ export default function CustomerProfilePage() {
                             !l.includes("veg") &&
                             !l.includes("takeaway") &&
                             !l.includes("dine-in") &&
+                            !l.includes("delivery") &&
                             !l.includes("vip") &&
                             !l.includes("regular") &&
                             !l.includes("new customer")
@@ -719,7 +752,17 @@ export default function CustomerProfilePage() {
                       Favorite Table
                     </Text>
                     <Text size="xs" fw={700} c="dark.7" mt={2}>
-                      {metrics.preferredTable || (metrics.takeawayCount > 0 ? "Takeaway" : "N/A")}
+                      {metrics.preferredTable
+                        ? `Table ${metrics.preferredTable}`
+                        : metrics.dineInCount > 0
+                        ? "Dine-In"
+                        : (metrics.deliveryCount || 0) > 0 && metrics.takeawayCount > 0
+                        ? "Delivery & Takeaway"
+                        : (metrics.deliveryCount || 0) > 0
+                        ? "Delivery Only"
+                        : metrics.takeawayCount > 0
+                        ? "Takeaway Only"
+                        : "N/A"}
                     </Text>
                   </Box>
                 </SimpleGrid>
@@ -962,17 +1005,17 @@ export default function CustomerProfilePage() {
           <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
-                Dine vs Takeaway
+                Order Channels
               </Text>
               <ThemeIcon size={22} radius="md" color="orange" variant="light">
                 <IconToolsKitchen2 size={13} />
               </ThemeIcon>
             </Group>
-            <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
-              {metrics.dineInCount} : {metrics.takeawayCount}
+            <Title order={3} mt={4} style={{ fontSize: 17, fontWeight: 700 }}>
+              {metrics.preferredDineMode}
             </Title>
             <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
-              {metrics.preferredDineMode} preferred
+              🍽️ {metrics.dineInCount} Dine • 🛍️ {metrics.takeawayCount} Take{metrics.deliveryCount ? ` • 🛵 ${metrics.deliveryCount} Del` : ""}
             </Text>
           </Paper>
         </SimpleGrid>
@@ -1009,6 +1052,7 @@ export default function CustomerProfilePage() {
                       { label: "Open", value: "OPEN" },
                       { label: "Dine-In", value: "DINE_IN" },
                       { label: "Takeaway", value: "TAKEAWAY" },
+                      { label: "Delivery", value: "DELIVERY" },
                     ]}
                   />
                 </Group>
@@ -1037,7 +1081,13 @@ export default function CustomerProfilePage() {
                       const isExpanded = expandedOrders[order.id] !== undefined
                         ? Boolean(expandedOrders[order.id])
                         : idx === 0;
-                      const isTakeaway = order.tableNo.toLowerCase() === "takeaway";
+                      const isDelivery =
+                        order.orderType === "DELIVERY" ||
+                        (order.tableNo || "").toLowerCase() === "delivery";
+                      const isTakeaway =
+                        !isDelivery &&
+                        ((order.tableNo || "").toLowerCase() === "takeaway" ||
+                          order.orderType === "TAKEAWAY");
 
                       return (
                         <Paper
@@ -1076,8 +1126,16 @@ export default function CustomerProfilePage() {
                                   >
                                     {order.status}
                                   </Badge>
-                                  <Badge size="xs" variant="outline" color={isTakeaway ? "gray" : "blue"}>
-                                    {isTakeaway ? "🛍️ Takeaway" : `🍽️ Table ${order.tableNo}`}
+                                  <Badge
+                                    size="xs"
+                                    variant="outline"
+                                    color={isDelivery ? "teal" : isTakeaway ? "gray" : "blue"}
+                                  >
+                                    {isDelivery
+                                      ? "🛵 Delivery"
+                                      : isTakeaway
+                                      ? "🛍️ Takeaway"
+                                      : `🍽️ Table ${order.tableNo}`}
                                   </Badge>
                                   {scopeMode === "all" && (
                                     <Badge size="xs" variant="default" visibleFrom="xs">

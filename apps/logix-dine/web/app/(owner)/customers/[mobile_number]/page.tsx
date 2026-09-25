@@ -4,7 +4,6 @@ import React, { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Container,
   Paper,
   Title,
   Text,
@@ -15,20 +14,17 @@ import {
   ActionIcon,
   Grid,
   ThemeIcon,
-  Tabs,
   Table,
   Box,
   Divider,
   Loader,
   Center,
-  Card,
   SimpleGrid,
   Textarea,
   Modal,
   CopyButton,
   Tooltip,
   SegmentedControl,
-  RingProgress,
   Progress,
   Collapse,
 } from "@mantine/core";
@@ -57,6 +53,8 @@ import {
   IconTag,
   IconPlus,
   IconReceiptOff,
+  IconSparkles,
+  IconFlame,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -64,6 +62,17 @@ import {
   useUpdateCustomerNotes,
   useSendCustomerWhatsApp,
 } from "@/lib/queries";
+import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
+
+const DAYS_OF_WEEK = [
+  { day: "Sunday", short: "Sun" },
+  { day: "Monday", short: "Mon" },
+  { day: "Tuesday", short: "Tue" },
+  { day: "Wednesday", short: "Wed" },
+  { day: "Thursday", short: "Thu" },
+  { day: "Friday", short: "Fri" },
+  { day: "Saturday", short: "Sat" },
+];
 
 export default function CustomerProfilePage() {
   const params = useParams();
@@ -111,8 +120,8 @@ export default function CustomerProfilePage() {
     setNotesInitialized(true);
   }
 
-  const toggleOrderExpand = (orderId: string) => {
-    setExpandedOrders((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
+  const toggleOrderExpand = (orderId: string, currentExpanded: boolean) => {
+    setExpandedOrders((prev) => ({ ...prev, [orderId]: !currentExpanded }));
   };
 
   const handleSaveNotes = async () => {
@@ -209,6 +218,95 @@ export default function CustomerProfilePage() {
     return profile.orders;
   }, [profile?.orders, orderFilterStatus]);
 
+  // Compute Visited Days Breakdown (combines API data with client calculation fallback)
+  const visitedDaysData = useMemo(() => {
+    if (profile?.metrics?.visitedDaysBreakdown && profile.metrics.visitedDaysBreakdown.length > 0) {
+      return {
+        breakdown: profile.metrics.visitedDaysBreakdown,
+        mostVisitedDay: profile.metrics.mostVisitedDay || null,
+        mostVisitedDayCount: profile.metrics.mostVisitedDayCount || 0,
+      };
+    }
+
+    const counts: Record<string, number> = {
+      Sunday: 0,
+      Monday: 0,
+      Tuesday: 0,
+      Wednesday: 0,
+      Thursday: 0,
+      Friday: 0,
+      Saturday: 0,
+    };
+
+    const orders = profile?.orders || [];
+    let validCount = 0;
+    orders.forEach((o) => {
+      if (o.createdAt) {
+        const d = new Date(o.createdAt);
+        const dayName = DAYS_OF_WEEK[d.getDay()]?.day;
+        if (dayName) {
+          counts[dayName] = (counts[dayName] || 0) + 1;
+          validCount++;
+        }
+      }
+    });
+
+    let topDay: string | null = null;
+    let maxCount = 0;
+    Object.entries(counts).forEach(([day, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        topDay = day;
+      }
+    });
+
+    const breakdown = DAYS_OF_WEEK.map(({ day, short }) => ({
+      day,
+      short,
+      count: counts[day] || 0,
+      percentage: validCount > 0 ? Math.round(((counts[day] || 0) / validCount) * 100) : 0,
+    }));
+
+    return {
+      breakdown,
+      mostVisitedDay: topDay,
+      mostVisitedDayCount: maxCount,
+    };
+  }, [profile?.metrics?.visitedDaysBreakdown, profile?.metrics?.mostVisitedDay, profile?.metrics?.mostVisitedDayCount, profile?.orders]);
+
+  // Determine dining habit from visited days (Weekend vs Weekday pattern)
+  const diningHabitInsight = useMemo(() => {
+    const { breakdown } = visitedDaysData;
+    const weekendCount = (breakdown.find((d) => d.day === "Saturday")?.count || 0) +
+      (breakdown.find((d) => d.day === "Sunday")?.count || 0) +
+      (breakdown.find((d) => d.day === "Friday")?.count || 0);
+    const totalCount = breakdown.reduce((sum, d) => sum + d.count, 0);
+
+    if (totalCount === 0) return null;
+    if (weekendCount / totalCount >= 0.6) {
+      return {
+        label: "Weekend Regular",
+        description: "Visits predominantly on Fridays, Saturdays & Sundays",
+        color: "violet",
+        badge: "🎉 Weekend Regular",
+      };
+    }
+    if (weekendCount / totalCount <= 0.3) {
+      return {
+        label: "Weekday Diner",
+        description: "Visits predominantly on Monday through Thursday",
+        color: "blue",
+        badge: "💼 Weekday Guest",
+      };
+    }
+    return {
+      label: "Balanced Diner",
+      description: "Visits evenly distributed throughout the week",
+      color: "teal",
+      badge: "🌟 All-Week Guest",
+    };
+  }, [visitedDaysData]);
+
   if (isLoading) {
     return (
       <Center py={120}>
@@ -224,14 +322,14 @@ export default function CustomerProfilePage() {
 
   if (isError || !profile) {
     return (
-      <Container size="md" py="xl">
+      <Box p="xl" maw={600} mx="auto">
         <Paper p="xl" radius="md" withBorder style={{ textAlign: "center" }}>
           <Stack align="center" gap="md">
             <ThemeIcon size={64} radius="xl" color="red" variant="light">
               <IconNotes size={32} />
             </ThemeIcon>
             <Title order={3}>Customer Not Found</Title>
-            <Text size="sm" c="dimmed" maw={500}>
+            <Text size="sm" c="dimmed">
               Could not find any order records or profile for mobile number <b>{mobileNumber}</b> in this restaurant.
             </Text>
             <Group gap="sm">
@@ -248,7 +346,7 @@ export default function CustomerProfilePage() {
             </Group>
           </Stack>
         </Paper>
-      </Container>
+      </Box>
     );
   }
 
@@ -269,12 +367,13 @@ export default function CustomerProfilePage() {
       }}
       px={{ base: "xs", sm: "md", md: "lg" }}
       py="md"
-      pb={{ base: 100, sm: "xl" }}
+      pb={{ base: 120, sm: "xl" }}
     >
-      <Stack gap="md" maw={1400} mx="auto">
-        {/* Top Header Bar */}
+      <Stack gap="lg" maw={1440} mx="auto">
+        {/* ─── 1. TOP HEADER & QUICK ACTIONS ────────────────────────────── */}
         <Box>
           <Group justify="space-between" align="center" gap="xs" wrap="nowrap">
+            {/* Left: Back button & Title */}
             <Group gap="xs" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
               <ActionIcon
                 variant="default"
@@ -298,7 +397,7 @@ export default function CustomerProfilePage() {
                       textOverflow: "ellipsis",
                     }}
                   >
-                    Customer Profile
+                    Customer 360° Profile
                   </Title>
                   <Badge
                     size="sm"
@@ -311,7 +410,7 @@ export default function CustomerProfilePage() {
                   </Badge>
                 </Group>
                 <Text size="xs" c="dimmed" lineClamp={1} visibleFrom="sm">
-                  Detailed customer history & dining analytics
+                  Complete dining routine, order history, favorite dishes & hospitality notes
                 </Text>
               </Box>
             </Group>
@@ -431,7 +530,7 @@ export default function CustomerProfilePage() {
             </Group>
           </Group>
 
-          {/* Mobile Secondary Bar (Scope Switcher + Badge) */}
+          {/* Mobile Scope Switcher Bar */}
           <Group justify="space-between" align="center" mt="xs" hiddenFrom="sm">
             <SegmentedControl
               size="xs"
@@ -469,168 +568,282 @@ export default function CustomerProfilePage() {
           </Group>
         </Box>
 
-        {/* ─── 1. Customer Hero Identity Card ────────────────────────────── */}
-        <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
-          <Grid align="center" gap="md">
-            {/* Left: Avatar & Basic Info */}
-            <Grid.Col span={{ base: 12, md: 7 }}>
-              <Group gap="md" align="center" wrap="nowrap">
-                <Box
-                  style={{
-                    borderRadius: 16,
-                    backgroundColor: isVip ? "#fff8e1" : "#e8f5e9",
-                    border: `2px solid ${isVip ? "#ffd54f" : "#a5d6a7"}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: isVip ? "#f57f17" : "#2e7d32",
-                    fontWeight: 700,
-                    flexShrink: 0,
-                  }}
-                  w={{ base: 52, sm: 64 }}
-                  h={{ base: 52, sm: 64 }}
-                  fz={{ base: 18, sm: 22 }}
-                >
-                  {customer.name ? customer.name.slice(0, 2).toUpperCase() : rawCleanPhone.slice(-2)}
-                </Box>
+        {/* ─── 2. HERO SECTION: IDENTITY & STAFF NOTES ─────────────────── */}
+        <Grid gap="md" align="stretch">
+          {/* Left: Customer Identity & Visit Timeline */}
+          <Grid.Col span={{ base: 12, lg: 7.5 }}>
+            <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff", height: "100%" }}>
+              <Stack gap="md" justify="space-between" style={{ height: "100%" }}>
+                {/* Header Identity */}
+                <Group gap="md" align="flex-start" wrap="nowrap">
+                  <Box
+                    style={{
+                      borderRadius: 16,
+                      backgroundColor: isVip ? "#fff8e1" : "#e8f5e9",
+                      border: `2px solid ${isVip ? "#ffd54f" : "#a5d6a7"}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: isVip ? "#f57f17" : "#2e7d32",
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                    w={{ base: 56, sm: 68 }}
+                    h={{ base: 56, sm: 68 }}
+                    fz={{ base: 20, sm: 24 }}
+                  >
+                    {customer.name ? customer.name.slice(0, 2).toUpperCase() : rawCleanPhone.slice(-2)}
+                  </Box>
 
-                <Box style={{ flex: 1, minWidth: 0 }}>
-                  <Group gap="xs" align="center">
-                    <Title order={3} style={{ fontSize: 18, fontWeight: 700 }}>
-                      {customer.name || `Guest (${rawCleanPhone})`}
-                    </Title>
-                    {customer.email && (
-                      <Text size="xs" c="dimmed">
-                        • {customer.email}
-                      </Text>
-                    )}
-                  </Group>
-
-                  {/* Phone with Copy Button */}
-                  <Group gap={6} align="center" mt={3}>
-                    <Text size="sm" fw={600} c="dark.6">
-                      {customer.phone}
-                    </Text>
-                    <CopyButton value={rawCleanPhone} timeout={2000}>
-                      {({ copied, copy }) => (
-                        <Tooltip label={copied ? "Copied" : "Copy phone number"} withArrow position="right">
-                          <ActionIcon color={copied ? "teal" : "gray"} variant="subtle" size="sm" onClick={copy}>
-                            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                          </ActionIcon>
-                        </Tooltip>
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    <Group gap="xs" align="center" wrap="wrap">
+                      <Title order={3} style={{ fontSize: 18, fontWeight: 700 }}>
+                        {customer.name || `Guest (${rawCleanPhone})`}
+                      </Title>
+                      {customer.email && (
+                        <Text size="xs" c="dimmed">
+                          • {customer.email}
+                        </Text>
                       )}
-                    </CopyButton>
-                  </Group>
+                    </Group>
 
-                  {/* Badges / Tags */}
-                  <Group gap={6} mt={6} wrap="wrap">
-                    {/* Custom tags (excluding calculated or duplicate badges) */}
-                    {customer.tags
-                      .filter((tag) => {
-                        const l = tag.toLowerCase();
-                        if (
-                          l.includes("veg") ||
-                          l.includes("takeaway") ||
-                          l.includes("dine-in") ||
-                          l.includes("vip") ||
-                          l.includes("regular") ||
-                          l.includes("new customer")
-                        ) {
-                          return false;
+                    {/* Phone with One-Click Copy */}
+                    <Group gap={6} align="center" mt={3}>
+                      <Text size="sm" fw={600} c="dark.6">
+                        {customer.phone}
+                      </Text>
+                      <CopyButton value={rawCleanPhone} timeout={2000}>
+                        {({ copied, copy }) => (
+                          <Tooltip label={copied ? "Copied" : "Copy phone number"} withArrow position="right">
+                            <ActionIcon color={copied ? "teal" : "gray"} variant="subtle" size="sm" onClick={copy}>
+                              {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                      </CopyButton>
+                    </Group>
+
+                    {/* Dining Persona Badges */}
+                    <Group gap={6} mt={8} wrap="wrap">
+                      {/* Dietary Preference Badge */}
+                      <Badge
+                        size="sm"
+                        variant="light"
+                        color={
+                          metrics.dietaryPreference.primary === "Veg"
+                            ? "green"
+                            : metrics.dietaryPreference.primary === "Non-Veg"
+                            ? "red"
+                            : "orange"
                         }
-                        return true;
-                      })
-                      .map((tag) => (
-                        <Badge key={tag} size="sm" variant="outline" color="teal">
-                          {tag}
-                        </Badge>
-                      ))}
-
-                    {/* Dietary Preference Badge */}
-                    <Badge
-                      size="sm"
-                      variant="light"
-                      color={
-                        metrics.dietaryPreference.primary === "Veg"
-                          ? "green"
+                      >
+                        {metrics.dietaryPreference.primary === "Veg"
+                          ? "🌱 Pure Vegetarian"
                           : metrics.dietaryPreference.primary === "Non-Veg"
-                          ? "red"
-                          : "orange"
-                      }
-                    >
-                      {metrics.dietaryPreference.primary === "Veg"
-                        ? "🌱 Pure Vegetarian"
-                        : metrics.dietaryPreference.primary === "Non-Veg"
-                        ? "🍗 Non-Veg Lover"
-                        : "🥗 Mixed Dining"}
-                    </Badge>
+                          ? "🍗 Non-Veg Lover"
+                          : "🥗 Mixed Dining"}
+                      </Badge>
 
-                    {/* Preferred Dining Mode */}
-                    <Badge size="sm" variant="dot" color="blue">
-                      {metrics.preferredDineMode === "Dine-In"
-                        ? `🍽️ Dine-In (${metrics.dineInCount})`
-                        : `🛍️ Takeaway (${metrics.takeawayCount})`}
-                    </Badge>
-                  </Group>
-                </Box>
-              </Group>
-            </Grid.Col>
+                      {/* Preferred Dining Mode */}
+                      <Badge size="sm" variant="dot" color="blue">
+                        {metrics.preferredDineMode === "Dine-In"
+                          ? `🍽️ Dine-In (${metrics.dineInCount})`
+                          : `🛍️ Takeaway (${metrics.takeawayCount})`}
+                      </Badge>
 
-            {/* Right: Visit Timeline Snippet */}
-            <Grid.Col span={{ base: 12, md: 5 }}>
-              <SimpleGrid cols={2} spacing="xs">
-                <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8 }}>
-                  <Text size="xs" c="dimmed">
-                    First Visit
-                  </Text>
-                  <Text size="xs" fw={700} c="dark.7">
-                    {formatShortDate(metrics.firstVisitAt)}
-                  </Text>
-                </Box>
-                <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8 }}>
-                  <Text size="xs" c="dimmed">
-                    Last Visit
-                  </Text>
-                  <Text size="xs" fw={700} c="dark.7">
-                    {formatShortDate(metrics.lastVisitAt)}
-                    {metrics.daysSinceLastVisit !== null && (
-                      <span style={{ fontWeight: 400, color: "#868e96", marginLeft: 4 }}>
-                        ({metrics.daysSinceLastVisit === 0 ? "Today" : `${metrics.daysSinceLastVisit}d ago`})
-                      </span>
+                      {/* Dining Habit Badge */}
+                      {diningHabitInsight && (
+                        <Badge size="sm" variant="outline" color={diningHabitInsight.color}>
+                          {diningHabitInsight.badge}
+                        </Badge>
+                      )}
+
+                      {/* Custom Tags */}
+                      {customer.tags
+                        .filter((tag) => {
+                          const l = tag.toLowerCase();
+                          return (
+                            !l.includes("veg") &&
+                            !l.includes("takeaway") &&
+                            !l.includes("dine-in") &&
+                            !l.includes("vip") &&
+                            !l.includes("regular") &&
+                            !l.includes("new customer")
+                          );
+                        })
+                        .map((tag) => (
+                          <Badge key={tag} size="sm" variant="outline" color="teal">
+                            {tag}
+                          </Badge>
+                        ))}
+                    </Group>
+                  </Box>
+                </Group>
+
+                {/* 4 Quick Visit Insights */}
+                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs" mt="xs">
+                  <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8, border: "1px solid #f1f3f5" }}>
+                    <Text size="11px" c="dimmed">
+                      First Visit
+                    </Text>
+                    <Text size="xs" fw={700} c="dark.7" mt={2}>
+                      {formatShortDate(metrics.firstVisitAt)}
+                    </Text>
+                  </Box>
+
+                  <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8, border: "1px solid #f1f3f5" }}>
+                    <Text size="11px" c="dimmed">
+                      Last Visit
+                    </Text>
+                    <Text size="xs" fw={700} c="dark.7" mt={2}>
+                      {formatShortDate(metrics.lastVisitAt)}
+                      {metrics.daysSinceLastVisit !== null && (
+                        <span style={{ fontWeight: 500, color: "#868e96", marginLeft: 4 }}>
+                          ({metrics.daysSinceLastVisit === 0 ? "Today" : `${metrics.daysSinceLastVisit}d ago`})
+                        </span>
+                      )}
+                    </Text>
+                  </Box>
+
+                  <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8, border: "1px solid #f1f3f5" }}>
+                    <Text size="11px" c="dimmed">
+                      Visit Frequency
+                    </Text>
+                    <Text size="xs" fw={700} c="dark.7" mt={2}>
+                      {metrics.visitFrequencyDays ? `Every ~${metrics.visitFrequencyDays} days` : "Single Visit"}
+                    </Text>
+                  </Box>
+
+                  <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8, border: "1px solid #f1f3f5" }}>
+                    <Text size="11px" c="dimmed">
+                      Favorite Table
+                    </Text>
+                    <Text size="xs" fw={700} c="dark.7" mt={2}>
+                      {metrics.preferredTable || (metrics.takeawayCount > 0 ? "Takeaway" : "N/A")}
+                    </Text>
+                  </Box>
+                </SimpleGrid>
+              </Stack>
+            </Paper>
+          </Grid.Col>
+
+          {/* Right: Staff Notes & Quick Hospitality Tags */}
+          <Grid.Col span={{ base: 12, lg: 4.5 }}>
+            <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff", height: "100%" }}>
+              <Stack gap="xs" justify="space-between" style={{ height: "100%" }}>
+                <div>
+                  <Group justify="space-between" align="center" mb={4}>
+                    <Group gap={6} align="center">
+                      <ThemeIcon size={22} radius="md" color="violet" variant="light">
+                        <IconNotes size={13} />
+                      </ThemeIcon>
+                      <Text fw={700} size="sm">
+                        Staff Notes & Preferences
+                      </Text>
+                    </Group>
+                    {staffNotes.trim().length > 0 && (
+                      <Badge size="xs" color="teal" variant="light">
+                        Active Note
+                      </Badge>
                     )}
-                  </Text>
-                </Box>
-                <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8 }}>
-                  <Text size="xs" c="dimmed">
-                    Visit Frequency
-                  </Text>
-                  <Text size="xs" fw={700} c="dark.7">
-                    {metrics.visitFrequencyDays ? `Every ~${metrics.visitFrequencyDays} days` : "Single Visit"}
-                  </Text>
-                </Box>
-                <Box p="xs" style={{ backgroundColor: "#f8f9fa", borderRadius: 8 }}>
-                  <Text size="xs" c="dimmed">
-                    Favorite Table
-                  </Text>
-                  <Text size="xs" fw={700} c="dark.7">
-                    {metrics.preferredTable || (metrics.takeawayCount > 0 ? "Takeaway" : "N/A")}
-                  </Text>
-                </Box>
-              </SimpleGrid>
-            </Grid.Col>
-          </Grid>
-        </Paper>
+                  </Group>
 
-        {/* ─── 2. Key Performance Indicators (6 Stat Cards) ─────────────── */}
-        <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing={{ base: "xs", sm: "sm" }}>
-          {/* Lifetime Spend */}
-          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+                  <Text size="11px" c="dimmed" mb="xs">
+                    Visible to POS servers to ensure personalized customer care.
+                  </Text>
+
+                  <Textarea
+                    placeholder="e.g. Likes extra spicy, prefers window corner, allergic to peanuts, close family friend..."
+                    minRows={2}
+                    maxRows={4}
+                    autosize
+                    value={staffNotes}
+                    onChange={(e) => setStaffNotes(e.target.value)}
+                    size="xs"
+                    radius="sm"
+                    mb="xs"
+                  />
+
+                  {/* Tag Chips */}
+                  <Group gap={5} mb="xs" wrap="wrap">
+                    {customTags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        size="sm"
+                        variant="light"
+                        color="blue"
+                        rightSection={
+                          <ActionIcon
+                            size="xs"
+                            color="blue"
+                            radius="xl"
+                            variant="transparent"
+                            onClick={() => handleRemoveTag(tag)}
+                          >
+                            ×
+                          </ActionIcon>
+                        }
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </Group>
+
+                  {/* Add Tag Input */}
+                  <Group gap={6} wrap="nowrap">
+                    <input
+                      type="text"
+                      placeholder="Add tag (e.g. VIP, Corporate)..."
+                      value={newTagInput}
+                      onChange={(e) => setNewTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddTag();
+                        }
+                      }}
+                      style={{
+                        padding: "5px 10px",
+                        fontSize: 12,
+                        borderRadius: 6,
+                        border: "1px solid #ced4da",
+                        outline: "none",
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    />
+                    <Button size="xs" variant="default" onClick={handleAddTag}>
+                      <IconPlus size={13} style={{ marginRight: 3 }} /> Add
+                    </Button>
+                  </Group>
+                </div>
+
+                <Button
+                  color="dinePrimary"
+                  size="xs"
+                  radius="md"
+                  fullWidth
+                  loading={updateNotesMutation.isPending}
+                  onClick={handleSaveNotes}
+                  leftSection={<IconCheck size={14} />}
+                >
+                  Save Notes & Tags
+                </Button>
+              </Stack>
+            </Paper>
+          </Grid.Col>
+        </Grid>
+
+        {/* ─── 3. KPI STATS RIBBON (7 CARDS) ────────────────────────────── */}
+        <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 7 }} spacing={{ base: "xs", sm: "sm" }}>
+          {/* 1. Lifetime Spend */}
+          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Lifetime Spend
               </Text>
-              <ThemeIcon size={24} radius="md" color="teal" variant="light">
-                <IconCash size={14} />
+              <ThemeIcon size={22} radius="md" color="teal" variant="light">
+                <IconCash size={13} />
               </ThemeIcon>
             </Group>
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700, color: "#2b8a3e" }}>
@@ -643,14 +856,14 @@ export default function CustomerProfilePage() {
             </Text>
           </Paper>
 
-          {/* Total Orders / Visits */}
-          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          {/* 2. Total Orders */}
+          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Total Orders
               </Text>
-              <ThemeIcon size={24} radius="md" color="blue" variant="light">
-                <IconReceipt size={14} />
+              <ThemeIcon size={22} radius="md" color="blue" variant="light">
+                <IconReceipt size={13} />
               </ThemeIcon>
             </Group>
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
@@ -661,14 +874,14 @@ export default function CustomerProfilePage() {
             </Text>
           </Paper>
 
-          {/* Average Order Value (AOV) */}
-          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          {/* 3. Avg Order Value */}
+          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Avg Order Value
               </Text>
-              <ThemeIcon size={24} radius="md" color="violet" variant="light">
-                <IconChartBar size={14} />
+              <ThemeIcon size={22} radius="md" color="violet" variant="light">
+                <IconChartBar size={13} />
               </ThemeIcon>
             </Group>
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
@@ -679,32 +892,60 @@ export default function CustomerProfilePage() {
             </Text>
           </Paper>
 
-          {/* Highest Bill */}
-          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          {/* 4. Highest Bill */}
+          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Highest Bill
               </Text>
-              <ThemeIcon size={24} radius="md" color="yellow" variant="light">
-                <IconStar size={14} />
+              <ThemeIcon size={22} radius="md" color="yellow" variant="light">
+                <IconStar size={13} />
               </ThemeIcon>
             </Group>
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
               ₹{(metrics.highestOrderPaise / 100).toFixed(0)}
             </Title>
             <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
-              Max single order
+              Max single bill
             </Text>
           </Paper>
 
-          {/* Preferred Payment */}
-          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          {/* 5. Most Visited Day (NEW!) */}
+          <Paper
+            p="sm"
+            radius="md"
+            withBorder
+            style={{
+              backgroundColor: visitedDaysData.mostVisitedDay ? "#fdfbf7" : "#ffffff",
+              borderColor: visitedDaysData.mostVisitedDay ? "#ffe8cc" : "#e9ecef",
+            }}
+          >
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <Text size="xs" c="dimmed" fw={600}>
+                Most Visited Day
+              </Text>
+              <ThemeIcon size={22} radius="md" color="orange" variant="light">
+                <IconCalendar size={13} />
+              </ThemeIcon>
+            </Group>
+            <Title order={3} mt={4} style={{ fontSize: 17, fontWeight: 700, color: "#d9480f" }}>
+              {visitedDaysData.mostVisitedDay || "N/A"}
+            </Title>
+            <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
+              {visitedDaysData.mostVisitedDayCount > 0
+                ? `${visitedDaysData.mostVisitedDayCount} visits on this day`
+                : "No visits recorded"}
+            </Text>
+          </Paper>
+
+          {/* 6. Payment Mode */}
+          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Payment Mode
               </Text>
-              <ThemeIcon size={24} radius="md" color="cyan" variant="light">
-                <IconReceipt size={14} />
+              <ThemeIcon size={22} radius="md" color="cyan" variant="light">
+                <IconReceipt size={13} />
               </ThemeIcon>
             </Group>
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
@@ -713,18 +954,18 @@ export default function CustomerProfilePage() {
             <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
               {metrics.paymentMethodsBreakdown.length > 1
                 ? `${metrics.paymentMethodsBreakdown.length} modes used`
-                : "Primary choice"}
+                : "Primary mode"}
             </Text>
           </Paper>
 
-          {/* Dining Type Ratio */}
-          <Paper p={{ base: "xs", sm: "sm" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+          {/* 7. Dining Type Ratio */}
+          <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Text size="xs" c="dimmed" fw={600}>
                 Dine vs Takeaway
               </Text>
-              <ThemeIcon size={24} radius="md" color="orange" variant="light">
-                <IconToolsKitchen2 size={14} />
+              <ThemeIcon size={22} radius="md" color="orange" variant="light">
+                <IconToolsKitchen2 size={13} />
               </ThemeIcon>
             </Group>
             <Title order={3} mt={4} style={{ fontSize: 18, fontWeight: 700 }}>
@@ -736,92 +977,45 @@ export default function CustomerProfilePage() {
           </Paper>
         </SimpleGrid>
 
-        {/* ─── 3. Detailed Tabs Section ───────────────────────────────────── */}
-        <Paper p={{ base: "xs", sm: "md" }} radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
-          <Tabs defaultValue="orders" color="dinePrimary">
-            <Tabs.List mb="md" grow>
-              <Tabs.Tab
-                value="orders"
-                leftSection={<IconReceipt size={18} />}
-                rightSection={
-                  <Badge size="xs" variant="light" circle>
-                    {metrics.totalOrdersCount}
-                  </Badge>
-                }
-                title="Order History"
-              >
-                <Box visibleFrom="sm">Order History</Box>
-              </Tabs.Tab>
-
-              <Tabs.Tab
-                value="favorites"
-                leftSection={<IconSoup size={18} />}
-                rightSection={
-                  <Badge size="xs" variant="light" circle>
-                    {favoriteItems.length}
-                  </Badge>
-                }
-                title="Favorite Dishes"
-              >
-                <Box visibleFrom="sm">Favorite Dishes</Box>
-              </Tabs.Tab>
-
-              <Tabs.Tab
-                value="analytics"
-                leftSection={<IconChartBar size={18} />}
-                title="Dining Preferences & Outlets"
-              >
-                <Box visibleFrom="sm">Dining Preferences & Outlets</Box>
-              </Tabs.Tab>
-
-              <Tabs.Tab
-                value="notes"
-                leftSection={<IconNotes size={18} />}
-                rightSection={
-                  staffNotes.trim().length > 0 ? (
-                    <Box
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        backgroundColor: "#12b886",
-                      }}
-                    />
-                  ) : undefined
-                }
-                title="Staff Notes & Tags"
-              >
-                <Box visibleFrom="sm">Staff Notes & Tags</Box>
-              </Tabs.Tab>
-            </Tabs.List>
-
-            {/* ─── TAB 1: ORDER HISTORY ────────────────────────────────────── */}
-            <Tabs.Panel value="orders">
-              <Stack gap="sm">
-                {/* Orders Filter Row */}
+        {/* ─── 4. MAIN CONTENT: NO TABS (ORDERS LEFT, ANALYTICS RIGHT) ───── */}
+        <Grid gap="md" align="flex-start">
+          {/* LEFT COLUMN: ORDER HISTORY & RECEIPTS */}
+          <Grid.Col span={{ base: 12, lg: 7.5 }}>
+            <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+              <Stack gap="md">
+                {/* Header Row */}
                 <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                  <Box style={{ overflowX: "auto", maxWidth: "100%", paddingBottom: 2 }}>
-                    <SegmentedControl
-                      size="xs"
-                      radius="md"
-                      value={orderFilterStatus}
-                      onChange={setOrderFilterStatus}
-                      data={[
-                        { label: `All (${profile.orders.length})`, value: "ALL" },
-                        { label: "Paid", value: "PAID" },
-                        { label: "Open", value: "OPEN" },
-                        { label: "Dine-In", value: "DINE_IN" },
-                        { label: "Takeaway", value: "TAKEAWAY" },
-                      ]}
-                    />
-                  </Box>
-                  <Text size="xs" c="dimmed">
-                    Showing {filteredOrders.length} of {profile.orders.length} orders
-                  </Text>
+                  <Group gap={6} align="center">
+                    <ThemeIcon size={26} radius="md" color="dinePrimary" variant="light">
+                      <IconReceipt size={15} />
+                    </ThemeIcon>
+                    <Title order={4} style={{ fontSize: 16, fontWeight: 700 }}>
+                      Order History & Receipts
+                    </Title>
+                    <Badge size="xs" variant="light" color="gray">
+                      {profile.orders.length}
+                    </Badge>
+                  </Group>
+
+                  {/* Filter Segmented Control */}
+                  <SegmentedControl
+                    size="xs"
+                    radius="md"
+                    value={orderFilterStatus}
+                    onChange={setOrderFilterStatus}
+                    data={[
+                      { label: `All (${profile.orders.length})`, value: "ALL" },
+                      { label: "Paid", value: "PAID" },
+                      { label: "Open", value: "OPEN" },
+                      { label: "Dine-In", value: "DINE_IN" },
+                      { label: "Takeaway", value: "TAKEAWAY" },
+                    ]}
+                  />
                 </Group>
 
+                {/* Orders List */}
                 {filteredOrders.length === 0 ? (
-                  <Paper p="xl" radius="md" withBorder style={{ textAlign: "center", backgroundColor: "#ffffff" }}>
+                  <Paper p="xl" radius="md" withBorder style={{ textAlign: "center", backgroundColor: "#fdfdfd" }}>
                     <Stack align="center" gap="xs">
                       <ThemeIcon size={48} radius="xl" color="gray" variant="light">
                         <IconReceiptOff size={24} />
@@ -839,8 +1033,10 @@ export default function CustomerProfilePage() {
                   </Paper>
                 ) : (
                   <Stack gap="xs">
-                    {filteredOrders.map((order) => {
-                      const isExpanded = Boolean(expandedOrders[order.id]);
+                    {filteredOrders.map((order, idx) => {
+                      const isExpanded = expandedOrders[order.id] !== undefined
+                        ? Boolean(expandedOrders[order.id])
+                        : idx === 0;
                       const isTakeaway = order.tableNo.toLowerCase() === "takeaway";
 
                       return (
@@ -855,9 +1051,9 @@ export default function CustomerProfilePage() {
                             transition: "all 0.15s ease",
                           }}
                         >
-                          {/* Clickable Order Summary Header */}
+                          {/* Order Summary Header (Click to expand) */}
                           <Box
-                            onClick={() => toggleOrderExpand(order.id)}
+                            onClick={() => toggleOrderExpand(order.id, isExpanded)}
                             style={{ cursor: "pointer", userSelect: "none" }}
                           >
                             <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
@@ -908,7 +1104,7 @@ export default function CustomerProfilePage() {
                                 </Group>
                               </Box>
 
-                              {/* Right Info: Amount & Expand Toggle (Always Pinned) */}
+                              {/* Right Info: Amount & Chevron */}
                               <Group gap="xs" align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
                                 <Box style={{ textAlign: "right" }}>
                                   <Text
@@ -925,6 +1121,10 @@ export default function CustomerProfilePage() {
                                   color="gray"
                                   size="sm"
                                   aria-label={isExpanded ? "Collapse order details" : "Expand order details"}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleOrderExpand(order.id, isExpanded);
+                                  }}
                                 >
                                   {isExpanded ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
                                 </ActionIcon>
@@ -932,37 +1132,45 @@ export default function CustomerProfilePage() {
                             </Group>
                           </Box>
 
-                          {/* Expandable Order Items Details */}
+                          {/* Expandable Itemized Details */}
                           <Collapse expanded={isExpanded}>
                             <Box mt="xs" pt="xs" style={{ borderTop: "1px solid #f1f3f5" }}>
-                              {/* Mobile View: Clean native list without table header */}
+                              {/* Mobile View: Clean List */}
                               <Box hiddenFrom="sm">
                                 <Stack gap={6} mb="xs">
                                   {order.items.map((it) => (
                                     <Group key={it.id} justify="space-between" align="flex-start" wrap="nowrap" py={2}>
                                       <Box style={{ minWidth: 0, flex: 1 }}>
-                                        <Group gap={6} align="center" wrap="nowrap">
-                                          <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0 }}>
+                                        <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                                          <Badge size="xs" variant="light" color="gray" style={{ flexShrink: 0, marginRight: 6 }}>
                                             ×{it.qty}
                                           </Badge>
-                                          <Text size="xs" fw={600} lineClamp={1}>
-                                            {it.name}
-                                          </Text>
-                                        </Group>
-                                        {(it.variant || it.addons || it.note) && (
-                                          <Stack gap={1} pl={26} mt={2}>
+                                          <span
+                                            style={{
+                                              display: "inline-flex",
+                                              verticalAlign: "text-top",
+                                              marginRight: 5,
+                                            }}
+                                          >
+                                            <VegNonVegIcon isNonVeg={(it as any).isNonVeg} size={12} />
+                                          </span>
+                                          {it.name}
+                                        </Text>
+
+                                        {(it.variant || (it.addons && it.addons.length > 0) || it.note) && (
+                                          <Stack gap={1} pl={34} mt={2}>
                                             {it.variant && (
                                               <Text size="10px" c="dimmed">
-                                                Variant: {it.variant.name}
+                                                Variant: {typeof it.variant === "object" ? it.variant.name : it.variant}
                                               </Text>
                                             )}
                                             {it.addons && it.addons.length > 0 && (
                                               <Text size="10px" c="dimmed">
-                                                Addons: {it.addons.map((a: any) => a.name).join(", ")}
+                                                Addons: {it.addons.map((a: any) => typeof a === "object" ? a.name : a).join(", ")}
                                               </Text>
                                             )}
                                             {it.note && (
-                                              <Text size="10px" c="orange.7" fs="italic">
+                                              <Text size="10px" c="orange.7" style={{ fontStyle: "italic" }}>
                                                 Note: {it.note}
                                               </Text>
                                             )}
@@ -977,7 +1185,7 @@ export default function CustomerProfilePage() {
                                 </Stack>
                               </Box>
 
-                              {/* Desktop View: Full Table */}
+                              {/* Desktop View: Clean Table */}
                               <Box visibleFrom="sm">
                                 <Table.ScrollContainer minWidth={280}>
                                   <Table verticalSpacing={4} style={{ fontSize: 12 }}>
@@ -993,21 +1201,30 @@ export default function CustomerProfilePage() {
                                       {order.items.map((it) => (
                                         <Table.Tr key={it.id}>
                                           <Table.Td>
-                                            <Text size="xs" fw={600}>
+                                            <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                                              <span
+                                                style={{
+                                                  display: "inline-flex",
+                                                  verticalAlign: "text-top",
+                                                  marginRight: 6,
+                                                }}
+                                              >
+                                                <VegNonVegIcon isNonVeg={(it as any).isNonVeg} size={12} />
+                                              </span>
                                               {it.name}
                                             </Text>
                                             {it.variant && (
-                                              <Text size="10px" c="dimmed">
-                                                Variant: {it.variant.name}
+                                              <Text size="10px" c="dimmed" pl={18}>
+                                                Variant: {typeof it.variant === "object" ? it.variant.name : it.variant}
                                               </Text>
                                             )}
                                             {it.addons && it.addons.length > 0 && (
-                                              <Text size="10px" c="dimmed">
-                                                Addons: {it.addons.map((a: any) => a.name).join(", ")}
+                                              <Text size="10px" c="dimmed" pl={18}>
+                                                Addons: {it.addons.map((a: any) => typeof a === "object" ? a.name : a).join(", ")}
                                               </Text>
                                             )}
                                             {it.note && (
-                                              <Text size="10px" c="orange.7" fs="italic">
+                                              <Text size="10px" c="orange.7" style={{ fontStyle: "italic" }} pl={18}>
                                                 Note: {it.note}
                                               </Text>
                                             )}
@@ -1030,7 +1247,7 @@ export default function CustomerProfilePage() {
                                 </Table.ScrollContainer>
                               </Box>
 
-                              {/* Order Footnote & Actions */}
+                              {/* Order Footnote & WhatsApp Receipt Button */}
                               <Group justify="space-between" align="center" mt="xs" pt="xs" style={{ borderTop: "1px dashed #e9ecef" }}>
                                 <Text size="11px" c="dimmed">
                                   ID: <code style={{ fontSize: 10 }}>{order.id.slice(0, 8)}...</code>
@@ -1040,7 +1257,6 @@ export default function CustomerProfilePage() {
                                   variant="light"
                                   color="green"
                                   leftSection={<IconBrandWhatsapp size={14} />}
-                                  visibleFrom="xs"
                                   onClick={() => {
                                     setWhatsappMessage(
                                       `Receipt for Order #${order.orderNo} from ${restaurant?.name || "Logix Dine"}:\nTotal: ₹${(
@@ -1052,25 +1268,6 @@ export default function CustomerProfilePage() {
                                 >
                                   Share Receipt
                                 </Button>
-                                <Tooltip label="Share Receipt via WhatsApp">
-                                  <ActionIcon
-                                    size="md"
-                                    variant="light"
-                                    color="green"
-                                    hiddenFrom="xs"
-                                    aria-label="Share Receipt via WhatsApp"
-                                    onClick={() => {
-                                      setWhatsappMessage(
-                                        `Receipt for Order #${order.orderNo} from ${restaurant?.name || "Logix Dine"}:\nTotal: ₹${(
-                                          (order.subtotalPaise || 0) / 100
-                                        ).toFixed(0)}\nStatus: ${order.status}\nThank you!`
-                                      );
-                                      setWhatsappModalOpen(true);
-                                    }}
-                                  >
-                                    <IconBrandWhatsapp size={16} />
-                                  </ActionIcon>
-                                </Tooltip>
                               </Group>
                             </Box>
                           </Collapse>
@@ -1080,314 +1277,316 @@ export default function CustomerProfilePage() {
                   </Stack>
                 )}
               </Stack>
-            </Tabs.Panel>
+            </Paper>
+          </Grid.Col>
 
-            {/* ─── TAB 2: FAVORITE DISHES ──────────────────────────────────── */}
-            <Tabs.Panel value="favorites">
-              {favoriteItems.length === 0 ? (
-                <Center py={60}>
-                  <Text size="sm" c="dimmed">
-                    No favorite dish data available yet.
-                  </Text>
-                </Center>
-              ) : (
-                <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
-                  {favoriteItems.map((item, idx) => (
-                    <Paper key={item.itemId || item.name} p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
-                      <Group justify="space-between" align="flex-start" wrap="nowrap">
-                        <Group gap="xs" align="flex-start" wrap="nowrap" style={{ minWidth: 0 }}>
-                          {/* Veg/Non-Veg icon */}
-                          <Box
-                            style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: 3,
-                              border: `1.5px solid ${item.isNonVeg ? "#c62828" : "#2e7d32"}`,
-                              backgroundColor: "#ffffff",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              marginTop: 3,
-                              flexShrink: 0,
-                            }}
-                          >
-                            <Box
-                              style={{
-                                width: 6,
-                                height: 6,
-                                borderRadius: "50%",
-                                backgroundColor: item.isNonVeg ? "#c62828" : "#2e7d32",
-                              }}
-                            />
-                          </Box>
+          {/* RIGHT COLUMN: INTELLIGENCE CARDS (VISITED DAYS, FAVORITES, PREFERENCES, OUTLETS) */}
+          <Grid.Col span={{ base: 12, lg: 4.5 }}>
+            <Stack gap="md">
+              {/* ─── CARD 1: MOST VISITED DAYS (NEW & HIGHLIGHTED) ─────────── */}
+              <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+                <Group justify="space-between" align="center" mb="xs">
+                  <Group gap={6} align="center">
+                    <ThemeIcon size={24} radius="md" color="orange" variant="light">
+                      <IconCalendar size={14} />
+                    </ThemeIcon>
+                    <Title order={4} style={{ fontSize: 15, fontWeight: 700 }}>
+                      Most Visited Days
+                    </Title>
+                  </Group>
 
-                          <Box style={{ minWidth: 0 }}>
-                            <Text size="sm" fw={700} lineClamp={1}>
-                              {item.name}
-                            </Text>
-                            <Text size="xs" c="dimmed" mt={1}>
-                              Ordered {item.qty} times across {item.orderCount} visits
-                            </Text>
-                          </Box>
-                        </Group>
+                  {visitedDaysData.mostVisitedDay && (
+                    <Badge size="sm" variant="filled" color="orange" leftSection={<IconFlame size={12} />}>
+                      {visitedDaysData.mostVisitedDay} Peak
+                    </Badge>
+                  )}
+                </Group>
 
-                        <Badge size="xs" variant="filled" color={idx === 0 ? "yellow" : idx === 1 ? "gray" : "teal"}>
-                          #{idx + 1}
-                        </Badge>
-                      </Group>
-
-                      <Divider my="xs" />
-
+                {visitedDaysData.mostVisitedDay ? (
+                  <Box>
+                    <Paper
+                      p="xs"
+                      radius="sm"
+                      mb="sm"
+                      style={{
+                        backgroundColor: "#fff4e6",
+                        border: "1px solid #ffd8a8",
+                      }}
+                    >
                       <Group justify="space-between" align="center">
-                        <Text size="xs" c="dimmed">
-                          Total Spent:
-                        </Text>
-                        <Text size="xs" fw={700} c="green.8">
-                          ₹{(item.totalSpendPaise / 100).toLocaleString("en-IN")}
-                        </Text>
-                      </Group>
-                    </Paper>
-                  ))}
-                </SimpleGrid>
-              )}
-            </Tabs.Panel>
-
-            {/* ─── TAB 3: DINING PREFERENCES & OUTLETS ──────────────────────── */}
-            <Tabs.Panel value="analytics">
-              <Grid gap="md">
-                {/* Dietary Distribution */}
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
-                    <Title order={4} style={{ fontSize: 15, fontWeight: 700 }}>
-                      Dietary Preference Breakdown
-                    </Title>
-                    <Text size="xs" c="dimmed" mb="md">
-                      Ratio of Vegetarian to Non-Vegetarian items ordered
-                    </Text>
-
-                    <Group justify="space-between" mb={4}>
-                      <Text size="xs" fw={600} c="green.8">
-                        🌱 Veg: {metrics.dietaryPreference.vegCount} items
-                      </Text>
-                      <Text size="xs" fw={600} c="red.8">
-                        🍗 Non-Veg: {metrics.dietaryPreference.nonVegCount} items
-                      </Text>
-                    </Group>
-
-                    {metrics.dietaryPreference.totalDishes > 0 ? (
-                      <Progress.Root size="xl" radius="md">
-                        <Progress.Section
-                          value={
-                            (metrics.dietaryPreference.vegCount / metrics.dietaryPreference.totalDishes) * 100
-                          }
-                          color="green"
-                        >
-                          <Progress.Label>
-                            {Math.round(
-                              (metrics.dietaryPreference.vegCount / metrics.dietaryPreference.totalDishes) * 100
-                            )}
-                            %
-                          </Progress.Label>
-                        </Progress.Section>
-                        <Progress.Section
-                          value={
-                            (metrics.dietaryPreference.nonVegCount / metrics.dietaryPreference.totalDishes) * 100
-                          }
-                          color="red"
-                        >
-                          <Progress.Label>
-                            {Math.round(
-                              (metrics.dietaryPreference.nonVegCount / metrics.dietaryPreference.totalDishes) * 100
-                            )}
-                            %
-                          </Progress.Label>
-                        </Progress.Section>
-                      </Progress.Root>
-                    ) : (
-                      <Text size="xs" c="dimmed">
-                        No food items recorded.
-                      </Text>
-                    )}
-                  </Paper>
-                </Grid.Col>
-
-                {/* Payment Methods */}
-                <Grid.Col span={{ base: 12, md: 6 }}>
-                  <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
-                    <Title order={4} style={{ fontSize: 15, fontWeight: 700 }}>
-                      Payment Methods Used
-                    </Title>
-                    <Text size="xs" c="dimmed" mb="sm">
-                      Settlement channels preferred by this guest
-                    </Text>
-
-                    <Stack gap="xs">
-                      {metrics.paymentMethodsBreakdown.map((pm) => (
-                        <Group key={pm.method} justify="space-between" align="center">
-                          <Group gap="xs">
-                            <Badge size="sm" variant="light" color="blue">
-                              {pm.method}
-                            </Badge>
-                            <Text size="xs" c="dimmed">
-                              {pm.count} bills
-                            </Text>
-                          </Group>
-                          <Text size="xs" fw={700}>
-                            ₹{(pm.totalPaise / 100).toLocaleString("en-IN")}
+                        <Group gap={6} align="center">
+                          <IconSparkles size={15} color="#e8590c" />
+                          <Text size="xs" fw={700} c="orange.9">
+                            {visitedDaysData.mostVisitedDay} is the favorite visit day!
                           </Text>
                         </Group>
-                      ))}
+                        <Badge size="xs" variant="light" color="orange">
+                          {visitedDaysData.breakdown.find((d) => d.day === visitedDaysData.mostVisitedDay)?.percentage}% visits
+                        </Badge>
+                      </Group>
+                      {diningHabitInsight && (
+                        <Text size="11px" c="orange.8" mt={3}>
+                          {diningHabitInsight.description}
+                        </Text>
+                      )}
+                    </Paper>
+
+                    {/* 7-Day Visual Distribution Chart */}
+                    <Stack gap={6}>
+                      {visitedDaysData.breakdown.map((item) => {
+                        const isTop = item.day === visitedDaysData.mostVisitedDay && item.count > 0;
+                        return (
+                          <Box key={item.day}>
+                            <Group justify="space-between" align="center" mb={2}>
+                              <Group gap={6} align="center">
+                                <Text
+                                  size="xs"
+                                  fw={isTop ? 700 : 500}
+                                  c={isTop ? "orange.9" : "dark.7"}
+                                  style={{ minWidth: 64 }}
+                                >
+                                  {item.short} ({item.day})
+                                </Text>
+                                {isTop && (
+                                  <Badge size="xs" variant="dot" color="orange" px={4} py={0}>
+                                    Top
+                                  </Badge>
+                                )}
+                              </Group>
+                              <Group gap={6} align="center">
+                                <Text size="11px" fw={600} c={isTop ? "orange.9" : "dimmed"}>
+                                  {item.count} {item.count === 1 ? "visit" : "visits"}
+                                </Text>
+                                <Text size="11px" c="dimmed" style={{ minWidth: 32, textAlign: "right" }}>
+                                  {item.percentage}%
+                                </Text>
+                              </Group>
+                            </Group>
+                            <Progress
+                              value={item.percentage}
+                              color={isTop ? "orange" : item.count > 0 ? "blue" : "gray.3"}
+                              size="sm"
+                              radius="xl"
+                            />
+                          </Box>
+                        );
+                      })}
                     </Stack>
-                  </Paper>
-                </Grid.Col>
-
-                {/* Outlet Distribution */}
-                <Grid.Col span={12}>
-                  <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
-                    <Title order={4} style={{ fontSize: 15, fontWeight: 700 }}>
-                      Cross-Outlet Activity
-                    </Title>
-                    <Text size="xs" c="dimmed" mb="sm">
-                      Customer visit summary across all branches in {restaurant?.name || "the restaurant"}
+                  </Box>
+                ) : (
+                  <Center py="md">
+                    <Text size="xs" c="dimmed">
+                      No order visit day data recorded yet.
                     </Text>
+                  </Center>
+                )}
+              </Paper>
 
-                    <Table.ScrollContainer minWidth={450}>
-                      <Table verticalSpacing="xs" style={{ fontSize: 12 }}>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>Outlet Branch</Table.Th>
-                            <Table.Th style={{ textAlign: "center" }}>Orders Count</Table.Th>
-                            <Table.Th style={{ textAlign: "right" }}>Total Revenue</Table.Th>
-                            <Table.Th style={{ textAlign: "right" }}>Last Visit Date</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {overallChainMetrics.outletBreakdown.map((ob) => (
-                            <Table.Tr key={ob.outletId}>
-                              <Table.Td fw={600}>
-                                <Group gap="xs">
-                                  <IconBuildingStore size={15} color="#228be6" />
-                                  <span>{ob.outletName}</span>
-                                </Group>
-                              </Table.Td>
-                              <Table.Td style={{ textAlign: "center" }}>
-                                <Badge size="xs" variant="light" color="blue">
-                                  {ob.ordersCount} orders
-                                </Badge>
-                              </Table.Td>
-                              <Table.Td style={{ textAlign: "right", fontWeight: 700, color: "#2b8a3e" }}>
-                                ₹{(ob.totalSpendPaise / 100).toLocaleString("en-IN")}
-                              </Table.Td>
-                              <Table.Td style={{ textAlign: "right", color: "#868e96" }}>
-                                {formatShortDate(ob.lastVisit)}
-                              </Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </Table.ScrollContainer>
-                  </Paper>
-                </Grid.Col>
-              </Grid>
-            </Tabs.Panel>
-
-            {/* ─── TAB 4: STAFF NOTES & REQUESTS ──────────────────────────── */}
-            <Tabs.Panel value="notes">
-              <Stack gap="md" maw={800}>
-                <Box>
-                  <Title order={4} style={{ fontSize: 16, fontWeight: 700 }}>
-                    Customer Notes & Special Preferences
-                  </Title>
-                  <Text size="xs" c="dimmed">
-                    Notes saved here are visible to staff across POS and Orders to provide personalized hospitality.
-                  </Text>
-                </Box>
-
-                <Textarea
-                  placeholder="e.g. Prefers window table, allergic to peanuts, likes extra spicy dishes, friend of owner..."
-                  minRows={4}
-                  value={staffNotes}
-                  onChange={(e) => setStaffNotes(e.target.value)}
-                  size="sm"
-                  radius="md"
-                />
-
-                {/* Tag Management */}
-                <Box>
-                  <Text size="xs" fw={600} mb="xs">
-                    Customer Tags:
-                  </Text>
-                  <Group gap="xs" mb="xs" wrap="wrap">
-                    {customTags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        size="md"
-                        variant="light"
-                        color="blue"
-                        rightSection={
-                          <ActionIcon
-                            size="xs"
-                            color="blue"
-                            radius="xl"
-                            variant="transparent"
-                            onClick={() => handleRemoveTag(tag)}
-                          >
-                            ×
-                          </ActionIcon>
-                        }
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
+              {/* ─── CARD 2: FAVORITE DISHES ─────────────────────────────── */}
+              <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+                <Group justify="space-between" align="center" mb="sm">
+                  <Group gap={6} align="center">
+                    <ThemeIcon size={24} radius="md" color="teal" variant="light">
+                      <IconSoup size={14} />
+                    </ThemeIcon>
+                    <Title order={4} style={{ fontSize: 15, fontWeight: 700 }}>
+                      Favorite Dishes
+                    </Title>
                   </Group>
-
-                  <Group gap="xs" wrap="nowrap" maw={400}>
-                    <input
-                      type="text"
-                      placeholder="Add custom tag (e.g. Corporate)..."
-                      value={newTagInput}
-                      onChange={(e) => setNewTagInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddTag();
-                        }
-                      }}
-                      style={{
-                        padding: "6px 12px",
-                        fontSize: 13,
-                        borderRadius: 6,
-                        border: "1px solid #ced4da",
-                        outline: "none",
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    />
-                    <Button size="xs" variant="default" onClick={handleAddTag} visibleFrom="xs">
-                      Add Tag
-                    </Button>
-                    <ActionIcon size="md" variant="default" onClick={handleAddTag} hiddenFrom="xs" aria-label="Add Tag">
-                      <IconPlus size={16} />
-                    </ActionIcon>
-                  </Group>
-                </Box>
-
-                <Group justify="flex-start">
-                  <Button
-                    color="dinePrimary"
-                    size="sm"
-                    radius="md"
-                    loading={updateNotesMutation.isPending}
-                    onClick={handleSaveNotes}
-                    leftSection={<IconCheck size={16} />}
-                  >
-                    Save Notes & Preferences
-                  </Button>
+                  <Badge size="xs" variant="light" color="teal">
+                    {favoriteItems.length} Dishes
+                  </Badge>
                 </Group>
-              </Stack>
-            </Tabs.Panel>
-          </Tabs>
-        </Paper>
+
+                {favoriteItems.length === 0 ? (
+                  <Center py="md">
+                    <Text size="xs" c="dimmed">
+                      No favorite dishes recorded yet.
+                    </Text>
+                  </Center>
+                ) : (
+                  <Stack gap="xs">
+                    {favoriteItems.slice(0, 6).map((item, idx) => (
+                      <Paper
+                        key={item.itemId || item.name}
+                        p="xs"
+                        radius="sm"
+                        withBorder
+                        style={{
+                          backgroundColor: idx === 0 ? "#fdfbf7" : "#ffffff",
+                          borderColor: idx === 0 ? "#ffe8cc" : "#f1f3f5",
+                        }}
+                      >
+                        <Group justify="space-between" align="flex-start" wrap="nowrap">
+                          <Box style={{ minWidth: 0, flex: 1 }}>
+                            <Group gap={6} align="flex-start" wrap="nowrap">
+                              <Badge
+                                size="xs"
+                                variant="filled"
+                                color={idx === 0 ? "yellow" : idx === 1 ? "gray" : idx === 2 ? "orange" : "teal"}
+                                style={{ flexShrink: 0 }}
+                              >
+                                #{idx + 1}
+                              </Badge>
+                              <Box style={{ minWidth: 0, flex: 1 }}>
+                                <Text size="xs" fw={700} lineClamp={1} style={{ lineHeight: 1.35 }}>
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      verticalAlign: "text-top",
+                                      marginRight: 5,
+                                    }}
+                                  >
+                                    <VegNonVegIcon isNonVeg={item.isNonVeg} size={12} />
+                                  </span>
+                                  {item.name}
+                                </Text>
+                                <Text size="11px" c="dimmed" mt={1}>
+                                  Ordered {item.qty} × across {item.orderCount} visits
+                                </Text>
+                              </Box>
+                            </Group>
+                          </Box>
+
+                          <Text size="xs" fw={700} c="green.8" style={{ flexShrink: 0 }}>
+                            ₹{(item.totalSpendPaise / 100).toLocaleString("en-IN")}
+                          </Text>
+                        </Group>
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
+
+              {/* ─── CARD 3: DIETARY & PAYMENT PREFERENCES ────────────────── */}
+              <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+                <Title order={4} style={{ fontSize: 15, fontWeight: 700 }} mb="xs">
+                  Dining Habits & Payment Preferences
+                </Title>
+
+                {/* Dietary Distribution */}
+                <Box mb="md">
+                  <Group justify="space-between" align="center" mb={4}>
+                    <Text size="xs" fw={600} c="dark.7">
+                      Dietary Distribution
+                    </Text>
+                    <Group gap={6}>
+                      <Text size="11px" fw={600} c="green.8">
+                        🌱 Veg: {metrics.dietaryPreference.vegCount}
+                      </Text>
+                      <Text size="11px" c="dimmed">
+                        •
+                      </Text>
+                      <Text size="11px" fw={600} c="red.8">
+                        🍗 Non-Veg: {metrics.dietaryPreference.nonVegCount}
+                      </Text>
+                    </Group>
+                  </Group>
+
+                  {metrics.dietaryPreference.totalDishes > 0 ? (
+                    <Progress.Root size="lg" radius="md">
+                      <Progress.Section
+                        value={
+                          (metrics.dietaryPreference.vegCount / metrics.dietaryPreference.totalDishes) * 100
+                        }
+                        color="green"
+                      >
+                        <Progress.Label>
+                          {Math.round(
+                            (metrics.dietaryPreference.vegCount / metrics.dietaryPreference.totalDishes) * 100
+                          )}
+                          %
+                        </Progress.Label>
+                      </Progress.Section>
+                      <Progress.Section
+                        value={
+                          (metrics.dietaryPreference.nonVegCount / metrics.dietaryPreference.totalDishes) * 100
+                        }
+                        color="red"
+                      >
+                        <Progress.Label>
+                          {Math.round(
+                            (metrics.dietaryPreference.nonVegCount / metrics.dietaryPreference.totalDishes) * 100
+                          )}
+                          %
+                        </Progress.Label>
+                      </Progress.Section>
+                    </Progress.Root>
+                  ) : (
+                    <Text size="xs" c="dimmed">
+                      No dish preference data recorded yet.
+                    </Text>
+                  )}
+                </Box>
+
+                <Divider my="xs" />
+
+                {/* Payment Methods Breakdown */}
+                <Box>
+                  <Text size="xs" fw={600} c="dark.7" mb="xs">
+                    Payment Channels Used
+                  </Text>
+                  <Stack gap={6}>
+                    {metrics.paymentMethodsBreakdown.map((pm) => (
+                      <Group key={pm.method} justify="space-between" align="center">
+                        <Group gap={6}>
+                          <Badge size="xs" variant="light" color="blue">
+                            {pm.method}
+                          </Badge>
+                          <Text size="11px" c="dimmed">
+                            {pm.count} {pm.count === 1 ? "bill" : "bills"}
+                          </Text>
+                        </Group>
+                        <Text size="xs" fw={700}>
+                          ₹{(pm.totalPaise / 100).toLocaleString("en-IN")}
+                        </Text>
+                      </Group>
+                    ))}
+                  </Stack>
+                </Box>
+              </Paper>
+
+              {/* ─── CARD 4: CROSS-OUTLET VISITS ─────────────────────────── */}
+              {overallChainMetrics.outletBreakdown && overallChainMetrics.outletBreakdown.length > 0 && (
+                <Paper p="md" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
+                  <Group justify="space-between" align="center" mb="xs">
+                    <Group gap={6} align="center">
+                      <ThemeIcon size={24} radius="md" color="indigo" variant="light">
+                        <IconBuildingStore size={14} />
+                      </ThemeIcon>
+                      <Title order={4} style={{ fontSize: 15, fontWeight: 700 }}>
+                        Cross-Outlet Activity
+                      </Title>
+                    </Group>
+                    <Badge size="xs" variant="light" color="indigo">
+                      {overallChainMetrics.outletBreakdown.length} Outlets
+                    </Badge>
+                  </Group>
+
+                  <Stack gap={6}>
+                    {overallChainMetrics.outletBreakdown.map((ob) => (
+                      <Paper key={ob.outletId} p="xs" radius="sm" withBorder style={{ backgroundColor: "#fafafa" }}>
+                        <Group justify="space-between" align="center">
+                          <Box style={{ minWidth: 0 }}>
+                            <Text size="xs" fw={700} lineClamp={1}>
+                              {ob.outletName}
+                            </Text>
+                            <Text size="10px" c="dimmed">
+                              {ob.ordersCount} orders • Last visit: {formatShortDate(ob.lastVisit)}
+                            </Text>
+                          </Box>
+                          <Text size="xs" fw={700} c="green.8">
+                            ₹{(ob.totalSpendPaise / 100).toLocaleString("en-IN")}
+                          </Text>
+                        </Group>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Paper>
+              )}
+            </Stack>
+          </Grid.Col>
+        </Grid>
       </Stack>
 
       {/* ─── WHATSAPP MODAL ────────────────────────────────────────────── */}

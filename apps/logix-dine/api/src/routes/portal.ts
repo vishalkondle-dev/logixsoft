@@ -194,7 +194,7 @@ async function handleGetPortalSession(c: any) {
           note: it.note,
           isNonVeg: checkIsNonVeg(it.nameSnapshot || it.name),
         })),
-        itemsCount: items.filter((i: any) => i.status !== 'CANCELLED').length,
+        itemsCount: items.filter((i: any) => i.status !== 'CANCELLED').reduce((sum: number, it: any) => sum + (Number(it.qty) || 1), 0),
         delivery: del ? {
           status: del.status,
           addressLine1: del.addressLine1,

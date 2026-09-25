@@ -46,19 +46,27 @@ export function BillBreakdownModal({
 }: BillBreakdownModalProps) {
   if (!order) return null;
 
-  const subtotalPaise = order.subtotalPaise || 0;
-  // Compute standard 5% restaurant GST (CGST 2.5% + SGST 2.5%)
-  const cgstPaise = Math.round(subtotalPaise * 0.025);
-  const sgstPaise = Math.round(subtotalPaise * 0.025);
+  const totalItemQty = order.items.reduce((acc, it) => acc + (Number(it.qty) || 1), 0);
+  const itemsSubtotalPaise = order.items.reduce(
+    (sum, it) => sum + (it.pricePaise || 0) * (it.qty || 1),
+    0
+  );
+  const packagingChargePaise = order.packagingChargePaise || 0;
+  const deliveryChargePaise = order.deliveryChargePaise || 0;
+
+  // Compute standard 5% restaurant GST (CGST 2.5% + SGST 2.5%) on items subtotal
+  const cgstPaise = Math.round(itemsSubtotalPaise * 0.025);
+  const sgstPaise = Math.round(itemsSubtotalPaise * 0.025);
   const totalTaxPaise = cgstPaise + sgstPaise;
-  const grandTotalPaise = subtotalPaise + totalTaxPaise;
+  const grandTotalPaise = itemsSubtotalPaise + packagingChargePaise + deliveryChargePaise + totalTaxPaise;
 
   const shareReceiptWhatsApp = () => {
     const itemsText = order.items
-      .map(
-        (it) =>
-          `• ${it.name} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}`
-      )
+      .map((it) => {
+        const variantText = it.variant?.name ? ` (${it.variant.name})` : "";
+        const eachPriceText = it.qty > 1 ? ` (@ ₹${(it.pricePaise / 100).toFixed(2)} each)` : "";
+        return `• ${it.name}${variantText} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}${eachPriceText}`;
+      })
       .join("\n");
 
     const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
@@ -67,15 +75,25 @@ export function BillBreakdownModal({
     const outletName = order.outletName || order.outlet?.name || "";
     const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
 
+    const chargesLines: string[] = [];
+    chargesLines.push(`Items Subtotal: ${formatINR(itemsSubtotalPaise)}`);
+    if (packagingChargePaise > 0) {
+      chargesLines.push(`Packaging Fee: ${formatINR(packagingChargePaise)}`);
+    }
+    if (deliveryChargePaise > 0) {
+      chargesLines.push(`Delivery Fee: ${formatINR(deliveryChargePaise)}`);
+    }
+    chargesLines.push(`CGST (2.5%): ${formatINR(cgstPaise)}`);
+    chargesLines.push(`SGST (2.5%): ${formatINR(sgstPaise)}`);
+
     const message = `🧾 *Logix Dine Bill Summary*
 🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
 🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 --------------------------------
 ${itemsText}
 --------------------------------
-Subtotal: ${formatINR(subtotalPaise)}
-CGST (2.5%): ${formatINR(cgstPaise)}
-SGST (2.5%): ${formatINR(sgstPaise)}
+${chargesLines.join("\n")}
+--------------------------------
 *Estimated Total: ${formatINR(grandTotalPaise)}*
 --------------------------------
 Thank you for dining with us!`;
@@ -188,7 +206,7 @@ Thank you for dining with us!`;
                         <Text size="xs" fw={600} lineClamp={1}>
                           {item.name}
                         </Text>
-                        {item.variant?.name && (
+                        {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (
                           <Badge size="xs" variant="outline" color="gray">
                             {item.variant.name}
                           </Badge>
@@ -227,10 +245,10 @@ Thank you for dining with us!`;
         <Stack gap={4}>
           <Group justify="space-between">
             <Text size="xs" c="dimmed">
-              Items Subtotal ({order.itemsCount} items)
+              Items Subtotal ({totalItemQty} {totalItemQty === 1 ? "item" : "items"})
             </Text>
             <Text size="xs" fw={600}>
-              {formatINR(Math.max(0, subtotalPaise - (order.packagingChargePaise || 0) - (order.deliveryChargePaise || 0)))}
+              {formatINR(itemsSubtotalPaise)}
             </Text>
           </Group>
           {(order.packagingChargePaise || 0) > 0 && (

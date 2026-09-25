@@ -134,11 +134,30 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
     const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
 
     const itemsText = order.items
-      .map(
-        (it) =>
-          `• ${it.name} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}`
-      )
+      .map((it) => {
+        const variantText = it.variant?.name
+          ? ` (${it.variant.name})`
+          : it.variant
+          ? ` (${typeof it.variant === "object" ? it.variant.name : it.variant})`
+          : "";
+        const eachPriceText = it.qty > 1 ? ` (@ ₹${(it.pricePaise / 100).toFixed(2)} each)` : "";
+        return `• ${it.name}${variantText} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}${eachPriceText}`;
+      })
       .join("\n");
+
+    const itemsSubtotalPaise = order.items.reduce(
+      (sum, it) => sum + (it.pricePaise || 0) * (it.qty || 1),
+      0
+    );
+    const packagingChargePaise = order.packagingChargePaise || 0;
+    const deliveryChargePaise = order.deliveryChargePaise || 0;
+    const chargesLines: string[] = [];
+    if (packagingChargePaise > 0) {
+      chargesLines.push(`Packaging Charge: ${formatINR(packagingChargePaise)}`);
+    }
+    if (deliveryChargePaise > 0) {
+      chargesLines.push(`Delivery Fee: ${formatINR(deliveryChargePaise)}`);
+    }
 
     const message = `🧾 *Logix Dine Bill Summary*
 🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
@@ -146,7 +165,7 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
 --------------------------------
 ${itemsText}
 --------------------------------
-💰 *Running Total: ${formatINR(order.subtotalPaise)}*
+${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n${chargesLines.join("\n")}\n--------------------------------\n` : ""}💰 *Running Total: ${formatINR(order.subtotalPaise)}*
 🙏 Enjoying dining with Logix Dine!`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -653,8 +672,21 @@ ${itemsText}
                           <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
                         </Box>
 
-                        <Badge size="sm" circle color="dinePrimary" variant="light" style={{ flexShrink: 0 }}>
-                          {item.qty}
+                        <Badge
+                          size="sm"
+                          variant="light"
+                          color="dinePrimary"
+                          radius="sm"
+                          px={6}
+                          style={{
+                            flexShrink: 0,
+                            fontWeight: 700,
+                            fontSize: "11px",
+                            minWidth: 26,
+                            textAlign: "center",
+                          }}
+                        >
+                          {item.qty} ×
                         </Badge>
 
                         <Box style={{ minWidth: 0, flex: 1 }}>
@@ -666,7 +698,7 @@ ${itemsText}
                           </Group>
 
                           {/* Variant & Addons */}
-                          {item.variant?.name && (
+                          {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (
                             <Badge size="xs" variant="outline" color="gray" mt={2}>
                               {item.variant.name}
                             </Badge>
@@ -703,9 +735,16 @@ ${itemsText}
                       </Group>
 
                       {/* Right: Price */}
-                      <Text size="sm" fw={700} style={{ flexShrink: 0 }}>
-                        {formatINR(item.pricePaise * item.qty)}
-                      </Text>
+                      <Box style={{ textAlign: "right", flexShrink: 0 }}>
+                        <Text size="sm" fw={700}>
+                          {formatINR(item.pricePaise * item.qty)}
+                        </Text>
+                        {item.qty > 1 && (
+                          <Text size="10px" c="dimmed">
+                            ({formatINR(item.pricePaise)} each)
+                          </Text>
+                        )}
+                      </Box>
                     </Group>
                   </Paper>
                 ))}

@@ -40,7 +40,6 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, ownerOnly: true },
   { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar },
   { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax },
-  { id: "payments", label: "Payment Types & UPI", href: "/settings/payments", icon: IconCreditCard },
   { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee },
   { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter },
   { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode },
@@ -94,7 +93,6 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     if (settingsIdx !== -1 && parts[settingsIdx + 1]) {
       const seg = parts[settingsIdx + 1];
       if (seg === "outlets") return "restaurant";
-      if (seg === "payment-types") return "payments";
       if (seg === "dining-options") return "dining";
       if (seg === "delivery-agents") return "riders";
       return seg;

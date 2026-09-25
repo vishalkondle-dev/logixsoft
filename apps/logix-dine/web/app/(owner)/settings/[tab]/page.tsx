@@ -10,7 +10,6 @@ export const VALID_SETTINGS_TABS = [
   "reports",
   "staff",
   "printing",
-  "payments",
   "dining",
   "qr-menu",
   "whatsapp",
@@ -31,8 +30,8 @@ export default async function SettingsTabPage({
   if (tab === "outlets") {
     redirect("/settings/restaurant");
   }
-  if (tab === "payment-types") {
-    redirect("/settings/payments");
+  if (tab === "payment-types" || tab === "payments") {
+    redirect("/settings");
   }
   if (tab === "dining-options") {
     redirect("/settings/dining");

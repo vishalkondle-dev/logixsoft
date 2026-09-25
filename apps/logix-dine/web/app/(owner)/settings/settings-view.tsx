@@ -51,7 +51,6 @@ export const VALID_SETTINGS_TABS = [
   "reports",
   "staff",
   "printing",
-  "payments",
   "dining",
   "qr-menu",
   "whatsapp",
@@ -394,10 +393,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       title: "Thermal Printers",
       subtitle: "Configure Bluetooth & network thermal printers for bills & KOTs",
     },
-    payments: {
-      title: "Payment Types & UPI",
-      subtitle: "Configure accepted payments, UPI IDs, and dynamic QR",
-    },
     dining: {
       title: "Dining Options",
       subtitle: "Toggle dine-in, takeaway, and delivery modes",
@@ -635,133 +630,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               <PrinterButton />
             </Stack>
           </Paper>
-        </Tabs.Panel>
-
-        {/* Payment Types & UPI tab */}
-        <Tabs.Panel value="payments">
-          <Stack gap="md" maw={{ base: "100%", md: 800 }}>
-            <Paper p="md" radius="md">
-              <Group justify="space-between" mb="xs">
-                <div>
-                  <Text fw={600} size="lg">Accepted Payment Types</Text>
-                  <Text size="xs" c="dimmed">Manage how guests and staff settle orders across counter, tables, and delivery</Text>
-                </div>
-              </Group>
-              <Grid gap="sm">
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Paper p="sm" radius="sm" withBorder>
-                    <Group justify="space-between">
-                      <Group gap="xs">
-                        <ThemeIcon variant="light" color="green" size="md" radius="md">
-                          <IconCash size={18} />
-                        </ThemeIcon>
-                        <div>
-                          <Text size="sm" fw={600}>Cash Settlement</Text>
-                          <Text size="xs" c="dimmed">Direct counter cash payment</Text>
-                        </div>
-                      </Group>
-                      <Badge color="green" variant="light" size="sm">Active</Badge>
-                    </Group>
-                  </Paper>
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Paper p="sm" radius="sm" withBorder>
-                    <Group justify="space-between">
-                      <Group gap="xs">
-                        <ThemeIcon variant="light" color="blue" size="md" radius="md">
-                          <IconQrcode size={18} />
-                        </ThemeIcon>
-                        <div>
-                          <Text size="sm" fw={600}>UPI & Dynamic QR</Text>
-                          <Text size="xs" c="dimmed">Auto-generated dynamic QR code</Text>
-                        </div>
-                      </Group>
-                      <Badge color="blue" variant="light" size="sm">Active</Badge>
-                    </Group>
-                  </Paper>
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Paper p="sm" radius="sm" withBorder>
-                    <Group justify="space-between">
-                      <Group gap="xs">
-                        <ThemeIcon variant="light" color="teal" size="md" radius="md">
-                          <IconCreditCard size={18} />
-                        </ThemeIcon>
-                        <div>
-                          <Text size="sm" fw={600}>Card & EDC Machine</Text>
-                          <Text size="xs" c="dimmed">Credit/Debit POS card swipe</Text>
-                        </div>
-                      </Group>
-                      <Badge color="teal" variant="light" size="sm">Active</Badge>
-                    </Group>
-                  </Paper>
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Paper p="sm" radius="sm" withBorder>
-                    <Group justify="space-between">
-                      <Group gap="xs">
-                        <ThemeIcon variant="light" color="grape" size="md" radius="md">
-                          <IconDeviceMobile size={18} />
-                        </ThemeIcon>
-                        <div>
-                          <Text size="sm" fw={600}>Customer Self-Order Pay</Text>
-                          <Text size="xs" c="dimmed">Guest portal online checkout</Text>
-                        </div>
-                      </Group>
-                      <Badge color="grape" variant="light" size="sm">Active</Badge>
-                    </Group>
-                  </Paper>
-                </Grid.Col>
-              </Grid>
-            </Paper>
-
-            <Paper p="md" radius="md">
-              <Group justify="space-between" mb="xs">
-                <div>
-                  <Text fw={600} size="lg">Outlet UPI IDs & Dynamic QR</Text>
-                  <Text size="xs" c="dimmed">Configure individual UPI VPAs for each outlet to receive instant digital payments</Text>
-                </div>
-              </Group>
-
-              <Stack gap="sm">
-                {outlets.map((outlet) => (
-                  <Paper key={outlet.id} p="md" radius="sm" withBorder>
-                    <Group justify="space-between" align="center" wrap="wrap">
-                      <div>
-                        <Group gap="xs">
-                          <Text fw={600} size="sm">{outlet.name}</Text>
-                          {outlet.isDefault && <Badge size="xs" color="dinePrimary">Default</Badge>}
-                        </Group>
-                        {outlet.upiId ? (
-                          <Text size="xs" fw={700} c="dinePrimary" mt={2}>
-                            UPI ID: {outlet.upiId}
-                          </Text>
-                        ) : (
-                          <Group gap={4} align="center" mt={2}>
-                            <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
-                            <Text size="xs" c="orange" fw={500}>
-                              No UPI ID configured — click Configure to enable dynamic QR
-                            </Text>
-                          </Group>
-                        )}
-                      </div>
-                      <Group gap="xs">
-                        <Button
-                          size="xs"
-                          variant="light"
-                          color="dinePrimary"
-                          leftSection={<IconEdit size={14} />}
-                          onClick={() => openEditOutlet(outlet)}
-                        >
-                          {outlet.upiId ? "Edit UPI ID" : "Configure UPI ID"}
-                        </Button>
-                      </Group>
-                    </Group>
-                  </Paper>
-                ))}
-              </Stack>
-            </Paper>
-          </Stack>
         </Tabs.Panel>
 
         {/* Dining Options tab */}

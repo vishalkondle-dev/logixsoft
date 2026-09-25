@@ -156,15 +156,6 @@ export function SettingsOverview() {
           isAvailable: true,
         },
         {
-          id: "payment-types",
-          title: "Payment Types & UPI",
-          description: "Configure accepted payments, UPI IDs, and dynamic QR",
-          icon: IconCreditCard,
-          color: "blue",
-          href: "/settings/payments",
-          isAvailable: true,
-        },
-        {
           id: "dining-options",
           title: "Dining Options",
           description: "Toggle dine-in, takeaway, and delivery modes",

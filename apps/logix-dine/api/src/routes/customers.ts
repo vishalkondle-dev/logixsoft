@@ -236,6 +236,43 @@ app.get(
         }
       });
 
+      // Most visited day of week
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const dayCounts: Record<string, number> = {
+        Sunday: 0,
+        Monday: 0,
+        Tuesday: 0,
+        Wednesday: 0,
+        Thursday: 0,
+        Friday: 0,
+        Saturday: 0,
+      };
+      scopedOrders.forEach((o: any) => {
+        if (o.createdAt) {
+          const d = new Date(o.createdAt);
+          const dayName = dayNames[d.getDay()];
+          if (dayName) {
+            dayCounts[dayName] = (dayCounts[dayName] || 0) + 1;
+          }
+        }
+      });
+
+      let mostVisitedDay: string | null = null;
+      let maxDayOrders = 0;
+      Object.entries(dayCounts).forEach(([day, count]) => {
+        if (count > maxDayOrders) {
+          maxDayOrders = count;
+          mostVisitedDay = day;
+        }
+      });
+
+      const visitedDaysBreakdown = dayNames.map((day) => ({
+        day,
+        short: day.slice(0, 3),
+        count: dayCounts[day],
+        percentage: scopedOrders.length > 0 ? Math.round((dayCounts[day] / scopedOrders.length) * 100) : 0,
+      }));
+
       // Dietary preference (Veg vs Non-Veg items ordered)
       let vegItemsCount = 0;
       let nonVegItemsCount = 0;
@@ -406,6 +443,9 @@ app.get(
             count: data.count,
             totalPaise: data.totalPaise,
           })),
+          mostVisitedDay,
+          mostVisitedDayCount: maxDayOrders,
+          visitedDaysBreakdown,
           dietaryPreference: {
             vegCount: vegItemsCount,
             nonVegCount: nonVegItemsCount,

@@ -489,6 +489,9 @@ export interface CustomerProfileData {
     preferredTable: string | null;
     preferredPaymentMethod: string | null;
     paymentMethodsBreakdown: Array<{ method: string; count: number; totalPaise: number }>;
+    mostVisitedDay?: string | null;
+    mostVisitedDayCount?: number;
+    visitedDaysBreakdown?: Array<{ day: string; short: string; count: number; percentage: number }>;
     dietaryPreference: {
       vegCount: number;
       nonVegCount: number;

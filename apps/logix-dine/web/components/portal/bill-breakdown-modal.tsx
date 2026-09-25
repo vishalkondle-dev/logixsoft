@@ -46,30 +46,54 @@ export function BillBreakdownModal({
 }: BillBreakdownModalProps) {
   if (!order) return null;
 
-  const subtotalPaise = order.subtotalPaise || 0;
-  // Compute standard 5% restaurant GST (CGST 2.5% + SGST 2.5%)
-  const cgstPaise = Math.round(subtotalPaise * 0.025);
-  const sgstPaise = Math.round(subtotalPaise * 0.025);
+  const totalItemQty = order.items.reduce((acc, it) => acc + (Number(it.qty) || 1), 0);
+  const itemsSubtotalPaise = order.items.reduce(
+    (sum, it) => sum + (it.pricePaise || 0) * (it.qty || 1),
+    0
+  );
+  const packagingChargePaise = order.packagingChargePaise || 0;
+  const deliveryChargePaise = order.deliveryChargePaise || 0;
+
+  // Compute standard 5% restaurant GST (CGST 2.5% + SGST 2.5%) on items subtotal
+  const cgstPaise = Math.round(itemsSubtotalPaise * 0.025);
+  const sgstPaise = Math.round(itemsSubtotalPaise * 0.025);
   const totalTaxPaise = cgstPaise + sgstPaise;
-  const grandTotalPaise = subtotalPaise + totalTaxPaise;
+  const grandTotalPaise = itemsSubtotalPaise + packagingChargePaise + deliveryChargePaise + totalTaxPaise;
 
   const shareReceiptWhatsApp = () => {
     const itemsText = order.items
-      .map(
-        (it) =>
-          `• ${it.name} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}`
-      )
+      .map((it) => {
+        const variantText = it.variant?.name ? ` (${it.variant.name})` : "";
+        const eachPriceText = it.qty > 1 ? ` (@ ₹${(it.pricePaise / 100).toFixed(2)} each)` : "";
+        return `• ${it.name}${variantText} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}${eachPriceText}`;
+      })
       .join("\n");
 
+    const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+    const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+    const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+    const outletName = order.outletName || order.outlet?.name || "";
+    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+
+    const chargesLines: string[] = [];
+    chargesLines.push(`Items Subtotal: ${formatINR(itemsSubtotalPaise)}`);
+    if (packagingChargePaise > 0) {
+      chargesLines.push(`Packaging Fee: ${formatINR(packagingChargePaise)}`);
+    }
+    if (deliveryChargePaise > 0) {
+      chargesLines.push(`Delivery Fee: ${formatINR(deliveryChargePaise)}`);
+    }
+    chargesLines.push(`CGST (2.5%): ${formatINR(cgstPaise)}`);
+    chargesLines.push(`SGST (2.5%): ${formatINR(sgstPaise)}`);
+
     const message = `🧾 *Logix Dine Bill Summary*
-🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
+🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 --------------------------------
 ${itemsText}
 --------------------------------
-Subtotal: ${formatINR(subtotalPaise)}
-CGST (2.5%): ${formatINR(cgstPaise)}
-SGST (2.5%): ${formatINR(sgstPaise)}
+${chargesLines.join("\n")}
+--------------------------------
 *Estimated Total: ${formatINR(grandTotalPaise)}*
 --------------------------------
 Thank you for dining with us!`;
@@ -77,6 +101,12 @@ Thank you for dining with us!`;
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
+
+  const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+  const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+  const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+  const outletName = order.outletName || order.outlet?.name || "";
+  const channelTitle = isDelivery ? "🛵 Delivery" : isTakeaway ? "🛍️ Takeaway" : `Table ${order.tableNo}`;
 
   return (
     <Modal
@@ -90,7 +120,7 @@ Thank you for dining with us!`;
               Running Bill & Tax Breakdown
             </Title>
             <Text size="xs" c="dimmed">
-              Table {order.tableNo} • Token #{order.tokenNo || order.orderNo || "—"}
+              {channelTitle} • Token #{order.tokenNo || order.orderNo || "—"}
             </Text>
           </div>
         </Group>
@@ -105,15 +135,27 @@ Thank you for dining with us!`;
           <Group justify="space-between" align="center">
             <div>
               <Text fw={700} size="sm">
-                {order.restaurantName}
+                {restaurantName}
               </Text>
-              <Text size="xs" c="dimmed">
-                {order.outletName} {order.outletAddress ? `• ${order.outletAddress}` : ""}
-              </Text>
+              {outletName && (
+                <Text size="xs" c="dimmed">
+                  {outletName} {order.outletAddress ? `• ${order.outletAddress}` : ""}
+                </Text>
+              )}
             </div>
-            <Badge color="violet" variant="light">
-              Table: {order.tableNo}
-            </Badge>
+            {isDelivery ? (
+              <Badge color="teal" variant="light">
+                🛵 Delivery
+              </Badge>
+            ) : isTakeaway ? (
+              <Badge color="teal" variant="light">
+                🛍️ Takeaway
+              </Badge>
+            ) : (
+              <Badge color="violet" variant="light">
+                🍽️ Table: {order.tableNo}
+              </Badge>
+            )}
           </Group>
         </Paper>
 
@@ -156,31 +198,35 @@ Thank you for dining with us!`;
               {order.items.map((item) => (
                 <Table.Tr key={item.id}>
                   <Table.Td>
-                    <Group gap={6} align="flex-start" wrap="nowrap">
-                      <Box style={{ flexShrink: 0, marginTop: 4 }}>
-                        <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
-                      </Box>
-                      <div>
-                        <Text size="xs" fw={600} lineClamp={1}>
-                          {item.name}
+                    <div>
+                      <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            verticalAlign: "text-top",
+                            marginRight: 6,
+                          }}
+                        >
+                          <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
+                        </span>
+                        {item.name}
+                      </Text>
+                      {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (
+                        <Badge size="xs" variant="outline" color="gray">
+                          {item.variant.name}
+                        </Badge>
+                      )}
+                      {item.addons && item.addons.length > 0 && (
+                        <Text size="10px" c="dimmed">
+                          +{item.addons.map((a: any) => a.name).join(", ")}
                         </Text>
-                        {item.variant?.name && (
-                          <Badge size="xs" variant="outline" color="gray">
-                            {item.variant.name}
-                          </Badge>
-                        )}
-                        {item.addons && item.addons.length > 0 && (
-                          <Text size="10px" c="dimmed">
-                            +{item.addons.map((a: any) => a.name).join(", ")}
-                          </Text>
-                        )}
-                        {item.note && (
-                          <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
-                            Note: {item.note}
-                          </Text>
-                        )}
-                      </div>
-                    </Group>
+                      )}
+                      {item.note && (
+                        <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
+                          Note: {item.note}
+                        </Text>
+                      )}
+                    </div>
                   </Table.Td>
                   <Table.Td style={{ textAlign: "center", fontSize: 12, fontWeight: 600 }}>
                     {item.qty}
@@ -203,10 +249,10 @@ Thank you for dining with us!`;
         <Stack gap={4}>
           <Group justify="space-between">
             <Text size="xs" c="dimmed">
-              Items Subtotal ({order.itemsCount} items)
+              Items Subtotal ({totalItemQty} {totalItemQty === 1 ? "item" : "items"})
             </Text>
             <Text size="xs" fw={600}>
-              {formatINR(Math.max(0, subtotalPaise - (order.packagingChargePaise || 0) - (order.deliveryChargePaise || 0)))}
+              {formatINR(itemsSubtotalPaise)}
             </Text>
           </Group>
           {(order.packagingChargePaise || 0) > 0 && (
@@ -271,7 +317,7 @@ Thank you for dining with us!`;
           </Button>
 
           <Group gap="xs">
-            {onRequestBill && (
+            {onRequestBill && !isDelivery && !isTakeaway && (
               <Button
                 variant="filled"
                 color="orange"

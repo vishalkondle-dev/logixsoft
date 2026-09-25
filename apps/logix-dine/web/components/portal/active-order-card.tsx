@@ -127,20 +127,45 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
   };
 
   const shareReceiptWhatsApp = () => {
+    const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+    const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+    const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+    const outletName = order.outletName || order.outlet?.name || "";
+    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+
     const itemsText = order.items
-      .map(
-        (it) =>
-          `• ${it.name} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}`
-      )
+      .map((it) => {
+        const variantText = it.variant?.name
+          ? ` (${it.variant.name})`
+          : it.variant
+          ? ` (${typeof it.variant === "object" ? it.variant.name : it.variant})`
+          : "";
+        const eachPriceText = it.qty > 1 ? ` (@ ₹${(it.pricePaise / 100).toFixed(2)} each)` : "";
+        return `• ${it.name}${variantText} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}${eachPriceText}`;
+      })
       .join("\n");
 
+    const itemsSubtotalPaise = order.items.reduce(
+      (sum, it) => sum + (it.pricePaise || 0) * (it.qty || 1),
+      0
+    );
+    const packagingChargePaise = order.packagingChargePaise || 0;
+    const deliveryChargePaise = order.deliveryChargePaise || 0;
+    const chargesLines: string[] = [];
+    if (packagingChargePaise > 0) {
+      chargesLines.push(`Packaging Charge: ${formatINR(packagingChargePaise)}`);
+    }
+    if (deliveryChargePaise > 0) {
+      chargesLines.push(`Delivery Fee: ${formatINR(deliveryChargePaise)}`);
+    }
+
     const message = `🧾 *Logix Dine Bill Summary*
-🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
+🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 --------------------------------
 ${itemsText}
 --------------------------------
-💰 *Running Total: ${formatINR(order.subtotalPaise)}*
+${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n${chargesLines.join("\n")}\n--------------------------------\n` : ""}💰 *Running Total: ${formatINR(order.subtotalPaise)}*
 🙏 Enjoying dining with Logix Dine!`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -251,6 +276,9 @@ ${itemsText}
   };
 
   const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+  const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+  const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+  const outletName = order.outletName || order.outlet?.name || "";
   const qrSettings = order.outlet?.qrMenuSettings || (order as any).qrMenuSettings;
   const allowCallWaiter = qrSettings?.allowCallWaiter !== false;
   const allowCustomerOrdering = qrSettings?.allowCustomerOrdering !== false;
@@ -272,13 +300,15 @@ ${itemsText}
         {/* Card Header */}
         <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs">
           <div>
-            <Group gap={6} align="center">
+            <Group gap={6} align="center" wrap="wrap">
               <Text fw={800} size="md">
-                {order.restaurantName}
+                {restaurantName}
               </Text>
-              <Text size="xs" c="dimmed">
-                • {order.outletName}
-              </Text>
+              {outletName && (
+                <Text size="xs" c="dimmed">
+                  • {outletName}
+                </Text>
+              )}
             </Group>
             <Group gap={6} mt={4} wrap="wrap">
               <Badge color="violet" variant="light" size="sm">
@@ -288,9 +318,13 @@ ${itemsText}
                 <Badge color="teal" variant="filled" size="sm" leftSection={<IconMotorbike size={12} />}>
                   🛵 Delivery
                 </Badge>
+              ) : isTakeaway ? (
+                <Badge color="teal" variant="light" size="sm">
+                  🛍️ Takeaway
+                </Badge>
               ) : (
                 <Badge color="dark" variant="light" size="sm">
-                  Table: {order.tableNo}
+                  🍽️ Table: {order.tableNo}
                 </Badge>
               )}
               {renderOrderStatusBadge(order.orderStatus)}
@@ -525,7 +559,7 @@ ${itemsText}
         {/* Quick Action Buttons Bar */}
         <Group justify="space-between" align="center" mt="sm" wrap="wrap" gap="xs">
           <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
-            {!isDelivery && allowCallWaiter && (
+            {!isDelivery && !isTakeaway && allowCallWaiter && (
               <Button
                 color="orange"
                 variant="filled"
@@ -632,32 +666,51 @@ ${itemsText}
                     }}
                   >
                     <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-                      {/* Left: Veg/Non-veg + Qty + Name + Status */}
+                      {/* Left: Qty + Name with Veg/Non-veg + Status */}
                       <Group gap="xs" wrap="nowrap" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
-                        <Box style={{ flexShrink: 0, marginTop: 4 }}>
-                          <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
-                        </Box>
-
-                        <Badge size="sm" circle color="dinePrimary" variant="light" style={{ flexShrink: 0 }}>
-                          {item.qty}
+                        <Badge
+                          size="sm"
+                          variant="light"
+                          color="dinePrimary"
+                          radius="sm"
+                          px={6}
+                          style={{
+                            flexShrink: 0,
+                            fontWeight: 700,
+                            fontSize: "11px",
+                            minWidth: 26,
+                            textAlign: "center",
+                            marginTop: 1,
+                          }}
+                        >
+                          {item.qty} ×
                         </Badge>
 
                         <Box style={{ minWidth: 0, flex: 1 }}>
-                          <Group gap={6} align="center" wrap="wrap">
-                            <Text size="sm" fw={600} lineClamp={1}>
+                          <Group gap={6} align="flex-start" wrap="wrap">
+                            <Text size="sm" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  verticalAlign: "text-top",
+                                  marginRight: 6,
+                                }}
+                              >
+                                <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
+                              </span>
                               {item.name}
                             </Text>
                             {renderItemStatusBadge(item.status)}
                           </Group>
 
                           {/* Variant & Addons */}
-                          {item.variant?.name && (
-                            <Badge size="xs" variant="outline" color="gray" mt={2}>
+                          {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (
+                            <Badge size="xs" variant="outline" color="gray" mt={2} ml={20}>
                               {item.variant.name}
                             </Badge>
                           )}
                           {item.addons && item.addons.length > 0 && (
-                            <Text size="xs" c="dimmed">
+                            <Text size="xs" c="dimmed" ml={20}>
                               +{item.addons.map((a: any) => a.name).join(", ")}
                             </Text>
                           )}
@@ -666,6 +719,7 @@ ${itemsText}
                           {item.note && (
                             <Paper
                               mt={4}
+                              ml={20}
                               p="3px 8px"
                               radius="sm"
                               withBorder
@@ -688,9 +742,16 @@ ${itemsText}
                       </Group>
 
                       {/* Right: Price */}
-                      <Text size="sm" fw={700} style={{ flexShrink: 0 }}>
-                        {formatINR(item.pricePaise * item.qty)}
-                      </Text>
+                      <Box style={{ textAlign: "right", flexShrink: 0 }}>
+                        <Text size="sm" fw={700}>
+                          {formatINR(item.pricePaise * item.qty)}
+                        </Text>
+                        {item.qty > 1 && (
+                          <Text size="10px" c="dimmed">
+                            ({formatINR(item.pricePaise)} each)
+                          </Text>
+                        )}
+                      </Box>
                     </Group>
                   </Paper>
                 ))}

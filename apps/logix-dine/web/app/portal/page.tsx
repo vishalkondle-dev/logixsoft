@@ -55,6 +55,7 @@ import {
   IconMotorbike,
   IconShoppingCart,
   IconBuildingStore,
+  IconPackage,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
@@ -175,20 +176,61 @@ function CustomerPortalInner() {
 
   const shareReceiptWhatsApp = (order: CustomerPortalOrder) => {
     const itemsText = order.items
-      .map(
-        (it) =>
-          `• ${it.name} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}`
-      )
+      .map((it) => {
+        const vName = it.variant?.name || (typeof it.variant === "object" ? it.variant?.name : it.variant) || "";
+        const variantText = vName && !it.name.toLowerCase().includes(String(vName).toLowerCase()) ? ` (${vName})` : "";
+        const eachPriceText = it.qty > 1 ? ` (@ ₹${(it.pricePaise / 100).toFixed(2)} each)` : "";
+        return `• ${it.name}${variantText} × ${it.qty} = ₹${((it.pricePaise * it.qty) / 100).toFixed(2)}${eachPriceText}`;
+      })
       .join("\n");
 
+    const itemsSubtotalPaise = order.items.reduce(
+      (sum, it) => sum + (it.pricePaise || 0) * (it.qty || 1),
+      0
+    );
+    const packagingChargePaise = order.packagingChargePaise || 0;
+    const deliveryChargePaise = order.deliveryChargePaise || 0;
+    const totalPaid = order.paidPaise || order.subtotalPaise || 0;
+    const otherChargesOrTaxesPaise = Math.max(
+      0,
+      totalPaid - (itemsSubtotalPaise + packagingChargePaise + deliveryChargePaise)
+    );
+    const discountPaise = Math.max(
+      0,
+      (itemsSubtotalPaise + packagingChargePaise + deliveryChargePaise) - totalPaid
+    );
+
+    const chargesLines: string[] = [];
+    chargesLines.push(`Items Subtotal: ${formatINR(itemsSubtotalPaise)}`);
+    if (packagingChargePaise > 0) {
+      chargesLines.push(`Packaging Charge: ${formatINR(packagingChargePaise)}`);
+    }
+    if (deliveryChargePaise > 0) {
+      chargesLines.push(`Delivery Fee: ${formatINR(deliveryChargePaise)}`);
+    }
+    if (otherChargesOrTaxesPaise > 0) {
+      chargesLines.push(`Taxes & Charges: ${formatINR(otherChargesOrTaxesPaise)}`);
+    }
+    if (discountPaise > 0) {
+      chargesLines.push(`Discount: -${formatINR(discountPaise)}`);
+    }
+
+    const isDelivery = order.orderType === "DELIVERY" || (order.tableNo || "").toLowerCase() === "delivery" || Boolean(order.delivery);
+    const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+    const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+    const outletName = order.outletName || order.outlet?.name || "";
+    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+
     const message = `🧾 *Logix Dine Bill Receipt*
-🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
+🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 📅 Date: ${formatDate(order.settledAt || order.createdAt)}
 --------------------------------
 ${itemsText}
 --------------------------------
-💰 *Total Paid: ${formatINR(order.paidPaise || order.subtotalPaise)}*
+${chargesLines.join("\n")}
+--------------------------------
+💰 *Total Paid: ${formatINR(totalPaid)}*
 💳 Payment: ${order.method || "Cash"}
 🙏 Thank you for dining with us!`;
 
@@ -651,6 +693,26 @@ ${itemsText}
                 {pastOrders.map((order) => {
                   const isExpanded = !!expandedOrders[order.id];
                   const totalPaid = order.paidPaise || order.subtotalPaise || 0;
+                  const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
+                  const outletName = order.outletName || order.outlet?.name || "";
+                  const isDelivery = order.orderType === "DELIVERY" || (order.tableNo || "").toLowerCase() === "delivery" || Boolean(order.delivery);
+                  const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
+
+                  const totalItemQty = order.items?.reduce((sum, it) => sum + (Number(it.qty) || 1), 0) ?? order.itemsCount ?? 0;
+                  const itemsSubtotalPaise = order.items.reduce(
+                    (sum, it) => sum + (it.pricePaise || 0) * (it.qty || 1),
+                    0
+                  );
+                  const packagingChargePaise = order.packagingChargePaise || 0;
+                  const deliveryChargePaise = order.deliveryChargePaise || 0;
+                  const otherChargesOrTaxesPaise = Math.max(
+                    0,
+                    totalPaid - (itemsSubtotalPaise + packagingChargePaise + deliveryChargePaise)
+                  );
+                  const discountPaise = Math.max(
+                    0,
+                    (itemsSubtotalPaise + packagingChargePaise + deliveryChargePaise) - totalPaid
+                  );
 
                   return (
                     <Card
@@ -680,11 +742,13 @@ ${itemsText}
                             <Box style={{ minWidth: 0 }}>
                               <Group gap={6} align="center" wrap="wrap">
                                 <Text fw={700} size="sm" lineClamp={1}>
-                                  {order.restaurantName}
+                                  {restaurantName}
                                 </Text>
-                                <Badge size="xs" variant="light" color="gray">
-                                  {order.outletName}
-                                </Badge>
+                                {outletName && (
+                                  <Badge size="xs" variant="light" color="gray">
+                                    {outletName}
+                                  </Badge>
+                                )}
                               </Group>
 
                               <Group gap={6} mt={2} align="center" wrap="wrap">
@@ -692,13 +756,23 @@ ${itemsText}
                                   {formatDate(order.settledAt || order.createdAt)}
                                 </Text>
                                 <Text size="xs" c="dimmed">•</Text>
-                                <Text size="xs" c="dimmed">
+                                <Badge color="violet" variant="light" size="xs">
                                   Token #{order.tokenNo || order.orderNo || "—"}
-                                </Text>
-                                <Text size="xs" c="dimmed">•</Text>
-                                <Badge size="xs" color="gray" variant="outline">
-                                  {order.tableNo}
                                 </Badge>
+                                <Text size="xs" c="dimmed">•</Text>
+                                {isDelivery ? (
+                                  <Badge size="xs" color="teal" variant="light" leftSection={<IconMotorbike size={11} />}>
+                                    🛵 Delivery
+                                  </Badge>
+                                ) : isTakeaway ? (
+                                  <Badge size="xs" color="teal" variant="light">
+                                    🛍️ Takeaway
+                                  </Badge>
+                                ) : (
+                                  <Badge size="xs" color="gray" variant="outline">
+                                    🍽️ Table {order.tableNo}
+                                  </Badge>
+                                )}
                                 <Badge size="xs" color="green" variant="light">
                                   {order.method || "Paid"}
                                 </Badge>
@@ -713,7 +787,7 @@ ${itemsText}
                                 {formatINR(totalPaid)}
                               </Text>
                               <Text size="10px" c="dimmed">
-                                {order.itemsCount} {order.itemsCount === 1 ? "item" : "items"}
+                                {totalItemQty} {totalItemQty === 1 ? "item" : "items"}
                               </Text>
                             </Box>
                             <ActionIcon
@@ -755,40 +829,140 @@ ${itemsText}
 
                             {order.items.map((item) => (
                               <Group key={item.id} justify="space-between" align="flex-start">
-                                <Group gap="xs" wrap="nowrap" align="flex-start">
-                                  <Box style={{ flexShrink: 0, marginTop: 3 }}>
-                                    <VegNonVegIcon isNonVeg={item.isNonVeg} size={12} />
-                                  </Box>
-                                  <Badge size="xs" circle color="gray" variant="light" style={{ flexShrink: 0 }}>
-                                    {item.qty}
+                                <Group gap="xs" wrap="nowrap" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
+                                  <Badge
+                                    size="sm"
+                                    variant="light"
+                                    color="gray"
+                                    radius="sm"
+                                    px={6}
+                                    style={{
+                                      flexShrink: 0,
+                                      fontWeight: 700,
+                                      fontSize: "11px",
+                                      minWidth: 28,
+                                      textAlign: "center",
+                                      marginTop: 1,
+                                    }}
+                                  >
+                                    {item.qty} ×
                                   </Badge>
-                                  <div>
-                                    <Text size="xs" fw={500}>
+                                  <Box style={{ minWidth: 0, flex: 1 }}>
+                                    <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                                      <span
+                                        style={{
+                                          display: "inline-flex",
+                                          verticalAlign: "text-top",
+                                          marginRight: 6,
+                                        }}
+                                      >
+                                        <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
+                                      </span>
                                       {item.name}
+                                      {(() => {
+                                        const vName = item.variant?.name || (typeof item.variant === "object" ? item.variant?.name : item.variant) || "";
+                                        return vName && !item.name.toLowerCase().includes(String(vName).toLowerCase()) ? ` (${vName})` : "";
+                                      })()}
                                     </Text>
+                                    {Array.isArray(item.addons) && item.addons.length > 0 && (
+                                      <Text size="10px" c="dimmed">
+                                        + {item.addons.map((a: any) => typeof a === "object" ? a.name : a).join(", ")}
+                                      </Text>
+                                    )}
                                     {item.note && (
                                       <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
                                         Note: {item.note}
                                       </Text>
                                     )}
-                                  </div>
+                                  </Box>
                                 </Group>
-                                <Text size="xs" fw={600} style={{ flexShrink: 0 }}>
-                                  {formatINR(item.pricePaise * item.qty)}
-                                </Text>
+                                <Box style={{ textAlign: "right", flexShrink: 0 }}>
+                                  <Text size="xs" fw={700}>
+                                    {formatINR(item.pricePaise * item.qty)}
+                                  </Text>
+                                  {item.qty > 1 && (
+                                    <Text size="10px" c="dimmed">
+                                      ({formatINR(item.pricePaise)} each)
+                                    </Text>
+                                  )}
+                                </Box>
                               </Group>
                             ))}
 
-                            <Divider my={4} />
+                            <Divider my={6} />
 
-                            <Group justify="space-between" align="center">
-                              <Text size="xs" fw={600} c="dimmed">
-                                Total Paid via {order.method || "Cash"}
-                              </Text>
-                              <Text size="sm" fw={800} c="green.8">
-                                {formatINR(totalPaid)}
-                              </Text>
-                            </Group>
+                            {/* Charges Breakdown */}
+                            <Stack gap={4}>
+                              <Group justify="space-between" align="center">
+                                <Text size="xs" c="dimmed">
+                                  Items Subtotal ({totalItemQty} {totalItemQty === 1 ? "item" : "items"})
+                                </Text>
+                                <Text size="xs" fw={600}>
+                                  {formatINR(itemsSubtotalPaise)}
+                                </Text>
+                              </Group>
+
+                              {packagingChargePaise > 0 && (
+                                <Group justify="space-between" align="center">
+                                  <Group gap={4}>
+                                    <IconPackage size={13} color="#868e96" />
+                                    <Text size="xs" c="dimmed">
+                                      Packaging Charge
+                                    </Text>
+                                  </Group>
+                                  <Text size="xs" fw={600}>
+                                    {formatINR(packagingChargePaise)}
+                                  </Text>
+                                </Group>
+                              )}
+
+                              {deliveryChargePaise > 0 && (
+                                <Group justify="space-between" align="center">
+                                  <Group gap={4}>
+                                    <IconMotorbike size={13} color="#868e96" />
+                                    <Text size="xs" c="dimmed">
+                                      Delivery Fee
+                                    </Text>
+                                  </Group>
+                                  <Text size="xs" fw={600}>
+                                    {formatINR(deliveryChargePaise)}
+                                  </Text>
+                                </Group>
+                              )}
+
+                              {otherChargesOrTaxesPaise > 0 && (
+                                <Group justify="space-between" align="center">
+                                  <Text size="xs" c="dimmed">
+                                    Taxes & Other Charges
+                                  </Text>
+                                  <Text size="xs" fw={600}>
+                                    {formatINR(otherChargesOrTaxesPaise)}
+                                  </Text>
+                                </Group>
+                              )}
+
+                              {discountPaise > 0 && (
+                                <Group justify="space-between" align="center">
+                                  <Text size="xs" c="green.7">
+                                    Discount Applied
+                                  </Text>
+                                  <Text size="xs" fw={600} c="green.7">
+                                    - {formatINR(discountPaise)}
+                                  </Text>
+                                </Group>
+                              )}
+
+                              <Divider my={4} />
+
+                              <Group justify="space-between" align="center">
+                                <Text size="xs" fw={700}>
+                                  Total Paid via {order.method || "Cash"}
+                                </Text>
+                                <Text size="sm" fw={800} c="green.8">
+                                  {formatINR(totalPaid)}
+                                </Text>
+                              </Group>
+                            </Stack>
 
                             <Group justify="flex-end" mt="xs">
                               <Button

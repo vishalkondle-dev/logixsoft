@@ -66,7 +66,7 @@ async function handleGetPortalSession(c: any) {
           .from(appSchema.restaurantOutlet)
           .where(inArray(appSchema.restaurantOutlet.id, outletIds as string[]))
       : [];
-    const outletMap = new Map<string, { name: string; address?: string | null; phone?: string | null; upiId?: string | null }>(
+    const outletMap = new Map<string, { name: string; address?: string | null; phone?: string | null; upiId?: string | null; qrMenuSettings?: any; diningSettings?: any }>(
       outletRows.map((o: any) => [o.id, o])
     );
 
@@ -148,13 +148,23 @@ async function handleGetPortalSession(c: any) {
       const mappedOrder = {
         id: ord.id,
         orderNo: ord.orderNo,
-        tokenNo: ord.orderNo,
+        tokenNo: (ord as any).tokenNo ?? ord.orderNo ?? 1,
         tableNo: ord.tableNo,
         orderType: ord.orderType || (isDelivery ? 'DELIVERY' : isTakeaway ? 'TAKEAWAY' : 'DINE_IN'),
+        restaurantId: ord.restaurantId,
+        restaurantName: restInfo.name || 'Restaurant',
+        restaurantPhone: restInfo.phone || null,
+        outletId: ord.outletId,
+        outletName: outletInfo.name || 'Outlet',
+        outletAddress: outletInfo.address || null,
+        outletPhone: outletInfo.phone || null,
         subtotalPaise: ord.subtotalPaise,
         paidPaise: ord.paidPaise,
         status: ord.status,
         orderStatus: ord.orderStatus,
+        method: ord.method || (ord.status === 'PAID' ? 'Paid' : 'Unpaid'),
+        settledAt: ord.settledAt instanceof Date ? ord.settledAt.toISOString() : (ord.settledAt || null),
+        note: ord.note || null,
         packagingChargePaise: ord.packagingChargePaise || 0,
         deliveryChargePaise: ord.deliveryChargePaise || 0,
         createdAt: ord.createdAt instanceof Date ? ord.createdAt.toISOString() : ord.createdAt,
@@ -184,7 +194,7 @@ async function handleGetPortalSession(c: any) {
           note: it.note,
           isNonVeg: checkIsNonVeg(it.nameSnapshot || it.name),
         })),
-        itemsCount: items.filter((i: any) => i.status !== 'CANCELLED').length,
+        itemsCount: items.filter((i: any) => i.status !== 'CANCELLED').reduce((sum: number, it: any) => sum + (Number(it.qty) || 1), 0),
         delivery: del ? {
           status: del.status,
           addressLine1: del.addressLine1,
@@ -209,12 +219,49 @@ async function handleGetPortalSession(c: any) {
       }
     }
 
+    const totalOrdersCount = orders.length;
+    let lifetimeSpendPaise = 0;
+    let vegItemsCount = 0;
+    let nonVegItemsCount = 0;
+    const dishCountMap = new Map<string, { name: string; qty: number; isNonVeg: boolean }>();
+
+    for (const ord of pastOrdersList) {
+      lifetimeSpendPaise += (ord.paidPaise || ord.subtotalPaise || 0);
+    }
+
+    for (const item of itemRows) {
+      const isNonVeg = checkIsNonVeg(item.nameSnapshot);
+      if (isNonVeg) {
+        nonVegItemsCount += (item.qty || 1);
+      } else {
+        vegItemsCount += (item.qty || 1);
+      }
+      const name = item.nameSnapshot;
+      const existing = dishCountMap.get(name);
+      if (existing) {
+        existing.qty += item.qty;
+      } else {
+        dishCountMap.set(name, { name, qty: item.qty, isNonVeg });
+      }
+    }
+
+    const favoriteDishes = Array.from(dishCountMap.values())
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 4);
+
     return c.json({
       customer: {
         id: sessionUser?.id,
         phone: String(phone),
         name: sessionUser?.name || null,
         email: sessionUser?.email || null,
+      },
+      stats: {
+        lifetimeSpendPaise,
+        totalOrdersCount,
+        vegItemsCount,
+        nonVegItemsCount,
+        favoriteDishes,
       },
       activeOrders: activeOrdersList,
       pastOrders: pastOrdersList,

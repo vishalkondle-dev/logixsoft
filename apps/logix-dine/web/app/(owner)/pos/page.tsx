@@ -15,7 +15,7 @@ import {
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
   IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
-  IconTruckDelivery,
+  IconTruckDelivery, IconShoppingBag, IconQrcode, IconUsers, IconNotes, IconCircleFilled,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -116,7 +116,7 @@ interface CartPanelProps {
   currentRound?: number;
   onViewExistingItems?: () => void;
   customerActiveOrderConflict?: { orderNo: number; tableNo: string | null; orderId: string } | null;
-  availableOrderModes?: { label: string; value: "DINE_IN" | "TAKEAWAY" | "DELIVERY" }[];
+  availableOrderModes?: { label: React.ReactNode; value: "DINE_IN" | "TAKEAWAY" | "DELIVERY" }[];
   isFreeDelivery?: boolean;
   minDeliveryOrder?: number;
   isMinDeliveryBlocked?: boolean;
@@ -170,7 +170,7 @@ function CartPanel({
 }: CartPanelProps) {
   const currentModes = (availableOrderModes && availableOrderModes.length > 0)
     ? availableOrderModes
-    : [{ label: "🛍️ Takeaway", value: "TAKEAWAY" as const }];
+    : [{ label: <Group gap={4} justify="center" wrap="nowrap"><IconShoppingBag size={14} /><span>Takeaway</span></Group>, value: "TAKEAWAY" as const }];
   const effectiveOrderType = currentModes.some((m) => m.value === orderType)
     ? orderType
     : currentModes[0].value;
@@ -292,6 +292,7 @@ function CartPanel({
                         size="xs"
                         variant="outline"
                         color="teal"
+                        leftSection={<IconMapPin size={10} />}
                         style={{ cursor: "pointer" }}
                         onClick={() => {
                           if (addr.receiverName) setDeliveryCustomerName(addr.receiverName);
@@ -300,7 +301,7 @@ function CartPanel({
                           if (addr.pincode) setDeliveryPincode(addr.pincode);
                         }}
                       >
-                        📍 {addr.label || "Home"}: {addr.addressLine1.slice(0, 16)}...
+                        {addr.label || "Home"}: {addr.addressLine1.slice(0, 16)}...
                       </Badge>
                     ))}
                   </Group>
@@ -347,7 +348,7 @@ function CartPanel({
                     size="xs"
                     data={riders.map((r: any) => ({
                       value: r.id,
-                      label: `${r.name} (${r.status === "AVAILABLE" ? "🟢" : "🟠"} ${r.vehicleType || "Bike"})`,
+                      label: `${r.name} (${r.status === "AVAILABLE" ? "Available" : "Busy"} · ${r.vehicleType || "Bike"})`,
                     }))}
                     value={selectedRiderId}
                     onChange={setSelectedRiderId}
@@ -658,11 +659,11 @@ export default function POSPage() {
   const isDeliveryEnabled = diningSettings?.deliveryEnabled !== false;
 
   const availableOrderModes = useMemo(() => {
-    const modes: { label: string; value: "DINE_IN" | "TAKEAWAY" | "DELIVERY" }[] = [];
-    if (isDineInEnabled) modes.push({ label: "🍽️ Dine-In", value: "DINE_IN" });
-    if (isTakeawayEnabled) modes.push({ label: "🛍️ Takeaway", value: "TAKEAWAY" });
-    if (isDeliveryEnabled) modes.push({ label: "🛵 Delivery", value: "DELIVERY" });
-    if (modes.length === 0) modes.push({ label: "🛍️ Takeaway", value: "TAKEAWAY" });
+    const modes: { label: React.ReactNode; value: "DINE_IN" | "TAKEAWAY" | "DELIVERY" }[] = [];
+    if (isDineInEnabled) modes.push({ label: <Group gap={4} justify="center" wrap="nowrap"><IconToolsKitchen2 size={14} /><span>Dine-In</span></Group>, value: "DINE_IN" });
+    if (isTakeawayEnabled) modes.push({ label: <Group gap={4} justify="center" wrap="nowrap"><IconShoppingBag size={14} /><span>Takeaway</span></Group>, value: "TAKEAWAY" });
+    if (isDeliveryEnabled) modes.push({ label: <Group gap={4} justify="center" wrap="nowrap"><IconMotorbike size={14} /><span>Delivery</span></Group>, value: "DELIVERY" });
+    if (modes.length === 0) modes.push({ label: <Group gap={4} justify="center" wrap="nowrap"><IconShoppingBag size={14} /><span>Takeaway</span></Group>, value: "TAKEAWAY" });
     return modes;
   }, [isDineInEnabled, isTakeawayEnabled, isDeliveryEnabled]);
 
@@ -2123,9 +2124,9 @@ export default function POSPage() {
               value={settleMethod}
               onChange={setSettleMethod}
               data={[
-                { value: "Cash", label: "💵 Cash" },
-                { value: "UPI", label: "📱 UPI" },
-                { value: "QR", label: "🔲 QR Code" },
+                { value: "Cash", label: <Group gap={4} justify="center" wrap="nowrap"><IconCash size={14} /><span>Cash</span></Group> },
+                { value: "UPI", label: <Group gap={4} justify="center" wrap="nowrap"><IconQrcode size={14} /><span>UPI</span></Group> },
+                { value: "QR", label: <Group gap={4} justify="center" wrap="nowrap"><IconQrcode size={14} /><span>QR Code</span></Group> },
               ]}
               color="dinePrimary"
             />
@@ -2520,7 +2521,7 @@ export default function POSPage() {
         })()}
       </Modal>
 
-      {/* 🛵 Delivery Management Drawer */}
+      {/* Delivery Management Drawer */}
       <Drawer
         opened={deliveryDrawerOpen}
         onClose={() => setDeliveryDrawerOpen(false)}
@@ -2546,8 +2547,8 @@ export default function POSPage() {
             value={deliveryDrawerTab}
             onChange={(val) => setDeliveryDrawerTab(val as "active" | "fleet")}
             data={[
-              { label: `🛵 Active Deliveries (${activeDeliveryOrders.length})`, value: "active" },
-              { label: `👥 Fleet Riders (${riders.length})`, value: "fleet" },
+              { label: <Group gap={4} justify="center" wrap="nowrap"><IconMotorbike size={14} /><span>Active Deliveries ({activeDeliveryOrders.length})</span></Group>, value: "active" },
+              { label: <Group gap={4} justify="center" wrap="nowrap"><IconUsers size={14} /><span>Fleet Riders ({riders.length})</span></Group>, value: "fleet" },
             ]}
             fullWidth
             size="sm"
@@ -2561,7 +2562,7 @@ export default function POSPage() {
                     <IconTruckDelivery size={40} color="#adb5bd" />
                     <Text fw={600} c="dimmed">No Active Delivery Orders</Text>
                     <Text size="xs" c="dimmed" ta="center" style={{ maxWidth: 280 }}>
-                      Choose "🛵 Delivery" mode in POS cart when taking orders to dispatch and track riders here.
+                      Choose "Delivery" mode in POS cart when taking orders to dispatch and track riders here.
                     </Text>
                   </Stack>
                 </Center>
@@ -2593,16 +2594,20 @@ export default function POSPage() {
                               color={isOut ? "orange" : isAssigned ? "blue" : "yellow"}
                               variant="light"
                               size="sm"
+                              leftSection={isOut ? <IconMotorbike size={12} /> : isAssigned ? <IconUser size={12} /> : <IconClock size={12} />}
                             >
-                              {isOut ? "🛵 Out for Delivery" : isAssigned ? "👤 Rider Assigned" : "⏳ Unassigned"}
+                              {isOut ? "Out for Delivery" : isAssigned ? "Rider Assigned" : "Unassigned"}
                             </Badge>
                           </Group>
 
                           {/* Customer Phone & Quick Contact */}
                           <Group justify="space-between" align="center">
-                            <Text size="xs" fw={600} c="dimmed">
-                              📞 {customerPhone}
-                            </Text>
+                            <Group gap={4} align="center">
+                              <IconPhoneCall size={13} color="var(--mantine-color-dimmed)" />
+                              <Text size="xs" fw={600} c="dimmed">
+                                {customerPhone}
+                              </Text>
+                            </Group>
                             <Group gap={6}>
                               {customerPhone && (
                                 <>
@@ -2636,13 +2641,19 @@ export default function POSPage() {
                           {/* Delivery Address */}
                           {fullAddr && (
                             <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#f8f9fa" }}>
-                              <Text size="xs" fw={500} c="dark.6">
-                                📍 {fullAddr}
-                              </Text>
-                              {delivery?.deliveryNotes && (
-                                <Text size="xs" c="orange.8" mt={2}>
-                                  📝 Note: {delivery.deliveryNotes}
+                              <Group gap={4} align="center">
+                                <IconMapPin size={13} color="var(--mantine-color-dark-6)" />
+                                <Text size="xs" fw={500} c="dark.6">
+                                  {fullAddr}
                                 </Text>
+                              </Group>
+                              {delivery?.deliveryNotes && (
+                                <Group gap={4} align="center" mt={2}>
+                                  <IconNotes size={12} color="var(--mantine-color-orange-8)" />
+                                  <Text size="xs" c="orange.8">
+                                    Note: {delivery.deliveryNotes}
+                                  </Text>
+                                </Group>
                               )}
                             </Paper>
                           )}
@@ -2790,13 +2801,17 @@ export default function POSPage() {
                                 size="xs"
                                 color={r.status === "AVAILABLE" ? "green" : r.status === "ON_DELIVERY" ? "orange" : "gray"}
                                 variant="light"
+                                leftSection={r.status === "ON_DELIVERY" ? <IconMotorbike size={10} /> : <IconCircleFilled size={8} />}
                               >
-                                {r.status === "AVAILABLE" ? "🟢 Available" : r.status === "ON_DELIVERY" ? "🛵 On Delivery" : "Offline"}
+                                {r.status === "AVAILABLE" ? "Available" : r.status === "ON_DELIVERY" ? "On Delivery" : "Offline"}
                               </Badge>
                             </Group>
-                            <Text size="xs" c="dimmed" mt={2}>
-                              📞 {r.phone} · 🛵 {r.vehicleType || "Bike"} {r.vehicleNumber ? `(${r.vehicleNumber})` : ""}
-                            </Text>
+                            <Group gap={4} align="center" mt={2}>
+                              <IconPhoneCall size={12} color="var(--mantine-color-dimmed)" />
+                              <Text size="xs" c="dimmed">
+                                {r.phone} · {r.vehicleType || "Bike"} {r.vehicleNumber ? `(${r.vehicleNumber})` : ""}
+                              </Text>
+                            </Group>
                           </div>
                           {r.phone && (
                             <Button
@@ -2820,7 +2835,7 @@ export default function POSPage() {
         </Stack>
       </Drawer>
 
-      {/* 🔐 Verify Delivery & OTP Modal */}
+      {/* Verify Delivery & OTP Modal */}
       <Modal
         opened={Boolean(otpModalOrder)}
         onClose={() => {
@@ -2838,9 +2853,12 @@ export default function POSPage() {
               <Text size="xs" fw={700}>
                 {otpModalOrder.delivery?.customerName || "Customer"} · {otpModalOrder.delivery?.customerPhone}
               </Text>
-              <Text size="xs" c="dimmed">
-                📍 {otpModalOrder.delivery?.addressLine1}
-              </Text>
+              <Group gap={4} align="center">
+                <IconMapPin size={12} color="var(--mantine-color-dimmed)" />
+                <Text size="xs" c="dimmed">
+                  {otpModalOrder.delivery?.addressLine1}
+                </Text>
+              </Group>
               <Divider my={4} />
               <Group justify="space-between">
                 <Text size="xs" fw={700}>Total Amount:</Text>
@@ -2883,7 +2901,7 @@ export default function POSPage() {
         )}
       </Modal>
 
-      {/* 👤 Assign Rider Modal */}
+      {/* Assign Rider Modal */}
       <Modal
         opened={Boolean(assigningOrder)}
         onClose={() => {
@@ -2911,7 +2929,7 @@ export default function POSPage() {
                 placeholder="Choose rider"
                 data={riders.map((r: any) => ({
                   value: r.id,
-                  label: `${r.name} (${r.status === "AVAILABLE" ? "🟢 Available" : "🟠 Busy"} · ${r.vehicleType || "Bike"})`,
+                  label: `${r.name} (${r.status === "AVAILABLE" ? "Available" : "Busy"} · ${r.vehicleType || "Bike"})`,
                 }))}
                 value={assignRiderId}
                 onChange={setAssignRiderId}
@@ -2942,7 +2960,7 @@ export default function POSPage() {
         )}
       </Modal>
 
-      {/* ➕ Add Fleet Rider Modal */}
+      {/* Add Fleet Rider Modal */}
       <Modal
         opened={addRiderModalOpen}
         onClose={() => setAddRiderModalOpen(false)}

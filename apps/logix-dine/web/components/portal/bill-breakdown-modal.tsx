@@ -19,6 +19,9 @@ import {
   IconBrandWhatsapp,
   IconBellRinging,
   IconNotes,
+  IconMotorbike,
+  IconShoppingBag,
+  IconToolsKitchen2,
 } from "@tabler/icons-react";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type { CustomerPortalOrder } from "@/lib/api-client";
@@ -73,7 +76,7 @@ export function BillBreakdownModal({
     const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
     const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
     const outletName = order.outletName || order.outlet?.name || "";
-    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+    const channelLabel = isDelivery ? "Direct Delivery" : isTakeaway ? "Takeaway" : `Table: ${order.tableNo}`;
 
     const chargesLines: string[] = [];
     chargesLines.push(`Items Subtotal: ${formatINR(itemsSubtotalPaise)}`);
@@ -86,9 +89,9 @@ export function BillBreakdownModal({
     chargesLines.push(`CGST (2.5%): ${formatINR(cgstPaise)}`);
     chargesLines.push(`SGST (2.5%): ${formatINR(sgstPaise)}`);
 
-    const message = `🧾 *Logix Dine Bill Summary*
-🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
+    const message = `*Logix Dine Bill Summary*
+*${restaurantName}*${outletName ? ` (${outletName})` : ""}
+Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 --------------------------------
 ${itemsText}
 --------------------------------
@@ -106,7 +109,7 @@ Thank you for dining with us!`;
   const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
   const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
   const outletName = order.outletName || order.outlet?.name || "";
-  const channelTitle = isDelivery ? "🛵 Delivery" : isTakeaway ? "🛍️ Takeaway" : `Table ${order.tableNo}`;
+  const channelTitle = isDelivery ? "Delivery" : isTakeaway ? "Takeaway" : `Table ${order.tableNo}`;
 
   return (
     <Modal
@@ -144,16 +147,16 @@ Thank you for dining with us!`;
               )}
             </div>
             {isDelivery ? (
-              <Badge color="teal" variant="light">
-                🛵 Delivery
+              <Badge color="teal" variant="light" leftSection={<IconMotorbike size={12} />}>
+                Delivery
               </Badge>
             ) : isTakeaway ? (
-              <Badge color="teal" variant="light">
-                🛍️ Takeaway
+              <Badge color="teal" variant="light" leftSection={<IconShoppingBag size={12} />}>
+                Takeaway
               </Badge>
             ) : (
-              <Badge color="violet" variant="light">
-                🍽️ Table: {order.tableNo}
+              <Badge color="violet" variant="light" leftSection={<IconToolsKitchen2 size={12} />}>
+                Table: {order.tableNo}
               </Badge>
             )}
           </Group>

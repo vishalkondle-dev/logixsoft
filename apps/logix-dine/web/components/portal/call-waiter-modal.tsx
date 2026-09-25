@@ -98,7 +98,7 @@ export function CallWaiterModal({ opened, onClose, order, onSuccess }: CallWaite
       });
 
       notifications.show({
-        title: "🛎️ Staff Notified!",
+        title: "Staff Notified!",
         message: `${res.serviceLabel} requested for Table ${order.tableNo}. Someone is on their way!`,
         color: "teal",
         icon: <IconCheck size={18} />,

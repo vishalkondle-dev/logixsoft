@@ -672,7 +672,7 @@ export default function KitchenPage() {
                     loading={marking === order.id}
                     onClick={() => handleMarkReady(order.id)}
                   >
-                    {allItemsPrepared ? "All Items Ready ✓" : "Mark Order Ready"}
+                    {allItemsPrepared ? "All Items Ready" : "Mark Order Ready"}
                   </Button>
                 </Paper>
               );

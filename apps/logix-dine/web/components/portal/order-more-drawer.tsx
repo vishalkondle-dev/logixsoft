@@ -205,7 +205,7 @@ export function OrderMoreDrawer({
       });
 
       notifications.show({
-        title: "🍳 Round Placed!",
+        title: "Round Placed!",
         message: `${res.message || `Round ${res.round} has been sent to the kitchen!`}`,
         color: "teal",
         icon: <IconCheck size={18} />,

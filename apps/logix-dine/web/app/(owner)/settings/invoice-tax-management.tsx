@@ -605,10 +605,16 @@ export function InvoiceTaxManagement() {
                             </Group>
                             <Group gap="xs">
                               {rule.autoApply && (
-                                <Text size="xs" c="dimmed">⚡ Auto-applies to bill</Text>
+                                <Group gap={4} align="center">
+                                  <IconSparkles size={12} color="#868e96" />
+                                  <Text size="xs" c="dimmed">Auto-applies to bill</Text>
+                                </Group>
                               )}
                               {rule.isTaxable && (
-                                <Text size="xs" c="dimmed">🏷️ Subject to GST</Text>
+                                <Group gap={4} align="center">
+                                  <IconReceiptTax size={12} color="#868e96" />
+                                  <Text size="xs" c="dimmed">Subject to GST</Text>
+                                </Group>
                               )}
                             </Group>
                           </div>

@@ -205,7 +205,7 @@ export function formatOrderWhatsAppMessage(
   customFooter?: string | null
 ): string {
   const tableStr = order.orderType === 'DELIVERY'
-    ? '🛵 Delivery'
+    ? 'Delivery'
     : order.tableNo
       ? order.tableNo.toLowerCase() === 'takeaway'
         ? 'Takeaway'
@@ -228,11 +228,11 @@ export function formatOrderWhatsAppMessage(
     })
     .join('\n');
 
-  const title = isSettled ? '🧾 *Payment Receipt*' : '🍽️ *Order Confirmed!*';
+  const title = isSettled ? '*Payment Receipt*' : '*Order Confirmed!*';
   const header = `*${restaurantName}*${outletName ? ` (${outletName})` : ''}`;
-  const paymentLine = isSettled && order.method ? `\n💳 Payment: *${order.method}*` : '';
-  const deliveryAddrLine = delivery?.addressLine1 ? `\n📍 Address: *${delivery.addressLine1}${delivery.landmark ? ` (${delivery.landmark})` : ''}*` : '';
-  const otpLine = delivery?.deliveryOtp ? `\n🔐 Delivery PIN: *${delivery.deliveryOtp}*` : '';
+  const paymentLine = isSettled && order.method ? `\nPayment: *${order.method}*` : '';
+  const deliveryAddrLine = delivery?.addressLine1 ? `\nAddress: *${delivery.addressLine1}${delivery.landmark ? ` (${delivery.landmark})` : ''}*` : '';
+  const otpLine = delivery?.deliveryOtp ? `\nDelivery PIN: *${delivery.deliveryOtp}*` : '';
   const chargesLine = (pkgPaise > 0 || delPaise > 0)
     ? `\nPackaging: ₹${(pkgPaise / 100).toFixed(0)} | Delivery: ₹${(delPaise / 100).toFixed(0)}`
     : '';

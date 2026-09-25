@@ -11,7 +11,7 @@ import Link from "next/link";
 import {
   IconReceipt, IconPrinter, IconArrowRight, IconX,
   IconBan, IconCheck, IconCash, IconDoorExit, IconAlertCircle,
-  IconUser,
+  IconUser, IconMotorbike, IconMapPin, IconNotes, IconQrcode, IconCreditCard,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useOrders } from "@/lib/queries";
@@ -277,7 +277,7 @@ export default function OrdersPage() {
             onChange={setStatusFilter}
             data={[
               { group: "Order Type", items: [
-                { value: "DELIVERY", label: "🛵 Delivery" },
+                { value: "DELIVERY", label: "Delivery" },
               ]},
               { group: "Order Lifecycle", items: [
                 { value: "ORDERED", label: "Ordered" },
@@ -335,8 +335,8 @@ export default function OrdersPage() {
                       </Badge>
                     )}
                     {isDelivery ? (
-                      <Badge size="xs" color="teal" variant="filled">
-                        🛵 Delivery
+                      <Badge size="xs" color="teal" variant="filled" leftSection={<IconMotorbike size={11} />}>
+                        Delivery
                       </Badge>
                     ) : order.tableNo ? (
                       <Badge size="xs" variant="outline">
@@ -349,14 +349,15 @@ export default function OrdersPage() {
                         size="xs"
                         variant="light"
                         color={entry.delivery.status === "DELIVERED" ? "green" : entry.delivery.status === "OUT_FOR_DELIVERY" ? "orange" : "blue"}
+                        leftSection={entry.delivery.status === "OUT_FOR_DELIVERY" ? <IconMotorbike size={11} /> : undefined}
                       >
-                        {entry.delivery.status === "OUT_FOR_DELIVERY" ? "🛵 Out" : entry.delivery.status === "DELIVERED" ? "Delivered" : entry.delivery.status}
+                        {entry.delivery.status === "OUT_FOR_DELIVERY" ? "Out" : entry.delivery.status === "DELIVERED" ? "Delivered" : entry.delivery.status}
                       </Badge>
                     )}
 
                     {isDelivery && entry.delivery?.riderName && (
-                      <Badge size="xs" variant="outline" color="blue">
-                        👤 {entry.delivery.riderName}
+                      <Badge size="xs" variant="outline" color="blue" leftSection={<IconUser size={11} />}>
+                        {entry.delivery.riderName}
                       </Badge>
                     )}
 
@@ -431,8 +432,8 @@ export default function OrdersPage() {
                   <Text size="xs" c="dimmed">
                     {items.length} item{items.length !== 1 ? "s" : ""}
                     {order.method ? ` · ${order.method}` : ""}
-                    {order.kotPrintedAt ? " · KOT ✓" : ""}
-                    {order.readyAt ? " · Ready ✓" : ""}
+                    {order.kotPrintedAt ? " · KOT Printed" : ""}
+                    {order.readyAt ? " · Ready" : ""}
                   </Text>
                   {/* Summary of active items progress */}
                   <Group gap={4}>
@@ -541,9 +542,12 @@ export default function OrdersPage() {
               {(Boolean(selected.delivery) || selected.order?.orderType === "DELIVERY" || selected.order?.tableNo === "Delivery") && (
                 <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }}>
                   <Group justify="space-between" align="center" mb={6}>
-                    <Text size="xs" fw={700} c="teal.9">
-                      🛵 DELIVERY DETAILS
-                    </Text>
+                    <Group gap={6} align="center">
+                      <IconMotorbike size={14} color="var(--mantine-color-teal-9)" />
+                      <Text size="xs" fw={700} c="teal.9">
+                        DELIVERY DETAILS
+                      </Text>
+                    </Group>
                     {selected.delivery?.status && (
                       <Badge size="xs" color="teal" variant="filled">
                         {selected.delivery.status}
@@ -556,16 +560,25 @@ export default function OrdersPage() {
                       <Text size="xs">Recipient: <b>{selected.delivery.customerName}</b></Text>
                     )}
                     {selected.delivery?.addressLine1 && (
-                      <Text size="xs">📍 Address: {selected.delivery.addressLine1}{selected.delivery.landmark ? ` (${selected.delivery.landmark})` : ""}</Text>
+                      <Group gap={4} align="center" wrap="nowrap">
+                        <IconMapPin size={12} color="var(--mantine-color-dimmed)" />
+                        <Text size="xs">Address: {selected.delivery.addressLine1}{selected.delivery.landmark ? ` (${selected.delivery.landmark})` : ""}</Text>
+                      </Group>
                     )}
                     {selected.delivery?.pincode && (
                       <Text size="xs">Pincode: {selected.delivery.pincode}</Text>
                     )}
                     {selected.delivery?.deliveryNotes && (
-                      <Text size="xs" c="orange.8">📝 Note: {selected.delivery.deliveryNotes}</Text>
+                      <Group gap={4} align="center" wrap="nowrap">
+                        <IconNotes size={12} color="var(--mantine-color-orange-8)" />
+                        <Text size="xs" c="orange.8">Note: {selected.delivery.deliveryNotes}</Text>
+                      </Group>
                     )}
                     {selected.delivery?.riderName && (
-                      <Text size="xs" c="blue.8">👤 Rider: <b>{selected.delivery.riderName}</b> {selected.delivery.riderPhone ? `(${selected.delivery.riderPhone})` : ""}</Text>
+                      <Group gap={4} align="center" wrap="nowrap">
+                        <IconUser size={12} color="var(--mantine-color-blue-8)" />
+                        <Text size="xs" c="blue.8">Rider: <b>{selected.delivery.riderName}</b> {selected.delivery.riderPhone ? `(${selected.delivery.riderPhone})` : ""}</Text>
+                      </Group>
                     )}
                     {selected.delivery?.deliveryOtp && (
                       <Group gap={6} mt={2}>
@@ -981,9 +994,9 @@ export default function OrdersPage() {
                   fullWidth
                   color="dinePrimary"
                   data={[
-                    { value: "Cash", label: "💵 Cash" },
-                    { value: "UPI", label: "📱 UPI" },
-                    { value: "Card", label: "💳 Card" },
+                    { value: "Cash", label: <Group gap={4} justify="center" wrap="nowrap"><IconCash size={14} /><span>Cash</span></Group> },
+                    { value: "UPI", label: <Group gap={4} justify="center" wrap="nowrap"><IconQrcode size={14} /><span>UPI</span></Group> },
+                    { value: "Card", label: <Group gap={4} justify="center" wrap="nowrap"><IconCreditCard size={14} /><span>Card</span></Group> },
                     { value: "Other", label: "Other" },
                   ]}
                 />
@@ -1047,9 +1060,9 @@ export default function OrdersPage() {
                       fullWidth
                       color="dinePrimary"
                       data={[
-                        { value: "Cash", label: "💵 Cash" },
-                        { value: "UPI", label: "📱 UPI" },
-                        { value: "Card", label: "💳 Card" },
+                        { value: "Cash", label: <Group gap={4} justify="center" wrap="nowrap"><IconCash size={14} /><span>Cash</span></Group> },
+                        { value: "UPI", label: <Group gap={4} justify="center" wrap="nowrap"><IconQrcode size={14} /><span>UPI</span></Group> },
+                        { value: "Card", label: <Group gap={4} justify="center" wrap="nowrap"><IconCreditCard size={14} /><span>Card</span></Group> },
                         { value: "Other", label: "Other" },
                       ]}
                     />

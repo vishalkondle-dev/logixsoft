@@ -55,6 +55,13 @@ import {
   IconReceiptOff,
   IconSparkles,
   IconFlame,
+  IconLeaf,
+  IconMeat,
+  IconSalad,
+  IconMotorbike,
+  IconShoppingBag,
+  IconBriefcase,
+  IconCalendarEvent,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -308,7 +315,8 @@ export default function CustomerProfilePage() {
         label: "Weekend Regular",
         description: "Visits predominantly on Fridays, Saturdays & Sundays",
         color: "violet",
-        badge: "🎉 Weekend Regular",
+        badge: "Weekend Regular",
+        icon: IconCalendarEvent,
       };
     }
     if (weekendCount / totalCount <= 0.3) {
@@ -316,14 +324,16 @@ export default function CustomerProfilePage() {
         label: "Weekday Diner",
         description: "Visits predominantly on Monday through Thursday",
         color: "blue",
-        badge: "💼 Weekday Guest",
+        badge: "Weekday Guest",
+        icon: IconBriefcase,
       };
     }
     return {
       label: "Balanced Diner",
       description: "Visits evenly distributed throughout the week",
       color: "teal",
-      badge: "🌟 All-Week Guest",
+      badge: "All-Week Guest",
+      icon: IconSparkles,
     };
   }, [visitedDaysData]);
 
@@ -656,12 +666,21 @@ export default function CustomerProfilePage() {
                             ? "red"
                             : "orange"
                         }
+                        leftSection={
+                          metrics.dietaryPreference.primary === "Veg" ? (
+                            <IconLeaf size={12} />
+                          ) : metrics.dietaryPreference.primary === "Non-Veg" ? (
+                            <IconMeat size={12} />
+                          ) : (
+                            <IconSalad size={12} />
+                          )
+                        }
                       >
                         {metrics.dietaryPreference.primary === "Veg"
-                          ? "🌱 Pure Vegetarian"
+                          ? "Pure Vegetarian"
                           : metrics.dietaryPreference.primary === "Non-Veg"
-                          ? "🍗 Non-Veg Lover"
-                          : "🥗 Mixed Dining"}
+                          ? "Non-Veg Lover"
+                          : "Mixed Dining"}
                       </Badge>
 
                       {/* Preferred Dining Mode */}
@@ -675,17 +694,31 @@ export default function CustomerProfilePage() {
                             ? "blue"
                             : "gray"
                         }
+                        leftSection={
+                          metrics.preferredDineMode === "Delivery" ? (
+                            <IconMotorbike size={12} />
+                          ) : metrics.preferredDineMode === "Dine-In" ? (
+                            <IconToolsKitchen2 size={12} />
+                          ) : (
+                            <IconShoppingBag size={12} />
+                          )
+                        }
                       >
                         {metrics.preferredDineMode === "Delivery"
-                          ? `🛵 Delivery (${metrics.deliveryCount || 0})`
+                          ? `Delivery (${metrics.deliveryCount || 0})`
                           : metrics.preferredDineMode === "Dine-In"
-                          ? `🍽️ Dine-In (${metrics.dineInCount})`
-                          : `🛍️ Takeaway (${metrics.takeawayCount})`}
+                          ? `Dine-In (${metrics.dineInCount})`
+                          : `Takeaway (${metrics.takeawayCount})`}
                       </Badge>
 
                       {/* Dining Habit Badge */}
                       {diningHabitInsight && (
-                        <Badge size="sm" variant="outline" color={diningHabitInsight.color}>
+                        <Badge
+                          size="sm"
+                          variant="outline"
+                          color={diningHabitInsight.color}
+                          leftSection={<diningHabitInsight.icon size={12} />}
+                        >
                           {diningHabitInsight.badge}
                         </Badge>
                       )}
@@ -1015,7 +1048,7 @@ export default function CustomerProfilePage() {
               {metrics.preferredDineMode}
             </Title>
             <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
-              🍽️ {metrics.dineInCount} Dine • 🛍️ {metrics.takeawayCount} Take{metrics.deliveryCount ? ` • 🛵 ${metrics.deliveryCount} Del` : ""}
+              {metrics.dineInCount} Dine • {metrics.takeawayCount} Take{metrics.deliveryCount ? ` • ${metrics.deliveryCount} Del` : ""}
             </Text>
           </Paper>
         </SimpleGrid>
@@ -1130,12 +1163,21 @@ export default function CustomerProfilePage() {
                                     size="xs"
                                     variant="outline"
                                     color={isDelivery ? "teal" : isTakeaway ? "gray" : "blue"}
+                                    leftSection={
+                                      isDelivery ? (
+                                        <IconMotorbike size={11} />
+                                      ) : isTakeaway ? (
+                                        <IconShoppingBag size={11} />
+                                      ) : (
+                                        <IconToolsKitchen2 size={11} />
+                                      )
+                                    }
                                   >
                                     {isDelivery
-                                      ? "🛵 Delivery"
+                                      ? "Delivery"
                                       : isTakeaway
-                                      ? "🛍️ Takeaway"
-                                      : `🍽️ Table ${order.tableNo}`}
+                                      ? "Takeaway"
+                                      : `Table ${order.tableNo}`}
                                   </Badge>
                                   {scopeMode === "all" && (
                                     <Badge size="xs" variant="default" visibleFrom="xs">
@@ -1529,15 +1571,21 @@ export default function CustomerProfilePage() {
                       Dietary Distribution
                     </Text>
                     <Group gap={6}>
-                      <Text size="11px" fw={600} c="green.8">
-                        🌱 Veg: {metrics.dietaryPreference.vegCount}
-                      </Text>
+                      <Group gap={3} align="center">
+                        <IconLeaf size={12} color="#2f9e44" />
+                        <Text size="11px" fw={600} c="green.8">
+                          Veg: {metrics.dietaryPreference.vegCount}
+                        </Text>
+                      </Group>
                       <Text size="11px" c="dimmed">
                         •
                       </Text>
-                      <Text size="11px" fw={600} c="red.8">
-                        🍗 Non-Veg: {metrics.dietaryPreference.nonVegCount}
-                      </Text>
+                      <Group gap={3} align="center">
+                        <IconMeat size={12} color="#e03131" />
+                        <Text size="11px" fw={600} c="red.8">
+                          Non-Veg: {metrics.dietaryPreference.nonVegCount}
+                        </Text>
+                      </Group>
                     </Group>
                   </Group>
 

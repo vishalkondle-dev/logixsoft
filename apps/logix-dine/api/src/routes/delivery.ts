@@ -432,7 +432,7 @@ async function transitionDeliveryStatus(c: any, orderId: string, newStatus: any,
                 ? `\nRider: *${updatedDelivery.riderName}*${updatedDelivery.riderPhone ? ` (${updatedDelivery.riderPhone})` : ''}`
                 : '';
               const pinText = existingDelivery.deliveryOtp ? `\nDelivery PIN: *${existingDelivery.deliveryOtp}*` : '';
-              const msg = `🛵 *Order Out for Delivery!*\n*${rest?.name || 'Restaurant'}* (${out?.name || ''})${riderText}${pinText}\nYour order is on the way! Please share PIN with rider upon delivery.${ws.customFooterNote ? `\n\n${ws.customFooterNote}` : ''}`;
+              const msg = `*Order Out for Delivery!*\n*${rest?.name || 'Restaurant'}* (${out?.name || ''})${riderText}${pinText}\nYour order is on the way! Please share PIN with rider upon delivery.${ws.customFooterNote ? `\n\n${ws.customFooterNote}` : ''}`;
               await sendWhatsAppText(existingDelivery.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
             }
           } catch (err) {

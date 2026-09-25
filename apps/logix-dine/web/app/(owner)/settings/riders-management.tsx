@@ -151,20 +151,35 @@ export function RidersManagement() {
       {/* Metric Strip */}
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <Paper withBorder p="md" radius="md">
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase">Active & Available</Text>
-          <Text size="xl" fw={700} c="teal">🟢 {availableCount}</Text>
+          <Group justify="space-between" align="center">
+            <Text size="xs" c="dimmed" fw={600} tt="uppercase">Active & Available</Text>
+            <ThemeIcon size={22} radius="xl" color="teal" variant="light">
+              <IconCheck size={13} />
+            </ThemeIcon>
+          </Group>
+          <Text size="xl" fw={700} c="teal">{availableCount}</Text>
           <Text size="xs" c="dimmed" mt={4}>Ready for instant order assignment</Text>
         </Paper>
 
         <Paper withBorder p="md" radius="md">
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase">Out for Delivery</Text>
-          <Text size="xl" fw={700} c="orange">🟠 {onDeliveryCount}</Text>
+          <Group justify="space-between" align="center">
+            <Text size="xs" c="dimmed" fw={600} tt="uppercase">Out for Delivery</Text>
+            <ThemeIcon size={22} radius="xl" color="orange" variant="light">
+              <IconMotorbike size={13} />
+            </ThemeIcon>
+          </Group>
+          <Text size="xl" fw={700} c="orange">{onDeliveryCount}</Text>
           <Text size="xs" c="dimmed" mt={4}>Currently fulfilling doorstep drop-offs</Text>
         </Paper>
 
         <Paper withBorder p="md" radius="md">
-          <Text size="xs" c="dimmed" fw={600} tt="uppercase">Offline / Off-Duty</Text>
-          <Text size="xl" fw={700} c="gray.6">⚪ {offlineCount}</Text>
+          <Group justify="space-between" align="center">
+            <Text size="xs" c="dimmed" fw={600} tt="uppercase">Offline / Off-Duty</Text>
+            <ThemeIcon size={22} radius="xl" color="gray" variant="light">
+              <IconUser size={13} />
+            </ThemeIcon>
+          </Group>
+          <Text size="xl" fw={700} c="gray.6">{offlineCount}</Text>
           <Text size="xs" c="dimmed" mt={4}>Not taking orders</Text>
         </Paper>
       </SimpleGrid>

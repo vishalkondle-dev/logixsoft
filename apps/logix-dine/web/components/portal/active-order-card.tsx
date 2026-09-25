@@ -32,6 +32,8 @@ import {
   IconNotes,
   IconMotorbike,
   IconPhoneCall,
+  IconShoppingBag,
+  IconMapPin,
 } from "@tabler/icons-react";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type { CustomerPortalOrder, CustomerOrderItem } from "@/lib/api-client";
@@ -131,7 +133,7 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
     const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
     const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
     const outletName = order.outletName || order.outlet?.name || "";
-    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+    const channelLabel = isDelivery ? "Direct Delivery" : isTakeaway ? "Takeaway" : `Table: ${order.tableNo}`;
 
     const itemsText = order.items
       .map((it) => {
@@ -159,14 +161,14 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
       chargesLines.push(`Delivery Fee: ${formatINR(deliveryChargePaise)}`);
     }
 
-    const message = `🧾 *Logix Dine Bill Summary*
-🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
+    const message = `*Logix Dine Bill Summary*
+*${restaurantName}*${outletName ? ` (${outletName})` : ""}
+Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
 --------------------------------
 ${itemsText}
 --------------------------------
-${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n${chargesLines.join("\n")}\n--------------------------------\n` : ""}💰 *Running Total: ${formatINR(order.subtotalPaise)}*
-🙏 Enjoying dining with Logix Dine!`;
+${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n${chargesLines.join("\n")}\n--------------------------------\n` : ""}*Running Total: ${formatINR(order.subtotalPaise)}*
+Enjoying dining with Logix Dine!`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
@@ -316,15 +318,15 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
               </Badge>
               {isDelivery ? (
                 <Badge color="teal" variant="filled" size="sm" leftSection={<IconMotorbike size={12} />}>
-                  🛵 Delivery
+                  Delivery
                 </Badge>
               ) : isTakeaway ? (
-                <Badge color="teal" variant="light" size="sm">
-                  🛍️ Takeaway
+                <Badge color="teal" variant="light" size="sm" leftSection={<IconShoppingBag size={12} />}>
+                  Takeaway
                 </Badge>
               ) : (
-                <Badge color="dark" variant="light" size="sm">
-                  🍽️ Table: {order.tableNo}
+                <Badge color="dark" variant="light" size="sm" leftSection={<IconToolsKitchen2 size={12} />}>
+                  Table: {order.tableNo}
                 </Badge>
               )}
               {renderOrderStatusBadge(order.orderStatus)}
@@ -361,11 +363,11 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
                   <Group gap={6} align="center">
                     <Text size="xs" fw={700} c="teal.9">
                       {order.delivery?.status === "OUT_FOR_DELIVERY"
-                        ? "Rider is Out for Delivery! 🛵"
+                        ? "Rider is Out for Delivery!"
                         : order.delivery?.status === "ASSIGNED"
                         ? "Rider Assigned"
                         : order.delivery?.status === "DELIVERED"
-                        ? "Order Delivered ✅"
+                        ? "Order Delivered"
                         : "Delivery Order Confirmed"}
                     </Text>
                     {order.delivery?.deliveryOtp && (
@@ -380,9 +382,12 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
                     </Text>
                   )}
                   {order.delivery?.addressLine1 && (
-                    <Text size="xs" c="dimmed" lineClamp={1}>
-                      📍 {order.delivery.addressLine1}{order.delivery.landmark ? ` (${order.delivery.landmark})` : ""}
-                    </Text>
+                    <Group gap={4} align="center" wrap="nowrap">
+                      <IconMapPin size={12} color="var(--mantine-color-dimmed)" />
+                      <Text size="xs" c="dimmed" lineClamp={1}>
+                        {order.delivery.addressLine1}{order.delivery.landmark ? ` (${order.delivery.landmark})` : ""}
+                      </Text>
+                    </Group>
                   )}
                 </div>
               </Group>
@@ -518,9 +523,10 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
                     : "yellow"
                 }
                 variant="filled"
+                leftSection={activeWaiterCall.status === "COMPLETED" ? <IconCheck size={10} /> : undefined}
               >
                 {activeWaiterCall.status === "COMPLETED"
-                  ? "Resolved ✓"
+                  ? "Resolved"
                   : activeWaiterCall.status === "IN_PROGRESS"
                   ? "Attending"
                   : "On the way"}

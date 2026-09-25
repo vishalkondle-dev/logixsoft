@@ -155,10 +155,10 @@ export function DiningOptionsManagement() {
 
   const defaultModeOptions = React.useMemo(() => {
     const list: { value: "DINE_IN" | "TAKEAWAY" | "DELIVERY"; label: string }[] = [];
-    if (config.dineInEnabled) list.push({ value: "DINE_IN", label: "🍽️ Dine-In (Table Seated)" });
-    if (config.takeawayEnabled) list.push({ value: "TAKEAWAY", label: "🛍️ Takeaway (Quick Counter)" });
-    if (config.deliveryEnabled) list.push({ value: "DELIVERY", label: "🛵 Direct Delivery (Fleet)" });
-    if (list.length === 0) list.push({ value: "TAKEAWAY", label: "🛍️ Takeaway (Quick Counter)" });
+    if (config.dineInEnabled) list.push({ value: "DINE_IN", label: "Dine-In (Table Seated)" });
+    if (config.takeawayEnabled) list.push({ value: "TAKEAWAY", label: "Takeaway (Quick Counter)" });
+    if (config.deliveryEnabled) list.push({ value: "DELIVERY", label: "Direct Delivery (Fleet)" });
+    if (list.length === 0) list.push({ value: "TAKEAWAY", label: "Takeaway (Quick Counter)" });
     return list;
   }, [config.dineInEnabled, config.takeawayEnabled, config.deliveryEnabled]);
 

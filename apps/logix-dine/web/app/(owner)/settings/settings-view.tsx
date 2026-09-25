@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Box, Title, Tabs, TextInput, Button, Stack, Group, Text,
-  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea,
+  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -13,7 +13,7 @@ import {
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
   IconBook, IconChartBar, IconArrowLeft, IconClock, IconReceiptTax,
   IconCreditCard, IconCoffee, IconQrcode, IconBrandWhatsapp, IconCalendarEvent,
-  IconMotorbike,
+  IconMotorbike, IconPlayerPause, IconPlayerPlay, IconCash, IconDeviceMobile, IconAlertTriangle,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -511,7 +511,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                         <Group gap={4}>
                           <ActionIcon size="sm" variant="light" onClick={() => openEditTable(t)}><IconEdit size={14} /></ActionIcon>
                           <ActionIcon size="sm" variant="light" color={t.active ? "gray" : "green"} onClick={() => handleToggleTable(t)} title={t.active ? "Deactivate" : "Activate"}>
-                            {t.active ? "⏸" : "▶"}
+                            {t.active ? <IconPlayerPause size={14} /> : <IconPlayerPlay size={14} />}
                           </ActionIcon>
                           <ActionIcon size="sm" variant="light" color="red" onClick={() => handleDeleteTable(t)}><IconTrash size={14} /></ActionIcon>
                         </Group>
@@ -652,7 +652,9 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                   <Paper p="sm" radius="sm" withBorder>
                     <Group justify="space-between">
                       <Group gap="xs">
-                        <Text size="lg">💵</Text>
+                        <ThemeIcon variant="light" color="green" size="md" radius="md">
+                          <IconCash size={18} />
+                        </ThemeIcon>
                         <div>
                           <Text size="sm" fw={600}>Cash Settlement</Text>
                           <Text size="xs" c="dimmed">Direct counter cash payment</Text>
@@ -666,7 +668,9 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                   <Paper p="sm" radius="sm" withBorder>
                     <Group justify="space-between">
                       <Group gap="xs">
-                        <Text size="lg">📱</Text>
+                        <ThemeIcon variant="light" color="blue" size="md" radius="md">
+                          <IconQrcode size={18} />
+                        </ThemeIcon>
                         <div>
                           <Text size="sm" fw={600}>UPI & Dynamic QR</Text>
                           <Text size="xs" c="dimmed">Auto-generated dynamic QR code</Text>
@@ -680,7 +684,9 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                   <Paper p="sm" radius="sm" withBorder>
                     <Group justify="space-between">
                       <Group gap="xs">
-                        <Text size="lg">💳</Text>
+                        <ThemeIcon variant="light" color="teal" size="md" radius="md">
+                          <IconCreditCard size={18} />
+                        </ThemeIcon>
                         <div>
                           <Text size="sm" fw={600}>Card & EDC Machine</Text>
                           <Text size="xs" c="dimmed">Credit/Debit POS card swipe</Text>
@@ -694,7 +700,9 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                   <Paper p="sm" radius="sm" withBorder>
                     <Group justify="space-between">
                       <Group gap="xs">
-                        <Text size="lg">⚡</Text>
+                        <ThemeIcon variant="light" color="grape" size="md" radius="md">
+                          <IconDeviceMobile size={18} />
+                        </ThemeIcon>
                         <div>
                           <Text size="sm" fw={600}>Customer Self-Order Pay</Text>
                           <Text size="xs" c="dimmed">Guest portal online checkout</Text>
@@ -729,9 +737,12 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                             UPI ID: {outlet.upiId}
                           </Text>
                         ) : (
-                          <Text size="xs" c="orange" fw={500} mt={2}>
-                            ⚠️ No UPI ID configured — click Configure to enable dynamic QR
-                          </Text>
+                          <Group gap={4} align="center" mt={2}>
+                            <IconAlertTriangle size={14} color="var(--mantine-color-orange-6)" />
+                            <Text size="xs" c="orange" fw={500}>
+                              No UPI ID configured — click Configure to enable dynamic QR
+                            </Text>
+                          </Group>
                         )}
                       </div>
                       <Group gap="xs">

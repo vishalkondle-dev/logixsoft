@@ -56,6 +56,8 @@ import {
   IconShoppingCart,
   IconBuildingStore,
   IconPackage,
+  IconSparkles,
+  IconShoppingBag,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
@@ -219,20 +221,20 @@ function CustomerPortalInner() {
     const isTakeaway = (order.tableNo || "").toLowerCase() === "takeaway" || order.orderType === "TAKEAWAY";
     const restaurantName = order.restaurantName || order.outlet?.restaurantName || "Restaurant";
     const outletName = order.outletName || order.outlet?.name || "";
-    const channelLabel = isDelivery ? "🛵 Direct Delivery" : isTakeaway ? "🛍️ Takeaway" : `🍽️ Table: ${order.tableNo}`;
+    const channelLabel = isDelivery ? "Direct Delivery" : isTakeaway ? "Takeaway" : `Table: ${order.tableNo}`;
 
-    const message = `🧾 *Logix Dine Bill Receipt*
-🍽️ *${restaurantName}*${outletName ? ` (${outletName})` : ""}
-🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
-📅 Date: ${formatDate(order.settledAt || order.createdAt)}
+    const message = `*Logix Dine Bill Receipt*
+*${restaurantName}*${outletName ? ` (${outletName})` : ""}
+Token #${order.tokenNo || order.orderNo || "N/A"} | ${channelLabel}
+Date: ${formatDate(order.settledAt || order.createdAt)}
 --------------------------------
 ${itemsText}
 --------------------------------
 ${chargesLines.join("\n")}
 --------------------------------
-💰 *Total Paid: ${formatINR(totalPaid)}*
-💳 Payment: ${order.method || "Cash"}
-🙏 Thank you for dining with us!`;
+*Total Paid: ${formatINR(totalPaid)}*
+Payment: ${order.method || "Cash"}
+Thank you for dining with us!`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
@@ -594,9 +596,12 @@ ${chargesLines.join("\n")}
                         border: "1px solid #f0abfc",
                       }}
                     >
-                      <Text size="xs" fw={600} c="grape.9">
-                        ✨ {welcome}
-                      </Text>
+                      <Group gap={6} align="center">
+                        <IconSparkles size={14} color="var(--mantine-color-grape-9)" />
+                        <Text size="xs" fw={600} c="grape.9">
+                          {welcome}
+                        </Text>
+                      </Group>
                     </Paper>
                   );
                 })()}
@@ -762,15 +767,15 @@ ${chargesLines.join("\n")}
                                 <Text size="xs" c="dimmed">•</Text>
                                 {isDelivery ? (
                                   <Badge size="xs" color="teal" variant="light" leftSection={<IconMotorbike size={11} />}>
-                                    🛵 Delivery
+                                    Delivery
                                   </Badge>
                                 ) : isTakeaway ? (
-                                  <Badge size="xs" color="teal" variant="light">
-                                    🛍️ Takeaway
+                                  <Badge size="xs" color="teal" variant="light" leftSection={<IconShoppingBag size={11} />}>
+                                    Takeaway
                                   </Badge>
                                 ) : (
-                                  <Badge size="xs" color="gray" variant="outline">
-                                    🍽️ Table {order.tableNo}
+                                  <Badge size="xs" color="gray" variant="outline" leftSection={<IconToolsKitchen2 size={11} />}>
+                                    Table {order.tableNo}
                                   </Badge>
                                 )}
                                 <Badge size="xs" color="green" variant="light">

@@ -13,7 +13,7 @@ import {
   IconMotorbike, IconCheck, IconClock, IconPhoneCall, IconBrandWhatsapp,
   IconMapPin, IconNavigation, IconVolume, IconVolumeOff, IconRefresh,
   IconAlertCircle, IconUser, IconCash, IconReceipt, IconChevronDown,
-  IconChevronUp, IconCircleDot, IconPlus,
+  IconChevronUp, IconCircleDot, IconPlus, IconNotes, IconCircleFilled,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -161,7 +161,7 @@ export default function RiderPage() {
         playChime();
       }
       notifications.show({
-        title: "🛵 New Delivery Assigned!",
+        title: "New Delivery Assigned!",
         message: "You have a new delivery order waiting for pickup.",
         color: "teal",
         icon: <IconMotorbike size={16} />,
@@ -194,7 +194,7 @@ export default function RiderPage() {
         status: nextStatus,
       });
       notifications.show({
-        title: checked ? "🟢 You are On Duty" : "⚪ You are Off Duty",
+        title: checked ? "You are On Duty" : "You are Off Duty",
         message: checked ? "Ready to receive delivery orders." : "You won't receive new delivery assignments.",
         color: checked ? "green" : "gray",
       });
@@ -211,7 +211,7 @@ export default function RiderPage() {
         body: { status: "OUT_FOR_DELIVERY", riderId: activeRider?.id },
       });
       notifications.show({
-        title: "🛵 Delivery Started!",
+        title: "Delivery Started!",
         message: "Customer and outlet notified that order is on the way.",
         color: "orange",
       });
@@ -248,7 +248,7 @@ export default function RiderPage() {
         body: { status: "DELIVERED", deliveryOtp: otp?.trim() || undefined },
       });
       notifications.show({
-        title: "Order Delivered! 🎉",
+        title: "Order Delivered!",
         message: "Delivery completed successfully and recorded.",
         color: "green",
         icon: <IconCheck size={16} />,
@@ -371,12 +371,16 @@ export default function RiderPage() {
                   size="xs"
                   color={activeRider.status === "AVAILABLE" ? "green" : activeRider.status === "ON_DELIVERY" ? "orange" : "gray"}
                   variant="filled"
+                  leftSection={activeRider.status === "ON_DELIVERY" ? <IconMotorbike size={10} /> : <IconCircleFilled size={8} />}
                 >
-                  {activeRider.status === "AVAILABLE" ? "🟢 On Duty (Available)" : activeRider.status === "ON_DELIVERY" ? "🛵 On Delivery" : "⚪ Off Duty"}
+                  {activeRider.status === "AVAILABLE" ? "On Duty (Available)" : activeRider.status === "ON_DELIVERY" ? "On Delivery" : "Off Duty"}
                 </Badge>
-                <Text size="xs" c="dimmed">
-                  🛵 {activeRider.vehicleType || "Bike"} {activeRider.vehicleNumber ? `(${activeRider.vehicleNumber})` : ""}
-                </Text>
+                <Group gap={4} align="center">
+                  <IconMotorbike size={13} color="var(--mantine-color-dimmed)" />
+                  <Text size="xs" c="dimmed">
+                    {activeRider.vehicleType || "Bike"} {activeRider.vehicleNumber ? `(${activeRider.vehicleNumber})` : ""}
+                  </Text>
+                </Group>
               </Group>
 
               <Group gap="xs" align="center">
@@ -544,8 +548,9 @@ export default function RiderPage() {
                               color={isOut ? "orange" : "teal"}
                               variant="filled"
                               size="sm"
+                              leftSection={isOut ? <IconMotorbike size={12} /> : undefined}
                             >
-                              {isOut ? "🛵 Out for Delivery" : "Ready at Counter"}
+                              {isOut ? "Out for Delivery" : "Ready at Counter"}
                             </Badge>
                           </Group>
                         </Group>
@@ -553,9 +558,12 @@ export default function RiderPage() {
                         {/* Customer Contact Quick Bar */}
                         <Paper p="xs" radius="md" style={{ backgroundColor: "#f8f9fa", border: "1px solid #e9ecef" }}>
                           <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                            <Text size="xs" fw={700} c="dark.6">
-                              📞 {customerPhone}
-                            </Text>
+                            <Group gap={6} align="center">
+                              <IconPhoneCall size={14} color="var(--mantine-color-dark-6)" />
+                              <Text size="xs" fw={700} c="dark.6">
+                                {customerPhone}
+                              </Text>
+                            </Group>
 
                             <Group gap={6}>
                               {customerPhone && (
@@ -599,9 +607,12 @@ export default function RiderPage() {
                                     {fullAddr}
                                   </Text>
                                   {delivery?.deliveryNotes && (
-                                    <Text size="xs" fw={700} c="orange.9" mt={2}>
-                                      📝 Delivery Note: {delivery.deliveryNotes}
-                                    </Text>
+                                    <Group gap={4} align="center" mt={2}>
+                                      <IconNotes size={12} color="var(--mantine-color-orange-9)" />
+                                      <Text size="xs" fw={700} c="orange.9">
+                                        Delivery Note: {delivery.deliveryNotes}
+                                      </Text>
+                                    </Group>
                                   )}
                                 </div>
                               </Group>
@@ -674,7 +685,7 @@ export default function RiderPage() {
                               loading={updateDeliveryStatusMutation.isPending}
                               onClick={() => handleStartDelivery(order.id)}
                             >
-                              🛵 Pick Up & Start Delivery
+                              Pick Up & Start Delivery
                             </Button>
                           ) : (
                             <Button
@@ -686,7 +697,7 @@ export default function RiderPage() {
                                 setOtpInput("");
                               }}
                             >
-                              ✅ Complete Delivery (Verify PIN)
+                              Complete Delivery (Verify PIN)
                             </Button>
                           )}
                         </Group>
@@ -725,9 +736,12 @@ export default function RiderPage() {
                             <Text fw={700} size="sm">{customerName}</Text>
                           </Group>
                           {fullAddr && (
-                            <Text size="xs" c="dimmed" mt={4}>
-                              📍 {fullAddr}
-                            </Text>
+                            <Group gap={4} align="center" mt={4}>
+                              <IconMapPin size={12} color="var(--mantine-color-dimmed)" />
+                              <Text size="xs" c="dimmed">
+                                {fullAddr}
+                              </Text>
+                            </Group>
                           )}
                           <Group gap="xs" mt={4}>
                             <Badge size="xs" color={isPaid ? "green" : "orange"} variant="light">
@@ -776,11 +790,14 @@ export default function RiderPage() {
                               #{order.orderNo}
                             </Badge>
                             <Text fw={600} size="sm">{customerName}</Text>
-                            <Badge size="xs" color="teal" variant="outline">Delivered ✓</Badge>
+                            <Badge size="xs" color="teal" variant="outline" leftSection={<IconCheck size={10} />}>Delivered</Badge>
                           </Group>
-                          <Text size="xs" c="dimmed" mt={2}>
-                            📍 {delivery?.addressLine1}
-                          </Text>
+                          <Group gap={4} align="center" mt={2}>
+                            <IconMapPin size={12} color="var(--mantine-color-dimmed)" />
+                            <Text size="xs" c="dimmed">
+                              {delivery?.addressLine1}
+                            </Text>
+                          </Group>
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <Text fw={700} size="sm">
@@ -800,7 +817,7 @@ export default function RiderPage() {
         </Tabs>
       </Stack>
 
-      {/* 🔐 Rider Delivery PIN Verification Modal */}
+      {/* Rider Delivery PIN Verification Modal */}
       <Modal
         opened={Boolean(otpModalOrder)}
         onClose={() => {
@@ -818,9 +835,12 @@ export default function RiderPage() {
               <Text size="xs" fw={700}>
                 {otpModalOrder.delivery?.customerName || "Customer"} ({otpModalOrder.delivery?.customerPhone})
               </Text>
-              <Text size="xs" c="dimmed">
-                📍 {otpModalOrder.delivery?.addressLine1}
-              </Text>
+              <Group gap={4} align="center">
+                <IconMapPin size={12} color="var(--mantine-color-dimmed)" />
+                <Text size="xs" c="dimmed">
+                  {otpModalOrder.delivery?.addressLine1}
+                </Text>
+              </Group>
               <Divider my={4} />
               <Group justify="space-between">
                 <Text size="xs" fw={700}>

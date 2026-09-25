@@ -122,7 +122,7 @@ export function WhatsappManagement() {
 
     setTesting(true);
     try {
-      const testMsg = `🍽️ *${restaurant?.name || "Logix Dine"}* (${currentOutlet?.name || "Main"})\n\n✅ This is a test WhatsApp alert from your POS system.\n\nAutomated order updates and digital e-bills are active!\n\n_${config.customFooterNote}_`;
+      const testMsg = `*${restaurant?.name || "Logix Dine"}* (${currentOutlet?.name || "Main"})\n\nThis is a test WhatsApp alert from your POS system.\n\nAutomated order updates and digital e-bills are active!\n\n_${config.customFooterNote}_`;
       await sendCustomerWhatsApp(restaurantId, cleanPhone, { message: testMsg }, currentOutlet?.id);
       notifications.show({
         title: "Test Message Dispatched",

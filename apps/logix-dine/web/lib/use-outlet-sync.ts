@@ -182,7 +182,7 @@ export function useOutletSync(
           if (msg.type === "WAITER_CALL") {
             const d = (msg.data || {}) as any;
             notifications.show({
-              title: `🛎️ Table ${d.tableNo || "Guest"} Service Call`,
+              title: `Table ${d.tableNo || "Guest"} Service Call`,
               message: `${d.serviceLabel || "Staff Assistance"}${d.note ? `: "${d.note}"` : ""}`,
               color: "yellow",
               autoClose: 12000,
@@ -191,7 +191,7 @@ export function useOutletSync(
             const d = (msg.data || {}) as any;
             if (d.status === "COMPLETED") {
               notifications.show({
-                title: `✅ Table ${d.tableNo || "Guest"} Request Completed`,
+                title: `Table ${d.tableNo || "Guest"} Request Completed`,
                 message: `${d.serviceLabel || "Request"} resolved`,
                 color: "green",
                 autoClose: 4000,
@@ -200,7 +200,7 @@ export function useOutletSync(
           } else if (msg.type === "NEW_ROUND") {
             const d = (msg.data || {}) as any;
             notifications.show({
-              title: `🍽️ Table ${d.tableNo || "Guest"} - Round ${d.round || ""}`,
+              title: `Table ${d.tableNo || "Guest"} - Round ${d.round || ""}`,
               message: `${d.itemsCount || 1} new item(s) ordered from table!`,
               color: "teal",
               autoClose: 8000,

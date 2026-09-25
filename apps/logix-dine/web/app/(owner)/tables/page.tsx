@@ -961,9 +961,9 @@ export default function TablesPage() {
                   onChange={setSettleMethod}
                 >
                   <Group gap="sm">
-                    <Radio value="Cash" label="💵 Cash" />
-                    <Radio value="UPI" label="📱 UPI" />
-                    <Radio value="Card" label="💳 Card" />
+                    <Radio value="Cash" label={<Group gap={4} align="center" wrap="nowrap"><IconCash size={15} /><span>Cash</span></Group>} />
+                    <Radio value="UPI" label={<Group gap={4} align="center" wrap="nowrap"><IconQrcode size={15} /><span>UPI</span></Group>} />
+                    <Radio value="Card" label={<Group gap={4} align="center" wrap="nowrap"><IconCreditCard size={15} /><span>Card</span></Group>} />
                     <Radio value="Other" label="Other" />
                   </Group>
                 </Radio.Group>

@@ -830,9 +830,6 @@ ${chargesLines.join("\n")}
                             {order.items.map((item) => (
                               <Group key={item.id} justify="space-between" align="flex-start">
                                 <Group gap="xs" wrap="nowrap" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
-                                  <Box style={{ flexShrink: 0, marginTop: 4 }}>
-                                    <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
-                                  </Box>
                                   <Badge
                                     size="sm"
                                     variant="light"
@@ -845,25 +842,31 @@ ${chargesLines.join("\n")}
                                       fontSize: "11px",
                                       minWidth: 28,
                                       textAlign: "center",
+                                      marginTop: 1,
                                     }}
                                   >
                                     {item.qty} ×
                                   </Badge>
                                   <Box style={{ minWidth: 0, flex: 1 }}>
-                                    <Text size="xs" fw={600} lineClamp={2}>
-                                      {item.name}
-                                      {(() => {
-                                        const vName = item.variant?.name || (typeof item.variant === "object" ? item.variant?.name : item.variant) || "";
-                                        return vName && !item.name.toLowerCase().includes(String(vName).toLowerCase()) ? ` (${vName})` : "";
-                                      })()}
-                                    </Text>
+                                    <Group gap={6} align="flex-start" wrap="nowrap">
+                                      <Box style={{ flexShrink: 0, marginTop: 2 }}>
+                                        <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
+                                      </Box>
+                                      <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                                        {item.name}
+                                        {(() => {
+                                          const vName = item.variant?.name || (typeof item.variant === "object" ? item.variant?.name : item.variant) || "";
+                                          return vName && !item.name.toLowerCase().includes(String(vName).toLowerCase()) ? ` (${vName})` : "";
+                                        })()}
+                                      </Text>
+                                    </Group>
                                     {Array.isArray(item.addons) && item.addons.length > 0 && (
-                                      <Text size="10px" c="dimmed">
+                                      <Text size="10px" c="dimmed" pl={19}>
                                         + {item.addons.map((a: any) => typeof a === "object" ? a.name : a).join(", ")}
                                       </Text>
                                     )}
                                     {item.note && (
-                                      <Text size="10px" fw={600} c="yellow.9" style={{ fontStyle: "italic" }}>
+                                      <Text size="10px" fw={600} c="yellow.9" pl={19} style={{ fontStyle: "italic" }}>
                                         Note: {item.note}
                                       </Text>
                                     )}

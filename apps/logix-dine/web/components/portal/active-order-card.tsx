@@ -666,12 +666,8 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
                     }}
                   >
                     <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
-                      {/* Left: Veg/Non-veg + Qty + Name + Status */}
+                      {/* Left: Qty + Name with Veg/Non-veg + Status */}
                       <Group gap="xs" wrap="nowrap" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
-                        <Box style={{ flexShrink: 0, marginTop: 4 }}>
-                          <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
-                        </Box>
-
                         <Badge
                           size="sm"
                           variant="light"
@@ -684,27 +680,35 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
                             fontSize: "11px",
                             minWidth: 26,
                             textAlign: "center",
+                            marginTop: 1,
                           }}
                         >
                           {item.qty} ×
                         </Badge>
 
                         <Box style={{ minWidth: 0, flex: 1 }}>
-                          <Group gap={6} align="center" wrap="wrap">
-                            <Text size="sm" fw={600} lineClamp={1}>
-                              {item.name}
-                            </Text>
-                            {renderItemStatusBadge(item.status)}
+                          <Group gap={6} align="flex-start" wrap="nowrap">
+                            <Box style={{ flexShrink: 0, marginTop: 2 }}>
+                              <VegNonVegIcon isNonVeg={item.isNonVeg} size={14} />
+                            </Box>
+                            <Box style={{ minWidth: 0, flex: 1 }}>
+                              <Group gap={6} align="center" wrap="wrap">
+                                <Text size="sm" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
+                                  {item.name}
+                                </Text>
+                                {renderItemStatusBadge(item.status)}
+                              </Group>
+                            </Box>
                           </Group>
 
                           {/* Variant & Addons */}
                           {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (
-                            <Badge size="xs" variant="outline" color="gray" mt={2}>
+                            <Badge size="xs" variant="outline" color="gray" mt={2} ml={20}>
                               {item.variant.name}
                             </Badge>
                           )}
                           {item.addons && item.addons.length > 0 && (
-                            <Text size="xs" c="dimmed">
+                            <Text size="xs" c="dimmed" ml={20}>
                               +{item.addons.map((a: any) => a.name).join(", ")}
                             </Text>
                           )}
@@ -713,6 +717,7 @@ ${chargesLines.length > 0 ? `Items Subtotal: ${formatINR(itemsSubtotalPaise)}\n$
                           {item.note && (
                             <Paper
                               mt={4}
+                              ml={20}
                               p="3px 8px"
                               radius="sm"
                               withBorder

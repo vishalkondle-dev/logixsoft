@@ -504,9 +504,11 @@ export function OrderMoreDrawer({
                 <Paper key={ci.cartId} p="xs" radius="md" withBorder>
                   <Group justify="space-between" align="center">
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <Group gap={6} align="center" wrap="nowrap">
-                        <VegNonVegIcon isNonVeg={ci.item.isNonVeg} size={13} />
-                        <Text fw={600} size="sm" lineClamp={1}>
+                      <Group gap={6} align="flex-start" wrap="nowrap">
+                        <Box style={{ flexShrink: 0, marginTop: 2 }}>
+                          <VegNonVegIcon isNonVeg={ci.item.isNonVeg} size={13} />
+                        </Box>
+                        <Text fw={600} size="sm" lineClamp={2} style={{ lineHeight: 1.35 }}>
                           {ci.item.name}
                         </Text>
                       </Group>

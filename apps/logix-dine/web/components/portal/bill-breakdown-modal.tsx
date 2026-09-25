@@ -199,11 +199,11 @@ Thank you for dining with us!`;
                 <Table.Tr key={item.id}>
                   <Table.Td>
                     <Group gap={6} align="flex-start" wrap="nowrap">
-                      <Box style={{ flexShrink: 0, marginTop: 4 }}>
+                      <Box style={{ flexShrink: 0, marginTop: 2 }}>
                         <VegNonVegIcon isNonVeg={item.isNonVeg} size={13} />
                       </Box>
                       <div>
-                        <Text size="xs" fw={600} lineClamp={1}>
+                        <Text size="xs" fw={600} lineClamp={2} style={{ lineHeight: 1.35 }}>
                           {item.name}
                         </Text>
                         {item.variant?.name && !item.name.toLowerCase().includes(item.variant.name.toLowerCase()) && (

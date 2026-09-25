@@ -237,8 +237,8 @@ export function useReport(
   enabled = true,
 ) {
   return useQuery({
-    queryKey: qk.report(restaurantId, type, from, to, outletId),
-    queryFn: () => getReport(restaurantId, type, from, to, outletId),
+    queryKey: qk.report(restaurantId, "summary" as ReportType, from, to, outletId),
+    queryFn: () => getReport(restaurantId, "summary", from, to, outletId),
     enabled: !!restaurantId && !!from && !!to && enabled,
     staleTime: 60_000,
   });

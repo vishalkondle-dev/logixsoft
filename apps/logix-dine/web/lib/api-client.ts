@@ -426,7 +426,27 @@ export const deleteTable = (restaurantId: string, tableId: string, outletId?: st
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
-export type ReportType = "summary" | "top-items" | "orders-by-status" | "payment-methods" | "hourly" | "daily-trend";
+export type ReportType =
+  | "summary"
+  | "invoice-detail"
+  | "item-wise-invoice"
+  | "sales-report"
+  | "average-order-value"
+  | "gross-report"
+  | "top-items"
+  | "net-sales-report"
+  | "sales-by-hour"
+  | "hourly"
+  | "sales-by-day"
+  | "daily-trend"
+  | "sales-by-month"
+  | "sales-by-order-type"
+  | "orders-by-status"
+  | "sales-by-table"
+  | "payment-methods"
+  | "discount-report"
+  | "void-invoices"
+  | "cancelled-invoices";
 
 export const getReport = (restaurantId: string, type: ReportType, from: string, to: string, outletId?: string | null) => {
   const qs = new URLSearchParams({ from, to, ...(outletId ? { outletId } : {}) }).toString();

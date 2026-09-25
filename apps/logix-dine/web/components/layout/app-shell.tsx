@@ -5,20 +5,22 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   AppShell, Group, Text, Button, ActionIcon, Avatar, Menu,
-  Tooltip, Badge, Loader, Box, UnstyledButton,
+  Tooltip, Badge, Loader, Box, UnstyledButton, ScrollArea, Stack, Divider, Burger,
 } from "@mantine/core";
 import {
   IconLogin, IconLogout, IconShoppingCart, IconHome,
   IconBook, IconSettings, IconBuildingStore, IconReceipt,
   IconChartBar, IconTableAlias, IconChevronDown, IconCheck,
   IconFlame, IconHistory, IconUser, IconBellRinging, IconMotorbike,
-  IconToolsKitchen2,
+  IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
+  IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
+  IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
 
-// Staff navigation items
+// Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
 const STAFF_NAV_ITEMS = [
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
@@ -26,7 +28,25 @@ const STAFF_NAV_ITEMS = [
   { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "WAITER", "KITCHEN"] },
   { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "WAITER"] },
   { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Settings", href: "/settings", icon: IconSettings, roles: ["OWNER", "MANAGER"] },
+];
+
+// Settings sidebar items (clean flat list without descriptions or category groupings)
+const SETTINGS_SIDEBAR_ITEMS = [
+  { id: "overview", label: "All Settings", href: "/settings", icon: IconLayoutGrid },
+  { id: "restaurant", label: "Store & Outlets", href: "/settings/restaurant", icon: IconBuildingStore },
+  { id: "menu", label: "Menu Catalog", href: "/settings/menu", icon: IconBook },
+  { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias },
+  { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock },
+  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, ownerOnly: true },
+  { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar },
+  { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax },
+  { id: "payments", label: "Payment Types & UPI", href: "/settings/payments", icon: IconCreditCard },
+  { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee },
+  { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter },
+  { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode },
+  { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp },
+  { id: "reservations", label: "Table Reservations", href: "/settings/reservations", icon: IconCalendarEvent },
+  { id: "riders", label: "Delivery & Riders", href: "/settings/riders", icon: IconMotorbike },
 ];
 
 // Customer portal navigation items (Active Order, Past Orders, My Profile)
@@ -54,7 +74,33 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const isPortal = pathname === "/portal";
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
   const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER", "KITCHEN"].includes(effectiveRole));
+  const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
   const isCustomer = isAuthenticated && !isStaffOrOwner;
+
+  const isSettingsPath = Boolean(pathname?.startsWith("/settings"));
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = React.useState<boolean>(isSettingsPath);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    setMobileSidebarOpen(false);
+    setDesktopSidebarOpen(Boolean(pathname?.startsWith("/settings")));
+  }, [pathname]);
+
+  const activeSettingId = React.useMemo(() => {
+    if (!pathname || !pathname.startsWith("/settings")) return "";
+    if (pathname === "/settings") return "overview";
+    const parts = pathname.split("/").filter(Boolean);
+    const settingsIdx = parts.indexOf("settings");
+    if (settingsIdx !== -1 && parts[settingsIdx + 1]) {
+      const seg = parts[settingsIdx + 1];
+      if (seg === "outlets") return "restaurant";
+      if (seg === "payment-types") return "payments";
+      if (seg === "dining-options") return "dining";
+      if (seg === "delivery-agents") return "riders";
+      return seg;
+    }
+    return "overview";
+  }, [pathname]);
 
   // On /portal, the customer portal page already provides its own tabs for Active, Past, and Profile.
   // Suppress AppShell header and bottom nav on /portal to prevent duplicate navbars.
@@ -86,21 +132,55 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
 
   return (
-    <AppShell header={{ height: { base: 60, sm: 64 } }} padding={0}>
+    <AppShell
+      header={{ height: { base: 60, sm: 64 } }}
+      navbar={
+        canAccessSettings
+          ? {
+              width: 230,
+              breakpoint: "md",
+              collapsed: { mobile: !mobileSidebarOpen, desktop: !desktopSidebarOpen },
+            }
+          : undefined
+      }
+      padding={0}
+    >
       <React.Suspense fallback={null}>
         <SearchParamsWatcher onTabChange={setCurrentTab} />
       </React.Suspense>
       <AppShell.Header withBorder={false}>
         <Box h="100%" px={{ base: "xs", sm: "md" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
-            <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-              <svg width="28" height="28" viewBox="233 245 520 520" fill="#af73d7">
-                <path d="M458.916107,679.925476 C440.302368,697.983032 418.648834,710.183594 393.842865,715.957947 C363.234100,723.083069 333.034973,722.460449 304.350189,707.458862 C282.619965,696.094299 269.951050,677.670349 263.077148,654.716858 C258.133392,638.208618 258.866821,621.111816 257.995972,604.185791 C257.930756,602.918152 257.675476,601.451355 259.605621,600.629578 C262.183228,603.153564 263.429047,606.658569 265.321320,609.696472 C288.384094,646.722900 333.196655,664.125000 374.232178,651.466431 C395.932098,644.772522 413.194366,631.273315 427.205658,613.740051 C454.137024,580.039062 480.733917,546.070923 507.499542,512.237427 C541.915283,468.733673 576.370300,425.261017 610.783142,381.755035 C616.466248,374.570251 621.912781,367.196289 627.680725,360.081726 C630.442688,356.674927 629.875977,354.551819 626.082397,352.751343 C617.506409,348.681213 608.957703,344.553375 600.418701,340.406006 C598.526489,339.487000 596.335938,338.921783 594.762390,335.842865 C638.865173,318.744720 683.646667,304.219696 729.185120,287.455139 C722.751038,335.534332 716.538635,381.957367 710.326233,428.380402 C709.793701,428.517517 709.261230,428.654663 708.728699,428.791809 C704.234436,424.025604 699.729309,419.269531 695.249634,414.489624 C692.288635,411.330200 689.441223,408.060760 686.405273,404.976105 C682.009583,400.509918 681.459900,400.528564 677.601440,405.371521 C669.715515,415.269440 661.912598,425.233398 654.069153,435.165161 C622.172668,475.554565 590.180908,515.869324 558.404907,556.353271 C533.005676,588.712891 507.907867,621.308960 482.588196,653.731323 C475.407471,662.926453 467.574188,671.569702 458.916107,679.925476 z"/>
-              </svg>
-              <Text fw={800} size="lg" style={{ letterSpacing: "-0.5px", lineHeight: 1, userSelect: "none" }}>
-                Logix <span style={{ color: "#af73d7" }}>Dine</span>
-              </Text>
-            </Link>
+            <Group gap="xs" wrap="nowrap" align="center">
+              {canAccessSettings && (
+                <>
+                  <Burger
+                    opened={desktopSidebarOpen}
+                    onClick={() => setDesktopSidebarOpen((o) => !o)}
+                    size="sm"
+                    color="#495057"
+                    visibleFrom="md"
+                    aria-label="Toggle settings sidebar"
+                  />
+                  <Burger
+                    opened={mobileSidebarOpen}
+                    onClick={() => setMobileSidebarOpen((o) => !o)}
+                    size="sm"
+                    color="#495057"
+                    hiddenFrom="md"
+                    aria-label="Toggle mobile settings sidebar"
+                  />
+                </>
+              )}
+              <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
+                <svg width="28" height="28" viewBox="233 245 520 520" fill="#af73d7">
+                  <path d="M458.916107,679.925476 C440.302368,697.983032 418.648834,710.183594 393.842865,715.957947 C363.234100,723.083069 333.034973,722.460449 304.350189,707.458862 C282.619965,696.094299 269.951050,677.670349 263.077148,654.716858 C258.133392,638.208618 258.866821,621.111816 257.995972,604.185791 C257.930756,602.918152 257.675476,601.451355 259.605621,600.629578 C262.183228,603.153564 263.429047,606.658569 265.321320,609.696472 C288.384094,646.722900 333.196655,664.125000 374.232178,651.466431 C395.932098,644.772522 413.194366,631.273315 427.205658,613.740051 C454.137024,580.039062 480.733917,546.070923 507.499542,512.237427 C541.915283,468.733673 576.370300,425.261017 610.783142,381.755035 C616.466248,374.570251 621.912781,367.196289 627.680725,360.081726 C630.442688,356.674927 629.875977,354.551819 626.082397,352.751343 C617.506409,348.681213 608.957703,344.553375 600.418701,340.406006 C598.526489,339.487000 596.335938,338.921783 594.762390,335.842865 C638.865173,318.744720 683.646667,304.219696 729.185120,287.455139 C722.751038,335.534332 716.538635,381.957367 710.326233,428.380402 C709.793701,428.517517 709.261230,428.654663 708.728699,428.791809 C704.234436,424.025604 699.729309,419.269531 695.249634,414.489624 C692.288635,411.330200 689.441223,408.060760 686.405273,404.976105 C682.009583,400.509918 681.459900,400.528564 677.601440,405.371521 C669.715515,415.269440 661.912598,425.233398 654.069153,435.165161 C622.172668,475.554565 590.180908,515.869324 558.404907,556.353271 C533.005676,588.712891 507.907867,621.308960 482.588196,653.731323 C475.407471,662.926453 467.574188,671.569702 458.916107,679.925476 z"/>
+                </svg>
+                <Text fw={800} size="lg" style={{ letterSpacing: "-0.5px", lineHeight: 1, userSelect: "none" }}>
+                  Logix <span style={{ color: "#af73d7" }}>Dine</span>
+                </Text>
+              </Link>
+            </Group>
 
             {/* Middle: Header Navigation on Large Screens (where there is space) */}
             <Box
@@ -367,6 +447,78 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           </Group>
         </Box>
       </AppShell.Header>
+
+      {canAccessSettings && (
+        <AppShell.Navbar
+          p="xs"
+          withBorder
+          style={{
+            borderColor: "#e9ecef",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          <ScrollArea style={{ height: "100%" }} scrollbarSize={4} type="hover">
+            <Stack gap={2}>
+              {SETTINGS_SIDEBAR_ITEMS.filter(
+                (item) => !item.ownerOnly || effectiveRole === "OWNER"
+              ).map((item, index) => {
+                const Icon = item.icon;
+                const isActive = activeSettingId === item.id;
+                return (
+                  <React.Fragment key={item.id}>
+                    <UnstyledButton
+                      component={Link}
+                      href={item.href}
+                      onClick={() => setMobileSidebarOpen(false)}
+                      px={12}
+                      py={8}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        borderRadius: 8,
+                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? "#af73d7" : "#343a40",
+                        backgroundColor: isActive ? "rgba(175, 115, 215, 0.12)" : "transparent",
+                        textDecoration: "none",
+                        fontSize: 13.5,
+                        transition: "all 0.12s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "#f8f9fa";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }
+                      }}
+                    >
+                      <Icon
+                        size={18}
+                        stroke={isActive ? 2.1 : 1.75}
+                        color={isActive ? "#af73d7" : "#495057"}
+                        style={{ flexShrink: 0 }}
+                      />
+                      <Text
+                        size="sm"
+                        fw={isActive ? 600 : 500}
+                        c={isActive ? "dinePrimary" : "dark.8"}
+                        truncate
+                        style={{ fontSize: 13.5, lineHeight: 1.3 }}
+                      >
+                        {item.label}
+                      </Text>
+                    </UnstyledButton>
+                    {index === 0 && <Divider my={4} color="#f1f3f5" />}
+                  </React.Fragment>
+                );
+              })}
+            </Stack>
+          </ScrollArea>
+        </AppShell.Navbar>
+      )}
 
       <AppShell.Main>
         {children}

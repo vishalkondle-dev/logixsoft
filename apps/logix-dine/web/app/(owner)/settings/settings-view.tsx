@@ -361,47 +361,77 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   if (!restaurant) return <Loader />;
 
+  const TAB_TITLES: Record<string, { title: string; subtitle: string }> = {
+    restaurant: {
+      title: "Store & Outlets",
+      subtitle: "Configure store details, contact, and outlets",
+    },
+    menu: {
+      title: "Menu Catalog",
+      subtitle: "Add, categorize, and edit menu items & add-ons",
+    },
+    tables: {
+      title: "Table Management",
+      subtitle: "Manage dining tables, sections, and seating",
+    },
+    hours: {
+      title: "Store Hours",
+      subtitle: "Configure daily opening, closing, and break timings",
+    },
+    tax: {
+      title: "Invoice & Tax",
+      subtitle: "GST slabs, inclusive/exclusive pricing, invoice series & charges",
+    },
+    reports: {
+      title: "Analytics & Reports",
+      subtitle: "View sales summaries, item sales, and tax reports",
+    },
+    staff: {
+      title: "Staff & Team",
+      subtitle: "Manage team members, roles, and outlet access",
+    },
+    printing: {
+      title: "Thermal Printers",
+      subtitle: "Configure Bluetooth & network thermal printers for bills & KOTs",
+    },
+    payments: {
+      title: "Payment Types & UPI",
+      subtitle: "Configure accepted payments, UPI IDs, and dynamic QR",
+    },
+    dining: {
+      title: "Dining Options",
+      subtitle: "Toggle dine-in, takeaway, and delivery modes",
+    },
+    "qr-menu": {
+      title: "QR Menu Ordering",
+      subtitle: "Customise table QR code ordering & self-checkout",
+    },
+    whatsapp: {
+      title: "WhatsApp Alerts",
+      subtitle: "Send instant e-bills and order updates via WhatsApp",
+    },
+    reservations: {
+      title: "Table Reservations",
+      subtitle: "Manage guest reservations, time slots, and party sizes",
+    },
+    riders: {
+      title: "Delivery & Riders",
+      subtitle: "Manage delivery riders, external couriers, and dispatch",
+    },
+  };
+
+  const currentTabMeta = TAB_TITLES[activeTab] || TAB_TITLES.restaurant;
+
   return (
-    <Box pt="sm" pb={100} px={{ base: "xs", sm: "md" }}>
+    <Box pt="md" pb={100} px={{ base: "xs", sm: "md" }}>
       <Group justify="space-between" align="center" mb="lg">
         <div>
-          <Group gap="xs" align="center" mb={4}>
-            <Button
-              component={Link}
-              href="/settings"
-              variant="subtle"
-              color="gray"
-              size="xs"
-              px={6}
-              leftSection={<IconArrowLeft size={14} />}
-            >
-              All Settings
-            </Button>
-          </Group>
-          <Title order={2}>Restaurant Settings</Title>
-          <Text size="sm" c="dimmed">{restaurant.name} · Multi-Outlet & Dining Configuration</Text>
+          <Title order={2}>{currentTabMeta.title}</Title>
+          <Text size="sm" c="dimmed">{currentTabMeta.subtitle}</Text>
         </div>
       </Group>
 
       <Tabs value={activeTab} onChange={(v) => v && router.push(`/settings/${v}`)}>
-        <ScrollArea type="always" scrollbarSize={4} offsetScrollbars="x" scrollbars="x" mb="xs">
-          <Tabs.List style={{ flexWrap: "nowrap", width: "max-content", minWidth: "100%" }}>
-            <Tabs.Tab value="restaurant" leftSection={<IconBuildingStore size={16} />}>Restaurant Details</Tabs.Tab>
-            <Tabs.Tab value="menu" leftSection={<IconBook size={16} />}>Menu Management</Tabs.Tab>
-            <Tabs.Tab value="tables" leftSection={<IconTableAlias size={16} />}>Table Management</Tabs.Tab>
-            <Tabs.Tab value="hours" leftSection={<IconClock size={16} />}>Store Hours</Tabs.Tab>
-            <Tabs.Tab value="tax" leftSection={<IconReceiptTax size={16} />}>Invoice & Tax</Tabs.Tab>
-            <Tabs.Tab value="reports" leftSection={<IconChartBar size={16} />}>Analytics & Reports</Tabs.Tab>
-            {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />}>Staff & Team</Tabs.Tab>}
-            <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />}>Printing</Tabs.Tab>
-            <Tabs.Tab value="payments" leftSection={<IconCreditCard size={16} />}>Payment Types & UPI</Tabs.Tab>
-            <Tabs.Tab value="dining" leftSection={<IconCoffee size={16} />}>Dining Options</Tabs.Tab>
-            <Tabs.Tab value="qr-menu" leftSection={<IconQrcode size={16} />}>QR Menu</Tabs.Tab>
-            <Tabs.Tab value="whatsapp" leftSection={<IconBrandWhatsapp size={16} />}>WhatsApp Alerts</Tabs.Tab>
-            <Tabs.Tab value="reservations" leftSection={<IconCalendarEvent size={16} />}>Reservations</Tabs.Tab>
-            <Tabs.Tab value="riders" leftSection={<IconMotorbike size={16} />}>Delivery & Riders</Tabs.Tab>
-          </Tabs.List>
-        </ScrollArea>
 
         {/* Restaurant tab */}
         <Tabs.Panel value="restaurant">

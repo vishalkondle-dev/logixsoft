@@ -12,6 +12,8 @@ import {
   IconBuildingStore, IconCheck, IconTrash,
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
   IconBook, IconChartBar, IconArrowLeft, IconClock, IconReceiptTax,
+  IconCreditCard, IconCoffee, IconQrcode, IconBrandWhatsapp, IconCalendarEvent,
+  IconMotorbike,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -28,6 +30,11 @@ import { MenuManagement } from "../menu/menu-management";
 import { ReportsManagement } from "../reports/reports-management";
 import { StoreHoursManagement } from "./store-hours-management";
 import { InvoiceTaxManagement } from "./invoice-tax-management";
+import { DiningOptionsManagement } from "./dining-options-management";
+import { QrMenuManagement } from "./qr-menu-management";
+import { WhatsappManagement } from "./whatsapp-management";
+import { ReservationsManagement } from "./reservations-management";
+import { RidersManagement } from "./riders-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -44,6 +51,12 @@ export const VALID_SETTINGS_TABS = [
   "reports",
   "staff",
   "printing",
+  "payments",
+  "dining",
+  "qr-menu",
+  "whatsapp",
+  "reservations",
+  "riders",
 ] as const;
 
 export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
@@ -100,6 +113,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const { data: tables = [], isLoading: tablesLoading } = useTables(restaurantId, tableOutletId, { includeInactive: true });
   const [tableModal, setTableModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
   const [tableForm, setTableForm] = useState({ name: "", section: "", capacity: "" });
+  const [tableFormError, setTableFormError] = useState<string | null>(null);
+  const [tableToDelete, setTableToDelete] = useState<any | null>(null);
 
   // Outlet mutations
   const createOutletMut = useCreateOutlet(restaurantId);
@@ -210,7 +225,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   // ─── Staff handlers ─────────────────────────────────────────────────────
 
   const openInvite = () => {
-    setInviteForm({ phone: "", role: "WAITER", outletIds: outlets[0] ? [outlets[0].id] : [] });
+    const defaultOutletId = activeOutlet?.id || outlets[0]?.id;
+    setInviteForm({ phone: "", role: "WAITER", outletIds: defaultOutletId ? [defaultOutletId] : [] });
     setInviteModal(true);
   };
 
@@ -249,14 +265,30 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   // ─── Table handlers ─────────────────────────────────────────────────────
 
-  const openCreateTable = () => { setTableForm({ name: "", section: "", capacity: "" }); setTableModal({ open: true, editing: null }); };
-  const openEditTable = (t: any) => { setTableForm({ name: t.name, section: t.section ?? "", capacity: t.capacity ? String(t.capacity) : "" }); setTableModal({ open: true, editing: t }); };
+  const openCreateTable = () => {
+    setTableForm({ name: "", section: "", capacity: "" });
+    setTableFormError(null);
+    setTableModal({ open: true, editing: null });
+  };
+  const openEditTable = (t: any) => {
+    setTableForm({ name: t.name, section: t.section ?? "", capacity: t.capacity ? String(t.capacity) : "" });
+    setTableFormError(null);
+    setTableModal({ open: true, editing: t });
+  };
 
   const saveTable = async () => {
-    if (!tableOutletId || !tableForm.name.trim()) return;
+    if (!tableForm.name.trim()) {
+      setTableFormError("Table name is required");
+      return;
+    }
+    if (!tableOutletId) {
+      notifications.show({ title: "Error", message: "Please select an outlet first", color: "orange" });
+      return;
+    }
+    setTableFormError(null);
     try {
       const body = {
-        name: tableForm.name,
+        name: tableForm.name.trim(),
         section: tableForm.section || undefined,
         capacity: tableForm.capacity ? Number(tableForm.capacity) : undefined,
       };
@@ -278,11 +310,19 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
 
-  const handleDeleteTable = async (t: any) => {
-    if (!confirm(`Remove table "${t.name}"?`)) return;
+  const handleDeleteTable = (t: any) => {
+    setTableToDelete(t);
+  };
+
+  const handleConfirmDeleteTable = async () => {
+    if (!tableToDelete) return;
     try {
-      await deleteTableMut.mutateAsync(t.id);
-    } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
+      await deleteTableMut.mutateAsync(tableToDelete.id);
+      notifications.show({ title: "Removed", message: `Table "${tableToDelete.name}" removed`, color: "green" });
+      setTableToDelete(null);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
   };
 
   const tableSaving = createTableMut.isPending || updateTableMut.isPending;
@@ -354,6 +394,12 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             <Tabs.Tab value="reports" leftSection={<IconChartBar size={16} />}>Analytics & Reports</Tabs.Tab>
             {isOwner && <Tabs.Tab value="staff" leftSection={<IconUsers size={16} />}>Staff & Team</Tabs.Tab>}
             <Tabs.Tab value="printing" leftSection={<IconPrinter size={16} />}>Printing</Tabs.Tab>
+            <Tabs.Tab value="payments" leftSection={<IconCreditCard size={16} />}>Payment Types & UPI</Tabs.Tab>
+            <Tabs.Tab value="dining" leftSection={<IconCoffee size={16} />}>Dining Options</Tabs.Tab>
+            <Tabs.Tab value="qr-menu" leftSection={<IconQrcode size={16} />}>QR Menu</Tabs.Tab>
+            <Tabs.Tab value="whatsapp" leftSection={<IconBrandWhatsapp size={16} />}>WhatsApp Alerts</Tabs.Tab>
+            <Tabs.Tab value="reservations" leftSection={<IconCalendarEvent size={16} />}>Reservations</Tabs.Tab>
+            <Tabs.Tab value="riders" leftSection={<IconMotorbike size={16} />}>Delivery & Riders</Tabs.Tab>
           </Tabs.List>
         </ScrollArea>
 
@@ -534,6 +580,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                             onChange={(v) => handleOutletsChange(m, v)}
                             data={outlets.map((o) => ({ value: o.id, label: o.name }))}
                             maxDropdownHeight={200}
+                            readOnly={outlets.length <= 1}
+                            rightSection={outlets.length <= 1 ? null : undefined}
                           />
                         </Grid.Col>
                       </Grid>
@@ -557,6 +605,147 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               <PrinterButton />
             </Stack>
           </Paper>
+        </Tabs.Panel>
+
+        {/* Payment Types & UPI tab */}
+        <Tabs.Panel value="payments">
+          <Stack gap="md" maw={{ base: "100%", md: 800 }}>
+            <Paper p="md" radius="md">
+              <Group justify="space-between" mb="xs">
+                <div>
+                  <Text fw={600} size="lg">Accepted Payment Types</Text>
+                  <Text size="xs" c="dimmed">Manage how guests and staff settle orders across counter, tables, and delivery</Text>
+                </div>
+              </Group>
+              <Grid gap="sm">
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper p="sm" radius="sm" withBorder>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <Text size="lg">💵</Text>
+                        <div>
+                          <Text size="sm" fw={600}>Cash Settlement</Text>
+                          <Text size="xs" c="dimmed">Direct counter cash payment</Text>
+                        </div>
+                      </Group>
+                      <Badge color="green" variant="light" size="sm">Active</Badge>
+                    </Group>
+                  </Paper>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper p="sm" radius="sm" withBorder>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <Text size="lg">📱</Text>
+                        <div>
+                          <Text size="sm" fw={600}>UPI & Dynamic QR</Text>
+                          <Text size="xs" c="dimmed">Auto-generated dynamic QR code</Text>
+                        </div>
+                      </Group>
+                      <Badge color="blue" variant="light" size="sm">Active</Badge>
+                    </Group>
+                  </Paper>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper p="sm" radius="sm" withBorder>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <Text size="lg">💳</Text>
+                        <div>
+                          <Text size="sm" fw={600}>Card & EDC Machine</Text>
+                          <Text size="xs" c="dimmed">Credit/Debit POS card swipe</Text>
+                        </div>
+                      </Group>
+                      <Badge color="teal" variant="light" size="sm">Active</Badge>
+                    </Group>
+                  </Paper>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper p="sm" radius="sm" withBorder>
+                    <Group justify="space-between">
+                      <Group gap="xs">
+                        <Text size="lg">⚡</Text>
+                        <div>
+                          <Text size="sm" fw={600}>Customer Self-Order Pay</Text>
+                          <Text size="xs" c="dimmed">Guest portal online checkout</Text>
+                        </div>
+                      </Group>
+                      <Badge color="grape" variant="light" size="sm">Active</Badge>
+                    </Group>
+                  </Paper>
+                </Grid.Col>
+              </Grid>
+            </Paper>
+
+            <Paper p="md" radius="md">
+              <Group justify="space-between" mb="xs">
+                <div>
+                  <Text fw={600} size="lg">Outlet UPI IDs & Dynamic QR</Text>
+                  <Text size="xs" c="dimmed">Configure individual UPI VPAs for each outlet to receive instant digital payments</Text>
+                </div>
+              </Group>
+
+              <Stack gap="sm">
+                {outlets.map((outlet) => (
+                  <Paper key={outlet.id} p="md" radius="sm" withBorder>
+                    <Group justify="space-between" align="center" wrap="wrap">
+                      <div>
+                        <Group gap="xs">
+                          <Text fw={600} size="sm">{outlet.name}</Text>
+                          {outlet.isDefault && <Badge size="xs" color="dinePrimary">Default</Badge>}
+                        </Group>
+                        {outlet.upiId ? (
+                          <Text size="xs" fw={700} c="dinePrimary" mt={2}>
+                            UPI ID: {outlet.upiId}
+                          </Text>
+                        ) : (
+                          <Text size="xs" c="orange" fw={500} mt={2}>
+                            ⚠️ No UPI ID configured — click Configure to enable dynamic QR
+                          </Text>
+                        )}
+                      </div>
+                      <Group gap="xs">
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color="dinePrimary"
+                          leftSection={<IconEdit size={14} />}
+                          onClick={() => openEditOutlet(outlet)}
+                        >
+                          {outlet.upiId ? "Edit UPI ID" : "Configure UPI ID"}
+                        </Button>
+                      </Group>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* Dining Options tab */}
+        <Tabs.Panel value="dining">
+          <DiningOptionsManagement />
+        </Tabs.Panel>
+
+        {/* QR Menu tab */}
+        <Tabs.Panel value="qr-menu">
+          <QrMenuManagement />
+        </Tabs.Panel>
+
+        {/* WhatsApp tab */}
+        <Tabs.Panel value="whatsapp">
+          <WhatsappManagement />
+        </Tabs.Panel>
+
+        {/* Reservations tab */}
+        <Tabs.Panel value="reservations">
+          <ReservationsManagement />
+        </Tabs.Panel>
+
+        {/* Riders tab */}
+        <Tabs.Panel value="riders">
+          <RidersManagement />
         </Tabs.Panel>
       </Tabs>
 
@@ -606,6 +795,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             value={inviteForm.outletIds}
             onChange={(v) => setInviteForm((f) => ({ ...f, outletIds: v }))}
             data={outlets.map((o) => ({ value: o.id, label: o.name }))}
+            readOnly={outlets.length <= 1}
+            rightSection={outlets.length <= 1 ? null : undefined}
           />
           <Text size="xs" c="dimmed">
             They'll be notified on WhatsApp with a link to sign in using this number. No password needed — same OTP login as you.
@@ -619,12 +810,51 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
       <Modal opened={tableModal.open} onClose={() => setTableModal({ open: false, editing: null })} title={tableModal.editing ? "Edit Table" : "Add Table"}>
         <Stack gap="md">
-          <TextInput label="Name" required placeholder="T1, Window 3, Bar 2..." value={tableForm.name} onChange={(e) => setTableForm((f) => ({ ...f, name: e.target.value }))} />
+          <TextInput
+            label="Name"
+            required
+            placeholder="T1, Window 3, Bar 2..."
+            value={tableForm.name}
+            error={tableFormError}
+            onChange={(e) => {
+              setTableForm((f) => ({ ...f, name: e.target.value }));
+              if (tableFormError) setTableFormError(null);
+            }}
+          />
           <TextInput label="Section" placeholder="Ground Floor, Terrace..." value={tableForm.section} onChange={(e) => setTableForm((f) => ({ ...f, section: e.target.value }))} />
           <TextInput label="Capacity" placeholder="4" value={tableForm.capacity} onChange={(e) => setTableForm((f) => ({ ...f, capacity: e.target.value.replace(/\D/g, "") }))} />
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setTableModal({ open: false, editing: null })}>Cancel</Button>
             <Button color="dinePrimary" onClick={saveTable} loading={tableSaving}>Save</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Delete Table Confirmation Modal */}
+      <Modal
+        opened={Boolean(tableToDelete)}
+        onClose={() => setTableToDelete(null)}
+        title="Delete Table Confirmation"
+        size="sm"
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to delete table <b>"{tableToDelete?.name}"</b>?
+            This will remove it from the floor layout.
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" size="sm" onClick={() => setTableToDelete(null)} disabled={deleteTableMut.isPending}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              size="sm"
+              loading={deleteTableMut.isPending}
+              onClick={handleConfirmDeleteTable}
+              leftSection={<IconTrash size={16} />}
+            >
+              Delete Table
+            </Button>
           </Group>
         </Stack>
       </Modal>

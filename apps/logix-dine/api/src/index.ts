@@ -32,15 +32,17 @@ import { onboardingRoutes } from './routes/onboarding';
 import { restaurantRoutes } from './routes/restaurants';
 import { outletRoutes } from './routes/outlets';
 import { menuRoutes } from './routes/menu';
-import { billingRoutes } from './routes/billing';
+import { orderRoutes } from './routes/orders';
+import { kitchenRoutes } from './routes/kitchen';
+import { portalRoutes } from './routes/portal';
 import { adminRoutes } from './routes/admin';
 import { staffRoutes } from './routes/staff';
 import { tableRoutes } from './routes/tables';
 import { reportRoutes } from './routes/reports';
 import { customerRoutes } from './routes/customers';
-import { customerPortalRoutes } from './routes/customer-portal';
 import { waiterRoutes } from './routes/waiter';
 import { deliveryRoutes } from './routes/delivery';
+import { reservationRoutes } from './routes/reservations';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -503,8 +505,36 @@ const handleWsTicket = async (c: any) => {
   return c.json({ ticket });
 };
 
-app.get('/auth/ws-ticket', handleWsTicket);
-app.get('/api/auth/ws-ticket', handleWsTicket);
+const WsTicketResponseSchema = z.object({
+  ticket: z.string().describe('Short-lived signed JWT session ticket for WebSocket authentication'),
+});
+
+app.get(
+  '/auth/ws-ticket',
+  apiDoc({
+    tags: ['Auth'],
+    summary: 'Issue WebSocket Authentication Ticket',
+    description: 'Issues a short-lived (2 min) signed JWT for authenticating WebSocket connections without cookies.',
+    responses: {
+      200: WsTicketResponseSchema,
+      401: ErrorResponseSchema,
+    },
+  }),
+  handleWsTicket
+);
+app.get(
+  '/api/auth/ws-ticket',
+  apiDoc({
+    tags: ['Auth'],
+    summary: 'Issue WebSocket Authentication Ticket (API Prefix)',
+    description: 'Issues a short-lived (2 min) signed JWT for authenticating WebSocket connections without cookies.',
+    responses: {
+      200: WsTicketResponseSchema,
+      401: ErrorResponseSchema,
+    },
+  }),
+  handleWsTicket
+);
 
 app.on(['GET', 'POST'], `${AUTH_BASE_PATH}/*`, handleBetterAuth);
 app.on(['GET', 'POST'], `/api${AUTH_BASE_PATH}/*`, handleBetterAuth);
@@ -524,8 +554,14 @@ app.route('/api/outlets', outletRoutes);
 app.route('/menu', menuRoutes);
 app.route('/api/menu', menuRoutes);
 
-app.route('/billing', billingRoutes);
-app.route('/api/billing', billingRoutes);
+app.route('/orders', orderRoutes);
+app.route('/api/orders', orderRoutes);
+
+app.route('/kitchen', kitchenRoutes);
+app.route('/api/kitchen', kitchenRoutes);
+
+app.route('/portal', portalRoutes);
+app.route('/api/portal', portalRoutes);
 
 app.route('/admin', adminRoutes);
 app.route('/api/admin', adminRoutes);
@@ -542,14 +578,14 @@ app.route('/api/reports', reportRoutes);
 app.route('/customers', customerRoutes);
 app.route('/api/customers', customerRoutes);
 
-app.route('/customer', customerPortalRoutes);
-app.route('/api/customer', customerPortalRoutes);
-
 app.route('/waiter', waiterRoutes);
 app.route('/api/waiter', waiterRoutes);
 
 app.route('/delivery', deliveryRoutes);
 app.route('/api/delivery', deliveryRoutes);
+
+app.route('/reservations', reservationRoutes);
+app.route('/api/reservations', reservationRoutes);
 
 
 
@@ -637,8 +673,8 @@ const openApiDoc = createOpenApiDocument(
   {
     info: {
       title: 'Logix Dine API',
-      version: '1.0.0',
-      description: 'Comprehensive OpenAPI 3.1 specification for Logix Dine restaurant POS and billing service with WhatsApp OTP authentication.',
+      version: '2.0.0',
+      description: 'Comprehensive OpenAPI 3.1 specification for Logix Dine restaurant management platform, featuring feature-driven endpoints for POS orders, Kitchen Display System (KDS), Customer Self-Service Portal, Waiter floor assistance, Delivery & Rider fleet dispatch, Menu management, and WhatsApp OTP authentication.',
     },
     servers: [
       {
@@ -652,13 +688,18 @@ const openApiDoc = createOpenApiDocument(
     ],
     tags: [
       { name: 'Health', description: 'API health and uptime status' },
-      { name: 'Auth', description: 'WhatsApp OTP authentication and user sessions' },
-      { name: 'Billing', description: 'POS table orders, rounds, settlement, WhatsApp bills, and KDS' },
-      { name: 'Tables', description: 'Table management and occupancy tracking' },
+      { name: 'Auth', description: 'WhatsApp OTP authentication, WebSocket tickets, and user sessions' },
+      { name: 'Orders', description: 'POS table orders, rounds, settlement, WhatsApp bills, and order lifecycle' },
+      { name: 'Kitchen', description: 'Kitchen Display System (KDS) tickets, item preparation, and order fulfillment' },
+      { name: 'Waiter', description: 'Waiter assistance requests, table calls, and floor service status' },
+      { name: 'Delivery', description: 'Delivery orders, rider assignment, dispatch, and OTP verification' },
+      { name: 'Customer Portal', description: 'Customer self-service ordering, table QR scans, menu browsing, live tracking, and waiter calls' },
+      { name: 'Tables', description: 'Dining table management, layout, and occupancy tracking' },
       { name: 'Menu', description: 'Menu categories and item catalogue management' },
       { name: 'Restaurants', description: 'Restaurant profiles and membership roles' },
       { name: 'Outlets', description: 'Restaurant outlet / branch management' },
       { name: 'Staff', description: 'Staff members, roles, and invitation management' },
+      { name: 'Customers', description: 'Customer CRM, lifetime metrics, order history, tags, and notes' },
       { name: 'Reports', description: 'Financial analytics, daily sales, item sales, and tax reports' },
       { name: 'Onboarding', description: 'Initial restaurant registration and setup' },
       { name: 'Admin', description: 'Platform administration and system role management' },

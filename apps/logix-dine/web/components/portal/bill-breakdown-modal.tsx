@@ -63,7 +63,7 @@ export function BillBreakdownModal({
 
     const message = `🧾 *Logix Dine Bill Summary*
 🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || "N/A"} | Table: ${order.tableNo}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
 --------------------------------
 ${itemsText}
 --------------------------------
@@ -90,7 +90,7 @@ Thank you for dining with us!`;
               Running Bill & Tax Breakdown
             </Title>
             <Text size="xs" c="dimmed">
-              Table {order.tableNo} • Token #{order.tokenNo || "—"}
+              Table {order.tableNo} • Token #{order.tokenNo || order.orderNo || "—"}
             </Text>
           </div>
         </Group>

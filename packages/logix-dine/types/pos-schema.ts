@@ -14,6 +14,7 @@ import {
   deliveryOrder,
   customerAddress,
   deliveryRider,
+  tableReservation,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -193,5 +194,12 @@ export type JsonDeliveryRiderRow = Omit<DeliveryRiderRow, 'createdAt' | 'updated
   createdAt: string;
   updatedAt: string;
   lastLocationAt: string | null;
+};
+
+export type TableReservationRow = InferSelectModel<typeof tableReservation>;
+export type NewTableReservationRow = InferInsertModel<typeof tableReservation>;
+export type JsonTableReservationRow = Omit<TableReservationRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
 };
 

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, isNull } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
@@ -10,14 +10,9 @@ import * as z from 'zod';
 import { cacheGet, cacheSet, invalidateTables, CacheKey, TTL } from '../lib/cache';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
+import { getDb } from '../lib/order-helpers';
 
 const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
-
-function getDb(c: any) {
-  const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
-  return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
-}
-
 function kv(c: any) { return c.env?.CACHE; }
 
 const CreateTableSchema = z.object({
@@ -35,23 +30,14 @@ const UpdateTableSchema = z.object({
   sortOrder: z.number().int().optional(),
 });
 
-// GET /tables — list active tables for tenant, optionally filtered by outletId
-app.get(
-  '/',
-  apiDoc({
-    tags: ['Tables'],
-    summary: 'List Dining Tables',
-    description: 'Retrieves all active dining tables for the restaurant or filtered by outletId.',
-    query: z.object({
-      outletId: z.string().optional(),
-      includeInactive: z.string().optional(),
-    }),
-    responses: {
-      200: z.array(PosTableSchema),
-    },
-  }),
-  requirePermission('table:read'),
-  async (c) => {
+const TransferTableSchema = z.object({
+  outletId: z.string(),
+  fromTableNo: z.string().min(1),
+  toTableNo: z.string().min(1),
+});
+
+// ─── GET /tables/list ─────────────────────────────────────────────────────────
+async function handleListTables(c: any) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const outletId = c.req.query('outletId');
@@ -85,33 +71,35 @@ app.get(
   } finally {
     await close();
   }
-});
+}
 
-// POST /tables — create a table
-app.post(
+app.get(
   '/',
   apiDoc({
     tags: ['Tables'],
-    summary: 'Create Dining Table',
-    description: 'Creates a new dining table in the specified outlet.',
-    body: CreateTableSchema,
-    responses: {
-      201: PosTableSchema,
-      400: ErrorResponseSchema,
-      404: ErrorResponseSchema,
-      409: ErrorResponseSchema,
-    },
+    summary: 'List Dining Tables',
+    description: 'Retrieves all active dining tables for the restaurant or filtered by outletId.',
+    query: z.object({ outletId: z.string().optional(), includeInactive: z.string().optional() }),
+    responses: { 200: z.array(PosTableSchema) },
   }),
-  requirePermission('table:write'),
-  async (c) => {
+  requirePermission('table:read'),
+  handleListTables
+);
+
+app.get(
+  '/list',
+  requirePermission('table:read'),
+  handleListTables
+);
+
+// ─── POST /tables/create & POST /tables ───────────────────────────────────────
+async function handleCreateTable(c: any) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
-  const actorPhone = c.get('actorPhone');
+  const actorPhone = tenant.phone || tenant.phoneNumber || '';
   const body = await c.req.json().catch(() => ({}));
   const parsed = CreateTableSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
-  }
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
 
   if (!assertOutletAccess(tenant, parsed.data.outletId)) {
     return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${parsed.data.outletId}'` }, 403);
@@ -119,19 +107,7 @@ app.post(
 
   const { db, close } = getDb(c);
   try {
-    const [outlet] = await db
-      .select({ id: appSchema.restaurantOutlet.id })
-      .from(appSchema.restaurantOutlet)
-      .where(and(eq(appSchema.restaurantOutlet.id, parsed.data.outletId), eq(appSchema.restaurantOutlet.restaurantId, restaurantId)));
-    if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
-
-    const [dup] = await db
-      .select({ id: appSchema.posTable.id })
-      .from(appSchema.posTable)
-      .where(and(eq(appSchema.posTable.outletId, parsed.data.outletId), eq(appSchema.posTable.name, parsed.data.name)));
-    if (dup) return c.json({ error: 'Conflict', message: 'A table with this name already exists in this outlet' }, 409);
-
-    const id = generateId('table');
+    const id = generateId('tbl');
     const now = new Date();
     await db.insert(appSchema.posTable).values({
       id,
@@ -139,7 +115,7 @@ app.post(
       outletId: parsed.data.outletId,
       name: parsed.data.name,
       section: parsed.data.section ?? null,
-      capacity: parsed.data.capacity ?? null,
+      capacity: parsed.data.capacity ?? 4,
       sortOrder: parsed.data.sortOrder ?? 0,
       active: true,
       createdAt: now,
@@ -159,34 +135,35 @@ app.post(
   } finally {
     await close();
   }
-});
+}
 
-// PUT /tables/:id — update a table
-app.put(
-  '/:id',
+app.post(
+  '/',
   apiDoc({
     tags: ['Tables'],
-    summary: 'Update Dining Table',
-    description: 'Updates table name, section, capacity, or sort order.',
-    params: z.object({ id: z.string() }),
-    body: UpdateTableSchema,
-    responses: {
-      200: PosTableSchema,
-      400: ErrorResponseSchema,
-      404: ErrorResponseSchema,
-    },
+    summary: 'Create Dining Table',
+    description: 'Creates a new dining table in the specified outlet.',
+    body: CreateTableSchema,
+    responses: { 201: PosTableSchema, 400: ErrorResponseSchema },
   }),
   requirePermission('table:write'),
-  async (c) => {
+  handleCreateTable
+);
+
+app.post(
+  '/create',
+  requirePermission('table:write'),
+  handleCreateTable
+);
+
+// ─── POST /tables/update/:id & PUT /tables/:id ────────────────────────────────
+async function handleUpdateTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
-  const actorPhone = c.get('actorPhone');
-  const tableId = c.req.param('id');
+  const actorPhone = tenant.phone || tenant.phoneNumber || '';
   const body = await c.req.json().catch(() => ({}));
   const parsed = UpdateTableSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
-  }
+  if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
 
   const { db, close } = getDb(c);
   try {
@@ -216,27 +193,32 @@ app.put(
   } finally {
     await close();
   }
-});
+}
 
-// PATCH /tables/:id/toggle — flip active/inactive
-app.patch(
-  '/:id/toggle',
+app.put(
+  '/:id',
   apiDoc({
     tags: ['Tables'],
-    summary: 'Toggle Table Active Status',
-    description: 'Toggles a dining table between active and inactive states.',
-    params: z.object({ id: z.string() }),
-    responses: {
-      200: PosTableSchema,
-      404: ErrorResponseSchema,
-    },
+    summary: 'Update Dining Table',
+    description: 'Updates table details (name, section, capacity).',
+    body: UpdateTableSchema,
+    responses: { 200: PosTableSchema, 404: ErrorResponseSchema },
   }),
   requirePermission('table:write'),
-  async (c) => {
+  async (c) => handleUpdateTable(c, c.req.param('id'))
+);
+
+app.post(
+  '/update/:id',
+  requirePermission('table:write'),
+  async (c) => handleUpdateTable(c, c.req.param('id'))
+);
+
+// ─── POST /tables/toggle-active/:id & PATCH /tables/:id/toggle ────────────────
+async function handleToggleTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
-  const actorPhone = c.get('actorPhone');
-  const tableId = c.req.param('id');
+  const actorPhone = tenant.phone || tenant.phoneNumber || '';
 
   const { db, close } = getDb(c);
   try {
@@ -266,27 +248,31 @@ app.patch(
   } finally {
     await close();
   }
-});
+}
 
-// DELETE /tables/:id — soft-delete (set active=false, preserves order history)
-app.delete(
-  '/:id',
+app.patch(
+  '/:id/toggle',
   apiDoc({
     tags: ['Tables'],
-    summary: 'Soft Delete Dining Table',
-    description: 'Deactivates the dining table to preserve order history.',
-    params: z.object({ id: z.string() }),
-    responses: {
-      200: SuccessResponseSchema,
-      404: ErrorResponseSchema,
-    },
+    summary: 'Toggle Table Active Status',
+    description: 'Flips table active/inactive.',
+    responses: { 200: PosTableSchema, 404: ErrorResponseSchema },
   }),
   requirePermission('table:write'),
-  async (c) => {
+  async (c) => handleToggleTable(c, c.req.param('id'))
+);
+
+app.post(
+  '/toggle-active/:id',
+  requirePermission('table:write'),
+  async (c) => handleToggleTable(c, c.req.param('id'))
+);
+
+// ─── POST /tables/delete/:id & DELETE /tables/:id ─────────────────────────────
+async function handleDeleteTable(c: any, tableId: string) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
-  const actorPhone = c.get('actorPhone');
-  const tableId = c.req.param('id');
+  const actorPhone = tenant.phone || tenant.phoneNumber || '';
 
   const { db, close } = getDb(c);
   try {
@@ -315,6 +301,85 @@ app.delete(
   } finally {
     await close();
   }
-});
+}
+
+app.delete(
+  '/:id',
+  apiDoc({
+    tags: ['Tables'],
+    summary: 'Delete Dining Table',
+    description: 'Soft-deletes table.',
+    responses: { 200: SuccessResponseSchema, 404: ErrorResponseSchema },
+  }),
+  requirePermission('table:write'),
+  async (c) => handleDeleteTable(c, c.req.param('id'))
+);
+
+app.post(
+  '/delete/:id',
+  requirePermission('table:write'),
+  async (c) => handleDeleteTable(c, c.req.param('id'))
+);
+
+// ─── POST /tables/transfer ────────────────────────────────────────────────────
+app.post(
+  '/transfer',
+  apiDoc({
+    tags: ['Tables'],
+    summary: 'Transfer Table Order',
+    description: 'Transfers an active dine-in order from one table to another table.',
+    body: TransferTableSchema,
+    responses: { 200: SuccessResponseSchema, 400: ErrorResponseSchema, 404: ErrorResponseSchema },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = TransferTableSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+
+    const { outletId, fromTableNo, toTableNo } = parsed.data;
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [activeOrder] = await db
+        .select()
+        .from(appSchema.saleOrder)
+        .where(
+          and(
+            eq(appSchema.saleOrder.restaurantId, restaurantId),
+            eq(appSchema.saleOrder.outletId, outletId),
+            eq(appSchema.saleOrder.tableNo, fromTableNo),
+            eq(appSchema.saleOrder.status, 'OPEN'),
+            isNull(appSchema.saleOrder.tableFreedAt)
+          )
+        )
+        .limit(1);
+
+      if (!activeOrder) {
+        return c.json({ error: 'Not Found', message: `No active order found on table ${fromTableNo}` }, 404);
+      }
+
+      await db
+        .update(appSchema.saleOrder)
+        .set({ tableNo: toTableNo, updatedAt: new Date() })
+        .where(eq(appSchema.saleOrder.id, activeOrder.id));
+
+      broadcastToOutlet(c.env, outletId, {
+        topic: 'TABLES',
+        type: 'TABLE_TRANSFERRED',
+        data: { orderId: activeOrder.id, fromTableNo, toTableNo },
+      });
+
+      return c.json({ success: true, message: `Order transferred from ${fromTableNo} to ${toTableNo}` });
+    } finally {
+      await close();
+    }
+  }
+);
 
 export { app as tableRoutes };

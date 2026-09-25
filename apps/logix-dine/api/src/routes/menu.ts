@@ -16,10 +16,11 @@ import {
 } from '@logixsoft/logix-dine/schemas/pos';
 import { toCategory, toMenuItem } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
+import { broadcastToOutlet } from '../lib/sync';
 import { cacheGet, cacheSet, invalidateMenu, CacheKey, TTL } from '../lib/cache';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 
-const app = new Hono<{ Bindings: AuthEnv }>();
+const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
 function getDb(c: any) {
   const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
@@ -119,6 +120,11 @@ app.post(
     });
     const [cat] = await db.select().from(appSchema.menuCategory).where(eq(appSchema.menuCategory.id, id));
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, cat.outletId || tenant.outletId, {
+      topic: 'ALL',
+      type: 'MENU_UPDATED',
+      data: { categoryId: id },
+    });
     return c.json(toCategory(cat), 201);
   } finally {
     await close();
@@ -163,6 +169,11 @@ app.put(
     const [cat] = await db.select().from(appSchema.menuCategory).where(eq(appSchema.menuCategory.id, id));
     if (!cat) return c.json({ error: 'Not Found' }, 404);
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, cat.outletId || tenant.outletId, {
+      topic: 'ALL',
+      type: 'MENU_UPDATED',
+      data: { categoryId: id },
+    });
     return c.json(toCategory(cat));
   } finally {
     await close();
@@ -206,6 +217,11 @@ app.delete(
       .delete(appSchema.menuCategory)
       .where(and(eq(appSchema.menuCategory.id, id), eq(appSchema.menuCategory.restaurantId, restaurantId)));
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, existing.outletId || tenant.outletId, {
+      topic: 'ALL',
+      type: 'MENU_UPDATED',
+      data: { categoryId: id },
+    });
     return c.json({ success: true });
   } finally {
     await close();
@@ -242,6 +258,10 @@ app.patch(
       }
     });
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, c.get('tenant').outletId, {
+      topic: 'ALL',
+      type: 'MENU_UPDATED',
+    });
     return c.json({ success: true });
   } finally {
     await close();
@@ -358,6 +378,11 @@ app.post(
     });
     const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, item.outletId || tenant.outletId, {
+      topic: 'ALL',
+      type: 'ITEM_CREATED',
+      data: { itemId: id, name: item.name },
+    });
     return c.json(toMenuItem(item), 201);
   } finally {
     await close();
@@ -447,6 +472,11 @@ const handleUpdateItem = async (c: any) => {
     const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
     if (!item) return c.json({ error: 'Not Found' }, 404);
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, item.outletId || tenant.outletId, {
+      topic: 'ALL',
+      type: 'MENU_UPDATED',
+      data: { itemId: id, name: item.name },
+    });
     return c.json(toMenuItem(item));
   } finally {
     await close();
@@ -496,6 +526,11 @@ const handleDeleteItem = async (c: any) => {
       .delete(appSchema.menuItem)
       .where(and(eq(appSchema.menuItem.id, id), eq(appSchema.menuItem.restaurantId, restaurantId)));
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, existing.outletId || tenant.outletId, {
+      topic: 'ALL',
+      type: 'ITEM_DELETED',
+      data: { itemId: id },
+    });
     return c.json({ success: true });
   } finally {
     await close();
@@ -634,8 +669,6 @@ app.post(
   handleUploadItemImage
 );
 
-app.post('/:id/image', requirePermission('menu:write'), handleUploadItemImage);
-
 app.delete(
   '/items/:id/image',
   apiDoc({
@@ -651,8 +684,6 @@ app.delete(
   requirePermission('menu:write'),
   handleDeleteItemImage
 );
-
-app.delete('/:id/image', requirePermission('menu:write'), handleDeleteItemImage);
 
 const handleToggleItem = async (c: any) => {
   const tenant = c.get('tenant');
@@ -674,6 +705,11 @@ const handleToggleItem = async (c: any) => {
       .where(eq(appSchema.menuItem.id, id));
     const [updated] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, id));
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, item.outletId || tenant.outletId, {
+      topic: 'ALL',
+      type: 'ITEM_TOGGLED',
+      data: { itemId: id, available: !item.available },
+    });
     return c.json(toMenuItem(updated));
   } finally {
     await close();
@@ -732,6 +768,10 @@ app.patch(
       }
     });
     await invalidateMenu(kv(c), restaurantId);
+    broadcastToOutlet(c.env, c.get('tenant').outletId, {
+      topic: 'ALL',
+      type: 'MENU_UPDATED',
+    });
     return c.json({ success: true });
   } finally {
     await close();

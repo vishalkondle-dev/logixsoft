@@ -57,6 +57,11 @@ import {
   updateDeliveryStatus,
   updateDeliveryRiderStatus,
   getCustomerAddresses,
+  getReservations,
+  createReservation,
+  updateReservation,
+  deleteReservation,
+  type TableReservation,
   type CustomerPortalData,
   type CustomerMenuResponse,
 } from "@/lib/api-client";
@@ -96,6 +101,8 @@ export const qk = {
     ["deliveryRiders", restaurantId, outletId] as const,
   customerAddresses: (restaurantId: string, phone: string) =>
     ["customerAddresses", restaurantId, phone] as const,
+  reservations: (restaurantId: string, outletId?: string | null, date?: string, status?: string) =>
+    ["reservations", restaurantId, outletId ?? "all", date ?? "all", status ?? "all"] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -138,7 +145,7 @@ export function useKitchenOrders(
     queryFn: () => getKitchenOrders(restaurantId, outletId ?? undefined),
     enabled: !!restaurantId && !!outletId,
     staleTime: 5_000,
-    refetchInterval: options?.refetchInterval !== undefined ? options.refetchInterval : 30_000,
+    refetchInterval: options?.refetchInterval ?? false,
   });
 }
 
@@ -692,7 +699,12 @@ export function useCustomerAddresses(restaurantId: string, phone: string, enable
 export function useCreateDeliveryRider(restaurantId: string, outletId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: any) => createDeliveryRider(restaurantId, body, outletId),
+    mutationFn: (body: any) =>
+      createDeliveryRider(
+        restaurantId,
+        { ...body, outletId: body.outletId || outletId },
+        outletId ?? body.outletId
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
     },
@@ -734,6 +746,53 @@ export function useUpdateDeliveryRiderStatus(restaurantId: string, outletId: str
     }) => updateDeliveryRiderStatus(restaurantId, riderId, status, outletId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.deliveryRiders(restaurantId, outletId) });
+    },
+  });
+}
+
+// ─── Reservations Hooks ───────────────────────────────────────────────────────
+
+export function useReservations(
+  restaurantId: string,
+  outletId?: string | null,
+  params: { date?: string; status?: string } = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.reservations(restaurantId, outletId, params.date, params.status),
+    queryFn: () => getReservations(restaurantId, { outletId, date: params.date, status: params.status }),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateReservation(restaurantId: string, outletId?: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Parameters<typeof createReservation>[1]) => createReservation(restaurantId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
+    },
+  });
+}
+
+export function useUpdateReservation(restaurantId: string, outletId?: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Parameters<typeof updateReservation>[2] }) =>
+      updateReservation(restaurantId, id, body, outletId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
+    },
+  });
+}
+
+export function useDeleteReservation(restaurantId: string, outletId?: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteReservation(restaurantId, id, outletId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
     },
   });
 }

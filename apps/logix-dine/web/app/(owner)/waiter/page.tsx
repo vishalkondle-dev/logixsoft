@@ -77,7 +77,7 @@ export default function WaiterPage() {
   const [newModalOpen, setNewModalOpen] = useState(false);
 
   // New Request Form State
-  const [newTableNo, setNewTableNo] = useState("Table 1");
+  const [newTableNo, setNewTableNo] = useState("");
   const [newServiceType, setNewServiceType] = useState<"WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER">("WATER");
   const [newNote, setNewNote] = useState("");
 
@@ -88,7 +88,7 @@ export default function WaiterPage() {
   // Durable Object Live Sync
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
-  // Fetch Waiter Requests (Auto-updates via DO or 15s polling fallback)
+  // Fetch Waiter Requests (Auto-updates via Cloudflare Durable Object)
   const {
     data: requests = [],
     isLoading: requestsLoading,
@@ -97,23 +97,30 @@ export default function WaiterPage() {
     restaurantId,
     outletId,
     {},
-    { refetchInterval: isConnected ? false : 15_000 }
+    { refetchInterval: false }
   );
 
-  // Fetch Waiter Stats
+  // Fetch Waiter Stats (Auto-updates via Cloudflare Durable Object)
   const { data: stats } = useWaiterStats(restaurantId, outletId, {
-    refetchInterval: isConnected ? false : 15_000,
+    refetchInterval: false,
   });
 
   // Fetch Tables for new request picker
   const { data: tables = [] } = useTables(restaurantId, outletId);
 
-  // Fetch Orders to find dishes marked PREPARED by Kitchen
+  // Auto-select first dining table when tables are loaded
+  useEffect(() => {
+    if (tables.length > 0 && (!newTableNo || newTableNo === "Takeaway" || !tables.some((t: any) => t.name === newTableNo))) {
+      setNewTableNo(tables[0].name);
+    }
+  }, [tables, newTableNo]);
+
+  // Fetch Orders to find dishes marked PREPARED by Kitchen (Auto-updates via Cloudflare Durable Object)
   const { data: openOrders = [] } = useOrders(
     restaurantId,
     { outletId: outletId || undefined, status: "OPEN" },
     true,
-    { refetchInterval: isConnected ? false : 20_000 }
+    { refetchInterval: false }
   );
 
   const createMutation = useCreateWaiterRequest();
@@ -141,18 +148,27 @@ export default function WaiterPage() {
       orderId: string;
       orderNo: number;
       tableNo: string;
+      orderType: string;
       item: any;
     }> = [];
 
     for (const o of openOrders) {
       const order = o.order;
       const items = o.items || [];
+      const orderType =
+        order.orderType ||
+        ((order.tableNo || "").toLowerCase() === "delivery"
+          ? "DELIVERY"
+          : (order.tableNo || "").toLowerCase() === "takeaway"
+          ? "TAKEAWAY"
+          : "DINE_IN");
       for (const it of items) {
         if (it.status === "PREPARED") {
           list.push({
             orderId: order.id,
             orderNo: order.orderNo,
-            tableNo: order.tableNo || "Takeaway",
+            tableNo: order.tableNo || (orderType === "DELIVERY" ? "Delivery" : "Takeaway"),
+            orderType,
             item: it,
           });
         }
@@ -295,11 +311,14 @@ export default function WaiterPage() {
         </div>
 
         <Group gap="sm" wrap="wrap">
-          {outlets.length > 1 && (
+          {outlets.length > 0 && (
             <Select
               size="sm"
               data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-              value={activeOutlet?.id ?? null}
+              value={activeOutlet?.id ?? outlets[0]?.id ?? null}
+              readOnly={outlets.length <= 1}
+              rightSection={outlets.length <= 1 ? null : undefined}
+              styles={outlets.length <= 1 ? { input: { cursor: "default" } } : undefined}
               onChange={(val) => {
                 const found = outlets.find((o) => o.id === val);
                 if (found) setActiveOutlet(found.id);
@@ -528,57 +547,63 @@ export default function WaiterPage() {
             </Paper>
           ) : (
             <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="md">
-              {readyDishes.map(({ orderId, orderNo, tableNo, item }) => (
-                <Card key={item.id} p="md" radius="md" withBorder shadow="sm">
-                  <Group justify="space-between" align="flex-start" mb="xs">
-                    <Group gap="xs">
-                      <Badge size="lg" color="dark" radius="sm">
-                        {tableNo}
-                      </Badge>
-                      <Badge size="sm" variant="light" color="gray">
-                        Order #{orderNo}
+              {readyDishes.map(({ orderId, orderNo, tableNo, orderType, item }) => {
+                const isDelivery = orderType === "DELIVERY" || (tableNo || "").toLowerCase() === "delivery";
+                const isTakeaway = orderType === "TAKEAWAY" || (tableNo || "").toLowerCase() === "takeaway";
+                const buttonLabel = isDelivery ? "Ready for Rider Pickup" : isTakeaway ? "Ready for Pickup" : "Mark as Served";
+                const badgeLabel = isDelivery ? "Delivery" : isTakeaway ? "Takeaway" : tableNo;
+                return (
+                  <Card key={item.id} p="md" radius="md" withBorder shadow="sm">
+                    <Group justify="space-between" align="flex-start" mb="xs">
+                      <Group gap="xs">
+                        <Badge size="lg" color={isDelivery ? "teal" : isTakeaway ? "orange" : "dark"} radius="sm">
+                          {badgeLabel}
+                        </Badge>
+                        <Badge size="sm" variant="light" color="gray">
+                          Order #{orderNo}
+                        </Badge>
+                      </Group>
+                      <Badge color="orange" variant="light" leftSection={<IconClock size={12} />}>
+                        Kitchen Prepared
                       </Badge>
                     </Group>
-                    <Badge color="orange" variant="light" leftSection={<IconClock size={12} />}>
-                      Kitchen Prepared
-                    </Badge>
-                  </Group>
 
-                  <Text fw={700} size="md" mb={4}>
-                    {item.qty}x {item.nameSnapshot}
-                  </Text>
-
-                  {item.variant?.name && (
-                    <Text size="xs" c="dimmed">
-                      Variant: <strong>{item.variant.name}</strong>
+                    <Text fw={700} size="md" mb={4}>
+                      {item.qty}x {item.nameSnapshot}
                     </Text>
-                  )}
 
-                  {item.addons?.length > 0 && (
-                    <Text size="xs" c="dimmed">
-                      Add-ons: {item.addons.map((a: any) => a.name).join(", ")}
-                    </Text>
-                  )}
+                    {item.variant?.name && (
+                      <Text size="xs" c="dimmed">
+                        Variant: <strong>{item.variant.name}</strong>
+                      </Text>
+                    )}
 
-                  {item.note && (
-                    <Alert color="yellow" p="xs" mt="xs" radius="sm">
-                      <Text size="xs" fw={500}>Note: {item.note}</Text>
-                    </Alert>
-                  )}
+                    {item.addons?.length > 0 && (
+                      <Text size="xs" c="dimmed">
+                        Add-ons: {item.addons.map((a: any) => a.name).join(", ")}
+                      </Text>
+                    )}
 
-                  <Divider my="sm" />
+                    {item.note && (
+                      <Alert color="yellow" p="xs" mt="xs" radius="sm">
+                        <Text size="xs" fw={500}>Note: {item.note}</Text>
+                      </Alert>
+                    )}
 
-                  <Button
-                    fullWidth
-                    color="teal"
-                    leftSection={<IconCheck size={16} />}
-                    loading={servingItemId === item.id}
-                    onClick={() => handleServeItem(orderId, item.id, item.nameSnapshot, tableNo)}
-                  >
-                    Mark as Served
-                  </Button>
-                </Card>
-              ))}
+                    <Divider my="sm" />
+
+                    <Button
+                      fullWidth
+                      color="teal"
+                      leftSection={<IconCheck size={16} />}
+                      loading={servingItemId === item.id}
+                      onClick={() => handleServeItem(orderId, item.id, item.nameSnapshot, tableNo)}
+                    >
+                      {buttonLabel}
+                    </Button>
+                  </Card>
+                );
+              })}
             </SimpleGrid>
           )}
         </Stack>
@@ -798,16 +823,15 @@ export default function WaiterPage() {
           <Select
             label="Table"
             description="Select the dining table requesting service"
-            data={[
-              ...tables.map((t: any) => ({
-                value: t.name,
-                label: t.section ? `${t.name} · ${t.section}` : t.name,
-              })),
-              { value: "Takeaway", label: "Takeaway Counter" },
-            ]}
-            value={newTableNo}
-            onChange={(val) => setNewTableNo(val || "Table 1")}
+            data={tables.map((t: any) => ({
+              value: t.name,
+              label: t.section ? `${t.name} · ${t.section}` : t.name,
+            }))}
+            value={newTableNo && newTableNo !== "Takeaway" ? newTableNo : null}
+            onChange={(val) => setNewTableNo(val || (tables[0]?.name ?? ""))}
+            placeholder={tables.length === 0 ? "No tables configured" : "Select table"}
             required
+            nothingFoundMessage="No tables found"
           />
 
           <Select

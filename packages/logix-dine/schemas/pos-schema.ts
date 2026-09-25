@@ -97,6 +97,9 @@ export const restaurantOutlet = pgTable(
     openingHours: jsonb('openingHours'),
     invoiceSettings: jsonb('invoiceSettings'),
     taxSettings: jsonb('taxSettings'),
+    diningSettings: jsonb('diningSettings'),
+    qrMenuSettings: jsonb('qrMenuSettings'),
+    whatsappSettings: jsonb('whatsappSettings'),
     isDefault: boolean('isDefault').notNull().default(false),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
@@ -451,6 +454,42 @@ export const deliveryRider = pgTable(
   ]
 );
 
+// ─── Table Reservation ───────────────────────────────────────────────────────
+
+export const tableReservation = pgTable(
+  'tableReservation',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    tableId: text('tableId').references(() => posTable.id, { onDelete: 'set null' }),
+    tableName: text('tableName'),
+    guestName: text('guestName').notNull(),
+    guestPhone: text('guestPhone').notNull(),
+    guestEmail: text('guestEmail'),
+    partySize: integer('partySize').notNull().default(2),
+    reservationDate: text('reservationDate').notNull(), // YYYY-MM-DD
+    startTime: text('startTime').notNull(), // HH:mm
+    endTime: text('endTime'), // HH:mm
+    status: text('status').notNull().default('CONFIRMED'), // CONFIRMED | SEATED | CANCELLED | COMPLETED
+    notes: text('notes'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+    updatedBy: text('updatedBy'),
+  },
+  (t) => [
+    index('tableReservation_restaurantId_idx').on(t.restaurantId),
+    index('tableReservation_outletId_idx').on(t.outletId),
+    index('tableReservation_date_idx').on(t.reservationDate),
+    index('tableReservation_status_idx').on(t.status),
+  ],
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
@@ -468,6 +507,7 @@ export const posSchema = {
   deliveryOrder,
   customerAddress,
   deliveryRider,
+  tableReservation,
 };
 
 

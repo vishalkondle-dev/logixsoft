@@ -116,6 +116,10 @@ interface CartPanelProps {
   currentRound?: number;
   onViewExistingItems?: () => void;
   customerActiveOrderConflict?: { orderNo: number; tableNo: string | null; orderId: string } | null;
+  availableOrderModes?: { label: string; value: "DINE_IN" | "TAKEAWAY" | "DELIVERY" }[];
+  isFreeDelivery?: boolean;
+  minDeliveryOrder?: number;
+  isMinDeliveryBlocked?: boolean;
 }
 
 function CartPanel({
@@ -159,7 +163,18 @@ function CartPanel({
   currentRound = 1,
   onViewExistingItems,
   customerActiveOrderConflict,
+  availableOrderModes,
+  isFreeDelivery,
+  minDeliveryOrder,
+  isMinDeliveryBlocked,
 }: CartPanelProps) {
+  const currentModes = (availableOrderModes && availableOrderModes.length > 0)
+    ? availableOrderModes
+    : [{ label: "🛍️ Takeaway", value: "TAKEAWAY" as const }];
+  const effectiveOrderType = currentModes.some((m) => m.value === orderType)
+    ? orderType
+    : currentModes[0].value;
+
   return (
     <Box
       style={{
@@ -179,7 +194,7 @@ function CartPanel({
             {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
           </Group>
           <Group gap="xs" align="center">
-            {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway" || orderType !== "TAKEAWAY") && (
+            {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway" || effectiveOrderType !== "TAKEAWAY") && (
               <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
                 Clear
               </Button>
@@ -190,24 +205,20 @@ function CartPanel({
           </Group>
         </Group>
 
-        {/* Order Mode Segmented Control */}
+        {/* Order Mode Segmented Control (Dynamically configured by outlet dining options) */}
         <SegmentedControl
-          value={orderType}
+          value={effectiveOrderType}
           onChange={(val) => {
             const nextType = val as "DINE_IN" | "TAKEAWAY" | "DELIVERY";
             setOrderType(nextType);
             if (nextType === "TAKEAWAY") setTableNo("Takeaway");
             else if (nextType === "DELIVERY") setTableNo("Delivery");
-            else if (tableNo === "Takeaway" || tableNo === "Delivery") {
-              const firstTable = tableSelectData.find((t) => t.value !== "Takeaway" && t.value !== "Delivery")?.value;
+            else if (tableNo === "Takeaway" || tableNo === "Delivery" || !tableNo) {
+              const firstTable = tableSelectData[0]?.value;
               setTableNo(firstTable || "");
             }
           }}
-          data={[
-            { label: "🍽️ Dine-In", value: "DINE_IN" },
-            { label: "🛍️ Takeaway", value: "TAKEAWAY" },
-            { label: "🛵 Delivery", value: "DELIVERY" },
-          ]}
+          data={currentModes}
           fullWidth
           size="xs"
           mb="xs"
@@ -216,22 +227,23 @@ function CartPanel({
 
         {/* Cart Selection: Table select (if Dine-In) + Customer Phone + Delivery fields */}
         <Stack gap="xs" mb="xs">
-          {orderType === "DINE_IN" && (
+          {effectiveOrderType === "DINE_IN" && (
             <Select
               label="Table"
-              placeholder="Select table"
+              placeholder={tableSelectData.length === 0 ? "No tables configured" : "Select table"}
               size="sm"
-              value={tableNo}
+              value={tableNo && tableNo !== "Takeaway" && tableNo !== "Delivery" ? tableNo : null}
               onChange={(v) => setTableNo(v || "")}
-              data={tableSelectData.filter((t) => t.value !== "Delivery")}
+              data={tableSelectData}
               leftSection={<IconTableAlias size={16} />}
               allowDeselect={false}
               comboboxProps={{ withinPortal: true, zIndex: 1500 }}
+              nothingFoundMessage="No tables found"
             />
           )}
 
           <TextInput
-            label={orderType === "DELIVERY" ? "Customer Phone (Required)" : "Customer Phone (optional)"}
+            label={effectiveOrderType === "DELIVERY" ? "Customer Phone (Required)" : "Customer Phone (optional)"}
             placeholder="WhatsApp number (e.g. 9876543210)"
             type="tel"
             inputMode="numeric"
@@ -258,7 +270,7 @@ function CartPanel({
             }
           />
 
-          {orderType === "DELIVERY" && (
+          {effectiveOrderType === "DELIVERY" && (
             <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#fbfcfe" }}>
               <Group justify="space-between" align="center" mb={6}>
                 <Text size="xs" fw={700} c="dimmed">
@@ -484,7 +496,39 @@ function CartPanel({
       {/* Bottom Fixed Section */}
       <Box style={{ flexShrink: 0, marginTop: "auto" }}>
         <Divider my="xs" />
-        {orderType === "DELIVERY" && (
+        {effectiveOrderType === "DELIVERY" && cartItems.length > 0 && (
+          <Stack gap={2} mb="xs">
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">Items Subtotal</Text>
+              <Text size="xs" fw={500}>₹{(itemsSubtotal / 100).toFixed(0)}</Text>
+            </Group>
+            {packagingCharge > 0 && (
+              <Group justify="space-between">
+                <Text size="xs" c="dimmed">Packaging Fee</Text>
+                <Text size="xs" fw={500}>₹{packagingCharge}</Text>
+              </Group>
+            )}
+            <Group justify="space-between">
+              <Text size="xs" c="dimmed">Delivery Fee</Text>
+              {isFreeDelivery ? (
+                <Group gap={4}>
+                  <Text size="xs" td="line-through" c="dimmed">₹{deliveryCharge}</Text>
+                  <Badge size="xs" color="teal" variant="light">FREE</Badge>
+                </Group>
+              ) : (
+                <Text size="xs" fw={500}>₹{deliveryCharge}</Text>
+              )}
+            </Group>
+            {isMinDeliveryBlocked && minDeliveryOrder != null && (
+              <Alert color="orange" p="xs" py={4} radius="sm" icon={<IconAlertCircle size={14} />}>
+                <Text size="xs">Min delivery order ₹{minDeliveryOrder} (add ₹{Math.max(0, minDeliveryOrder - Math.round(itemsSubtotal / 100))} more)</Text>
+              </Alert>
+            )}
+            <Divider variant="dashed" my={2} />
+          </Stack>
+        )}
+
+        {effectiveOrderType === "TAKEAWAY" && packagingCharge > 0 && cartItems.length > 0 && (
           <Stack gap={2} mb="xs">
             <Group justify="space-between">
               <Text size="xs" c="dimmed">Items Subtotal</Text>
@@ -494,13 +538,10 @@ function CartPanel({
               <Text size="xs" c="dimmed">Packaging Fee</Text>
               <Text size="xs" fw={500}>₹{packagingCharge}</Text>
             </Group>
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">Delivery Fee</Text>
-              <Text size="xs" fw={500}>₹{deliveryCharge}</Text>
-            </Group>
             <Divider variant="dashed" my={2} />
           </Stack>
         )}
+
         <Group justify="space-between" mb="xs">
           <Text fw={700}>Total</Text>
           <Text fw={700} c="dinePrimary" size="lg">₹{(grandTotal / 100).toFixed(0)}</Text>
@@ -520,7 +561,7 @@ function CartPanel({
                   onClick={handleSend}
                   loading={sending}
                   style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
-                  disabled={cartItems.length === 0 || isBlockedByConflict}
+                  disabled={cartItems.length === 0 || isBlockedByConflict || isMinDeliveryBlocked}
                   leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
                 >
                   {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
@@ -539,7 +580,7 @@ function CartPanel({
                         width: 36,
                         height: 36,
                       }}
-                      disabled={cartItems.length === 0 || sending || isBlockedByConflict}
+                      disabled={cartItems.length === 0 || sending || isBlockedByConflict || isMinDeliveryBlocked}
                       aria-label="More order options"
                     >
                       <IconChevronDown size={16} />
@@ -580,12 +621,12 @@ export default function POSPage() {
   // Real-time live sync via Cloudflare Durable Object
   const { isConnected } = useOutletSync(restaurantId, outletId);
 
-  // Table orders for instant occupancy and active table matching (real-time push, 30s safety fallback when offline)
+  // Table orders for instant occupancy and active table matching (real-time push via Durable Object)
   const { data: openOrders = [] } = useOrders(
     restaurantId,
     { tableOccupied: true, outletId: outletId ?? undefined },
     Boolean(restaurantId && outletId),
-    { refetchInterval: isConnected ? false : 30_000 }
+    { refetchInterval: false }
   );
 
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
@@ -599,6 +640,32 @@ export default function POSPage() {
   const [tableNo, setTableNo] = useState<string>("Takeaway");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
+  // Outlet dining settings integration
+  const diningSettings = useMemo(() => {
+    if (!activeOutlet?.diningSettings) return null;
+    if (typeof activeOutlet.diningSettings === "string") {
+      try {
+        return JSON.parse(activeOutlet.diningSettings);
+      } catch {
+        return null;
+      }
+    }
+    return activeOutlet.diningSettings as any;
+  }, [activeOutlet?.diningSettings]);
+
+  const isDineInEnabled = diningSettings?.dineInEnabled !== false;
+  const isTakeawayEnabled = diningSettings?.takeawayEnabled !== false;
+  const isDeliveryEnabled = diningSettings?.deliveryEnabled !== false;
+
+  const availableOrderModes = useMemo(() => {
+    const modes: { label: string; value: "DINE_IN" | "TAKEAWAY" | "DELIVERY" }[] = [];
+    if (isDineInEnabled) modes.push({ label: "🍽️ Dine-In", value: "DINE_IN" });
+    if (isTakeawayEnabled) modes.push({ label: "🛍️ Takeaway", value: "TAKEAWAY" });
+    if (isDeliveryEnabled) modes.push({ label: "🛵 Delivery", value: "DELIVERY" });
+    if (modes.length === 0) modes.push({ label: "🛍️ Takeaway", value: "TAKEAWAY" });
+    return modes;
+  }, [isDineInEnabled, isTakeawayEnabled, isDeliveryEnabled]);
+
   // Delivery state
   const [orderType, setOrderType] = useState<"DINE_IN" | "TAKEAWAY" | "DELIVERY">("TAKEAWAY");
   const [deliveryCustomerName, setDeliveryCustomerName] = useState("");
@@ -607,8 +674,32 @@ export default function POSPage() {
   const [deliveryPincode, setDeliveryPincode] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
-  const [packagingCharge, setPackagingCharge] = useState(20);
+  const [packagingCharge, setPackagingCharge] = useState(15);
   const [deliveryCharge, setDeliveryCharge] = useState(40);
+
+  // Synchronize orderType with available modes & default preferences
+  useEffect(() => {
+    if (availableOrderModes.length > 0 && !availableOrderModes.some((m) => m.value === orderType)) {
+      const defaultPref = diningSettings?.defaultOrderType;
+      const targetMode = availableOrderModes.some((m) => m.value === defaultPref)
+        ? defaultPref
+        : availableOrderModes[0].value;
+      setOrderType(targetMode);
+      if (targetMode === "TAKEAWAY") setTableNo("Takeaway");
+      else if (targetMode === "DELIVERY") setTableNo("Delivery");
+      else if (targetMode === "DINE_IN" && tables.length > 0) setTableNo(tables[0].name);
+    }
+  }, [availableOrderModes, orderType, diningSettings?.defaultOrderType, tables]);
+
+  // Sync charges from diningSettings
+  useEffect(() => {
+    if (diningSettings?.packagingChargePaise != null) {
+      setPackagingCharge(Math.round(diningSettings.packagingChargePaise / 100));
+    }
+    if (diningSettings?.deliveryFeePaise != null) {
+      setDeliveryCharge(Math.round(diningSettings.deliveryFeePaise / 100));
+    }
+  }, [diningSettings?.packagingChargePaise, diningSettings?.deliveryFeePaise]);
 
   // Delivery Drawer & Add Rider modal state
   const [deliveryDrawerOpen, setDeliveryDrawerOpen] = useState(false);
@@ -633,12 +724,12 @@ export default function POSPage() {
   const { data: riders = [] } = useDeliveryRiders(restaurantId, outletId);
   const { data: savedAddresses = [] } = useCustomerAddresses(restaurantId, customerPhone);
 
-  // All recent orders for active delivery tracking
+  // All recent orders for active delivery tracking (real-time push via Durable Object)
   const { data: allRecentOrders = [] } = useOrders(
     restaurantId,
     { outletId: outletId ?? undefined, limit: 100 },
     Boolean(restaurantId && outletId),
-    { refetchInterval: isConnected ? false : 20_000 }
+    { refetchInterval: false }
   );
 
   const activeDeliveryOrders = useMemo(() => {
@@ -688,14 +779,30 @@ export default function POSPage() {
       const params = new URLSearchParams(window.location.search);
       const tableParam = params.get("table");
       if (tableParam) {
-        setTableNo(tableParam);
+        if (isDineInEnabled) {
+          setTableNo(tableParam);
+          setOrderType("DINE_IN");
+        } else {
+          notifications.show({
+            title: "Dine-In Disabled",
+            message: `Table "${tableParam}" requested, but Dine-In is turned off for this outlet.`,
+            color: "orange",
+          });
+        }
       }
       const phoneParam = params.get("phone");
       if (phoneParam) {
         setCustomerPhone(phoneParam.replace(/\D/g, "").slice(0, 15));
       }
     }
-  }, []);
+  }, [isDineInEnabled]);
+
+  // Auto-select first dining table when in DINE_IN mode if current tableNo is invalid
+  useEffect(() => {
+    if (isDineInEnabled && orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery") && tables.length > 0) {
+      setTableNo(tables[0].name);
+    }
+  }, [isDineInEnabled, orderType, tableNo, tables]);
 
   // Settle modal state
   const [settleModal, setSettleModal] = useState(false);
@@ -936,6 +1043,15 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
       } else {
         if (orderType === "DELIVERY") {
+          if (isMinDeliveryBlocked) {
+            notifications.show({
+              title: "Minimum Order Required",
+              message: `Minimum order for delivery is ₹${minDeliveryOrder}. Please add ₹${Math.max(0, minDeliveryOrder - Math.round(itemsSubtotal / 100))} more.`,
+              color: "red",
+            });
+            setSending(false);
+            return;
+          }
           if (!customerPhone.trim() || customerPhone.replace(/\D/g, "").length < 10) {
             notifications.show({
               title: "Customer Phone Required",
@@ -954,6 +1070,14 @@ export default function POSPage() {
             setSending(false);
             return;
           }
+        } else if (orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery")) {
+          notifications.show({
+            title: "Table Required",
+            message: "Please select a dining table for Dine-In orders.",
+            color: "red",
+          });
+          setSending(false);
+          return;
         } else if (customerActiveOrderConflict) {
           notifications.show({
             title: "Customer Has Active Order",
@@ -979,8 +1103,8 @@ export default function POSPage() {
           tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
           customerPhone: customerPhone.trim() || undefined,
           orderType,
-          packagingChargePaise: orderType === "DELIVERY" ? packagingCharge * 100 : 0,
-          deliveryChargePaise: orderType === "DELIVERY" ? deliveryCharge * 100 : 0,
+          packagingChargePaise: (orderType === "DELIVERY" || orderType === "TAKEAWAY") ? packagingCharge * 100 : 0,
+          deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
           delivery: deliveryPayload,
           items: cartItems.map((i) => ({
             itemId: i.itemId,
@@ -1089,6 +1213,15 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
       } else {
         if (orderType === "DELIVERY") {
+          if (isMinDeliveryBlocked) {
+            notifications.show({
+              title: "Minimum Order Required",
+              message: `Minimum order for delivery is ₹${minDeliveryOrder}. Please add ₹${Math.max(0, minDeliveryOrder - Math.round(itemsSubtotal / 100))} more.`,
+              color: "red",
+            });
+            setSettling(false);
+            return;
+          }
           if (!customerPhone.trim() || customerPhone.replace(/\D/g, "").length < 10) {
             notifications.show({
               title: "Customer Phone Required",
@@ -1107,6 +1240,15 @@ export default function POSPage() {
             setSettling(false);
             return;
           }
+        } else if (orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery")) {
+          notifications.show({
+            title: "Table Required",
+            message: "Please select a dining table for Dine-In orders.",
+            color: "red",
+            icon: <IconAlertCircle size={16} />,
+          });
+          setSettling(false);
+          return;
         } else if (customerActiveOrderConflict) {
           notifications.show({
             title: "Customer Has Active Order",
@@ -1132,8 +1274,8 @@ export default function POSPage() {
           tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
           customerPhone: customerPhone.trim() || undefined,
           orderType,
-          packagingChargePaise: orderType === "DELIVERY" ? packagingCharge * 100 : 0,
-          deliveryChargePaise: orderType === "DELIVERY" ? deliveryCharge * 100 : 0,
+          packagingChargePaise: (orderType === "DELIVERY" || orderType === "TAKEAWAY") ? packagingCharge * 100 : 0,
+          deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
           delivery: deliveryPayload,
           method: settleMethod,
           items: cartItems.map((i) => ({
@@ -1293,23 +1435,41 @@ export default function POSPage() {
     });
 
   const itemsSubtotal = cartItems.reduce((s, i) => s + i.pricePaise * i.qty, 0);
-  const extraCharges = orderType === "DELIVERY" ? (packagingCharge + deliveryCharge) * 100 : 0;
+
+  // Delivery free threshold check
+  const freeDeliveryThreshold = diningSettings?.freeDeliveryThresholdPaise != null
+    ? Math.round(diningSettings.freeDeliveryThresholdPaise / 100)
+    : 0;
+  const isFreeDelivery = freeDeliveryThreshold > 0 && (itemsSubtotal / 100) >= freeDeliveryThreshold;
+
+  // Minimum delivery check
+  const minDeliveryOrder = diningSettings?.minDeliveryOrderPaise != null
+    ? Math.round(diningSettings.minDeliveryOrderPaise / 100)
+    : 0;
+  const isMinDeliveryBlocked = orderType === "DELIVERY" && minDeliveryOrder > 0 && (itemsSubtotal / 100) < minDeliveryOrder;
+
+  const effectiveDeliveryFee = isFreeDelivery ? 0 : deliveryCharge;
+  const extraCharges = cartItems.length > 0
+    ? orderType === "DELIVERY"
+      ? (packagingCharge + effectiveDeliveryFee) * 100
+      : orderType === "TAKEAWAY"
+      ? (packagingCharge > 0 ? packagingCharge * 100 : 0)
+      : 0
+    : 0;
+
   const grandTotal = itemsSubtotal + extraCharges;
   const total = grandTotal;
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
 
-  const tableSelectData = [
-    { value: "Takeaway", label: "Takeaway" },
-    ...tables.map((t: any) => {
-      const occ = openOrders.find((entry: any) => isTableMatch(t.name, entry.order?.tableNo));
-      let label = t.section ? `${t.name} · ${t.section}` : t.name;
-      if (occ) {
-        const r = (occ.items ?? []).reduce((m: number, i: any) => Math.max(m, i.round || 1), 1);
-        label += ` (Occupied · Round ${r})`;
-      }
-      return { value: t.name, label };
-    }),
-  ];
+  const tableSelectData = tables.map((t: any) => {
+    const occ = openOrders.find((entry: any) => isTableMatch(t.name, entry.order?.tableNo));
+    let label = t.section ? `${t.name} · ${t.section}` : t.name;
+    if (occ) {
+      const r = (occ.items ?? []).reduce((m: number, i: any) => Math.max(m, i.round || 1), 1);
+      label += ` (Occupied · Round ${r})`;
+    }
+    return { value: t.name, label };
+  });
 
   const cartPanelProps: CartPanelProps = {
     cartItems,
@@ -1341,6 +1501,10 @@ export default function POSPage() {
     savedAddresses,
     riders,
     tableSelectData,
+    availableOrderModes,
+    isFreeDelivery,
+    minDeliveryOrder,
+    isMinDeliveryBlocked,
     handleClearCart,
     openNoteModal,
     handleUpdateQty,
@@ -2082,7 +2246,8 @@ export default function POSPage() {
                             <Group gap="xs">
                               <Checkbox
                                 checked={isChecked}
-                                onChange={() => {}}
+                                readOnly
+                                style={{ pointerEvents: "none" }}
                                 color="dinePrimary"
                                 size="xs"
                               />

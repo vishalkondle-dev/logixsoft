@@ -2,58 +2,54 @@ import { Hono } from 'hono';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
-import { createDbWithClient, appSchema } from '../db';
+import { appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
+import { isAllOutletRole, type RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import { toCustomerAddress, toDeliveryRider, toDeliveryOrder } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
-import { getPhoneVariants } from './customer-portal';
+import { getDb, getPhoneVariants } from '../lib/order-helpers';
+import { sendWhatsAppText } from '@logixsoft/wa';
 
 const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
-function getDb(c: any) {
-  const url = c.env?.HYPERDRIVE?.connectionString || c.env?.DATABASE_URL || '';
-  return createDbWithClient({ connectionString: url, schema: appSchema, maxConnections: 1 });
+// ─── GET /delivery/customer-addresses/:phone ──────────────────────────────────
+async function handleGetCustomerAddresses(c: any) {
+  const phone = c.req.param('phone');
+  if (!phone) {
+    return c.json({ error: 'Bad Request', message: 'Phone number is required' }, 400);
+  }
+
+  const { variants } = getPhoneVariants(phone);
+  const { db, close } = getDb(c);
+
+  try {
+    const addresses = await db
+      .select()
+      .from(appSchema.customerAddress)
+      .where(inArray(appSchema.customerAddress.customerPhone, variants))
+      .orderBy(desc(appSchema.customerAddress.isDefault), desc(appSchema.customerAddress.updatedAt));
+
+    return c.json(addresses.map(toCustomerAddress));
+  } finally {
+    await close();
+  }
 }
 
-// ─── GET /delivery/addresses/:phone ──────────────────────────────────────────
 app.get(
-  '/addresses/:phone',
+  '/customer-addresses/:phone',
   apiDoc({
     tags: ['Delivery'],
     summary: 'Get Saved Customer Addresses',
     description: 'Retrieves saved delivery addresses for a customer phone number.',
-    responses: {
-      200: z.array(z.any()),
-      401: ErrorResponseSchema,
-    },
+    responses: { 200: z.array(z.any()), 401: ErrorResponseSchema },
   }),
-  requirePermission('order:read'),
-  async (c) => {
-    const phone = c.req.param('phone');
-    if (!phone) {
-      return c.json({ error: 'Bad Request', message: 'Phone number is required' }, 400);
-    }
-
-    const { variants } = getPhoneVariants(phone);
-    const { db, close } = getDb(c);
-
-    try {
-      const addresses = await db
-        .select()
-        .from(appSchema.customerAddress)
-        .where(inArray(appSchema.customerAddress.customerPhone, variants))
-        .orderBy(desc(appSchema.customerAddress.isDefault), desc(appSchema.customerAddress.updatedAt));
-
-      return c.json(addresses.map(toCustomerAddress));
-    } finally {
-      await close();
-    }
-  }
+  requirePermission('delivery:read'),
+  handleGetCustomerAddresses
 );
 
-// ─── POST /delivery/addresses ────────────────────────────────────────────────
+// ─── POST /delivery/save-address ──────────────────────────────────────────────
 const SaveAddressSchema = z.object({
   customerPhone: z.string().min(10).max(25),
   label: z.string().max(50).optional().default('Home'),
@@ -67,81 +63,80 @@ const SaveAddressSchema = z.object({
   isDefault: z.boolean().optional().default(false),
 });
 
+async function handleSaveAddress(c: any) {
+  const body = await c.req.json().catch(() => null);
+  const parsed = SaveAddressSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid address' }, 400);
+  }
+
+  const { db, close } = getDb(c);
+  try {
+    const now = new Date();
+    const addrId = generateId('addr');
+
+    if (parsed.data.isDefault) {
+      await db
+        .update(appSchema.customerAddress)
+        .set({ isDefault: false, updatedAt: now })
+        .where(eq(appSchema.customerAddress.customerPhone, parsed.data.customerPhone));
+    }
+
+    const newAddr = {
+      id: addrId,
+      customerPhone: parsed.data.customerPhone,
+      label: parsed.data.label,
+      receiverName: parsed.data.receiverName || null,
+      receiverPhone: parsed.data.receiverPhone || null,
+      addressLine1: parsed.data.addressLine1,
+      addressLine2: parsed.data.addressLine2 || null,
+      landmark: parsed.data.landmark || null,
+      city: parsed.data.city,
+      pincode: parsed.data.pincode,
+      isDefault: parsed.data.isDefault,
+      latitude: null,
+      longitude: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await db.insert(appSchema.customerAddress).values(newAddr);
+    return c.json(toCustomerAddress(newAddr), 201);
+  } finally {
+    await close();
+  }
+}
+
 app.post(
-  '/addresses',
+  '/save-address',
   apiDoc({
     tags: ['Delivery'],
     summary: 'Save Customer Address',
     description: 'Creates or updates a saved delivery address for a customer.',
-    responses: {
-      200: z.any(),
-      400: ErrorResponseSchema,
-    },
+    body: SaveAddressSchema,
+    responses: { 201: z.any(), 400: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
-  async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = SaveAddressSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid address' }, 400);
-    }
-
-    const { db, close } = getDb(c);
-    try {
-      const now = new Date();
-      const addrId = generateId('addr');
-
-      if (parsed.data.isDefault) {
-        await db
-          .update(appSchema.customerAddress)
-          .set({ isDefault: false, updatedAt: now })
-          .where(eq(appSchema.customerAddress.customerPhone, parsed.data.customerPhone));
-      }
-
-      const newAddr = {
-        id: addrId,
-        customerPhone: parsed.data.customerPhone,
-        label: parsed.data.label,
-        receiverName: parsed.data.receiverName || null,
-        receiverPhone: parsed.data.receiverPhone || parsed.data.customerPhone,
-        addressLine1: parsed.data.addressLine1,
-        addressLine2: parsed.data.addressLine2 || null,
-        landmark: parsed.data.landmark || null,
-        city: parsed.data.city,
-        pincode: parsed.data.pincode,
-        latitude: null,
-        longitude: null,
-        isDefault: parsed.data.isDefault,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      await db.insert(appSchema.customerAddress).values(newAddr);
-      return c.json(toCustomerAddress(newAddr));
-    } finally {
-      await close();
-    }
-  }
+  requirePermission('delivery:write'),
+  handleSaveAddress
 );
 
-// ─── GET /delivery/riders ────────────────────────────────────────────────────
+// ─── GET /delivery/riders ─────────────────────────────────────────────────────
 app.get(
   '/riders',
   apiDoc({
     tags: ['Delivery'],
     summary: 'List Delivery Riders',
-    description: 'Retrieves all delivery riders for the outlet fleet.',
+    description: 'Lists all registered delivery riders for the restaurant/outlet.',
     query: z.object({ outletId: z.string().optional() }),
-    responses: {
-      200: z.array(z.any()),
-      401: ErrorResponseSchema,
-    },
+    responses: { 200: z.array(z.any()), 403: ErrorResponseSchema },
   }),
-  requirePermission('order:read'),
+  requirePermission('delivery:read'),
   async (c) => {
     const tenant = c.get('tenant');
     const { restaurantId } = tenant;
-    const outletId = c.req.query('outletId') || c.req.header('x-outlet-id');
+    const headerOutletId = c.req.header('X-Outlet-Id');
+    const queryOutletId = c.req.query('outletId');
+    const outletId = queryOutletId || headerOutletId;
 
     if (outletId && !assertOutletAccess(tenant, outletId)) {
       return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
@@ -149,9 +144,15 @@ app.get(
 
     const { db, close } = getDb(c);
     try {
-      const conditions = [eq(appSchema.deliveryRider.restaurantId, restaurantId)];
+      const conditions: any[] = [eq(appSchema.deliveryRider.restaurantId, restaurantId)];
       if (outletId) {
         conditions.push(eq(appSchema.deliveryRider.outletId, outletId));
+      } else if (!isAllOutletRole(tenant.role as RestaurantRole)) {
+        if (tenant.outletIds && tenant.outletIds.length > 0) {
+          conditions.push(inArray(appSchema.deliveryRider.outletId, tenant.outletIds));
+        } else {
+          return c.json({ error: 'Forbidden', message: 'No outlets assigned to your role' }, 403);
+        }
       } else if (tenant.outletIds && tenant.outletIds.length > 0) {
         conditions.push(inArray(appSchema.deliveryRider.outletId, tenant.outletIds));
       }
@@ -160,7 +161,7 @@ app.get(
         .select()
         .from(appSchema.deliveryRider)
         .where(and(...conditions))
-        .orderBy(appSchema.deliveryRider.name);
+        .orderBy(desc(appSchema.deliveryRider.createdAt));
 
       return c.json(riders.map(toDeliveryRider));
     } finally {
@@ -169,299 +170,353 @@ app.get(
   }
 );
 
-// ─── POST /delivery/riders ───────────────────────────────────────────────────
+// ─── POST /delivery/register-rider ───────────────────────────────────────────
 const CreateRiderSchema = z.object({
   outletId: z.string(),
-  name: z.string().min(1).max(100),
+  name: z.string().min(2).max(100),
   phone: z.string().min(10).max(25),
-  vehicleType: z.string().optional().default('BIKE'),
-  vehicleNumber: z.string().max(50).optional(),
+  vehicleType: z.enum(['BIKE', 'SCOOTER', 'CYCLE', 'EV', 'OTHER']).default('BIKE'),
+  vehicleNumber: z.string().max(30).optional(),
 });
+
+async function handleRegisterRider(c: any) {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const body = await c.req.json().catch(() => null);
+  const parsed = CreateRiderSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid rider data' }, 400);
+  }
+
+  if (!assertOutletAccess(tenant, parsed.data.outletId)) {
+    return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${parsed.data.outletId}'` }, 403);
+  }
+
+  const { db, close } = getDb(c);
+  try {
+    const now = new Date();
+    const riderId = generateId('rider');
+    const newRider = {
+      id: riderId,
+      restaurantId,
+      outletId: parsed.data.outletId,
+      name: parsed.data.name,
+      phone: parsed.data.phone,
+      vehicleType: parsed.data.vehicleType,
+      vehicleNumber: parsed.data.vehicleNumber || null,
+      status: 'AVAILABLE',
+      currentLatitude: null,
+      currentLongitude: null,
+      lastLocationAt: null,
+      activeOrderId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await db.insert(appSchema.deliveryRider).values(newRider);
+    return c.json(toDeliveryRider(newRider), 201);
+  } finally {
+    await close();
+  }
+}
 
 app.post(
-  '/riders',
+  '/register-rider',
   apiDoc({
     tags: ['Delivery'],
-    summary: 'Create Delivery Rider',
-    description: 'Adds a new rider to the delivery fleet.',
-    responses: {
-      200: z.any(),
-      400: ErrorResponseSchema,
-    },
+    summary: 'Register Delivery Rider',
+    description: 'Registers a new rider in the delivery fleet.',
+    body: CreateRiderSchema,
+    responses: { 201: z.any(), 400: ErrorResponseSchema },
   }),
-  requirePermission('order:create'),
-  async (c) => {
-    const tenant = c.get('tenant');
-    const { restaurantId } = tenant;
-    const body = await c.req.json().catch(() => null);
-    const parsed = CreateRiderSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid rider data' }, 400);
-    }
-
-    if (!assertOutletAccess(tenant, parsed.data.outletId)) {
-      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${parsed.data.outletId}'` }, 403);
-    }
-
-    const { db, close } = getDb(c);
-    try {
-      const now = new Date();
-      const riderId = generateId('rider');
-      const newRider = {
-        id: riderId,
-        restaurantId,
-        outletId: parsed.data.outletId,
-        name: parsed.data.name,
-        phone: parsed.data.phone,
-        vehicleType: parsed.data.vehicleType,
-        vehicleNumber: parsed.data.vehicleNumber || null,
-        status: 'AVAILABLE',
-        currentLatitude: null,
-        currentLongitude: null,
-        lastLocationAt: null,
-        activeOrderId: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      await db.insert(appSchema.deliveryRider).values(newRider);
-      return c.json(toDeliveryRider(newRider));
-    } finally {
-      await close();
-    }
-  }
+  requirePermission('delivery:write'),
+  handleRegisterRider
 );
 
-// ─── PATCH /delivery/orders/:id/status ───────────────────────────────────────
-const UpdateDeliveryStatusSchema = z.object({
-  status: z.enum(['ASSIGNED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED']),
-  riderId: z.string().optional(),
-  deliveryOtp: z.string().optional(),
-  failedReason: z.string().max(255).optional(),
-});
-
-app.patch(
-  '/orders/:id/status',
-  apiDoc({
-    tags: ['Delivery'],
-    summary: 'Update Delivery Order Status',
-    description: 'Transitions delivery order state, assigns rider, or marks delivered with OTP.',
-    responses: {
-      200: z.any(),
-      400: ErrorResponseSchema,
-      404: ErrorResponseSchema,
-    },
-  }),
-  requirePermission('order:create'),
-  async (c) => {
-    const tenant = c.get('tenant');
-    const { restaurantId } = tenant;
-    const orderId = c.req.param('id');
-    const body = await c.req.json().catch(() => null);
-    const parsed = UpdateDeliveryStatusSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid update data' }, 400);
-    }
-
-    const { db, close } = getDb(c);
-    try {
-      const [existingDelivery] = await db
-        .select()
-        .from(appSchema.deliveryOrder)
-        .where(
-          and(
-            eq(appSchema.deliveryOrder.orderId, orderId),
-            eq(appSchema.deliveryOrder.restaurantId, restaurantId)
-          )
-        );
-
-      if (!existingDelivery) {
-        return c.json({ error: 'Not Found', message: `Delivery details not found for order '${orderId}'` }, 404);
-      }
-
-      if (!assertOutletAccess(tenant, existingDelivery.outletId)) {
-        return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
-      }
-
-      const now = new Date();
-      const newStatus = parsed.data.status;
-      const updates: any = {
-        status: newStatus,
-        updatedAt: now,
-      };
-
-      // OTP Verification on DELIVERED if provided
-      if (newStatus === 'DELIVERED' && parsed.data.deliveryOtp) {
-        if (parsed.data.deliveryOtp.trim() !== existingDelivery.deliveryOtp.trim()) {
-          return c.json({ error: 'Invalid OTP', message: 'The entered delivery OTP is incorrect.' }, 400);
-        }
-      }
-
-      // Rider details
-      let riderToAssign: any = null;
-      if (parsed.data.riderId) {
-        const [rider] = await db
-          .select()
-          .from(appSchema.deliveryRider)
-          .where(eq(appSchema.deliveryRider.id, parsed.data.riderId));
-        if (rider) {
-          riderToAssign = rider;
-          updates.riderId = rider.id;
-          updates.riderName = rider.name;
-          updates.riderPhone = rider.phone;
-          updates.riderVehicleNo = rider.vehicleNumber;
-        }
-      }
-
-      if (newStatus === 'ASSIGNED') {
-        updates.assignedAt = now;
-      } else if (newStatus === 'OUT_FOR_DELIVERY') {
-        updates.pickedUpAt = now;
-      } else if (newStatus === 'DELIVERED') {
-        updates.deliveredAt = now;
-      } else if (newStatus === 'CANCELLED') {
-        updates.failedReason = parsed.data.failedReason || null;
-      }
-
-      await db.transaction(async (tx: any) => {
-        await tx
-          .update(appSchema.deliveryOrder)
-          .set(updates)
-          .where(eq(appSchema.deliveryOrder.id, existingDelivery.id));
-
-        // Update rider active order status
-        if (riderToAssign && (newStatus === 'ASSIGNED' || newStatus === 'OUT_FOR_DELIVERY')) {
-          await tx
-            .update(appSchema.deliveryRider)
-            .set({ status: 'ON_DELIVERY', activeOrderId: orderId, updatedAt: now })
-            .where(eq(appSchema.deliveryRider.id, riderToAssign.id));
-        } else if ((newStatus === 'DELIVERED' || newStatus === 'CANCELLED') && existingDelivery.riderId) {
-          await tx
-            .update(appSchema.deliveryRider)
-            .set({ status: 'AVAILABLE', activeOrderId: null, updatedAt: now })
-            .where(eq(appSchema.deliveryRider.id, existingDelivery.riderId));
-        }
-
-        // If DELIVERED, also settle the sale order if it was not settled
-        if (newStatus === 'DELIVERED') {
-          const [saleOrder] = await tx
-            .select()
-            .from(appSchema.saleOrder)
-            .where(eq(appSchema.saleOrder.id, orderId));
-
-          if (saleOrder && saleOrder.status !== 'PAID' && saleOrder.status !== 'VOID') {
-            await tx
-              .update(appSchema.saleOrder)
-              .set({
-                status: 'PAID',
-                paidPaise: saleOrder.subtotalPaise,
-                settledAt: now,
-                updatedAt: now,
-              })
-              .where(eq(appSchema.saleOrder.id, orderId));
-          }
-        }
-      });
-
-      const [updatedDelivery] = await db
-        .select()
-        .from(appSchema.deliveryOrder)
-        .where(eq(appSchema.deliveryOrder.id, existingDelivery.id));
-
-      // Broadcast real-time event to outlet and customer
-      await broadcastToOutlet(
-        c.env,
-        existingDelivery.outletId,
-        {
-          topic: 'ORDERS',
-          type: 'DELIVERY_STATUS_UPDATED',
-          data: {
-            orderId,
-            status: newStatus,
-            riderName: updatedDelivery?.riderName,
-            riderPhone: updatedDelivery?.riderPhone,
-            customerPhone: existingDelivery.customerPhone,
-          },
-        },
-        existingDelivery.customerPhone
-      );
-
-      return c.json(toDeliveryOrder(updatedDelivery));
-    } finally {
-      await close();
-    }
-  }
-);
-
-// ─── PATCH /delivery/riders/:id/status ───────────────────────────────────────
-const UpdateRiderStatusSchema = z.object({
+// ─── POST /delivery/update-rider-duty ─────────────────────────────────────────
+const UpdateRiderDutySchema = z.object({
+  riderId: z.string(),
   status: z.enum(['AVAILABLE', 'ON_DELIVERY', 'OFFLINE']),
 });
 
-app.patch(
-  '/riders/:id/status',
-  apiDoc({
-    tags: ['Delivery'],
-    summary: 'Update Delivery Rider Status',
-    description: 'Updates rider duty status (AVAILABLE, ON_DELIVERY, OFFLINE).',
-    responses: {
-      200: z.any(),
-      400: ErrorResponseSchema,
-      404: ErrorResponseSchema,
-    },
-  }),
-  requirePermission('order:read'),
-  async (c) => {
-    const tenant = c.get('tenant');
-    const { restaurantId } = tenant;
-    const riderId = c.req.param('id');
-    const body = await c.req.json().catch(() => null);
-    const parsed = UpdateRiderStatusSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid status' }, 400);
+async function handleUpdateRiderDuty(c: any, riderId: string, status: any) {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const { db, close } = getDb(c);
+
+  try {
+    const [rider] = await db
+      .select()
+      .from(appSchema.deliveryRider)
+      .where(
+        and(
+          eq(appSchema.deliveryRider.id, riderId),
+          eq(appSchema.deliveryRider.restaurantId, restaurantId)
+        )
+      );
+
+    if (!rider) return c.json({ error: 'Not Found', message: 'Rider not found' }, 404);
+    if (!assertOutletAccess(tenant, rider.outletId)) {
+      return c.json({ error: 'Forbidden', message: "You do not have access to this rider's outlet" }, 403);
     }
 
-    const { db, close } = getDb(c);
-    try {
+    const now = new Date();
+    await db
+      .update(appSchema.deliveryRider)
+      .set({ status, updatedAt: now })
+      .where(eq(appSchema.deliveryRider.id, riderId));
+
+    const [updated] = await db
+      .select()
+      .from(appSchema.deliveryRider)
+      .where(eq(appSchema.deliveryRider.id, riderId));
+
+    await broadcastToOutlet(
+      c.env,
+      rider.outletId,
+      {
+        topic: 'ORDERS',
+        type: 'RIDER_STATUS_UPDATED',
+        data: { riderId, status, riderName: rider.name },
+      }
+    );
+
+    return c.json(toDeliveryRider(updated));
+  } finally {
+    await close();
+  }
+}
+
+app.post(
+  '/update-rider-duty',
+  apiDoc({
+    tags: ['Delivery'],
+    summary: 'Update Rider Duty Status',
+    description: 'Toggles rider availability (AVAILABLE, OFFLINE).',
+    body: UpdateRiderDutySchema,
+    responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
+  }),
+  requirePermission('delivery:write'),
+  async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = UpdateRiderDutySchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid status' }, 400);
+    return handleUpdateRiderDuty(c, parsed.data.riderId, parsed.data.status);
+  }
+);
+
+// Helper for delivery status transitions
+async function transitionDeliveryStatus(c: any, orderId: string, newStatus: any, riderId?: string, deliveryOtp?: string) {
+  const tenant = c.get('tenant');
+  const { restaurantId } = tenant;
+  const { db, close } = getDb(c);
+
+  try {
+    const [existingDelivery] = await db
+      .select()
+      .from(appSchema.deliveryOrder)
+      .where(
+        and(
+          eq(appSchema.deliveryOrder.orderId, orderId),
+          eq(appSchema.deliveryOrder.restaurantId, restaurantId)
+        )
+      );
+
+    if (!existingDelivery) {
+      return c.json({ error: 'Not Found', message: `Delivery details not found for order '${orderId}'` }, 404);
+    }
+    if (!assertOutletAccess(tenant, existingDelivery.outletId)) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
+    }
+
+    const now = new Date();
+    const updates: any = { status: newStatus, updatedAt: now };
+
+    if (newStatus === 'DELIVERED' && deliveryOtp) {
+      if (deliveryOtp.trim() !== existingDelivery.deliveryOtp.trim()) {
+        return c.json({ error: 'Invalid OTP', message: 'The entered delivery OTP is incorrect.' }, 400);
+      }
+    }
+
+    let riderToAssign: any = null;
+    if (riderId) {
       const [rider] = await db
         .select()
         .from(appSchema.deliveryRider)
-        .where(
-          and(
-            eq(appSchema.deliveryRider.id, riderId),
-            eq(appSchema.deliveryRider.restaurantId, restaurantId)
-          )
-        );
+        .where(eq(appSchema.deliveryRider.id, riderId));
+      if (rider) {
+        if (!assertOutletAccess(tenant, rider.outletId) || rider.outletId !== existingDelivery.outletId) {
+          return c.json({ error: 'Forbidden', message: 'Rider does not belong to this outlet' }, 403);
+        }
+        riderToAssign = rider;
+        updates.riderId = rider.id;
+        updates.riderName = rider.name;
+        updates.riderPhone = rider.phone;
+        updates.riderVehicleNo = rider.vehicleNumber;
+      }
+    }
 
-      if (!rider) {
-        return c.json({ error: 'Not Found', message: 'Rider not found' }, 404);
+    if (newStatus === 'ASSIGNED') updates.assignedAt = now;
+    else if (newStatus === 'OUT_FOR_DELIVERY') updates.pickedUpAt = now;
+    else if (newStatus === 'DELIVERED') updates.deliveredAt = now;
+
+    await db.transaction(async (tx: any) => {
+      await tx
+        .update(appSchema.deliveryOrder)
+        .set(updates)
+        .where(eq(appSchema.deliveryOrder.id, existingDelivery.id));
+
+      if (riderToAssign && (newStatus === 'ASSIGNED' || newStatus === 'OUT_FOR_DELIVERY')) {
+        await tx
+          .update(appSchema.deliveryRider)
+          .set({ status: 'ON_DELIVERY', activeOrderId: orderId, updatedAt: now })
+          .where(eq(appSchema.deliveryRider.id, riderToAssign.id));
+      } else if ((newStatus === 'DELIVERED' || newStatus === 'CANCELLED') && existingDelivery.riderId) {
+        await tx
+          .update(appSchema.deliveryRider)
+          .set({ status: 'AVAILABLE', activeOrderId: null, updatedAt: now })
+          .where(eq(appSchema.deliveryRider.id, existingDelivery.riderId));
       }
 
-      const now = new Date();
-      await db
-        .update(appSchema.deliveryRider)
-        .set({ status: parsed.data.status, updatedAt: now })
-        .where(eq(appSchema.deliveryRider.id, riderId));
+      if (newStatus === 'DELIVERED') {
+        const [saleOrder] = await tx
+          .select()
+          .from(appSchema.saleOrder)
+          .where(eq(appSchema.saleOrder.id, orderId));
 
-      const [updated] = await db
-        .select()
-        .from(appSchema.deliveryRider)
-        .where(eq(appSchema.deliveryRider.id, riderId));
-
-      await broadcastToOutlet(
-        c.env,
-        rider.outletId,
-        {
-          topic: 'ORDERS',
-          type: 'RIDER_STATUS_UPDATED',
-          data: { riderId, status: parsed.data.status, riderName: rider.name },
+        if (saleOrder && saleOrder.status !== 'PAID' && saleOrder.status !== 'VOID') {
+          await tx
+            .update(appSchema.saleOrder)
+            .set({
+              status: 'PAID',
+              paidPaise: saleOrder.subtotalPaise,
+              settledAt: now,
+              updatedAt: now,
+            })
+            .where(eq(appSchema.saleOrder.id, orderId));
         }
-      );
+      }
+    });
 
-      return c.json(toDeliveryRider(updated));
-    } finally {
-      await close();
+    const [updatedDelivery] = await db
+      .select()
+      .from(appSchema.deliveryOrder)
+      .where(eq(appSchema.deliveryOrder.id, existingDelivery.id));
+
+    await broadcastToOutlet(
+      c.env,
+      existingDelivery.outletId,
+      {
+        topic: 'ORDERS',
+        type: 'DELIVERY_STATUS_UPDATED',
+        data: {
+          orderId,
+          status: newStatus,
+          riderName: updatedDelivery?.riderName,
+          riderPhone: updatedDelivery?.riderPhone,
+          customerPhone: existingDelivery.customerPhone,
+        },
+      },
+      existingDelivery.customerPhone
+    );
+
+    if (newStatus === 'OUT_FOR_DELIVERY' && existingDelivery.customerPhone && existingDelivery.outletId) {
+      c.executionCtx?.waitUntil?.(
+        (async () => {
+          try {
+            const [out] = await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.id, existingDelivery.outletId));
+            const ws = (out?.whatsappSettings as any) || null;
+            if (ws?.enabled && ws?.sendOnDispatched) {
+              const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, existingDelivery.restaurantId));
+              const riderText = updatedDelivery?.riderName
+                ? `\nRider: *${updatedDelivery.riderName}*${updatedDelivery.riderPhone ? ` (${updatedDelivery.riderPhone})` : ''}`
+                : '';
+              const pinText = existingDelivery.deliveryOtp ? `\nDelivery PIN: *${existingDelivery.deliveryOtp}*` : '';
+              const msg = `🛵 *Order Out for Delivery!*\n*${rest?.name || 'Restaurant'}* (${out?.name || ''})${riderText}${pinText}\nYour order is on the way! Please share PIN with rider upon delivery.${ws.customFooterNote ? `\n\n${ws.customFooterNote}` : ''}`;
+              await sendWhatsAppText(existingDelivery.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+            }
+          } catch (err) {
+            console.error('[WhatsApp] sendOnDispatched failed:', err);
+          }
+        })()
+      );
     }
+
+    return c.json(toDeliveryOrder(updatedDelivery));
+  } finally {
+    await close();
+  }
+}
+
+// ─── POST /delivery/assign-rider ──────────────────────────────────────────────
+const AssignRiderSchema = z.object({
+  orderId: z.string(),
+  riderId: z.string(),
+});
+
+app.post(
+  '/assign-rider',
+  apiDoc({
+    tags: ['Delivery'],
+    summary: 'Assign Rider to Delivery Order',
+    description: 'Assigns a fleet rider to handle an order.',
+    body: AssignRiderSchema,
+    responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
+  }),
+  requirePermission('delivery:write'),
+  async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = AssignRiderSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid data' }, 400);
+    return transitionDeliveryStatus(c, parsed.data.orderId, 'ASSIGNED', parsed.data.riderId);
+  }
+);
+
+// ─── POST /delivery/dispatch-order ────────────────────────────────────────────
+const DispatchOrderSchema = z.object({
+  orderId: z.string(),
+  riderId: z.string().optional(),
+});
+
+app.post(
+  '/dispatch-order',
+  apiDoc({
+    tags: ['Delivery'],
+    summary: 'Dispatch Order (Out for Delivery)',
+    description: 'Marks delivery order as OUT_FOR_DELIVERY.',
+    body: DispatchOrderSchema,
+    responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
+  }),
+  requirePermission('delivery:write'),
+  async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = DispatchOrderSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid data' }, 400);
+    return transitionDeliveryStatus(c, parsed.data.orderId, 'OUT_FOR_DELIVERY', parsed.data.riderId);
+  }
+);
+
+// ─── POST /delivery/verify-otp-and-complete ───────────────────────────────────
+const VerifyOtpActionSchema = z.object({
+  orderId: z.string(),
+  deliveryOtp: z.string().optional(),
+});
+
+app.post(
+  '/verify-otp-and-complete',
+  apiDoc({
+    tags: ['Delivery'],
+    summary: 'Verify OTP and Complete Delivery',
+    description: 'Verifies customer 4-digit PIN and marks order DELIVERED and settled.',
+    body: VerifyOtpActionSchema,
+    responses: { 200: z.any(), 400: ErrorResponseSchema, 404: ErrorResponseSchema },
+  }),
+  requirePermission('delivery:write'),
+  async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = VerifyOtpActionSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: 'Bad Request', message: parsed.error.issues[0]?.message ?? 'Invalid data' }, 400);
+    return transitionDeliveryStatus(c, parsed.data.orderId, 'DELIVERED', undefined, parsed.data.deliveryOtp);
   }
 );
 

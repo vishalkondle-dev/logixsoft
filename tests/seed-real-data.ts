@@ -239,7 +239,7 @@ async function seed() {
 
   // Scenario A: Table T3 - Starters Round (OPEN / Unpaid, ORDERED)
   console.log('Creating Order for Table T3 (Ground Floor)...');
-  const t3OrderRes = await fetch(`${API_BASE}/billing/orders`, {
+  const t3OrderRes = await fetch(`${API_BASE}/orders/send-to-kitchen`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -261,7 +261,7 @@ async function seed() {
 
   // Scenario B: Table F1 - Family Dining (First Floor, Multi-Round: R1 Paid, R2 Unpaid)
   console.log('Creating Multi-Round Order for Table F1 (First Floor)...');
-  const f1R1Res = await fetch(`${API_BASE}/billing/orders/create-settled`, {
+  const f1R1Res = await fetch(`${API_BASE}/orders/create-settled`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -282,10 +282,11 @@ async function seed() {
     console.log(`F1 Round 1 settled: #${f1R1.order.orderNo}`);
 
     // Add Round 2 (Mains & Breads)
-    const f1R2Res = await fetch(`${API_BASE}/billing/orders/${f1R1.order.id}/round`, {
+    const f1R2Res = await fetch(`${API_BASE}/orders/add-round`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
+        orderId: f1R1.order.id,
         items: [
           { itemId: getItem('Butter Chicken').id, qty: 1 },
           { itemId: getItem('Dal Makhani').id, qty: 1 },
@@ -301,7 +302,7 @@ async function seed() {
 
   // Scenario C: Table G2 - Outdoor Garden Dining (Round 1 in PREPARING)
   console.log('Creating Order for Table G2 (Garden)...');
-  const g2OrderRes = await fetch(`${API_BASE}/billing/orders`, {
+  const g2OrderRes = await fetch(`${API_BASE}/orders/send-to-kitchen`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -320,17 +321,17 @@ async function seed() {
     console.log(`G2 Order created: #${g2.order.orderNo}`);
     // Advance first item to PREPARING
     if (g2.items?.[0]?.id) {
-      await fetch(`${API_BASE}/billing/orders/${g2.order.id}/items/${g2.items[0].id}/status`, {
-        method: 'PATCH',
+      await fetch(`${API_BASE}/kitchen/advance-item-status`, {
+        method: 'POST',
         headers,
-        body: JSON.stringify({ action: 'next' }),
+        body: JSON.stringify({ orderId: g2.order.id, orderItemId: g2.items[0].id, action: 'next' }),
       });
     }
   }
 
   // Scenario D: Takeaway Order
   console.log('Creating Takeaway Order...');
-  const takeawayRes = await fetch(`${API_BASE}/billing/orders/create-settled`, {
+  const takeawayRes = await fetch(`${API_BASE}/orders/create-settled`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -352,7 +353,7 @@ async function seed() {
 
   // Scenario E: Table T5 - Finished, Paid & Freed Table (demonstrates Table Freed status)
   console.log('Creating and Freeing Table T5 (Finished Dining)...');
-  const t5OrderRes = await fetch(`${API_BASE}/billing/orders`, {
+  const t5OrderRes = await fetch(`${API_BASE}/orders/send-to-kitchen`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -369,10 +370,10 @@ async function seed() {
   if (t5OrderRes.ok) {
     const t5 = await t5OrderRes.json();
     // Free the table
-    await fetch(`${API_BASE}/billing/orders/${t5.order.id}/free-table`, {
+    await fetch(`${API_BASE}/orders/free-table`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ method: 'Card' }),
+      body: JSON.stringify({ orderId: t5.order.id, method: 'Card' }),
     });
     console.log(`T5 Order #${t5.order.orderNo} settled and Table T5 freed.`);
   }

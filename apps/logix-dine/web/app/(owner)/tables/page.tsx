@@ -19,7 +19,7 @@ import {
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useTables, useOrders, useCreateTable, useUpdateTable,
-  useDeleteTable, qk,
+  useDeleteTable, useReservations, useUpdateReservation, qk,
 } from "@/lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { freeTableOrder, voidOrder } from "@/lib/api-client";
@@ -78,14 +78,14 @@ export default function TablesPage() {
   // Live WebSocket sync via Cloudflare Durable Object
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
-  // Table Definitions (zero polling when connected, 30s safety fallback when disconnected)
+  // Table Definitions (Real-time live sync via Cloudflare Durable Object)
   const {
     data: tables = [],
     isLoading: tablesLoading,
     refetch: refetchTables,
-  } = useTables(restaurantId, outletId, { refetchInterval: isConnected ? undefined : 30_000 });
+  } = useTables(restaurantId, outletId, { refetchInterval: false });
 
-  // Occupied Table Orders (zero polling when connected, 30s safety fallback when disconnected)
+  // Occupied Table Orders (Real-time live sync via Cloudflare Durable Object)
   const {
     data: orders = [],
     isLoading: ordersLoading,
@@ -98,7 +98,7 @@ export default function TablesPage() {
       limit: 100,
     },
     !!restaurantId && !!outletId,
-    { refetchInterval: isConnected ? undefined : 30_000 },
+    { refetchInterval: false },
   );
 
   // ─── Filter States ────────────────────────────────────────────────────────────
@@ -110,8 +110,10 @@ export default function TablesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<any | null>(null);
   const [tableName, setTableName] = useState("");
+  const [tableNameError, setTableNameError] = useState<string | null>(null);
   const [section, setSection] = useState("");
   const [capacity, setCapacity] = useState<number | string>(4);
+  const [deleteTableConfirm, setDeleteTableConfirm] = useState<any | null>(null);
 
   // ─── Free Table (Settle & Clear) Modal State ─────────────────────────────────
   const [freeModalSession, setFreeModalSession] = useState<TableSession | null>(null);
@@ -129,6 +131,25 @@ export default function TablesPage() {
   const createTableMut = useCreateTable(restaurantId, outletId);
   const updateTableMut = useUpdateTable(restaurantId, outletId);
   const deleteTableMut = useDeleteTable(restaurantId, outletId);
+
+  // ─── Reservations Integration ────────────────────────────────────────────────
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const { data: reservations = [] } = useReservations(restaurantId, outletId, { date: todayStr });
+  const updateReservationMut = useUpdateReservation(restaurantId, outletId);
+
+  // ─── Dining Settings Integration ─────────────────────────────────────────────
+  const diningSettings = useMemo(() => {
+    if (!activeOutlet?.diningSettings) return null;
+    if (typeof activeOutlet.diningSettings === "string") {
+      try {
+        return JSON.parse(activeOutlet.diningSettings);
+      } catch {
+        return null;
+      }
+    }
+    return activeOutlet.diningSettings as any;
+  }, [activeOutlet?.diningSettings]);
+  const isDineInDisabled = diningSettings?.dineInEnabled === false;
 
   // ─── Multi-Order / Multi-Round Active Orders for Table ────────────────────────
   const getTableActiveOrders = (table: any): any[] => {
@@ -265,6 +286,7 @@ export default function TablesPage() {
   const handleOpenCreate = () => {
     setEditingTable(null);
     setTableName("");
+    setTableNameError(null);
     setSection("");
     setCapacity(4);
     setModalOpen(true);
@@ -273,13 +295,22 @@ export default function TablesPage() {
   const handleOpenEdit = (table: any) => {
     setEditingTable(table);
     setTableName(table.name);
+    setTableNameError(null);
     setSection(table.section || "");
     setCapacity(table.capacity || 4);
     setModalOpen(true);
   };
 
   const handleSaveTable = async () => {
-    if (!outletId || !tableName.trim()) return;
+    if (!tableName.trim()) {
+      setTableNameError("Table name is required");
+      return;
+    }
+    if (!outletId) {
+      notifications.show({ title: "No outlet selected", message: "Please select an outlet first", color: "orange" });
+      return;
+    }
+    setTableNameError(null);
     try {
       if (editingTable) {
         await updateTableMut.mutateAsync({
@@ -306,11 +337,16 @@ export default function TablesPage() {
     }
   };
 
-  const handleDeleteTable = async (table: any) => {
-    if (!confirm(`Delete table "${table.name}"?`)) return;
+  const handleDeleteTable = (table: any) => {
+    setDeleteTableConfirm(table);
+  };
+
+  const handleConfirmDeleteTable = async () => {
+    if (!deleteTableConfirm) return;
     try {
-      await deleteTableMut.mutateAsync(table.id);
-      notifications.show({ title: "Table deleted", message: `Table "${table.name}" removed`, color: "green" });
+      await deleteTableMut.mutateAsync(deleteTableConfirm.id);
+      notifications.show({ title: "Table deleted", message: `Table "${deleteTableConfirm.name}" removed`, color: "green" });
+      setDeleteTableConfirm(null);
     } catch (err: any) {
       notifications.show({ title: "Failed to delete table", message: err.message || "An error occurred", color: "red" });
     }
@@ -565,6 +601,13 @@ export default function TablesPage() {
       </Paper>
 
       {/* ─── Tables Grid ───────────────────────────────────────────────────────── */}
+      {isDineInDisabled && (
+        <Alert color="orange" icon={<IconAlertCircle size={16} />} radius="md" mb="md">
+          <Text size="sm" fw={600}>Dine-In channel is disabled</Text>
+          <Text size="xs">Dine-in dining is turned off in Settings &gt; Dining Options. New table orders and customer self-ordering are restricted.</Text>
+        </Alert>
+      )}
+
       {!outletId ? (
         <Text c="dimmed" ta="center" py={60}>
           Please select an outlet from the top navigation bar to view tables.
@@ -600,6 +643,12 @@ export default function TablesPage() {
           {filteredTables.map((table: any) => {
             const session = getTableSession(table);
             const isOccupied = session.isOccupied;
+
+            const activeRes = (reservations as any[]).find(
+              (r: any) =>
+                (r.tableId === table.id || (r.tableName && isTableMatch(table.name, r.tableName)) || isTableMatch(table.name, r.tableId)) &&
+                (r.status === "CONFIRMED" || r.status === "SEATED")
+            );
 
             const orderVisual = isOccupied
               ? getStatusVisual(session.orderStatus || "ORDERED")
@@ -641,6 +690,20 @@ export default function TablesPage() {
                     </div>
 
                     <Group gap={4} align="center">
+                      {/* Active Reservation Badge */}
+                      {activeRes && (
+                        <Badge
+                          size="sm"
+                          variant="filled"
+                          color={activeRes.status === "CONFIRMED" ? "grape" : "indigo"}
+                          leftSection={<IconArmchair size={11} />}
+                        >
+                          {activeRes.status === "CONFIRMED"
+                            ? `Resv: ${activeRes.guestName} (${activeRes.reservationTime || "Today"})`
+                            : `Seated: ${activeRes.guestName}`}
+                        </Badge>
+                      )}
+
                       {/* Status Badge: Free vs Occupied (Paid or Due) */}
                       <Badge
                         size="sm"
@@ -659,6 +722,37 @@ export default function TablesPage() {
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
+                          {activeRes && activeRes.status === "CONFIRMED" && (
+                            <>
+                              <Menu.Item
+                                color="grape"
+                                leftSection={<IconArmchair size={14} />}
+                                onClick={async () => {
+                                  try {
+                                    await updateReservationMut.mutateAsync({
+                                      id: activeRes.id,
+                                      body: { status: "SEATED" },
+                                    });
+                                    notifications.show({
+                                      title: "Guest Seated",
+                                      message: `${activeRes.guestName} (${activeRes.partySize} guests) seated at ${table.name}`,
+                                      color: "teal",
+                                      icon: <IconCheck size={16} />,
+                                    });
+                                  } catch (e: any) {
+                                    notifications.show({
+                                      title: "Failed to seat guest",
+                                      message: e.message || "Could not update reservation",
+                                      color: "red",
+                                    });
+                                  }
+                                }}
+                              >
+                                Seat Reserved Guest ({activeRes.guestName})
+                              </Menu.Item>
+                              <Menu.Divider />
+                            </>
+                          )}
                           <Menu.Item
                             leftSection={<IconQrcode size={14} />}
                             onClick={() => setQrModalTable(table)}
@@ -802,12 +896,13 @@ export default function TablesPage() {
                     <Button
                       fullWidth
                       size="sm"
-                      color="dinePrimary"
+                      color={isDineInDisabled ? "gray" : "dinePrimary"}
                       variant="light"
+                      disabled={isDineInDisabled}
                       leftSection={<IconShoppingCart size={16} />}
-                      onClick={() => router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
+                      onClick={() => !isDineInDisabled && router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
                     >
-                      Take Order (Dine In)
+                      {isDineInDisabled ? "Dine-In Disabled" : "Take Order (Dine In)"}
                     </Button>
                   )}
                 </div>
@@ -1178,7 +1273,11 @@ export default function TablesPage() {
             placeholder="e.g. T1, Table 4, Window 2..."
             required
             value={tableName}
-            onChange={(e) => setTableName(e.currentTarget.value)}
+            error={tableNameError}
+            onChange={(e) => {
+              setTableName(e.currentTarget.value);
+              if (tableNameError) setTableNameError(null);
+            }}
           />
 
           <TextInput
@@ -1203,6 +1302,36 @@ export default function TablesPage() {
             </Button>
             <Button color="dinePrimary" onClick={handleSaveTable} loading={isSaving}>
               {editingTable ? "Save Changes" : "Create Table"}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* ─── Delete Table Confirmation Modal ─── */}
+      <Modal
+        opened={Boolean(deleteTableConfirm)}
+        onClose={() => setDeleteTableConfirm(null)}
+        title="Delete Table Confirmation"
+        size="sm"
+        zIndex={1400}
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to delete table <b>"{deleteTableConfirm?.name}"</b>?
+            This will remove it from the floor layout.
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" size="sm" onClick={() => setDeleteTableConfirm(null)} disabled={deleteTableMut.isPending}>
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              size="sm"
+              loading={deleteTableMut.isPending}
+              onClick={handleConfirmDeleteTable}
+              leftSection={<IconTrash size={16} />}
+            >
+              Delete Table
             </Button>
           </Group>
         </Stack>

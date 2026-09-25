@@ -10,6 +10,12 @@ export const VALID_SETTINGS_TABS = [
   "reports",
   "staff",
   "printing",
+  "payments",
+  "dining",
+  "qr-menu",
+  "whatsapp",
+  "reservations",
+  "riders",
 ] as const;
 
 export function generateStaticParams() {
@@ -24,6 +30,15 @@ export default async function SettingsTabPage({
   const { tab } = await params;
   if (tab === "outlets") {
     redirect("/settings/restaurant");
+  }
+  if (tab === "payment-types") {
+    redirect("/settings/payments");
+  }
+  if (tab === "dining-options") {
+    redirect("/settings/dining");
+  }
+  if (tab === "delivery-agents") {
+    redirect("/settings/riders");
   }
   return <SettingsView currentTab={tab} />;
 }

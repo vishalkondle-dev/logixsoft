@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import {
   Title, Stack, Paper, Group, Text, Badge, Select, Button,
   Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip, Radio,
-  SimpleGrid, Alert,
+  SimpleGrid, Alert, SegmentedControl,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import Link from "next/link";
@@ -52,6 +52,8 @@ export default function OrdersPage() {
   const [isFreeing, setIsFreeing] = useState(false);
 
   const [isVoiding, setIsVoiding] = useState(false);
+  const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
+  const [cancelItemConfirm, setCancelItemConfirm] = useState<{ item: any; actionPayload: any } | null>(null);
 
   // Real-time live sync via Cloudflare Durable Object
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
@@ -168,11 +170,13 @@ export default function OrdersPage() {
     }
   };
 
-  const handleVoid = async () => {
+  const handleVoid = () => {
     if (!selected || !restaurant) return;
-    if (!window.confirm(`Are you sure you want to void order #${selected.order.orderNo}? This action cannot be undone.`)) {
-      return;
-    }
+    setVoidConfirmOpen(true);
+  };
+
+  const handleConfirmVoid = async () => {
+    if (!selected || !restaurant) return;
     setIsVoiding(true);
     try {
       await voidOrder(restaurantId, selected.order.id, outletId);
@@ -181,6 +185,7 @@ export default function OrdersPage() {
         message: `Order #${selected.order.orderNo} has been voided`,
         color: "orange",
       });
+      setVoidConfirmOpen(false);
       setSelected(null);
       refetch();
     } catch (err: any) {
@@ -194,7 +199,22 @@ export default function OrdersPage() {
     }
   };
 
+  const handleConfirmCancelItem = async () => {
+    if (!cancelItemConfirm || !selected) return;
+    const { item, actionPayload } = cancelItemConfirm;
+    setCancelItemConfirm(null);
+    await executeUpdateItemStatus(item, actionPayload);
+  };
+
   const handleUpdateItemStatus = async (item: any, actionPayload: { status?: string; action?: "next" | "close" | "cancel" }) => {
+    if (actionPayload.action === "close" || actionPayload.action === "cancel") {
+      setCancelItemConfirm({ item, actionPayload });
+      return;
+    }
+    await executeUpdateItemStatus(item, actionPayload);
+  };
+
+  const executeUpdateItemStatus = async (item: any, actionPayload: { status?: string; action?: "next" | "close" | "cancel" }) => {
     if (!selected) return;
     const itemId = item.id;
     const actionType = actionPayload.action === "close" || actionPayload.action === "cancel" ? "close" : "next";
@@ -459,7 +479,9 @@ export default function OrdersPage() {
           const paidPaise = order.paidPaise ?? (order.status === "PAID" ? order.subtotalPaise : 0);
           const duePaise = Math.max(0, (order.subtotalPaise || 0) - paidPaise);
           const maxRound = (items || []).reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
-          const isTable = Boolean(order.tableNo && order.tableNo !== "Takeaway");
+          const isDelivery = order.orderType === "DELIVERY" || order.tableNo === "Delivery";
+          const isTakeaway = order.orderType === "TAKEAWAY" || order.tableNo === "Takeaway";
+          const isTable = Boolean(!isDelivery && !isTakeaway && order.tableNo);
           const isTableFreed = Boolean(order.tableFreedAt);
 
           return (
@@ -469,7 +491,7 @@ export default function OrdersPage() {
                 <Group gap="xs" align="center">
                   {order.tableNo && (
                     <Badge size="sm" variant="outline">
-                      {order.tableNo === "Takeaway" ? "Takeaway" : `Table: ${order.tableNo}`}
+                      {isDelivery ? "Delivery" : isTakeaway ? "Takeaway" : `Table: ${order.tableNo}`}
                     </Badge>
                   )}
                   {isTable && (
@@ -842,7 +864,7 @@ export default function OrdersPage() {
                         Settled: {new Date(order.settledAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                       </Text>
                     )}
-                    {order.tableFreedAt && (
+                    {isTable && order.tableFreedAt && (
                       <Text size="xs" c="dimmed">
                         Table Freed: {new Date(order.tableFreedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                       </Text>
@@ -953,14 +975,18 @@ export default function OrdersPage() {
 
               <div>
                 <Text size="sm" fw={600} mb={6}>Payment Method:</Text>
-                <Radio.Group value={settleMethod} onChange={setSettleMethod}>
-                  <Group gap="sm">
-                    <Radio value="Cash" label="💵 Cash" />
-                    <Radio value="UPI" label="📱 UPI" />
-                    <Radio value="Card" label="💳 Card" />
-                    <Radio value="Other" label="Other" />
-                  </Group>
-                </Radio.Group>
+                <SegmentedControl
+                  value={settleMethod}
+                  onChange={setSettleMethod}
+                  fullWidth
+                  color="dinePrimary"
+                  data={[
+                    { value: "Cash", label: "💵 Cash" },
+                    { value: "UPI", label: "📱 UPI" },
+                    { value: "Card", label: "💳 Card" },
+                    { value: "Other", label: "Other" },
+                  ]}
+                />
                 {settleMethod === "UPI" && (() => {
                   const outlet = outlets.find((o) => o.id === selected.order.outletId) || activeOutlet;
                   return outlet?.upiId ? (
@@ -1015,14 +1041,18 @@ export default function OrdersPage() {
 
                   <div>
                     <Text size="sm" fw={600} mb={6}>Payment Method for remaining balance:</Text>
-                    <Radio.Group value={settleMethod} onChange={setSettleMethod}>
-                      <Group gap="sm">
-                        <Radio value="Cash" label="💵 Cash" />
-                        <Radio value="UPI" label="📱 UPI" />
-                        <Radio value="Card" label="💳 Card" />
-                        <Radio value="Other" label="Other" />
-                      </Group>
-                    </Radio.Group>
+                    <SegmentedControl
+                      value={settleMethod}
+                      onChange={setSettleMethod}
+                      fullWidth
+                      color="dinePrimary"
+                      data={[
+                        { value: "Cash", label: "💵 Cash" },
+                        { value: "UPI", label: "📱 UPI" },
+                        { value: "Card", label: "💳 Card" },
+                        { value: "Other", label: "Other" },
+                      ]}
+                    />
                     {settleMethod === "UPI" && (() => {
                       const outlet = outlets.find((o) => o.id === selected.order.outletId) || activeOutlet;
                       return outlet?.upiId ? (
@@ -1103,6 +1133,58 @@ export default function OrdersPage() {
             </Stack>
           );
         })()}
+      </Modal>
+
+      {/* ─── Void Order Confirmation Modal ─── */}
+      <Modal
+        opened={voidConfirmOpen}
+        onClose={() => {
+          if (!isVoiding) setVoidConfirmOpen(false);
+        }}
+        title="Confirm Void Order"
+        size="sm"
+        zIndex={1400}
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to void order <b>#{selected?.order?.orderNo}</b>? This action cannot be undone.
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" size="sm" onClick={() => setVoidConfirmOpen(false)} disabled={isVoiding}>
+              Cancel
+            </Button>
+            <Button color="red" size="sm" loading={isVoiding} onClick={handleConfirmVoid} leftSection={<IconBan size={16} />}>
+              Void Order
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* ─── Cancel Item Confirmation Modal ─── */}
+      <Modal
+        opened={Boolean(cancelItemConfirm)}
+        onClose={() => setCancelItemConfirm(null)}
+        title="Cancel Item Confirmation"
+        size="sm"
+        zIndex={1400}
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to cancel{" "}
+            <b>
+              {cancelItemConfirm?.item?.qty}x {cancelItemConfirm?.item?.nameSnapshot || cancelItemConfirm?.item?.name}
+            </b>{" "}
+            from Order #{selected?.order?.orderNo}?
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" size="sm" onClick={() => setCancelItemConfirm(null)}>
+              Keep Item
+            </Button>
+            <Button color="red" size="sm" onClick={handleConfirmCancelItem} leftSection={<IconX size={16} />}>
+              Cancel Item
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Box>
   );

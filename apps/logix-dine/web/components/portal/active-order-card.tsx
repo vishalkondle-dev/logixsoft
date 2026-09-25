@@ -136,7 +136,7 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
 
     const message = `🧾 *Logix Dine Bill Summary*
 🍽️ *${order.restaurantName}* (${order.outletName})
-🎫 Token #${order.tokenNo || "N/A"} | Table: ${order.tableNo}
+🎫 Token #${order.tokenNo || order.orderNo || "N/A"} | Table: ${order.tableNo}
 --------------------------------
 ${itemsText}
 --------------------------------
@@ -251,6 +251,10 @@ ${itemsText}
   };
 
   const isDelivery = order.orderType === "DELIVERY" || Boolean(order.delivery) || order.tableNo === "Delivery";
+  const qrSettings = order.outlet?.qrMenuSettings || (order as any).qrMenuSettings;
+  const allowCallWaiter = qrSettings?.allowCallWaiter !== false;
+  const allowCustomerOrdering = qrSettings?.allowCustomerOrdering !== false;
+  const allowPayAtTable = qrSettings?.allowPayAtTable !== false;
 
   return (
     <>
@@ -278,7 +282,7 @@ ${itemsText}
             </Group>
             <Group gap={6} mt={4} wrap="wrap">
               <Badge color="violet" variant="light" size="sm">
-                Token #{order.tokenNo || "—"}
+                Token #{order.tokenNo || order.orderNo || "—"}
               </Badge>
               {isDelivery ? (
                 <Badge color="teal" variant="filled" size="sm" leftSection={<IconMotorbike size={12} />}>
@@ -521,7 +525,7 @@ ${itemsText}
         {/* Quick Action Buttons Bar */}
         <Group justify="space-between" align="center" mt="sm" wrap="wrap" gap="xs">
           <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
-            {!isDelivery && (
+            {!isDelivery && allowCallWaiter && (
               <Button
                 color="orange"
                 variant="filled"
@@ -535,7 +539,7 @@ ${itemsText}
               </Button>
             )}
 
-            {!isDelivery && (
+            {!isDelivery && allowCustomerOrdering && (
               <Button
                 color="dinePrimary"
                 variant="filled"
@@ -563,17 +567,19 @@ ${itemsText}
               </Button>
             )}
 
-            <Button
-              variant="light"
-              color="violet"
-              size="xs"
-              radius="md"
-              leftSection={<IconReceipt size={14} />}
-              onClick={() => setIsBillModalOpen(true)}
-            >
-              <Text span visibleFrom="xs">View Bill Breakdown</Text>
-              <Text span hiddenFrom="xs">Bill</Text>
-            </Button>
+            {allowPayAtTable && (
+              <Button
+                variant="light"
+                color="violet"
+                size="xs"
+                radius="md"
+                leftSection={<IconReceipt size={14} />}
+                onClick={() => setIsBillModalOpen(true)}
+              >
+                <Text span visibleFrom="xs">View Bill Breakdown</Text>
+                <Text span hiddenFrom="xs">Bill</Text>
+              </Button>
+            )}
           </Group>
 
           <ActionIcon

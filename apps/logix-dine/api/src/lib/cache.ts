@@ -50,8 +50,8 @@ export const CacheKey = {
   // ─── Tenancy / auth lookups
   session:      (token: string) => `s:${token.slice(-40)}`,
 
-  // ─── Per-outlet order sequence counter
-  outletSeq:    (outletId: string) => `seq:${outletId}`,
+  // ─── Per-outlet order sequence counter (scoped per day)
+  outletSeq:    (outletId: string, dateStr?: string) => dateStr ? `seq:${outletId}:${dateStr}` : `seq:${outletId}`,
 
   // Data caches — keyed by restaurantId + outletId
   bootstrap:  (r: string, o: string) => `bs:${r}:${o}`,

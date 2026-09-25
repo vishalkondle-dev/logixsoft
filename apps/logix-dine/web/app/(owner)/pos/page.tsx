@@ -168,6 +168,13 @@ function CartPanel({
   minDeliveryOrder,
   isMinDeliveryBlocked,
 }: CartPanelProps) {
+  const currentModes = (availableOrderModes && availableOrderModes.length > 0)
+    ? availableOrderModes
+    : [{ label: "🛍️ Takeaway", value: "TAKEAWAY" as const }];
+  const effectiveOrderType = currentModes.some((m) => m.value === orderType)
+    ? orderType
+    : currentModes[0].value;
+
   return (
     <Box
       style={{
@@ -187,7 +194,7 @@ function CartPanel({
             {cartCount > 0 && <Badge size="sm" color="dinePrimary">{cartCount}</Badge>}
           </Group>
           <Group gap="xs" align="center">
-            {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway" || orderType !== "TAKEAWAY") && (
+            {(cartItems.length > 0 || customerPhone.length > 0 || tableNo !== "Takeaway" || effectiveOrderType !== "TAKEAWAY") && (
               <Button variant="subtle" color="red" size="compact-xs" onClick={handleClearCart}>
                 Clear
               </Button>
@@ -200,7 +207,7 @@ function CartPanel({
 
         {/* Order Mode Segmented Control (Dynamically configured by outlet dining options) */}
         <SegmentedControl
-          value={orderType}
+          value={effectiveOrderType}
           onChange={(val) => {
             const nextType = val as "DINE_IN" | "TAKEAWAY" | "DELIVERY";
             setOrderType(nextType);
@@ -211,11 +218,7 @@ function CartPanel({
               setTableNo(firstTable || "");
             }
           }}
-          data={availableOrderModes && availableOrderModes.length > 0 ? availableOrderModes : [
-            { label: "🍽️ Dine-In", value: "DINE_IN" },
-            { label: "🛍️ Takeaway", value: "TAKEAWAY" },
-            { label: "🛵 Delivery", value: "DELIVERY" },
-          ]}
+          data={currentModes}
           fullWidth
           size="xs"
           mb="xs"
@@ -224,7 +227,7 @@ function CartPanel({
 
         {/* Cart Selection: Table select (if Dine-In) + Customer Phone + Delivery fields */}
         <Stack gap="xs" mb="xs">
-          {orderType === "DINE_IN" && (
+          {effectiveOrderType === "DINE_IN" && (
             <Select
               label="Table"
               placeholder={tableSelectData.length === 0 ? "No tables configured" : "Select table"}
@@ -240,7 +243,7 @@ function CartPanel({
           )}
 
           <TextInput
-            label={orderType === "DELIVERY" ? "Customer Phone (Required)" : "Customer Phone (optional)"}
+            label={effectiveOrderType === "DELIVERY" ? "Customer Phone (Required)" : "Customer Phone (optional)"}
             placeholder="WhatsApp number (e.g. 9876543210)"
             type="tel"
             inputMode="numeric"
@@ -267,7 +270,7 @@ function CartPanel({
             }
           />
 
-          {orderType === "DELIVERY" && (
+          {effectiveOrderType === "DELIVERY" && (
             <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#fbfcfe" }}>
               <Group justify="space-between" align="center" mb={6}>
                 <Text size="xs" fw={700} c="dimmed">
@@ -493,7 +496,7 @@ function CartPanel({
       {/* Bottom Fixed Section */}
       <Box style={{ flexShrink: 0, marginTop: "auto" }}>
         <Divider my="xs" />
-        {orderType === "DELIVERY" && cartItems.length > 0 && (
+        {effectiveOrderType === "DELIVERY" && cartItems.length > 0 && (
           <Stack gap={2} mb="xs">
             <Group justify="space-between">
               <Text size="xs" c="dimmed">Items Subtotal</Text>
@@ -525,7 +528,7 @@ function CartPanel({
           </Stack>
         )}
 
-        {orderType === "TAKEAWAY" && packagingCharge > 0 && cartItems.length > 0 && (
+        {effectiveOrderType === "TAKEAWAY" && packagingCharge > 0 && cartItems.length > 0 && (
           <Stack gap={2} mb="xs">
             <Group justify="space-between">
               <Text size="xs" c="dimmed">Items Subtotal</Text>
@@ -638,7 +641,18 @@ export default function POSPage() {
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
   // Outlet dining settings integration
-  const diningSettings = (activeOutlet?.diningSettings as any) || null;
+  const diningSettings = useMemo(() => {
+    if (!activeOutlet?.diningSettings) return null;
+    if (typeof activeOutlet.diningSettings === "string") {
+      try {
+        return JSON.parse(activeOutlet.diningSettings);
+      } catch {
+        return null;
+      }
+    }
+    return activeOutlet.diningSettings as any;
+  }, [activeOutlet?.diningSettings]);
+
   const isDineInEnabled = diningSettings?.dineInEnabled !== false;
   const isTakeawayEnabled = diningSettings?.takeawayEnabled !== false;
   const isDeliveryEnabled = diningSettings?.deliveryEnabled !== false;
@@ -765,22 +779,30 @@ export default function POSPage() {
       const params = new URLSearchParams(window.location.search);
       const tableParam = params.get("table");
       if (tableParam) {
-        setTableNo(tableParam);
-        setOrderType("DINE_IN");
+        if (isDineInEnabled) {
+          setTableNo(tableParam);
+          setOrderType("DINE_IN");
+        } else {
+          notifications.show({
+            title: "Dine-In Disabled",
+            message: `Table "${tableParam}" requested, but Dine-In is turned off for this outlet.`,
+            color: "orange",
+          });
+        }
       }
       const phoneParam = params.get("phone");
       if (phoneParam) {
         setCustomerPhone(phoneParam.replace(/\D/g, "").slice(0, 15));
       }
     }
-  }, []);
+  }, [isDineInEnabled]);
 
   // Auto-select first dining table when in DINE_IN mode if current tableNo is invalid
   useEffect(() => {
-    if (orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery") && tables.length > 0) {
+    if (isDineInEnabled && orderType === "DINE_IN" && (!tableNo || tableNo === "Takeaway" || tableNo === "Delivery") && tables.length > 0) {
       setTableNo(tables[0].name);
     }
-  }, [orderType, tableNo, tables]);
+  }, [isDineInEnabled, orderType, tableNo, tables]);
 
   // Settle modal state
   const [settleModal, setSettleModal] = useState(false);

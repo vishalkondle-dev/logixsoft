@@ -111,6 +111,61 @@ export function DiningOptionsManagement() {
     }
   };
 
+  const handleToggleChannel = (channel: "dineIn" | "takeaway" | "delivery", enabled: boolean) => {
+    if (!enabled) {
+      const otherChannelsActive =
+        (channel !== "dineIn" && config.dineInEnabled) ||
+        (channel !== "takeaway" && config.takeawayEnabled) ||
+        (channel !== "delivery" && config.deliveryEnabled);
+
+      if (!otherChannelsActive) {
+        notifications.show({
+          title: "Action Not Allowed",
+          message: "At least one dining channel must remain active for the outlet.",
+          color: "red",
+          icon: <IconAlertCircle size={16} />,
+        });
+        return;
+      }
+    }
+
+    setConfig((prev) => {
+      const nextDineIn = channel === "dineIn" ? enabled : prev.dineInEnabled;
+      const nextTakeaway = channel === "takeaway" ? enabled : prev.takeawayEnabled;
+      const nextDelivery = channel === "delivery" ? enabled : prev.deliveryEnabled;
+
+      let nextDefault = prev.defaultOrderType;
+      if (channel === "dineIn" && !enabled && nextDefault === "DINE_IN") {
+        nextDefault = nextTakeaway ? "TAKEAWAY" : nextDelivery ? "DELIVERY" : "TAKEAWAY";
+      } else if (channel === "takeaway" && !enabled && nextDefault === "TAKEAWAY") {
+        nextDefault = nextDineIn ? "DINE_IN" : nextDelivery ? "DELIVERY" : "DINE_IN";
+      } else if (channel === "delivery" && !enabled && nextDefault === "DELIVERY") {
+        nextDefault = nextDineIn ? "DINE_IN" : nextTakeaway ? "TAKEAWAY" : "DINE_IN";
+      }
+
+      return {
+        ...prev,
+        dineInEnabled: nextDineIn,
+        takeawayEnabled: nextTakeaway,
+        deliveryEnabled: nextDelivery,
+        defaultOrderType: nextDefault,
+      };
+    });
+  };
+
+  const defaultModeOptions = React.useMemo(() => {
+    const list: { value: "DINE_IN" | "TAKEAWAY" | "DELIVERY"; label: string }[] = [];
+    if (config.dineInEnabled) list.push({ value: "DINE_IN", label: "🍽️ Dine-In (Table Seated)" });
+    if (config.takeawayEnabled) list.push({ value: "TAKEAWAY", label: "🛍️ Takeaway (Quick Counter)" });
+    if (config.deliveryEnabled) list.push({ value: "DELIVERY", label: "🛵 Direct Delivery (Fleet)" });
+    if (list.length === 0) list.push({ value: "TAKEAWAY", label: "🛍️ Takeaway (Quick Counter)" });
+    return list;
+  }, [config.dineInEnabled, config.takeawayEnabled, config.deliveryEnabled]);
+
+  const selectedDefaultValue = defaultModeOptions.some((o) => o.value === config.defaultOrderType)
+    ? config.defaultOrderType
+    : defaultModeOptions[0]?.value || "TAKEAWAY";
+
   return (
     <Stack gap="lg" maw={900}>
       <Group justify="space-between" align="flex-start" wrap="wrap">
@@ -140,7 +195,7 @@ export function DiningOptionsManagement() {
             </ThemeIcon>
             <Switch
               checked={config.dineInEnabled}
-              onChange={(e) => setConfig((p) => ({ ...p, dineInEnabled: e.currentTarget.checked }))}
+              onChange={(e) => handleToggleChannel("dineIn", e.currentTarget.checked)}
               color="blue"
               aria-label="Toggle Dine-In"
             />
@@ -162,7 +217,7 @@ export function DiningOptionsManagement() {
             </ThemeIcon>
             <Switch
               checked={config.takeawayEnabled}
-              onChange={(e) => setConfig((p) => ({ ...p, takeawayEnabled: e.currentTarget.checked }))}
+              onChange={(e) => handleToggleChannel("takeaway", e.currentTarget.checked)}
               color="teal"
               aria-label="Toggle Takeaway"
             />
@@ -184,7 +239,7 @@ export function DiningOptionsManagement() {
             </ThemeIcon>
             <Switch
               checked={config.deliveryEnabled}
-              onChange={(e) => setConfig((p) => ({ ...p, deliveryEnabled: e.currentTarget.checked }))}
+              onChange={(e) => handleToggleChannel("delivery", e.currentTarget.checked)}
               color="orange"
               aria-label="Toggle Delivery"
             />
@@ -207,12 +262,8 @@ export function DiningOptionsManagement() {
             The initial channel selected when cashiers open the POS billing screen.
           </Text>
           <Select
-            data={[
-              { value: "DINE_IN", label: "🍽️ Dine-In (Table Seated)", disabled: !config.dineInEnabled },
-              { value: "TAKEAWAY", label: "🛍️ Takeaway (Quick Counter)", disabled: !config.takeawayEnabled },
-              { value: "DELIVERY", label: "🛵 Direct Delivery (Fleet)", disabled: !config.deliveryEnabled },
-            ]}
-            value={config.defaultOrderType}
+            data={defaultModeOptions}
+            value={selectedDefaultValue}
             onChange={(val: any) => val && setConfig((p) => ({ ...p, defaultOrderType: val }))}
             maw={320}
           />

@@ -138,7 +138,17 @@ export default function TablesPage() {
   const updateReservationMut = useUpdateReservation(restaurantId, outletId);
 
   // ─── Dining Settings Integration ─────────────────────────────────────────────
-  const diningSettings = (activeOutlet?.diningSettings as any) || null;
+  const diningSettings = useMemo(() => {
+    if (!activeOutlet?.diningSettings) return null;
+    if (typeof activeOutlet.diningSettings === "string") {
+      try {
+        return JSON.parse(activeOutlet.diningSettings);
+      } catch {
+        return null;
+      }
+    }
+    return activeOutlet.diningSettings as any;
+  }, [activeOutlet?.diningSettings]);
   const isDineInDisabled = diningSettings?.dineInEnabled === false;
 
   // ─── Multi-Order / Multi-Round Active Orders for Table ────────────────────────
@@ -886,12 +896,13 @@ export default function TablesPage() {
                     <Button
                       fullWidth
                       size="sm"
-                      color="dinePrimary"
+                      color={isDineInDisabled ? "gray" : "dinePrimary"}
                       variant="light"
+                      disabled={isDineInDisabled}
                       leftSection={<IconShoppingCart size={16} />}
-                      onClick={() => router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
+                      onClick={() => !isDineInDisabled && router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
                     >
-                      Take Order (Dine In)
+                      {isDineInDisabled ? "Dine-In Disabled" : "Take Order (Dine In)"}
                     </Button>
                   )}
                 </div>

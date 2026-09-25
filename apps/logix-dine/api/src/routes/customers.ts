@@ -198,15 +198,33 @@ app.get(
         visitFrequencyDays = Math.round((totalSpanDays / (validDates.length - 1)) * 10) / 10;
       }
 
-      // Dining preference (Dine-In vs Takeaway)
-      const takeawayOrders = scopedOrders.filter((o: any) => (o.tableNo || '').toLowerCase() === 'takeaway');
-      const dineInOrders = scopedOrders.filter((o: any) => o.tableNo && o.tableNo.toLowerCase() !== 'takeaway');
-      const preferredDineMode = takeawayOrders.length > dineInOrders.length ? 'Takeaway' : 'Dine-In';
+      // Dining preference (Dine-In vs Takeaway vs Delivery)
+      const deliveryOrders = scopedOrders.filter(
+        (o: any) => o.orderType === 'DELIVERY' || (o.tableNo || '').toLowerCase() === 'delivery'
+      );
+      const takeawayOrders = scopedOrders.filter(
+        (o: any) =>
+          !deliveryOrders.includes(o) &&
+          ((o.tableNo || '').toLowerCase() === 'takeaway' || o.orderType === 'TAKEAWAY')
+      );
+      const dineInOrders = scopedOrders.filter(
+        (o: any) => !deliveryOrders.includes(o) && !takeawayOrders.includes(o) && o.tableNo
+      );
 
-      // Preferred table
+      let preferredDineMode: 'Dine-In' | 'Takeaway' | 'Delivery' = 'Dine-In';
+      if (deliveryOrders.length > dineInOrders.length && deliveryOrders.length >= takeawayOrders.length) {
+        preferredDineMode = 'Delivery';
+      } else if (takeawayOrders.length > dineInOrders.length) {
+        preferredDineMode = 'Takeaway';
+      }
+
+      // Preferred table (only actual dine-in tables, never Delivery or Takeaway)
       const tableCounts: Record<string, number> = {};
       dineInOrders.forEach((o: any) => {
-        if (o.tableNo) tableCounts[o.tableNo] = (tableCounts[o.tableNo] || 0) + 1;
+        const tbl = (o.tableNo || '').trim();
+        if (tbl && tbl.toLowerCase() !== 'takeaway' && tbl.toLowerCase() !== 'delivery') {
+          tableCounts[tbl] = (tableCounts[tbl] || 0) + 1;
+        }
       });
       let preferredTable: string | null = null;
       let maxTableOrders = 0;
@@ -380,6 +398,7 @@ app.get(
           outletId: o.outletId,
           outletName: outletMap.get(o.outletId)?.name || 'Main Outlet',
           tableNo: o.tableNo || 'Takeaway',
+          orderType: o.orderType || ((o.tableNo || '').toLowerCase() === 'delivery' ? 'DELIVERY' : (o.tableNo || '').toLowerCase() === 'takeaway' ? 'TAKEAWAY' : 'DINE_IN'),
           customerPhone: o.customerPhone,
           status: o.status,
           orderStatus: o.orderStatus,
@@ -435,6 +454,7 @@ app.get(
           visitFrequencyDays,
           dineInCount: dineInOrders.length,
           takeawayCount: takeawayOrders.length,
+          deliveryCount: deliveryOrders.length,
           preferredDineMode,
           preferredTable,
           preferredPaymentMethod,

@@ -53,16 +53,11 @@ async function verifyReportsWithAuth() {
   const page = await context.newPage();
 
   const reportsToCapture = [
+    { url: "https://dine.logixsoft.in/tables", file: "tables_page.png" },
+    { url: "https://dine.logixsoft.in/settings", file: "settings_overview.png" },
     { url: "https://dine.logixsoft.in/settings/reports", file: "reports_hub.png" },
     { url: "https://dine.logixsoft.in/settings/reports/summary", file: "report_summary.png" },
     { url: "https://dine.logixsoft.in/settings/reports/invoice-detail", file: "report_invoice_detail.png" },
-    { url: "https://dine.logixsoft.in/settings/reports/item-wise-invoice", file: "report_item_wise_invoice.png" },
-    { url: "https://dine.logixsoft.in/settings/reports/sales-by-hour", file: "report_sales_by_hour.png" },
-    { url: "https://dine.logixsoft.in/settings/reports/sales-by-table", file: "report_sales_by_table.png" },
-    { url: "https://dine.logixsoft.in/settings/reports/gross-report", file: "report_gross_report.png" },
-    { url: "https://dine.logixsoft.in/settings/reports/payment-methods", file: "report_payment_methods.png" },
-    { url: "https://dine.logixsoft.in/settings/reports/discount-report", file: "report_discount_report.png" },
-    { url: "https://dine.logixsoft.in/settings/reports/cancelled-invoices", file: "report_cancelled_invoices.png" },
   ];
 
   for (const item of reportsToCapture) {

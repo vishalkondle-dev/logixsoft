@@ -12,7 +12,6 @@ import {
   Badge,
   Box,
   Divider,
-  Container,
 } from "@mantine/core";
 import {
   IconBuildingStore,
@@ -211,7 +210,7 @@ export function SettingsOverview() {
   ];
 
   return (
-    <Container fluid px={{ base: "md", sm: "xl", lg: 32 }} py="lg" pb={120} w="100%">
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
       {/* Header */}
       <Box mb="xl">
         <Group justify="space-between" align="flex-end" wrap="wrap" gap="xs">
@@ -322,6 +321,6 @@ export function SettingsOverview() {
           </Box>
         ))}
       </Box>
-    </Container>
+    </Box>
   );
 }

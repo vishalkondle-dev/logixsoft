@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Title, Text, Group, Stack, Paper, SimpleGrid, Loader, Center,
   Button, Select, Box, ActionIcon, ThemeIcon, Table, Badge,
-  TextInput, SegmentedControl, Progress, Collapse, Divider, ScrollArea, Container,
+  TextInput, SegmentedControl, Progress, Collapse, Divider, ScrollArea,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { BarChart, LineChart, DonutChart } from "@mantine/charts";
@@ -577,7 +577,7 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
   }
 
   return (
-    <Container fluid px={{ base: "md", sm: "xl", lg: 32 }} py="lg" pb={120} w="100%">
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
       <Stack gap="lg" w="100%">
         {/* Header Bar */}
         <Paper p="md" radius="md" withBorder>
@@ -703,7 +703,7 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
           <ReportContentSwitch type={canonicalType} data={data} />
         )}
       </Stack>
-    </Container>
+    </Box>
   );
 }
 
@@ -713,9 +713,9 @@ export function ReportsManagement({ embedded = false, reportType }: { embedded?:
   }
   if (!embedded) {
     return (
-      <Container fluid px={{ base: "md", sm: "xl", lg: 32 }} py="lg" pb={120} w="100%">
+      <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
         <ReportsCardsList />
-      </Container>
+      </Box>
     );
   }
   return <ReportsCardsList />;

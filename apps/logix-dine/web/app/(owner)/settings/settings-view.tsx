@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Box, Title, Tabs, TextInput, Button, Stack, Group, Text,
-  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Container, Center,
+  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Center,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -430,7 +430,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const currentTabMeta = TAB_TITLES[activeTab] || TAB_TITLES.restaurant;
 
   return (
-    <Container fluid px={{ base: "md", sm: "xl", lg: 32 }} py="lg" pb={120} w="100%">
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
       <Group justify="space-between" align="center" mb="lg">
         <div>
           <Title order={2}>{currentTabMeta.title}</Title>
@@ -779,6 +779,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           </Group>
         </Stack>
       </Modal>
-    </Container>
+    </Box>
   );
 }

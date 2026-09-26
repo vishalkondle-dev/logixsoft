@@ -137,7 +137,7 @@ app.get(
       return c.json({ error: 'Bad Request', message: 'outletId is required for this role' }, 400);
     }
 
-    const masterCacheKey = CacheKey.report(restaurantId, 'comprehensive-v2', fromStr, toStr, outletId);
+    const masterCacheKey = CacheKey.report(restaurantId, 'comprehensive-v3', fromStr, toStr, outletId);
     const cachedMaster = await cacheGet<any>(kv(c), masterCacheKey);
     if (cachedMaster) {
       return c.json({ type, from: fromStr, to: toStr, outletId, data: cachedMaster });
@@ -178,13 +178,14 @@ async function buildComprehensiveAnalytics(
   const toIso = to.toISOString();
   const orderOutletCond = outletFilter(sql`so."outletId"`, outletId);
   const tableOutletCond = outletFilter(sql`"outletId"`, outletId);
+  const outletIdCond = outletFilter(sql`"id"`, outletId);
 
   const [outletsRows, tablesRows, ordersRows, itemsRows] = await Promise.all([
     db.execute(sql`
       SELECT id, name, "taxSettings"
       FROM "restaurantOutlet"
       WHERE "restaurantId" = ${restaurantId}
-      ${tableOutletCond}
+      ${outletIdCond}
     `),
     db.execute(sql`
       SELECT name, section, capacity

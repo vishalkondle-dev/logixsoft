@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Box, Title, Tabs, TextInput, Button, Stack, Group, Text,
-  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon,
+  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Container, Center,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -22,13 +22,25 @@ import {
   useCreateTable, useUpdateTable, useToggleTable, useDeleteTable,
   useCreateOutlet, useUpdateOutlet, useDeleteOutlet, useSetDefaultOutlet,
 } from "@/lib/queries";
+import dynamic from "next/dynamic";
 import {
   updateRestaurant,
 } from "@/lib/api-client";
 import { PrinterButton } from "@/components/print/printer-button";
 import { MenuManagement } from "../menu/menu-management";
-import { ReportsManagement } from "../reports/reports-management";
 import { StoreHoursManagement } from "./store-hours-management";
+
+const ReportsManagement = dynamic(
+  () => import("../reports/reports-management").then((m) => m.ReportsManagement),
+  {
+    ssr: false,
+    loading: () => (
+      <Center py={60}>
+        <Loader color="dinePrimary" />
+      </Center>
+    ),
+  }
+);
 import { InvoiceTaxManagement } from "./invoice-tax-management";
 import { DiningOptionsManagement } from "./dining-options-management";
 import { QrMenuManagement } from "./qr-menu-management";
@@ -418,7 +430,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const currentTabMeta = TAB_TITLES[activeTab] || TAB_TITLES.restaurant;
 
   return (
-    <Box pt="md" pb={100} px={{ base: "xs", sm: "md" }}>
+    <Container fluid px={{ base: "md", sm: "xl", lg: 32 }} py="lg" pb={120} w="100%">
       <Group justify="space-between" align="center" mb="lg">
         <div>
           <Title order={2}>{currentTabMeta.title}</Title>
@@ -767,6 +779,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           </Group>
         </Stack>
       </Modal>
-    </Box>
+    </Container>
   );
 }

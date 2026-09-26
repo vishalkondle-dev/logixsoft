@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Title, Text, Group, Stack, Paper, SimpleGrid, Loader, Center,
   Button, Select, Box, ActionIcon, ThemeIcon, Table, Badge,
-  TextInput, SegmentedControl, Progress, Collapse, Divider, ScrollArea,
+  TextInput, SegmentedControl, Progress, Collapse, Divider, ScrollArea, Container,
 } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { BarChart, LineChart, DonutChart } from "@mantine/charts";
@@ -577,7 +577,7 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
   }
 
   return (
-    <Box pt="xs" pb={100} w="100%">
+    <Container fluid px={{ base: "md", sm: "xl", lg: 32 }} py="lg" pb={120} w="100%">
       <Stack gap="lg" w="100%">
         {/* Header Bar */}
         <Paper p="md" radius="md" withBorder>
@@ -703,13 +703,20 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
           <ReportContentSwitch type={canonicalType} data={data} />
         )}
       </Stack>
-    </Box>
+    </Container>
   );
 }
 
 export function ReportsManagement({ embedded = false, reportType }: { embedded?: boolean; reportType?: ReportType }) {
   if (reportType) {
     return <ReportDetailView reportType={reportType} />;
+  }
+  if (!embedded) {
+    return (
+      <Container fluid px={{ base: "md", sm: "xl", lg: 32 }} py="lg" pb={120} w="100%">
+        <ReportsCardsList />
+      </Container>
+    );
   }
   return <ReportsCardsList />;
 }
@@ -967,28 +974,30 @@ function SummaryReportPanel({ data }: { data: any }) {
               View All
             </Button>
           </Group>
-          <Table striped highlightOnHover verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Category</Table.Th>
-                <Table.Th ta="right">Qty Sold</Table.Th>
-                <Table.Th ta="right">Gross Sales</Table.Th>
-                <Table.Th ta="right">Share</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {byCategory.slice(0, 6).map((cat: any) => (
-                <Table.Tr key={cat.categoryName}>
-                  <Table.Td fw={600}>{cat.categoryName}</Table.Td>
-                  <Table.Td ta="right">{cat.qtySold}</Table.Td>
-                  <Table.Td ta="right" fw={600}>{rupees(cat.grossPaise)}</Table.Td>
-                  <Table.Td ta="right">
-                    <Badge variant="light" color="teal" size="sm">{cat.sharePercent}%</Badge>
-                  </Table.Td>
+          <ScrollArea>
+            <Table striped highlightOnHover verticalSpacing="xs" miw={360}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Category</Table.Th>
+                  <Table.Th ta="right">Qty Sold</Table.Th>
+                  <Table.Th ta="right">Gross Sales</Table.Th>
+                  <Table.Th ta="right">Share</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {byCategory.slice(0, 6).map((cat: any) => (
+                  <Table.Tr key={cat.categoryName}>
+                    <Table.Td fw={600}>{cat.categoryName}</Table.Td>
+                    <Table.Td ta="right">{cat.qtySold}</Table.Td>
+                    <Table.Td ta="right" fw={600}>{rupees(cat.grossPaise)}</Table.Td>
+                    <Table.Td ta="right">
+                      <Badge variant="light" color="teal" size="sm">{cat.sharePercent}%</Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
         </Paper>
 
         <Paper p="lg" radius="md" withBorder>
@@ -998,29 +1007,31 @@ function SummaryReportPanel({ data }: { data: any }) {
               View Full Item Report
             </Button>
           </Group>
-          <Table striped highlightOnHover verticalSpacing="xs">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Item</Table.Th>
-                <Table.Th ta="right">Qty</Table.Th>
-                <Table.Th ta="right">Gross</Table.Th>
-                <Table.Th ta="right">Net</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {topItems.map((it: any) => (
-                <Table.Tr key={it.key || it.itemId}>
-                  <Table.Td>
-                    <Text size="sm" fw={600} lineClamp={1}>{it.name}</Text>
-                    <Text size="xs" c="dimmed">{it.categoryName}</Text>
-                  </Table.Td>
-                  <Table.Td ta="right" fw={600}>{it.qtySold}</Table.Td>
-                  <Table.Td ta="right">{rupees(it.grossPaise)}</Table.Td>
-                  <Table.Td ta="right" fw={700} c="teal">{rupees(it.netPaise)}</Table.Td>
+          <ScrollArea>
+            <Table striped highlightOnHover verticalSpacing="xs" miw={360}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Item</Table.Th>
+                  <Table.Th ta="right">Qty</Table.Th>
+                  <Table.Th ta="right">Gross</Table.Th>
+                  <Table.Th ta="right">Net</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {topItems.map((it: any) => (
+                  <Table.Tr key={it.key || it.itemId}>
+                    <Table.Td>
+                      <Text size="sm" fw={600} lineClamp={1}>{it.name}</Text>
+                      <Text size="xs" c="dimmed">{it.categoryName}</Text>
+                    </Table.Td>
+                    <Table.Td ta="right" fw={600}>{it.qtySold}</Table.Td>
+                    <Table.Td ta="right">{rupees(it.grossPaise)}</Table.Td>
+                    <Table.Td ta="right" fw={700} c="teal">{rupees(it.netPaise)}</Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
         </Paper>
       </SimpleGrid>
     </Stack>
@@ -1499,37 +1510,39 @@ function SalesReportPanel({ data }: { data: any }) {
 
       <Paper p="lg" radius="md" withBorder>
         <Title order={5} mb="md">Category-wise Sales Performance</Title>
-        <Table striped highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Category</Table.Th>
-              <Table.Th ta="right">Orders</Table.Th>
-              <Table.Th ta="right">Units Sold</Table.Th>
-              <Table.Th ta="right">Gross Sales</Table.Th>
-              <Table.Th ta="right">Discounts</Table.Th>
-              <Table.Th ta="right">Net Sales</Table.Th>
-              <Table.Th style={{ width: 180 }}>Revenue Share</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {byCategory.map((cat: any) => (
-              <Table.Tr key={cat.categoryName}>
-                <Table.Td fw={700}>{cat.categoryName}</Table.Td>
-                <Table.Td ta="right">{cat.ordersCount}</Table.Td>
-                <Table.Td ta="right" fw={600}>{cat.qtySold}</Table.Td>
-                <Table.Td ta="right">{rupees(cat.grossPaise)}</Table.Td>
-                <Table.Td ta="right" c="red">{cat.discountPaise > 0 ? `- ${rupees(cat.discountPaise)}` : "₹0"}</Table.Td>
-                <Table.Td ta="right" fw={700} c="teal">{rupees(cat.netPaise)}</Table.Td>
-                <Table.Td>
-                  <Group gap="xs" wrap="nowrap">
-                    <Progress value={cat.sharePercent} color="teal" size="sm" radius="xl" style={{ flex: 1 }} />
-                    <Text size="xs" fw={600} w={42} ta="right">{cat.sharePercent}%</Text>
-                  </Group>
-                </Table.Td>
+        <ScrollArea>
+          <Table striped highlightOnHover verticalSpacing="sm" miw={750}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Category</Table.Th>
+                <Table.Th ta="right">Orders</Table.Th>
+                <Table.Th ta="right">Units Sold</Table.Th>
+                <Table.Th ta="right">Gross Sales</Table.Th>
+                <Table.Th ta="right">Discounts</Table.Th>
+                <Table.Th ta="right">Net Sales</Table.Th>
+                <Table.Th style={{ width: 180 }}>Revenue Share</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {byCategory.map((cat: any) => (
+                <Table.Tr key={cat.categoryName}>
+                  <Table.Td fw={700}>{cat.categoryName}</Table.Td>
+                  <Table.Td ta="right">{cat.ordersCount}</Table.Td>
+                  <Table.Td ta="right" fw={600}>{cat.qtySold}</Table.Td>
+                  <Table.Td ta="right">{rupees(cat.grossPaise)}</Table.Td>
+                  <Table.Td ta="right" c="red">{cat.discountPaise > 0 ? `- ${rupees(cat.discountPaise)}` : "₹0"}</Table.Td>
+                  <Table.Td ta="right" fw={700} c="teal">{rupees(cat.netPaise)}</Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Progress value={cat.sharePercent} color="teal" size="sm" radius="xl" style={{ flex: 1 }} />
+                      <Text size="xs" fw={600} w={42} ta="right">{cat.sharePercent}%</Text>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Paper>
     </Stack>
   );
@@ -1824,32 +1837,34 @@ function SalesByHourReportPanel({ data }: { data: any }) {
 
       <Paper p="lg" radius="md" withBorder>
         <Title order={5} mb="md">Hourly Operations Ledger</Title>
-        <Table striped highlightOnHover verticalSpacing="xs">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Hour Slot (IST)</Table.Th>
-              <Table.Th ta="right">Paid Orders</Table.Th>
-              <Table.Th ta="right">Items Sold</Table.Th>
-              <Table.Th ta="right">Gross Sales</Table.Th>
-              <Table.Th ta="right">Net Sales</Table.Th>
-              <Table.Th ta="right">Total Revenue</Table.Th>
-              <Table.Th ta="right">AOV</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {byHour.filter((h) => h.totalOrdersCount > 0 || h.revenuePaise > 0).map((h) => (
-              <Table.Tr key={h.hour}>
-                <Table.Td fw={700}>{h.label}</Table.Td>
-                <Table.Td ta="right" fw={600}>{h.paidCount}</Table.Td>
-                <Table.Td ta="right">{h.itemsQty}</Table.Td>
-                <Table.Td ta="right">{rupees(h.grossPaise)}</Table.Td>
-                <Table.Td ta="right">{rupees(h.netPaise)}</Table.Td>
-                <Table.Td ta="right" fw={700} c="dinePrimary">{rupees(h.revenuePaise)}</Table.Td>
-                <Table.Td ta="right">{rupees(h.avgOrderPaise)}</Table.Td>
+        <ScrollArea>
+          <Table striped highlightOnHover verticalSpacing="xs" miw={700}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Hour Slot (IST)</Table.Th>
+                <Table.Th ta="right">Paid Orders</Table.Th>
+                <Table.Th ta="right">Items Sold</Table.Th>
+                <Table.Th ta="right">Gross Sales</Table.Th>
+                <Table.Th ta="right">Net Sales</Table.Th>
+                <Table.Th ta="right">Total Revenue</Table.Th>
+                <Table.Th ta="right">AOV</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {byHour.filter((h) => h.totalOrdersCount > 0 || h.revenuePaise > 0).map((h) => (
+                <Table.Tr key={h.hour}>
+                  <Table.Td fw={700}>{h.label}</Table.Td>
+                  <Table.Td ta="right" fw={600}>{h.paidCount}</Table.Td>
+                  <Table.Td ta="right">{h.itemsQty}</Table.Td>
+                  <Table.Td ta="right">{rupees(h.grossPaise)}</Table.Td>
+                  <Table.Td ta="right">{rupees(h.netPaise)}</Table.Td>
+                  <Table.Td ta="right" fw={700} c="dinePrimary">{rupees(h.revenuePaise)}</Table.Td>
+                  <Table.Td ta="right">{rupees(h.avgOrderPaise)}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Paper>
     </Stack>
   );
@@ -2004,36 +2019,38 @@ function SalesByMonthReportPanel({ data }: { data: any }) {
 
       <Paper p="lg" radius="md" withBorder>
         <Title order={5} mb="md">Monthly Financial Summary</Title>
-        <Table striped highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Month</Table.Th>
-              <Table.Th ta="right">Paid Orders</Table.Th>
-              <Table.Th ta="right">Items Sold</Table.Th>
-              <Table.Th ta="right">Gross Sales</Table.Th>
-              <Table.Th ta="right">Discounts</Table.Th>
-              <Table.Th ta="right">Net Sales</Table.Th>
-              <Table.Th ta="right">Taxes</Table.Th>
-              <Table.Th ta="right">Collected Revenue</Table.Th>
-              <Table.Th ta="right">AOV</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {[...byMonth].reverse().map((m) => (
-              <Table.Tr key={m.month}>
-                <Table.Td fw={700}>{m.label}</Table.Td>
-                <Table.Td ta="right" fw={600}>{m.paidCount}</Table.Td>
-                <Table.Td ta="right">{m.itemsQty}</Table.Td>
-                <Table.Td ta="right">{rupees(m.grossPaise)}</Table.Td>
-                <Table.Td ta="right" c="red">{rupees(m.discountPaise)}</Table.Td>
-                <Table.Td ta="right" c="teal" fw={600}>{rupees(m.netPaise)}</Table.Td>
-                <Table.Td ta="right">{rupees(m.taxPaise)}</Table.Td>
-                <Table.Td ta="right" fw={800} c="dinePrimary">{rupees(m.revenuePaise)}</Table.Td>
-                <Table.Td ta="right">{rupees(m.avgOrderPaise)}</Table.Td>
+        <ScrollArea>
+          <Table striped highlightOnHover verticalSpacing="sm" miw={850}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Month</Table.Th>
+                <Table.Th ta="right">Paid Orders</Table.Th>
+                <Table.Th ta="right">Items Sold</Table.Th>
+                <Table.Th ta="right">Gross Sales</Table.Th>
+                <Table.Th ta="right">Discounts</Table.Th>
+                <Table.Th ta="right">Net Sales</Table.Th>
+                <Table.Th ta="right">Taxes</Table.Th>
+                <Table.Th ta="right">Collected Revenue</Table.Th>
+                <Table.Th ta="right">AOV</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {[...byMonth].reverse().map((m) => (
+                <Table.Tr key={m.month}>
+                  <Table.Td fw={700}>{m.label}</Table.Td>
+                  <Table.Td ta="right" fw={600}>{m.paidCount}</Table.Td>
+                  <Table.Td ta="right">{m.itemsQty}</Table.Td>
+                  <Table.Td ta="right">{rupees(m.grossPaise)}</Table.Td>
+                  <Table.Td ta="right" c="red">{rupees(m.discountPaise)}</Table.Td>
+                  <Table.Td ta="right" c="teal" fw={600}>{rupees(m.netPaise)}</Table.Td>
+                  <Table.Td ta="right">{rupees(m.taxPaise)}</Table.Td>
+                  <Table.Td ta="right" fw={800} c="dinePrimary">{rupees(m.revenuePaise)}</Table.Td>
+                  <Table.Td ta="right">{rupees(m.avgOrderPaise)}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Paper>
     </Stack>
   );
@@ -2101,38 +2118,40 @@ function SalesByOrderTypeReportPanel({ data }: { data: any }) {
 
       <Paper p="lg" radius="md" withBorder>
         <Title order={5} mb="md">Channel Performance Matrix</Title>
-        <Table striped highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Order Type</Table.Th>
-              <Table.Th ta="right">Paid Orders</Table.Th>
-              <Table.Th ta="right">Open</Table.Th>
-              <Table.Th ta="right">Void / Cancelled</Table.Th>
-              <Table.Th ta="right">Items Sold</Table.Th>
-              <Table.Th ta="right">Packaging / Delivery Fees</Table.Th>
-              <Table.Th ta="right">Net Sales</Table.Th>
-              <Table.Th ta="right">Total Collected</Table.Th>
-              <Table.Th ta="right">AOV</Table.Th>
-              <Table.Th ta="right">Share</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {byOrderType.map((ot) => (
-              <Table.Tr key={ot.orderType}>
-                <Table.Td fw={700}>{ot.label}</Table.Td>
-                <Table.Td ta="right" fw={600}>{ot.paidCount}</Table.Td>
-                <Table.Td ta="right">{ot.openCount}</Table.Td>
-                <Table.Td ta="right" c="red">{ot.voidCount + ot.cancelledCount}</Table.Td>
-                <Table.Td ta="right">{ot.itemsQty}</Table.Td>
-                <Table.Td ta="right">{rupees(ot.packagingPaise + ot.deliveryPaise)}</Table.Td>
-                <Table.Td ta="right" c="teal" fw={600}>{rupees(ot.netPaise)}</Table.Td>
-                <Table.Td ta="right" fw={800} c="dinePrimary">{rupees(ot.revenuePaise)}</Table.Td>
-                <Table.Td ta="right">{rupees(ot.avgOrderPaise)}</Table.Td>
-                <Table.Td ta="right"><Badge variant="light" color="teal">{ot.sharePercent}%</Badge></Table.Td>
+        <ScrollArea>
+          <Table striped highlightOnHover verticalSpacing="sm" miw={900}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Order Type</Table.Th>
+                <Table.Th ta="right">Paid Orders</Table.Th>
+                <Table.Th ta="right">Open</Table.Th>
+                <Table.Th ta="right">Void / Cancelled</Table.Th>
+                <Table.Th ta="right">Items Sold</Table.Th>
+                <Table.Th ta="right">Packaging / Delivery Fees</Table.Th>
+                <Table.Th ta="right">Net Sales</Table.Th>
+                <Table.Th ta="right">Total Collected</Table.Th>
+                <Table.Th ta="right">AOV</Table.Th>
+                <Table.Th ta="right">Share</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {byOrderType.map((ot) => (
+                <Table.Tr key={ot.orderType}>
+                  <Table.Td fw={700}>{ot.label}</Table.Td>
+                  <Table.Td ta="right" fw={600}>{ot.paidCount}</Table.Td>
+                  <Table.Td ta="right">{ot.openCount}</Table.Td>
+                  <Table.Td ta="right" c="red">{ot.voidCount + ot.cancelledCount}</Table.Td>
+                  <Table.Td ta="right">{ot.itemsQty}</Table.Td>
+                  <Table.Td ta="right">{rupees(ot.packagingPaise + ot.deliveryPaise)}</Table.Td>
+                  <Table.Td ta="right" c="teal" fw={600}>{rupees(ot.netPaise)}</Table.Td>
+                  <Table.Td ta="right" fw={800} c="dinePrimary">{rupees(ot.revenuePaise)}</Table.Td>
+                  <Table.Td ta="right">{rupees(ot.avgOrderPaise)}</Table.Td>
+                  <Table.Td ta="right"><Badge variant="light" color="teal">{ot.sharePercent}%</Badge></Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Paper>
     </Stack>
   );
@@ -2207,43 +2226,45 @@ function SalesByTableReportPanel({ data }: { data: any }) {
 
       <Paper p="lg" radius="md" withBorder>
         <Title order={5} mb="md">Table-wise Performance Ranking</Title>
-        <Table striped highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>#</Table.Th>
-              <Table.Th>Table / Point</Table.Th>
-              <Table.Th>Floor Section</Table.Th>
-              <Table.Th ta="right">Capacity</Table.Th>
-              <Table.Th ta="right">Paid Orders</Table.Th>
-              <Table.Th ta="right">Items Sold</Table.Th>
-              <Table.Th ta="right">Gross Sales</Table.Th>
-              <Table.Th ta="right">Collected Revenue</Table.Th>
-              <Table.Th ta="right">AOV</Table.Th>
-              <Table.Th style={{ width: 150 }}>Share %</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {byTable.map((t, idx) => (
-              <Table.Tr key={t.tableNo}>
-                <Table.Td c="dimmed">{idx + 1}</Table.Td>
-                <Table.Td fw={700}>{t.tableNo}</Table.Td>
-                <Table.Td><Badge variant="light" color="gray" size="xs">{t.section}</Badge></Table.Td>
-                <Table.Td ta="right">{t.capacity} seats</Table.Td>
-                <Table.Td ta="right" fw={600}>{t.paidCount}</Table.Td>
-                <Table.Td ta="right">{t.itemsQty}</Table.Td>
-                <Table.Td ta="right">{rupees(t.grossPaise)}</Table.Td>
-                <Table.Td ta="right" fw={800} c="dinePrimary">{rupees(t.revenuePaise)}</Table.Td>
-                <Table.Td ta="right">{rupees(t.avgOrderPaise)}</Table.Td>
-                <Table.Td>
-                  <Group gap="xs" wrap="nowrap">
-                    <Progress value={t.sharePercent} color="teal" size="sm" radius="xl" style={{ flex: 1 }} />
-                    <Text size="xs" fw={600} w={38} ta="right">{t.sharePercent}%</Text>
-                  </Group>
-                </Table.Td>
+        <ScrollArea>
+          <Table striped highlightOnHover verticalSpacing="sm" miw={900}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>#</Table.Th>
+                <Table.Th>Table / Point</Table.Th>
+                <Table.Th>Floor Section</Table.Th>
+                <Table.Th ta="right">Capacity</Table.Th>
+                <Table.Th ta="right">Paid Orders</Table.Th>
+                <Table.Th ta="right">Items Sold</Table.Th>
+                <Table.Th ta="right">Gross Sales</Table.Th>
+                <Table.Th ta="right">Collected Revenue</Table.Th>
+                <Table.Th ta="right">AOV</Table.Th>
+                <Table.Th style={{ width: 150 }}>Share %</Table.Th>
               </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
+            </Table.Thead>
+            <Table.Tbody>
+              {byTable.map((t, idx) => (
+                <Table.Tr key={t.tableNo}>
+                  <Table.Td c="dimmed">{idx + 1}</Table.Td>
+                  <Table.Td fw={700}>{t.tableNo}</Table.Td>
+                  <Table.Td><Badge variant="light" color="gray" size="xs">{t.section}</Badge></Table.Td>
+                  <Table.Td ta="right">{t.capacity} seats</Table.Td>
+                  <Table.Td ta="right" fw={600}>{t.paidCount}</Table.Td>
+                  <Table.Td ta="right">{t.itemsQty}</Table.Td>
+                  <Table.Td ta="right">{rupees(t.grossPaise)}</Table.Td>
+                  <Table.Td ta="right" fw={800} c="dinePrimary">{rupees(t.revenuePaise)}</Table.Td>
+                  <Table.Td ta="right">{rupees(t.avgOrderPaise)}</Table.Td>
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Progress value={t.sharePercent} color="teal" size="sm" radius="xl" style={{ flex: 1 }} />
+                      <Text size="xs" fw={600} w={38} ta="right">{t.sharePercent}%</Text>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Paper>
     </Stack>
   );
@@ -2283,28 +2304,30 @@ function PaymentMethodsReportPanel({ data }: { data: any }) {
 
         <Paper p="lg" radius="md" withBorder>
           <Title order={5} mb="md">Settlement Breakdown</Title>
-          <Table striped highlightOnHover verticalSpacing="sm">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Method</Table.Th>
-                <Table.Th ta="right">Paid Bills</Table.Th>
-                <Table.Th ta="right">Avg Ticket</Table.Th>
-                <Table.Th ta="right">Total Collected</Table.Th>
-                <Table.Th ta="right">Share</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {methods.map((m) => (
-                <Table.Tr key={m.method}>
-                  <Table.Td fw={700}>{m.method}</Table.Td>
-                  <Table.Td ta="right">{m.count}</Table.Td>
-                  <Table.Td ta="right">{rupees(m.avgOrderPaise)}</Table.Td>
-                  <Table.Td ta="right" fw={700} c="dinePrimary">{rupees(m.revenuePaise)}</Table.Td>
-                  <Table.Td ta="right"><Badge variant="light" color="teal">{m.sharePercent}%</Badge></Table.Td>
+          <ScrollArea>
+            <Table striped highlightOnHover verticalSpacing="sm" miw={360}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Method</Table.Th>
+                  <Table.Th ta="right">Paid Bills</Table.Th>
+                  <Table.Th ta="right">Avg Ticket</Table.Th>
+                  <Table.Th ta="right">Total Collected</Table.Th>
+                  <Table.Th ta="right">Share</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {methods.map((m) => (
+                  <Table.Tr key={m.method}>
+                    <Table.Td fw={700}>{m.method}</Table.Td>
+                    <Table.Td ta="right">{m.count}</Table.Td>
+                    <Table.Td ta="right">{rupees(m.avgOrderPaise)}</Table.Td>
+                    <Table.Td ta="right" fw={700} c="dinePrimary">{rupees(m.revenuePaise)}</Table.Td>
+                    <Table.Td ta="right"><Badge variant="light" color="teal">{m.sharePercent}%</Badge></Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
         </Paper>
       </SimpleGrid>
     </Stack>
@@ -2353,76 +2376,80 @@ function CancelledInvoicesReportPanel({ data }: { data: any }) {
 
       <Paper p="lg" radius="md" withBorder>
         <Title order={5} mb="md">Cancelled Invoices ({cancelledOrders.length})</Title>
-        <Table striped highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Order #</Table.Th>
-              <Table.Th>Date & Time</Table.Th>
-              <Table.Th>Channel / Table</Table.Th>
-              <Table.Th>Customer</Table.Th>
-              <Table.Th ta="right">Order Value</Table.Th>
-              <Table.Th>Note / Reason</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {cancelledOrders.length === 0 ? (
+        <ScrollArea>
+          <Table striped highlightOnHover verticalSpacing="sm" miw={750}>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={6} ta="center" py="lg" c="dimmed">
-                  Zero cancelled full invoices in this period.
-                </Table.Td>
+                <Table.Th>Order #</Table.Th>
+                <Table.Th>Date & Time</Table.Th>
+                <Table.Th>Channel / Table</Table.Th>
+                <Table.Th>Customer</Table.Th>
+                <Table.Th ta="right">Order Value</Table.Th>
+                <Table.Th>Note / Reason</Table.Th>
               </Table.Tr>
-            ) : (
-              cancelledOrders.map((inv: any) => (
-                <Table.Tr key={inv.id}>
-                  <Table.Td fw={700}>#{inv.orderNo}</Table.Td>
-                  <Table.Td>{dayjs(inv.createdAt).format("DD MMM YYYY, hh:mm A")}</Table.Td>
-                  <Table.Td>{inv.orderType} · {inv.tableNo}</Table.Td>
-                  <Table.Td>{inv.customerPhone || "-"}</Table.Td>
-                  <Table.Td ta="right" fw={700} c="red">{rupees(inv.subtotalPaise)}</Table.Td>
-                  <Table.Td>{inv.note || "Cancelled"}</Table.Td>
+            </Table.Thead>
+            <Table.Tbody>
+              {cancelledOrders.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={6} ta="center" py="lg" c="dimmed">
+                    Zero cancelled full invoices in this period.
+                  </Table.Td>
                 </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
+              ) : (
+                cancelledOrders.map((inv: any) => (
+                  <Table.Tr key={inv.id}>
+                    <Table.Td fw={700}>#{inv.orderNo}</Table.Td>
+                    <Table.Td>{dayjs(inv.createdAt).format("DD MMM YYYY, hh:mm A")}</Table.Td>
+                    <Table.Td>{inv.orderType} · {inv.tableNo}</Table.Td>
+                    <Table.Td>{inv.customerPhone || "-"}</Table.Td>
+                    <Table.Td ta="right" fw={700} c="red">{rupees(inv.subtotalPaise)}</Table.Td>
+                    <Table.Td>{inv.note || "Cancelled"}</Table.Td>
+                  </Table.Tr>
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Paper>
 
       <Paper p="lg" radius="md" withBorder>
         <Title order={5} mb="md">Cancelled Line Items Audit ({cancelledItems.length})</Title>
-        <Table striped highlightOnHover verticalSpacing="sm">
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Order #</Table.Th>
-              <Table.Th>Date & Time</Table.Th>
-              <Table.Th>Item Name</Table.Th>
-              <Table.Th>Category</Table.Th>
-              <Table.Th>Table</Table.Th>
-              <Table.Th ta="right">Qty</Table.Th>
-              <Table.Th ta="right">Cancelled Value</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {cancelledItems.length === 0 ? (
+        <ScrollArea>
+          <Table striped highlightOnHover verticalSpacing="sm" miw={750}>
+            <Table.Thead>
               <Table.Tr>
-                <Table.Td colSpan={7} ta="center" py="lg" c="dimmed">
-                  Zero cancelled line items in this period.
-                </Table.Td>
+                <Table.Th>Order #</Table.Th>
+                <Table.Th>Date & Time</Table.Th>
+                <Table.Th>Item Name</Table.Th>
+                <Table.Th>Category</Table.Th>
+                <Table.Th>Table</Table.Th>
+                <Table.Th ta="right">Qty</Table.Th>
+                <Table.Th ta="right">Cancelled Value</Table.Th>
               </Table.Tr>
-            ) : (
-              cancelledItems.map((item: any) => (
-                <Table.Tr key={item.id}>
-                  <Table.Td fw={700}>#{item.orderNo}</Table.Td>
-                  <Table.Td>{dayjs(item.createdAt).format("DD MMM, hh:mm A")}</Table.Td>
-                  <Table.Td fw={600}>{item.itemName}</Table.Td>
-                  <Table.Td>{item.categoryName}</Table.Td>
-                  <Table.Td>{item.tableNo}</Table.Td>
-                  <Table.Td ta="right" fw={700}>{item.qty}</Table.Td>
-                  <Table.Td ta="right" fw={700} c="red">{rupees(item.grossPaise)}</Table.Td>
+            </Table.Thead>
+            <Table.Tbody>
+              {cancelledItems.length === 0 ? (
+                <Table.Tr>
+                  <Table.Td colSpan={7} ta="center" py="lg" c="dimmed">
+                    Zero cancelled line items in this period.
+                  </Table.Td>
                 </Table.Tr>
-              ))
-            )}
-          </Table.Tbody>
-        </Table>
+              ) : (
+                cancelledItems.map((item: any) => (
+                  <Table.Tr key={item.id}>
+                    <Table.Td fw={700}>#{item.orderNo}</Table.Td>
+                    <Table.Td>{dayjs(item.createdAt).format("DD MMM, hh:mm A")}</Table.Td>
+                    <Table.Td fw={600}>{item.itemName}</Table.Td>
+                    <Table.Td>{item.categoryName}</Table.Td>
+                    <Table.Td>{item.tableNo}</Table.Td>
+                    <Table.Td ta="right" fw={700}>{item.qty}</Table.Td>
+                    <Table.Td ta="right" fw={700} c="red">{rupees(item.grossPaise)}</Table.Td>
+                  </Table.Tr>
+                ))
+              )}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea>
       </Paper>
     </Stack>
   );

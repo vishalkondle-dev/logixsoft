@@ -53,18 +53,20 @@ async function verifyReportsWithAuth() {
   const page = await context.newPage();
 
   const reportsToCapture = [
-    { slug: "invoice-detail", file: "report_invoice_detail.png" },
-    { slug: "item-wise-invoice", file: "report_item_wise_invoice.png" },
-    { slug: "sales-by-hour", file: "report_sales_by_hour.png" },
-    { slug: "sales-by-table", file: "report_sales_by_table.png" },
-    { slug: "gross-report", file: "report_gross_report.png" },
-    { slug: "payment-methods", file: "report_payment_methods.png" },
-    { slug: "discount-report", file: "report_discount_report.png" },
-    { slug: "cancelled-invoices", file: "report_cancelled_invoices.png" },
+    { url: "https://dine.logixsoft.in/settings/reports", file: "reports_hub.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/summary", file: "report_summary.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/invoice-detail", file: "report_invoice_detail.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/item-wise-invoice", file: "report_item_wise_invoice.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/sales-by-hour", file: "report_sales_by_hour.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/sales-by-table", file: "report_sales_by_table.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/gross-report", file: "report_gross_report.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/payment-methods", file: "report_payment_methods.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/discount-report", file: "report_discount_report.png" },
+    { url: "https://dine.logixsoft.in/settings/reports/cancelled-invoices", file: "report_cancelled_invoices.png" },
   ];
 
   for (const item of reportsToCapture) {
-    const url = `https://dine.logixsoft.in/settings/reports/${item.slug}`;
+    const url = item.url;
     console.log(`Navigating to ${url}...`);
     await page.goto(url, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(3000);

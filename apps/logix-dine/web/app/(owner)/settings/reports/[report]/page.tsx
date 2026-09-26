@@ -1,4 +1,4 @@
-import { ReportDetailView } from "@/app/(owner)/reports/reports-management";
+import { ReportDetailClientWrapper } from "./report-detail-client";
 import { notFound } from "next/navigation";
 import type { ReportType } from "@/lib/api-client";
 
@@ -38,5 +38,5 @@ export default async function SettingsReportDetailPage({
   if (!VALID_REPORT_TYPES.includes(report as any)) {
     notFound();
   }
-  return <ReportDetailView reportType={report as ReportType} />;
+  return <ReportDetailClientWrapper reportType={report as ReportType} />;
 }

@@ -1072,6 +1072,283 @@ export const deleteReservation = (
     outletId || undefined
   );
 
+// ─── Inventory Module ─────────────────────────────────────────────────────────
+
+export interface InventoryItem {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  name: string;
+  sku?: string | null;
+  category: string;
+  baseUom: string;
+  purchaseUom?: string | null;
+  purchaseConversionFactor?: number | null;
+  costPerBaseUnitPaise: number;
+  currentStock: number;
+  lowStockThreshold?: number | null;
+  idealStock?: number | null;
+  supplierId?: string | null;
+  supplierName?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecipeIngredient {
+  id?: string;
+  ingredientId: string;
+  ingredientName?: string;
+  category?: string;
+  baseUom?: string;
+  quantity: number;
+  wastePercent?: number;
+  costPerBaseUnitPaise?: number;
+  lineCostPaise?: number;
+  variantId?: string | null;
+  addonId?: string | null;
+}
+
+export interface DishRecipeDetail {
+  menuItemId: string;
+  menuItemName: string;
+  pricePaise: number;
+  variants: any[];
+  addons: any[];
+  totalCostPaise: number;
+  foodCostPercent: number;
+  grossMarginPercent: number;
+  ingredients: RecipeIngredient[];
+}
+
+export interface DishRecipeSummary {
+  id: string;
+  name: string;
+  categoryName: string;
+  pricePaise: number;
+  hasRecipe: boolean;
+  ingredientCount: number;
+  totalCostPaise: number;
+  foodCostPercent: number;
+  grossMarginPercent: number;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  ingredientId: string;
+  ingredientName?: string;
+  baseUom?: string;
+  type: string;
+  quantity: number;
+  balanceAfter: number;
+  unitCostPaise?: number | null;
+  referenceId?: string | null;
+  referenceNote?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  supplierId?: string | null;
+  supplierName?: string;
+  poNumber: string;
+  invoiceNumber?: string | null;
+  invoiceDate?: string | null;
+  status: string;
+  totalAmountPaise: number;
+  notes?: string | null;
+  receivedAt?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+}
+
+export interface InventorySupplier {
+  id: string;
+  restaurantId: string;
+  name: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  gstin?: string | null;
+  address?: string | null;
+  paymentTerms?: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface InventoryOverview {
+  totalStockValuePaise: number;
+  totalItemsCount: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+  todayConsumptionPaise: number;
+  todayWastagePaise: number;
+  inventorySettings: InventorySettings;
+}
+
+export interface InventorySettings {
+  enabled: boolean;
+  autoDeductOn: "ON_ORDER" | "ON_SETTLE" | "MANUAL";
+  allowNegativeStock: boolean;
+  lowStockAlerts: boolean;
+  auto86OnDepletion: boolean;
+}
+
+export const getInventoryOverview = (restaurantId: string, outletId?: string | null) =>
+  apiFetch<InventoryOverview>(
+    `/inventory/overview${outletId ? `?outletId=${outletId}` : ""}`,
+    restaurantId,
+    {},
+    outletId || undefined
+  );
+
+export const getInventoryItems = (
+  restaurantId: string,
+  outletId?: string | null,
+  category?: string,
+  lowStock?: boolean
+) => {
+  const params = new URLSearchParams();
+  if (outletId) params.set("outletId", outletId);
+  if (category) params.set("category", category);
+  if (lowStock) params.set("lowStock", "true");
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return apiFetch<InventoryItem[]>(`/inventory/items${q}`, restaurantId, {}, outletId || undefined);
+};
+
+export const createInventoryItem = (restaurantId: string, outletId: string, data: any) =>
+  apiFetch<InventoryItem>(
+    `/inventory/items`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const updateInventoryItem = (restaurantId: string, id: string, data: any, outletId?: string | null) =>
+  apiFetch<InventoryItem>(
+    `/inventory/items/${id}`,
+    restaurantId,
+    { method: "PATCH", body: JSON.stringify(data) },
+    outletId || undefined
+  );
+
+export const deleteInventoryItem = (restaurantId: string, id: string, outletId?: string | null) =>
+  apiFetch<{ success: boolean; message: string }>(
+    `/inventory/items/${id}`,
+    restaurantId,
+    { method: "DELETE" },
+    outletId || undefined
+  );
+
+export const getMenuRecipes = (restaurantId: string, outletId?: string | null) =>
+  apiFetch<DishRecipeSummary[]>(
+    `/inventory/recipes${outletId ? `?outletId=${outletId}` : ""}`,
+    restaurantId,
+    {},
+    outletId || undefined
+  );
+
+export const getMenuRecipe = (restaurantId: string, menuItemId: string, outletId?: string | null) =>
+  apiFetch<DishRecipeDetail>(
+    `/inventory/recipes/${menuItemId}`,
+    restaurantId,
+    {},
+    outletId || undefined
+  );
+
+export const saveMenuRecipe = (restaurantId: string, menuItemId: string, ingredients: any[], outletId?: string | null) =>
+  apiFetch<{ success: boolean; count: number }>(
+    `/inventory/recipes/${menuItemId}`,
+    restaurantId,
+    { method: "PUT", body: JSON.stringify({ ingredients }) },
+    outletId || undefined
+  );
+
+export const adjustInventoryStock = (restaurantId: string, data: { ingredientId: string; newStock: number; reason: string }, outletId?: string | null) =>
+  apiFetch<{ success: boolean; previousStock: number; newStock: number; difference: number }>(
+    `/inventory/adjust`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId || undefined
+  );
+
+export const logInventoryWastage = (restaurantId: string, data: { ingredientId: string; quantity: number; reason: string }, outletId?: string | null) =>
+  apiFetch<{ success: boolean; quantityWasted: number; remainingStock: number }>(
+    `/inventory/wastage`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId || undefined
+  );
+
+export const getInventoryTransactions = (
+  restaurantId: string,
+  outletId?: string | null,
+  ingredientId?: string,
+  type?: string
+) => {
+  const params = new URLSearchParams();
+  if (outletId) params.set("outletId", outletId);
+  if (ingredientId) params.set("ingredientId", ingredientId);
+  if (type) params.set("type", type);
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return apiFetch<InventoryTransaction[]>(`/inventory/transactions${q}`, restaurantId, {}, outletId || undefined);
+};
+
+export const getPurchaseOrders = (restaurantId: string, outletId?: string | null) =>
+  apiFetch<PurchaseOrder[]>(
+    `/inventory/purchases${outletId ? `?outletId=${outletId}` : ""}`,
+    restaurantId,
+    {},
+    outletId || undefined
+  );
+
+export const createPurchaseOrder = (restaurantId: string, outletId: string, data: any) =>
+  apiFetch<PurchaseOrder>(
+    `/inventory/purchases`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const getInventorySuppliers = (restaurantId: string) =>
+  apiFetch<InventorySupplier[]>(`/inventory/suppliers`, restaurantId);
+
+export const createInventorySupplier = (restaurantId: string, data: any) =>
+  apiFetch<InventorySupplier>(
+    `/inventory/suppliers`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) }
+  );
+
+export const updateInventorySupplier = (restaurantId: string, id: string, data: any) =>
+  apiFetch<InventorySupplier>(
+    `/inventory/suppliers/${id}`,
+    restaurantId,
+    { method: "PATCH", body: JSON.stringify(data) }
+  );
+
+export const getInventorySettings = (restaurantId: string, outletId: string) =>
+  apiFetch<InventorySettings>(
+    `/inventory/settings?outletId=${outletId}`,
+    restaurantId,
+    {},
+    outletId
+  );
+
+export const updateInventorySettings = (restaurantId: string, outletId: string, data: Partial<InventorySettings>) =>
+  apiFetch<InventorySettings>(
+    `/inventory/settings`,
+    restaurantId,
+    { method: "PATCH", body: JSON.stringify(data) },
+    outletId
+  );
+
+
 
 
 

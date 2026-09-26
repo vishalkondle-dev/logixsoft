@@ -64,6 +64,24 @@ import {
   type TableReservation,
   type CustomerPortalData,
   type CustomerMenuResponse,
+  getInventoryOverview,
+  getInventoryItems,
+  createInventoryItem,
+  updateInventoryItem,
+  deleteInventoryItem,
+  getMenuRecipes,
+  getMenuRecipe,
+  saveMenuRecipe,
+  adjustInventoryStock,
+  logInventoryWastage,
+  getInventoryTransactions,
+  getPurchaseOrders,
+  createPurchaseOrder,
+  getInventorySuppliers,
+  createInventorySupplier,
+  updateInventorySupplier,
+  getInventorySettings,
+  updateInventorySettings,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
@@ -103,6 +121,22 @@ export const qk = {
     ["customerAddresses", restaurantId, phone] as const,
   reservations: (restaurantId: string, outletId?: string | null, date?: string, status?: string) =>
     ["reservations", restaurantId, outletId ?? "all", date ?? "all", status ?? "all"] as const,
+  inventoryOverview: (restaurantId: string, outletId?: string | null) =>
+    ["inventoryOverview", restaurantId, outletId ?? "all"] as const,
+  inventoryItems: (restaurantId: string, outletId?: string | null, category?: string, lowStock?: boolean) =>
+    ["inventoryItems", restaurantId, outletId ?? "all", category ?? "ALL", Boolean(lowStock)] as const,
+  menuRecipes: (restaurantId: string, outletId?: string | null) =>
+    ["menuRecipes", restaurantId, outletId ?? "all"] as const,
+  menuRecipe: (restaurantId: string, menuItemId: string, outletId?: string | null) =>
+    ["menuRecipe", restaurantId, menuItemId, outletId ?? "all"] as const,
+  inventoryTransactions: (restaurantId: string, outletId?: string | null, ingredientId?: string, type?: string) =>
+    ["inventoryTransactions", restaurantId, outletId ?? "all", ingredientId ?? "all", type ?? "ALL"] as const,
+  purchaseOrders: (restaurantId: string, outletId?: string | null) =>
+    ["purchaseOrders", restaurantId, outletId ?? "all"] as const,
+  inventorySuppliers: (restaurantId: string) =>
+    ["inventorySuppliers", restaurantId] as const,
+  inventorySettings: (restaurantId: string, outletId?: string | null) =>
+    ["inventorySettings", restaurantId, outletId ?? "all"] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -796,6 +830,210 @@ export function useDeleteReservation(restaurantId: string, outletId?: string | n
     },
   });
 }
+
+// ─── Inventory Hooks ─────────────────────────────────────────────────────────
+
+export function useInventoryOverview(restaurantId: string, outletId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: qk.inventoryOverview(restaurantId, outletId),
+    queryFn: () => getInventoryOverview(restaurantId, outletId),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useInventoryItems(
+  restaurantId: string,
+  outletId?: string | null,
+  category?: string,
+  lowStock?: boolean,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.inventoryItems(restaurantId, outletId, category, lowStock),
+    queryFn: () => getInventoryItems(restaurantId, outletId, category, lowStock),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateInventoryItem(restaurantId: string, outletId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => createInventoryItem(restaurantId, outletId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventoryItems", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryOverview", restaurantId] });
+    },
+  });
+}
+
+export function useUpdateInventoryItem(restaurantId: string, outletId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      updateInventoryItem(restaurantId, id, data, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventoryItems", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryOverview", restaurantId] });
+    },
+  });
+}
+
+export function useDeleteInventoryItem(restaurantId: string, outletId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteInventoryItem(restaurantId, id, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventoryItems", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryOverview", restaurantId] });
+    },
+  });
+}
+
+export function useMenuRecipes(restaurantId: string, outletId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: qk.menuRecipes(restaurantId, outletId),
+    queryFn: () => getMenuRecipes(restaurantId, outletId),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useMenuRecipe(restaurantId: string, menuItemId: string, outletId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: qk.menuRecipe(restaurantId, menuItemId, outletId),
+    queryFn: () => getMenuRecipe(restaurantId, menuItemId, outletId),
+    enabled: !!restaurantId && !!menuItemId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useSaveMenuRecipe(restaurantId: string, outletId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ menuItemId, ingredients }: { menuItemId: string; ingredients: any[] }) =>
+      saveMenuRecipe(restaurantId, menuItemId, ingredients, outletId),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["menuRecipes", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["menuRecipe", restaurantId, variables.menuItemId] });
+    },
+  });
+}
+
+export function useAdjustInventoryStock(restaurantId: string, outletId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { ingredientId: string; newStock: number; reason: string }) =>
+      adjustInventoryStock(restaurantId, data, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventoryItems", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryOverview", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryTransactions", restaurantId] });
+    },
+  });
+}
+
+export function useLogInventoryWastage(restaurantId: string, outletId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { ingredientId: string; quantity: number; reason: string }) =>
+      logInventoryWastage(restaurantId, data, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventoryItems", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryOverview", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryTransactions", restaurantId] });
+    },
+  });
+}
+
+export function useInventoryTransactions(
+  restaurantId: string,
+  outletId?: string | null,
+  ingredientId?: string,
+  type?: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.inventoryTransactions(restaurantId, outletId, ingredientId, type),
+    queryFn: () => getInventoryTransactions(restaurantId, outletId, ingredientId, type),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function usePurchaseOrders(restaurantId: string, outletId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: qk.purchaseOrders(restaurantId, outletId),
+    queryFn: () => getPurchaseOrders(restaurantId, outletId),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreatePurchaseOrder(restaurantId: string, outletId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => createPurchaseOrder(restaurantId, outletId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchaseOrders", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryItems", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryOverview", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["inventoryTransactions", restaurantId] });
+    },
+  });
+}
+
+export function useInventorySuppliers(restaurantId: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.inventorySuppliers(restaurantId),
+    queryFn: () => getInventorySuppliers(restaurantId),
+    enabled: !!restaurantId && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateInventorySupplier(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => createInventorySupplier(restaurantId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventorySuppliers", restaurantId] });
+    },
+  });
+}
+
+export function useUpdateInventorySupplier(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      updateInventorySupplier(restaurantId, id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventorySuppliers", restaurantId] });
+    },
+  });
+}
+
+export function useInventorySettings(restaurantId: string, outletId: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.inventorySettings(restaurantId, outletId),
+    queryFn: () => getInventorySettings(restaurantId, outletId),
+    enabled: !!restaurantId && !!outletId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateInventorySettings(restaurantId: string, outletId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => updateInventorySettings(restaurantId, outletId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inventorySettings", restaurantId, outletId] });
+      qc.invalidateQueries({ queryKey: ["inventoryOverview", restaurantId] });
+    },
+  });
+}
+
 
 
 

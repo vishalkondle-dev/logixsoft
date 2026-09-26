@@ -21,6 +21,7 @@ import { sendWhatsAppText } from '@logixsoft/wa';
 import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
+import { deductOrderInventory } from '../lib/inventory-helpers';
 import {
   getDb,
   generateOrderId,
@@ -383,6 +384,9 @@ app.post(
         );
       }
 
+      // Auto-deduct inventory if enabled for this outlet
+      await deductOrderInventory(db, id, parsed.data.outletId, actorPhone);
+
       return c.json(result, 201);
     } finally {
       await close();
@@ -572,6 +576,9 @@ app.post(
         );
       }
 
+      // Auto-deduct inventory if enabled for this outlet
+      await deductOrderInventory(db, id, parsed.data.outletId, actorPhone);
+
       return c.json(result, 201);
     } finally {
       await close();
@@ -743,6 +750,9 @@ app.post(
         },
         order.customerPhone
       );
+
+      // Auto-deduct inventory if enabled for this outlet
+      await deductOrderInventory(db, orderId, order.outletId, actorPhone);
 
       return c.json({ ...result, round: nextRound });
     } finally {

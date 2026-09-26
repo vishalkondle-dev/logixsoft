@@ -15,6 +15,12 @@ import {
   customerAddress,
   deliveryRider,
   tableReservation,
+  inventorySupplier,
+  inventoryItem,
+  menuItemRecipe,
+  inventoryTransaction,
+  purchaseOrder,
+  purchaseOrderItem,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -201,5 +207,44 @@ export type NewTableReservationRow = InferInsertModel<typeof tableReservation>;
 export type JsonTableReservationRow = Omit<TableReservationRow, 'createdAt' | 'updatedAt'> & {
   createdAt: string;
   updatedAt: string;
+};
+
+export type InventorySupplierRow = InferSelectModel<typeof inventorySupplier>;
+export type NewInventorySupplierRow = InferInsertModel<typeof inventorySupplier>;
+export type JsonInventorySupplierRow = Omit<InventorySupplierRow, 'createdAt'> & {
+  createdAt: string;
+};
+
+export type InventoryItemRow = InferSelectModel<typeof inventoryItem>;
+export type NewInventoryItemRow = InferInsertModel<typeof inventoryItem>;
+export type JsonInventoryItemRow = Omit<InventoryItemRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MenuItemRecipeRow = InferSelectModel<typeof menuItemRecipe>;
+export type NewMenuItemRecipeRow = InferInsertModel<typeof menuItemRecipe>;
+export type JsonMenuItemRecipeRow = Omit<MenuItemRecipeRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InventoryTransactionRow = InferSelectModel<typeof inventoryTransaction>;
+export type NewInventoryTransactionRow = InferInsertModel<typeof inventoryTransaction>;
+export type JsonInventoryTransactionRow = Omit<InventoryTransactionRow, 'createdAt'> & {
+  createdAt: string;
+};
+
+export type PurchaseOrderRow = InferSelectModel<typeof purchaseOrder>;
+export type NewPurchaseOrderRow = InferInsertModel<typeof purchaseOrder>;
+export type JsonPurchaseOrderRow = Omit<PurchaseOrderRow, 'createdAt' | 'receivedAt'> & {
+  createdAt: string;
+  receivedAt: string | null;
+};
+
+export type PurchaseOrderItemRow = InferSelectModel<typeof purchaseOrderItem>;
+export type NewPurchaseOrderItemRow = InferInsertModel<typeof purchaseOrderItem>;
+export type JsonPurchaseOrderItemRow = Omit<PurchaseOrderItemRow, 'createdAt'> & {
+  createdAt: string;
 };
 

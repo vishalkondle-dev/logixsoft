@@ -16,6 +16,12 @@ import type {
   JsonCustomerAddressRow,
   JsonDeliveryRiderRow,
   JsonTableReservationRow,
+  JsonInventorySupplierRow,
+  JsonInventoryItemRow,
+  JsonMenuItemRecipeRow,
+  JsonInventoryTransactionRow,
+  JsonPurchaseOrderRow,
+  JsonPurchaseOrderItemRow,
 } from '../types/pos-schema';
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -75,6 +81,7 @@ export const RestaurantOutletSchema = z.object({
   diningSettings: z.unknown().nullable(),
   qrMenuSettings: z.unknown().nullable(),
   whatsappSettings: z.unknown().nullable(),
+  inventorySettings: z.unknown().nullable(),
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -301,6 +308,103 @@ export const TableReservationSchema = z.object({
 });
 type _ReservationAssert = Expect<AssertSame<z.infer<typeof TableReservationSchema>, JsonTableReservationRow>>;
 
+export const InventorySupplierSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  name: z.string(),
+  contactPerson: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  gstin: z.string().nullable(),
+  address: z.string().nullable(),
+  paymentTerms: z.string().nullable(),
+  active: z.boolean(),
+  createdAt: z.string(),
+});
+type _SupplierAssert = Expect<AssertSame<z.infer<typeof InventorySupplierSchema>, JsonInventorySupplierRow>>;
+
+export const InventoryItemSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  name: z.string(),
+  sku: z.string().nullable(),
+  category: z.string(),
+  baseUom: z.string(),
+  purchaseUom: z.string().nullable(),
+  purchaseConversionFactor: z.number().nullable(),
+  costPerBaseUnitPaise: z.number().int(),
+  currentStock: z.number(),
+  lowStockThreshold: z.number().nullable(),
+  idealStock: z.number().nullable(),
+  supplierId: z.string().nullable(),
+  active: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
+});
+type _InventoryItemAssert = Expect<AssertSame<z.infer<typeof InventoryItemSchema>, JsonInventoryItemRow>>;
+
+export const MenuItemRecipeSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string().nullable(),
+  menuItemId: z.string(),
+  variantId: z.string().nullable(),
+  addonId: z.string().nullable(),
+  ingredientId: z.string(),
+  quantity: z.number(),
+  wastePercent: z.number().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+type _RecipeAssert = Expect<AssertSame<z.infer<typeof MenuItemRecipeSchema>, JsonMenuItemRecipeRow>>;
+
+export const InventoryTransactionSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  ingredientId: z.string(),
+  type: z.string(),
+  quantity: z.number(),
+  balanceAfter: z.number(),
+  unitCostPaise: z.number().int().nullable(),
+  referenceId: z.string().nullable(),
+  referenceNote: z.string().nullable(),
+  createdAt: z.string(),
+  createdBy: z.string().nullable(),
+});
+type _InventoryTxAssert = Expect<AssertSame<z.infer<typeof InventoryTransactionSchema>, JsonInventoryTransactionRow>>;
+
+export const PurchaseOrderSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  supplierId: z.string().nullable(),
+  poNumber: z.string(),
+  invoiceNumber: z.string().nullable(),
+  invoiceDate: z.string().nullable(),
+  status: z.string(),
+  totalAmountPaise: z.number().int(),
+  notes: z.string().nullable(),
+  receivedAt: z.string().nullable(),
+  createdAt: z.string(),
+  createdBy: z.string().nullable(),
+});
+type _PurchaseOrderAssert = Expect<AssertSame<z.infer<typeof PurchaseOrderSchema>, JsonPurchaseOrderRow>>;
+
+export const PurchaseOrderItemSchema = z.object({
+  id: z.string(),
+  purchaseOrderId: z.string(),
+  ingredientId: z.string(),
+  quantity: z.number(),
+  unitCostPaise: z.number().int(),
+  totalPaise: z.number().int(),
+  createdAt: z.string(),
+});
+type _PurchaseOrderItemAssert = Expect<AssertSame<z.infer<typeof PurchaseOrderItemSchema>, JsonPurchaseOrderItemRow>>;
+
 export const UpdateOrderItemStatusSchema = z.object({
   status: z.enum(['ORDERED', 'PREPARING', 'PREPARED', 'SERVED', 'CANCELLED']).optional(),
   action: z.enum(['next', 'close', 'cancel']).optional(),
@@ -504,3 +608,103 @@ export const UpdateReservationSchema = z.object({
   status: z.enum(['CONFIRMED', 'SEATED', 'CANCELLED', 'COMPLETED']).optional(),
   notes: z.string().max(500).nullable().optional(),
 });
+
+// ─── Inventory Request Schemas ────────────────────────────────────────────────
+
+export const CreateInventorySupplierSchema = z.object({
+  name: z.string().min(1).max(100),
+  contactPerson: z.string().max(100).nullable().optional(),
+  phone: z.string().max(20).nullable().optional(),
+  email: z.string().email().nullable().optional().or(z.literal('')),
+  gstin: z.string().max(20).nullable().optional(),
+  address: z.string().max(255).nullable().optional(),
+  paymentTerms: z.string().max(100).nullable().optional(),
+});
+
+export const UpdateInventorySupplierSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  contactPerson: z.string().max(100).nullable().optional(),
+  phone: z.string().max(20).nullable().optional(),
+  email: z.string().email().nullable().optional().or(z.literal('')),
+  gstin: z.string().max(20).nullable().optional(),
+  address: z.string().max(255).nullable().optional(),
+  paymentTerms: z.string().max(100).nullable().optional(),
+  active: z.boolean().optional(),
+});
+
+export const CreateInventoryItemSchema = z.object({
+  name: z.string().min(1).max(100),
+  sku: z.string().max(50).nullable().optional(),
+  category: z.string().min(1).max(50).default('GENERAL'),
+  baseUom: z.string().min(1).max(20), // 'g' | 'kg' | 'ml' | 'l' | 'pcs' etc.
+  purchaseUom: z.string().max(30).nullable().optional(),
+  purchaseConversionFactor: z.number().positive().default(1),
+  costPerBaseUnitPaise: z.number().int().nonnegative().default(0),
+  currentStock: z.number().default(0),
+  lowStockThreshold: z.number().nonnegative().default(0),
+  idealStock: z.number().nonnegative().nullable().optional(),
+  supplierId: z.string().nullable().optional(),
+});
+
+export const UpdateInventoryItemSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  sku: z.string().max(50).nullable().optional(),
+  category: z.string().min(1).max(50).optional(),
+  baseUom: z.string().min(1).max(20).optional(),
+  purchaseUom: z.string().max(30).nullable().optional(),
+  purchaseConversionFactor: z.number().positive().optional(),
+  costPerBaseUnitPaise: z.number().int().nonnegative().optional(),
+  currentStock: z.number().optional(),
+  lowStockThreshold: z.number().nonnegative().nullable().optional(),
+  idealStock: z.number().nonnegative().nullable().optional(),
+  supplierId: z.string().nullable().optional(),
+  active: z.boolean().optional(),
+});
+
+export const RecipeIngredientInputSchema = z.object({
+  ingredientId: z.string().min(1),
+  quantity: z.number().positive(),
+  wastePercent: z.number().nonnegative().max(100).default(0),
+  variantId: z.string().nullable().optional(),
+  addonId: z.string().nullable().optional(),
+});
+
+export const SaveMenuItemRecipeSchema = z.object({
+  ingredients: z.array(RecipeIngredientInputSchema),
+});
+
+export const InventoryAdjustSchema = z.object({
+  ingredientId: z.string().min(1),
+  newStock: z.number(), // The audited actual stock
+  reason: z.string().min(1).max(255), // "Stock take count discrepancy", "Audit"
+});
+
+export const InventoryWastageSchema = z.object({
+  ingredientId: z.string().min(1),
+  quantity: z.number().positive(), // Amount wasted/spoiled
+  reason: z.string().min(1).max(255), // "Burnt in prep", "Expired milk", "Dropped/Damaged"
+});
+
+export const PurchaseOrderItemInputSchema = z.object({
+  ingredientId: z.string().min(1),
+  quantity: z.number().positive(),
+  unitCostPaise: z.number().int().nonnegative(),
+});
+
+export const CreatePurchaseOrderSchema = z.object({
+  supplierId: z.string().nullable().optional(),
+  poNumber: z.string().min(1).max(50),
+  invoiceNumber: z.string().max(50).nullable().optional(),
+  invoiceDate: z.string().nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
+  items: z.array(PurchaseOrderItemInputSchema).min(1),
+});
+
+export const UpdateInventorySettingsSchema = z.object({
+  enabled: z.boolean(),
+  autoDeductOn: z.enum(['ON_ORDER', 'ON_SETTLE', 'MANUAL']).default('ON_ORDER'),
+  allowNegativeStock: z.boolean().default(true),
+  lowStockAlerts: z.boolean().default(true),
+  auto86OnDepletion: z.boolean().default(false),
+});
+

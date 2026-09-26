@@ -51,6 +51,8 @@ export const PERMISSIONS = [
   'member:read',
   'member:write',
   'report:read',
+  'inventory:read',
+  'inventory:write',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -70,6 +72,7 @@ export const ROLE_PERMISSIONS: Record<RestaurantRole, readonly Permission[]> = {
     'delivery:read', 'delivery:write',
     'member:read', 'member:write',
     'report:read',
+    'inventory:read', 'inventory:write',
   ],
   MANAGER: [
     'restaurant:read',
@@ -82,6 +85,7 @@ export const ROLE_PERMISSIONS: Record<RestaurantRole, readonly Permission[]> = {
     'delivery:read', 'delivery:write',
     'member:read',
     'report:read',
+    'inventory:read', 'inventory:write',
   ],
   WAITER: [
     'restaurant:read',

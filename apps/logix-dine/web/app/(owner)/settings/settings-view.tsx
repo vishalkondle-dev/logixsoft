@@ -41,6 +41,17 @@ const ReportsManagement = dynamic(
     ),
   }
 );
+const InventoryManagement = dynamic(
+  () => import("./inventory-management").then((m) => m.InventoryManagement),
+  {
+    ssr: false,
+    loading: () => (
+      <Center py={60}>
+        <Loader color="teal" />
+      </Center>
+    ),
+  }
+);
 import { InvoiceTaxManagement } from "./invoice-tax-management";
 import { DiningOptionsManagement } from "./dining-options-management";
 import { QrMenuManagement } from "./qr-menu-management";
@@ -57,6 +68,7 @@ const STAFF_ROLES = [
 export const VALID_SETTINGS_TABS = [
   "restaurant",
   "menu",
+  "inventory",
   "tables",
   "hours",
   "tax",
@@ -381,6 +393,10 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       title: "Menu Catalog",
       subtitle: "Add, categorize, and edit menu items & add-ons",
     },
+    inventory: {
+      title: "Inventory & Recipes",
+      subtitle: "Track raw materials, recipe cost (BOM), supplier purchases, and stock deductions",
+    },
     tables: {
       title: "Table Management",
       subtitle: "Manage dining tables, sections, and seating",
@@ -480,6 +496,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Menu tab */}
         <Tabs.Panel value="menu">
           <MenuManagement embedded />
+        </Tabs.Panel>
+
+        {/* Inventory tab */}
+        <Tabs.Panel value="inventory">
+          <InventoryManagement />
         </Tabs.Panel>
 
         {/* Tables tab */}

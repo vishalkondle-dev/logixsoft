@@ -26,6 +26,18 @@ import type {
   JsonDeliveryRiderRow,
   TableReservationRow,
   JsonTableReservationRow,
+  InventorySupplierRow,
+  JsonInventorySupplierRow,
+  InventoryItemRow,
+  JsonInventoryItemRow,
+  MenuItemRecipeRow,
+  JsonMenuItemRecipeRow,
+  InventoryTransactionRow,
+  JsonInventoryTransactionRow,
+  PurchaseOrderRow,
+  JsonPurchaseOrderRow,
+  PurchaseOrderItemRow,
+  JsonPurchaseOrderItemRow,
 } from '../types/pos-schema';
 
 function toIso(d: Date | null | undefined): string | null {
@@ -165,3 +177,49 @@ export function toReservation(r: TableReservationRow): JsonTableReservationRow {
     updatedAt: toIsoRequired(r.updatedAt),
   };
 }
+
+export function toInventorySupplier(s: InventorySupplierRow): JsonInventorySupplierRow {
+  return {
+    ...s,
+    createdAt: toIsoRequired(s.createdAt),
+  };
+}
+
+export function toInventoryItem(item: InventoryItemRow): JsonInventoryItemRow {
+  return {
+    ...item,
+    createdAt: toIsoRequired(item.createdAt),
+    updatedAt: toIsoRequired(item.updatedAt),
+  };
+}
+
+export function toMenuItemRecipe(rec: MenuItemRecipeRow): JsonMenuItemRecipeRow {
+  return {
+    ...rec,
+    createdAt: toIsoRequired(rec.createdAt),
+    updatedAt: toIsoRequired(rec.updatedAt),
+  };
+}
+
+export function toInventoryTransaction(tx: InventoryTransactionRow): JsonInventoryTransactionRow {
+  return {
+    ...tx,
+    createdAt: toIsoRequired(tx.createdAt),
+  };
+}
+
+export function toPurchaseOrder(po: PurchaseOrderRow): JsonPurchaseOrderRow {
+  return {
+    ...po,
+    receivedAt: toIso(po.receivedAt),
+    createdAt: toIsoRequired(po.createdAt),
+  };
+}
+
+export function toPurchaseOrderItem(item: PurchaseOrderItemRow): JsonPurchaseOrderItemRow {
+  return {
+    ...item,
+    createdAt: toIsoRequired(item.createdAt),
+  };
+}
+

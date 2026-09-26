@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 export const VALID_SETTINGS_TABS = [
   "restaurant",
   "menu",
+  "inventory",
   "tables",
   "hours",
   "tax",

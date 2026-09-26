@@ -43,6 +43,7 @@ import { customerRoutes } from './routes/customers';
 import { waiterRoutes } from './routes/waiter';
 import { deliveryRoutes } from './routes/delivery';
 import { reservationRoutes } from './routes/reservations';
+import { inventoryRoutes } from './routes/inventory';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -587,6 +588,9 @@ app.route('/api/delivery', deliveryRoutes);
 app.route('/reservations', reservationRoutes);
 app.route('/api/reservations', reservationRoutes);
 
+app.route('/inventory', inventoryRoutes);
+app.route('/api/inventory', inventoryRoutes);
+
 
 
 // Real-time Outlet Live Sync via Durable Objects
@@ -701,6 +705,7 @@ const openApiDoc = createOpenApiDocument(
       { name: 'Staff', description: 'Staff members, roles, and invitation management' },
       { name: 'Customers', description: 'Customer CRM, lifetime metrics, order history, tags, and notes' },
       { name: 'Reports', description: 'Financial analytics, daily sales, item sales, and tax reports' },
+      { name: 'Inventory', description: 'Raw materials, recipes (BOM), stock ledger, purchases, and food cost margins' },
       { name: 'Onboarding', description: 'Initial restaurant registration and setup' },
       { name: 'Admin', description: 'Platform administration and system role management' },
     ],

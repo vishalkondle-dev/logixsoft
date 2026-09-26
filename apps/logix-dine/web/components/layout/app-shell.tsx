@@ -14,7 +14,7 @@ import {
   IconFlame, IconHistory, IconUser, IconBellRinging, IconMotorbike,
   IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
-  IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid,
+  IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -35,6 +35,7 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "overview", label: "All Settings", href: "/settings", icon: IconLayoutGrid },
   { id: "restaurant", label: "Store & Outlets", href: "/settings/restaurant", icon: IconBuildingStore },
   { id: "menu", label: "Menu Catalog", href: "/settings/menu", icon: IconBook },
+  { id: "inventory", label: "Inventory & Recipes", href: "/settings/inventory", icon: IconPackages },
   { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias },
   { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock },
   { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, ownerOnly: true },

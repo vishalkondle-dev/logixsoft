@@ -16,6 +16,7 @@ import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 import { getDb, recomputeTotal, getOrderWithItems } from '../lib/order-helpers';
 import { sendWhatsAppText } from '@logixsoft/wa';
+import { restoreOrderItemInventory } from '../lib/inventory-helpers';
 
 const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
@@ -212,6 +213,10 @@ app.post(
           .set(updateOrderFields)
           .where(eq(appSchema.saleOrder.id, orderId));
       });
+
+      if (nextStatus === 'CANCELLED') {
+        await restoreOrderItemInventory(db, orderItemId, actorPhone);
+      }
 
       const result = await getOrderWithItems(db, orderId, restaurantId);
       await broadcastToOutlet(

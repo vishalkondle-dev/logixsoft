@@ -6,17 +6,18 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Title, Text, Button, Paper, Group, Stack, TextInput,
   Textarea, NumberInput, Switch, Select, Badge, ActionIcon, Modal,
-  Loader, Center, Divider, SimpleGrid, Box,
+  Loader, Center, Divider, SimpleGrid, Box, Grid,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft, IconTrash, IconCheck, IconPlus,
-  IconAlertCircle, IconPhoto, IconUpload,
+  IconAlertCircle, IconPhoto, IconUpload, IconChefHat, IconInfoCircle,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useItem, useCategories, useUpdateItem, useDeleteItem,
   useUploadItemImage, useDeleteItemImage,
+  useMenuRecipe, useSaveMenuRecipe, useInventoryItems,
 } from "@/lib/queries";
 
 export default function MenuItemPage() {
@@ -36,6 +37,38 @@ export default function MenuItemPage() {
   const uploadImageMutation = useUploadItemImage(restaurantId, outletId);
   const deleteImageMutation = useDeleteItemImage(restaurantId, outletId);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Recipe (BOM) Queries & State
+  const { data: recipeData } = useMenuRecipe(
+    restaurantId,
+    id,
+    outletId,
+    Boolean(restaurantId && id)
+  );
+  const { data: rawIngredients = [] } = useInventoryItems(
+    restaurantId,
+    outletId,
+    undefined,
+    false,
+    Boolean(restaurantId && outletId)
+  );
+  const saveRecipeMutation = useSaveMenuRecipe(restaurantId, outletId);
+
+  const [recipeIngredients, setRecipeIngredients] = useState<
+    Array<{ ingredientId: string; quantity: number; wastePercent: number }>
+  >([]);
+
+  useEffect(() => {
+    if (recipeData?.ingredients) {
+      setRecipeIngredients(
+        recipeData.ingredients.map((ing) => ({
+          ingredientId: ing.ingredientId,
+          quantity: ing.quantity,
+          wastePercent: ing.wastePercent || 0,
+        }))
+      );
+    }
+  }, [recipeData]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,6 +153,60 @@ export default function MenuItemPage() {
     }
   }, [item]);
 
+  const recipeCostCalculations = React.useMemo(() => {
+    let totalCost = 0;
+    const lines = recipeIngredients.map((row) => {
+      const ing = rawIngredients.find((it) => it.id === row.ingredientId);
+      const unitCost = ing ? ing.costPerBaseUnitPaise / 100 : 0;
+      const wasteFactor = 1 + (row.wastePercent || 0) / 100;
+      const lineCost = (row.quantity || 0) * unitCost * wasteFactor;
+      totalCost += lineCost;
+      return {
+        ...row,
+        name: ing?.name || "Raw Material",
+        uom: ing?.baseUom || "units",
+        unitCost,
+        lineCost,
+      };
+    });
+
+    const sellingPrice = (form.pricePaise || 0) / 100;
+    const foodCostPercent = sellingPrice > 0 ? (totalCost / sellingPrice) * 100 : 0;
+    const grossMarginPercent = sellingPrice > 0 ? ((sellingPrice - totalCost) / sellingPrice) * 100 : 0;
+
+    return {
+      totalCost,
+      sellingPrice,
+      foodCostPercent,
+      grossMarginPercent,
+      lines,
+    };
+  }, [recipeIngredients, rawIngredients, form.pricePaise]);
+
+  const handleSaveRecipeDirectly = async () => {
+    try {
+      const validRows = recipeIngredients.filter(
+        (r) => r.ingredientId && Number(r.quantity) > 0
+      );
+      await saveRecipeMutation.mutateAsync({
+        menuItemId: id,
+        ingredients: validRows,
+      });
+      notifications.show({
+        title: "Recipe Saved",
+        message: `BOM updated for "${form.name}" with ${validRows.length} raw ingredients.`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: "Recipe Error",
+        message: err.message || "Failed to update recipe",
+        color: "red",
+      });
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) {
       notifications.show({ title: "Validation", message: "Item name is required", color: "red" });
@@ -160,9 +247,20 @@ export default function MenuItemPage() {
           addons: cleanAddons,
         },
       });
+
+      if (recipeIngredients.length > 0) {
+        const validRows = recipeIngredients.filter(
+          (r) => r.ingredientId && Number(r.quantity) > 0
+        );
+        await saveRecipeMutation.mutateAsync({
+          menuItemId: id,
+          ingredients: validRows,
+        });
+      }
+
       notifications.show({
         title: "Saved",
-        message: "Menu item updated successfully",
+        message: "Menu item and recipe updated successfully",
         color: "green",
         icon: <IconCheck size={16} />,
       });
@@ -628,6 +726,169 @@ export default function MenuItemPage() {
                     <IconTrash size={16} />
                   </ActionIcon>
                 </Group>
+              ))}
+            </Stack>
+          )}
+        </Paper>
+
+        {/* Recipe & Food Cost (BOM) Section */}
+        <Paper p="md" radius="md">
+          <Group justify="space-between" align="center" mb="xs" wrap="wrap">
+            <div>
+              <Group gap="xs" align="center">
+                <Text fw={600} size="md">Recipe & Food Cost (BOM)</Text>
+                {recipeIngredients.length > 0 && (
+                  <Badge size="xs" color="teal" variant="light">
+                    {recipeIngredients.length} raw materials
+                  </Badge>
+                )}
+              </Group>
+              <Text size="xs" c="dimmed">
+                Configure raw ingredient portions for this dish to track stock deductions and calculate live food cost %.
+              </Text>
+            </div>
+            <Group gap="xs">
+              <Button
+                variant="light"
+                color="teal"
+                size="xs"
+                leftSection={<IconPlus size={14} />}
+                onClick={() =>
+                  setRecipeIngredients((r) => [
+                    ...r,
+                    {
+                      ingredientId: rawIngredients[0]?.id || "",
+                      quantity: 0.1,
+                      wastePercent: 0,
+                    },
+                  ])
+                }
+              >
+                Add Raw Material
+              </Button>
+              {recipeIngredients.length > 0 && (
+                <Button
+                  color="teal"
+                  size="xs"
+                  variant="outline"
+                  loading={saveRecipeMutation.isPending}
+                  onClick={handleSaveRecipeDirectly}
+                >
+                  Save Recipe
+                </Button>
+              )}
+            </Group>
+          </Group>
+
+          {/* KPI Summary Bar */}
+          {recipeIngredients.length > 0 && (
+            <Paper p="xs" radius="sm" bg="var(--mantine-color-gray-0)" my="sm" withBorder>
+              <Grid align="center">
+                <Grid.Col span={4}>
+                  <Text size="xs" c="dimmed">Selling Price:</Text>
+                  <Text fw={700} size="sm">₹{recipeCostCalculations.sellingPrice.toFixed(2)}</Text>
+                </Grid.Col>
+                <Grid.Col span={4}>
+                  <Text size="xs" c="dimmed">Recipe Cost:</Text>
+                  <Text fw={700} size="sm" c="teal">₹{recipeCostCalculations.totalCost.toFixed(2)}</Text>
+                </Grid.Col>
+                <Grid.Col span={4}>
+                  <Text size="xs" c="dimmed">Food Cost / Margin:</Text>
+                  <Badge
+                    size="sm"
+                    color={
+                      recipeCostCalculations.foodCostPercent < 28
+                        ? "teal"
+                        : recipeCostCalculations.foodCostPercent <= 36
+                        ? "yellow"
+                        : "red"
+                    }
+                  >
+                    {recipeCostCalculations.foodCostPercent.toFixed(1)}% ({recipeCostCalculations.grossMarginPercent.toFixed(1)}% Margin)
+                  </Badge>
+                </Grid.Col>
+              </Grid>
+            </Paper>
+          )}
+
+          {recipeIngredients.length === 0 ? (
+            <Box py="sm">
+              <Text size="sm" c="dimmed" ta="center">
+                No recipe configured for this item. Click "Add Raw Material" to link ingredients.
+              </Text>
+            </Box>
+          ) : (
+            <Stack gap="xs" mt="sm">
+              {recipeCostCalculations.lines.map((row, index) => (
+                <Paper key={index} p="xs" radius="sm" withBorder>
+                  <Grid align="center" gap="xs">
+                    <Grid.Col span={{ base: 12, sm: 5 }}>
+                      <Select
+                        placeholder="Raw Material"
+                        label={index === 0 ? "Ingredient" : undefined}
+                        data={rawIngredients.map((ing) => ({
+                          value: ing.id,
+                          label: `${ing.name} (₹${(ing.costPerBaseUnitPaise / 100).toFixed(2)}/${ing.baseUom})`,
+                        }))}
+                        value={row.ingredientId}
+                        onChange={(v) => {
+                          const next = [...recipeIngredients];
+                          next[index] = { ...next[index], ingredientId: v || "" };
+                          setRecipeIngredients(next);
+                        }}
+                        size="xs"
+                      />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 6, sm: 3 }}>
+                      <NumberInput
+                        placeholder="Qty"
+                        label={index === 0 ? `Quantity (${row.uom})` : undefined}
+                        min={0.001}
+                        decimalScale={3}
+                        value={row.quantity}
+                        onChange={(val) => {
+                          const next = [...recipeIngredients];
+                          next[index] = { ...next[index], quantity: Number(val) || 0 };
+                          setRecipeIngredients(next);
+                        }}
+                        size="xs"
+                      />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 6, sm: 2 }}>
+                      <NumberInput
+                        placeholder="Loss %"
+                        label={index === 0 ? "Waste %" : undefined}
+                        min={0}
+                        max={100}
+                        value={row.wastePercent}
+                        onChange={(val) => {
+                          const next = [...recipeIngredients];
+                          next[index] = { ...next[index], wastePercent: Number(val) || 0 };
+                          setRecipeIngredients(next);
+                        }}
+                        size="xs"
+                      />
+                    </Grid.Col>
+                    <Grid.Col span={{ base: 12, sm: 2 }}>
+                      <Group justify="space-between" align="center" wrap="nowrap" mt={index === 0 ? 18 : 0}>
+                        <Text size="xs" fw={700}>
+                          ₹{row.lineCost.toFixed(2)}
+                        </Text>
+                        <ActionIcon
+                          color="red"
+                          variant="subtle"
+                          size="sm"
+                          onClick={() => {
+                            setRecipeIngredients(recipeIngredients.filter((_, i) => i !== index));
+                          }}
+                          title="Remove ingredient"
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Group>
+                    </Grid.Col>
+                  </Grid>
+                </Paper>
               ))}
             </Stack>
           )}

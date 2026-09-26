@@ -100,6 +100,7 @@ export const restaurantOutlet = pgTable(
     diningSettings: jsonb('diningSettings'),
     qrMenuSettings: jsonb('qrMenuSettings'),
     whatsappSettings: jsonb('whatsappSettings'),
+    inventorySettings: jsonb('inventorySettings'),
     isDefault: boolean('isDefault').notNull().default(false),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
@@ -490,6 +491,174 @@ export const tableReservation = pgTable(
   ],
 );
 
+// ─── Inventory Suppliers ─────────────────────────────────────────────────────
+
+export const inventorySupplier = pgTable(
+  'inventorySupplier',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    contactPerson: text('contactPerson'),
+    phone: text('phone'),
+    email: text('email'),
+    gstin: text('gstin'),
+    address: text('address'),
+    paymentTerms: text('paymentTerms'),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  (t) => [index('inventorySupplier_restaurantId_idx').on(t.restaurantId)],
+);
+
+// ─── Inventory Items (Ingredients & Raw Materials) ───────────────────────────
+
+export const inventoryItem = pgTable(
+  'inventoryItem',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    sku: text('sku'),
+    category: text('category').notNull().default('GENERAL'),
+    baseUom: text('baseUom').notNull(), // 'g' | 'kg' | 'ml' | 'l' | 'pcs' | 'pkt' | 'can'
+    purchaseUom: text('purchaseUom'),
+    purchaseConversionFactor: doublePrecision('purchaseConversionFactor').default(1),
+    costPerBaseUnitPaise: integer('costPerBaseUnitPaise').notNull().default(0),
+    currentStock: doublePrecision('currentStock').notNull().default(0),
+    lowStockThreshold: doublePrecision('lowStockThreshold').default(0),
+    idealStock: doublePrecision('idealStock'),
+    supplierId: text('supplierId').references(() => inventorySupplier.id, { onDelete: 'set null' }),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+    updatedBy: text('updatedBy'),
+  },
+  (t) => [
+    index('inventoryItem_outletId_idx').on(t.outletId),
+    index('inventoryItem_restaurantId_idx').on(t.restaurantId),
+    index('inventoryItem_category_idx').on(t.category),
+  ],
+);
+
+// ─── Menu Item Recipes (Bill of Materials) ───────────────────────────────────
+
+export const menuItemRecipe = pgTable(
+  'menuItemRecipe',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId').references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    menuItemId: text('menuItemId')
+      .notNull()
+      .references(() => menuItem.id, { onDelete: 'cascade' }),
+    variantId: text('variantId'),
+    addonId: text('addonId'),
+    ingredientId: text('ingredientId')
+      .notNull()
+      .references(() => inventoryItem.id, { onDelete: 'restrict' }),
+    quantity: doublePrecision('quantity').notNull(),
+    wastePercent: doublePrecision('wastePercent').default(0),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('menuItemRecipe_menuItemId_idx').on(t.menuItemId),
+    index('menuItemRecipe_ingredientId_idx').on(t.ingredientId),
+    index('menuItemRecipe_restaurantId_idx').on(t.restaurantId),
+  ],
+);
+
+// ─── Inventory Transaction Ledger ────────────────────────────────────────────
+
+export const inventoryTransaction = pgTable(
+  'inventoryTransaction',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    ingredientId: text('ingredientId')
+      .notNull()
+      .references(() => inventoryItem.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(), // 'PURCHASE' | 'ORDER_CONSUMPTION' | 'ORDER_RESTORE' | 'WASTAGE' | 'ADJUSTMENT' | 'RETURN'
+    quantity: doublePrecision('quantity').notNull(),
+    balanceAfter: doublePrecision('balanceAfter').notNull(),
+    unitCostPaise: integer('unitCostPaise').default(0),
+    referenceId: text('referenceId'),
+    referenceNote: text('referenceNote'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+  },
+  (t) => [
+    index('inventoryTx_ingredientId_idx').on(t.ingredientId),
+    index('inventoryTx_outletId_createdAt_idx').on(t.outletId, t.createdAt),
+    index('inventoryTx_referenceId_idx').on(t.referenceId),
+  ],
+);
+
+// ─── Purchase Orders (Stock In / GRN) ────────────────────────────────────────
+
+export const purchaseOrder = pgTable(
+  'purchaseOrder',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    supplierId: text('supplierId').references(() => inventorySupplier.id, { onDelete: 'set null' }),
+    poNumber: text('poNumber').notNull(),
+    invoiceNumber: text('invoiceNumber'),
+    invoiceDate: text('invoiceDate'),
+    status: text('status').notNull().default('RECEIVED'),
+    totalAmountPaise: integer('totalAmountPaise').notNull().default(0),
+    notes: text('notes'),
+    receivedAt: timestamp('receivedAt'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+  },
+  (t) => [
+    index('purchaseOrder_outletId_idx').on(t.outletId),
+    index('purchaseOrder_restaurantId_idx').on(t.restaurantId),
+  ],
+);
+
+// ─── Purchase Order Items ────────────────────────────────────────────────────
+
+export const purchaseOrderItem = pgTable(
+  'purchaseOrderItem',
+  {
+    id: text('id').primaryKey(),
+    purchaseOrderId: text('purchaseOrderId')
+      .notNull()
+      .references(() => purchaseOrder.id, { onDelete: 'cascade' }),
+    ingredientId: text('ingredientId')
+      .notNull()
+      .references(() => inventoryItem.id, { onDelete: 'restrict' }),
+    quantity: doublePrecision('quantity').notNull(),
+    unitCostPaise: integer('unitCostPaise').notNull(),
+    totalPaise: integer('totalPaise').notNull(),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  (t) => [index('purchaseOrderItem_purchaseOrderId_idx').on(t.purchaseOrderId)],
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
@@ -508,6 +677,12 @@ export const posSchema = {
   customerAddress,
   deliveryRider,
   tableReservation,
+  inventorySupplier,
+  inventoryItem,
+  menuItemRecipe,
+  inventoryTransaction,
+  purchaseOrder,
+  purchaseOrderItem,
 };
 
 

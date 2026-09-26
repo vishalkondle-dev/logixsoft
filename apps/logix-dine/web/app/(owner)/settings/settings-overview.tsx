@@ -36,6 +36,7 @@ import {
   IconChevronRight,
   IconBook,
   IconChartBar,
+  IconPackages,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 
@@ -79,6 +80,15 @@ export function SettingsOverview() {
           icon: IconBook,
           color: "teal",
           href: "/settings/menu",
+          isAvailable: true,
+        },
+        {
+          id: "inventory",
+          title: "Inventory & Recipes",
+          description: "Raw material stock, recipe food cost (BOM), and supplier deliveries",
+          icon: IconPackages,
+          color: "teal",
+          href: "/settings/inventory",
           isAvailable: true,
         },
         {

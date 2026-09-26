@@ -894,35 +894,6 @@ export default function MenuItemPage() {
           )}
         </Paper>
 
-        {/* Bottom Save & Delete Actions */}
-        <Paper p="md" radius="md">
-          <Group justify="space-between" align="center" wrap="wrap">
-            <div>
-              <Text fw={600} size="sm">Manage Menu Item</Text>
-              <Text size="xs" c="dimmed">
-                Save your changes or permanently delete this item from the catalog.
-              </Text>
-            </div>
-            <Group gap="xs">
-              <Button
-                color="red"
-                variant="light"
-                leftSection={<IconTrash size={16} />}
-                onClick={() => setDeleteModalOpen(true)}
-              >
-                Delete Item
-              </Button>
-              <Button
-                color="dinePrimary"
-                leftSection={<IconCheck size={16} />}
-                loading={updateMutation.isPending}
-                onClick={handleSave}
-              >
-                Save Changes
-              </Button>
-            </Group>
-          </Group>
-        </Paper>
       </Stack>
 
       {/* Confirmation Modal for Delete */}

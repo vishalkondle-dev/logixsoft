@@ -6,12 +6,12 @@ import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
-  UnstyledButton, Tooltip, Alert, ThemeIcon,
+  UnstyledButton, Tooltip, Alert, ThemeIcon, Collapse,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  IconPlus, IconMinus, IconTrash, IconChevronDown,
+  IconPlus, IconMinus, IconTrash, IconChevronDown, IconChevronUp,
   IconCheck, IconShoppingCart, IconCash, IconTableAlias, IconBrandWhatsapp,
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
   IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
@@ -151,6 +151,8 @@ interface CartPanelProps {
   adjustments?: OrderAdjustment[];
   onOpenAdjustmentModal?: (adj?: OrderAdjustment) => void;
   onRemoveAdjustment?: (id: string) => void;
+  deliveryExpanded?: boolean;
+  setDeliveryExpanded?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 function CartPanel({
@@ -201,7 +203,26 @@ function CartPanel({
   adjustments = [],
   onOpenAdjustmentModal,
   onRemoveAdjustment,
+  deliveryExpanded,
+  setDeliveryExpanded,
 }: CartPanelProps) {
+  const [localDeliveryExpanded, setLocalDeliveryExpanded] = useState(false);
+  const isDeliveryExpanded = deliveryExpanded !== undefined ? deliveryExpanded : localDeliveryExpanded;
+  const toggleDeliveryExpanded = () => {
+    if (setDeliveryExpanded) {
+      setDeliveryExpanded((prev) => !prev);
+    } else {
+      setLocalDeliveryExpanded((prev) => !prev);
+    }
+  };
+  const closeDeliveryExpanded = () => {
+    if (setDeliveryExpanded) {
+      setDeliveryExpanded(false);
+    } else {
+      setLocalDeliveryExpanded(false);
+    }
+  };
+
   const currentModes = (availableOrderModes && availableOrderModes.length > 0)
     ? availableOrderModes
     : [{ label: <Group gap={4} justify="center" wrap="nowrap"><IconShoppingBag size={14} /><span>Takeaway</span></Group>, value: "TAKEAWAY" as const }];
@@ -306,91 +327,161 @@ function CartPanel({
 
           {effectiveOrderType === "DELIVERY" && (
             <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#fbfcfe" }}>
-              <Group justify="space-between" align="center" mb={6}>
-                <Text size="xs" fw={700} c="dimmed">
-                  DELIVERY ADDRESS
-                </Text>
-                {savedAddresses && savedAddresses.length > 0 && (
-                  <Badge size="xs" color="teal" variant="light">
-                    {savedAddresses.length} saved
-                  </Badge>
-                )}
+              <Group
+                justify="space-between"
+                align="center"
+                style={{ cursor: "pointer", userSelect: "none" }}
+                onClick={toggleDeliveryExpanded}
+              >
+                <Group gap={6} align="center" style={{ minWidth: 0, flex: 1 }}>
+                  <ThemeIcon size={20} radius="sm" color="teal" variant="light">
+                    <IconMotorbike size={12} />
+                  </ThemeIcon>
+                  <Box style={{ minWidth: 0, flex: 1 }}>
+                    <Group gap={6} align="center" wrap="nowrap">
+                      <Text size="xs" fw={700} c="teal.9">
+                        DELIVERY ADDRESS
+                      </Text>
+                      {deliveryAddressLine1.trim() ? (
+                        <Badge size="xs" color="teal" variant="light">
+                          Address Set
+                        </Badge>
+                      ) : (
+                        <Badge size="xs" color="orange" variant="light">
+                          Required
+                        </Badge>
+                      )}
+                    </Group>
+                    {!isDeliveryExpanded && (
+                      <Text size="xs" c={deliveryAddressLine1.trim() ? "dark" : "dimmed"} lineClamp={1} mt={1}>
+                        {deliveryCustomerName ? <b>{deliveryCustomerName}: </b> : null}
+                        {deliveryAddressLine1.trim()
+                          ? `${deliveryAddressLine1}${deliveryLandmark ? ` (${deliveryLandmark})` : ""}${selectedRiderId ? ` · Rider assigned` : ""}`
+                          : "Click to enter delivery address"}
+                      </Text>
+                    )}
+                  </Box>
+                </Group>
+
+                <Group gap={6} align="center" wrap="nowrap">
+                  {savedAddresses && savedAddresses.length > 0 && !isDeliveryExpanded && (
+                    <Badge size="xs" color="teal" variant="outline">
+                      {savedAddresses.length} saved
+                    </Badge>
+                  )}
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    size="compact-xs"
+                    px={6}
+                    h={22}
+                    style={{ fontSize: 11 }}
+                    rightSection={isDeliveryExpanded ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDeliveryExpanded();
+                    }}
+                    aria-label={isDeliveryExpanded ? "Collapse delivery address" : "Expand delivery address"}
+                  >
+                    {isDeliveryExpanded ? "Collapse" : "Expand"}
+                  </Button>
+                </Group>
               </Group>
 
-              {savedAddresses && savedAddresses.length > 0 && (
-                <Box mb="xs">
-                  <Group gap={4} wrap="wrap">
-                    {savedAddresses.map((addr: any) => (
-                      <Badge
-                        key={addr.id}
-                        size="xs"
-                        variant="outline"
-                        color="teal"
-                        leftSection={<IconMapPin size={10} />}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => {
-                          if (addr.receiverName) setDeliveryCustomerName(addr.receiverName);
-                          setDeliveryAddressLine1(addr.addressLine1);
-                          if (addr.landmark) setDeliveryLandmark(addr.landmark);
-                          if (addr.pincode) setDeliveryPincode(addr.pincode);
-                        }}
-                      >
-                        {addr.label || "Home"}: {addr.addressLine1.slice(0, 16)}...
+              <Collapse expanded={isDeliveryExpanded}>
+                <Divider my={8} variant="dashed" />
+                {savedAddresses && savedAddresses.length > 0 && (
+                  <Box mb="xs">
+                    <Group justify="space-between" align="center" mb={4}>
+                      <Text size="xs" c="dimmed" fw={600}>Saved Addresses:</Text>
+                      <Badge size="xs" color="teal" variant="light">
+                        {savedAddresses.length} saved
                       </Badge>
-                    ))}
-                  </Group>
-                </Box>
-              )}
-
-              <Stack gap={6}>
-                <TextInput
-                  placeholder="Recipient Name *"
-                  size="xs"
-                  value={deliveryCustomerName}
-                  onChange={(e) => setDeliveryCustomerName(e.target.value)}
-                />
-                <TextInput
-                  placeholder="House/Flat/Street Address *"
-                  size="xs"
-                  value={deliveryAddressLine1}
-                  onChange={(e) => setDeliveryAddressLine1(e.target.value)}
-                  leftSection={<IconMapPin size={13} />}
-                />
-                <Group grow gap={6}>
-                  <TextInput
-                    placeholder="Landmark (opt)"
-                    size="xs"
-                    value={deliveryLandmark}
-                    onChange={(e) => setDeliveryLandmark(e.target.value)}
-                  />
-                  <TextInput
-                    placeholder="Pincode (opt)"
-                    size="xs"
-                    value={deliveryPincode}
-                    onChange={(e) => setDeliveryPincode(e.target.value)}
-                  />
-                </Group>
-                <TextInput
-                  placeholder="Delivery Notes (e.g. Leave at door)"
-                  size="xs"
-                  value={deliveryNotes}
-                  onChange={(e) => setDeliveryNotes(e.target.value)}
-                />
-                {riders && riders.length > 0 && (
-                  <Select
-                    placeholder="Assign Rider (optional)"
-                    size="xs"
-                    data={riders.map((r: any) => ({
-                      value: r.id,
-                      label: `${r.name} (${r.status === "AVAILABLE" ? "Available" : "Busy"} · ${r.vehicleType || "Bike"})`,
-                    }))}
-                    value={selectedRiderId}
-                    onChange={setSelectedRiderId}
-                    clearable
-                    leftSection={<IconMotorbike size={13} />}
-                  />
+                    </Group>
+                    <Group gap={4} wrap="wrap">
+                      {savedAddresses.map((addr: any) => (
+                        <Badge
+                          key={addr.id}
+                          size="xs"
+                          variant="outline"
+                          color="teal"
+                          leftSection={<IconMapPin size={10} />}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => {
+                            if (addr.receiverName) setDeliveryCustomerName(addr.receiverName);
+                            setDeliveryAddressLine1(addr.addressLine1);
+                            if (addr.landmark) setDeliveryLandmark(addr.landmark);
+                            if (addr.pincode) setDeliveryPincode(addr.pincode);
+                          }}
+                        >
+                          {addr.label || "Home"}: {addr.addressLine1.slice(0, 16)}...
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Box>
                 )}
-              </Stack>
+
+                <Stack gap={6}>
+                  <TextInput
+                    placeholder="Recipient Name *"
+                    size="xs"
+                    value={deliveryCustomerName}
+                    onChange={(e) => setDeliveryCustomerName(e.target.value)}
+                  />
+                  <TextInput
+                    placeholder="House/Flat/Street Address *"
+                    size="xs"
+                    value={deliveryAddressLine1}
+                    onChange={(e) => setDeliveryAddressLine1(e.target.value)}
+                    leftSection={<IconMapPin size={13} />}
+                  />
+                  <Group grow gap={6}>
+                    <TextInput
+                      placeholder="Landmark (opt)"
+                      size="xs"
+                      value={deliveryLandmark}
+                      onChange={(e) => setDeliveryLandmark(e.target.value)}
+                    />
+                    <TextInput
+                      placeholder="Pincode (opt)"
+                      size="xs"
+                      value={deliveryPincode}
+                      onChange={(e) => setDeliveryPincode(e.target.value)}
+                    />
+                  </Group>
+                  <TextInput
+                    placeholder="Delivery Notes (e.g. Leave at door)"
+                    size="xs"
+                    value={deliveryNotes}
+                    onChange={(e) => setDeliveryNotes(e.target.value)}
+                  />
+                  {riders && riders.length > 0 && (
+                    <Select
+                      placeholder="Assign Rider (optional)"
+                      size="xs"
+                      data={riders.map((r: any) => ({
+                        value: r.id,
+                        label: `${r.name} (${r.status === "AVAILABLE" ? "Available" : "Busy"} · ${r.vehicleType || "Bike"})`,
+                      }))}
+                      value={selectedRiderId}
+                      onChange={setSelectedRiderId}
+                      clearable
+                      leftSection={<IconMotorbike size={13} />}
+                    />
+                  )}
+                  <Group justify="flex-end" mt={2}>
+                    <Button
+                      variant="light"
+                      color="teal"
+                      size="compact-xs"
+                      onClick={closeDeliveryExpanded}
+                      rightSection={<IconChevronUp size={12} />}
+                    >
+                      Done · Collapse Address
+                    </Button>
+                  </Group>
+                </Stack>
+              </Collapse>
             </Paper>
           )}
 
@@ -776,6 +867,7 @@ export default function POSPage() {
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
   const [packagingCharge, setPackagingCharge] = useState(15);
   const [deliveryCharge, setDeliveryCharge] = useState(40);
+  const [deliveryExpanded, setDeliveryExpanded] = useState(false);
 
   // Synchronize orderType with available modes & default preferences
   useEffect(() => {
@@ -1270,6 +1362,7 @@ export default function POSPage() {
             return;
           }
           if (!deliveryAddressLine1.trim()) {
+            setDeliveryExpanded(true);
             notifications.show({
               title: "Delivery Address Required",
               message: "Please enter the delivery address.",
@@ -1444,6 +1537,7 @@ export default function POSPage() {
             return;
           }
           if (!deliveryAddressLine1.trim()) {
+            setDeliveryExpanded(true);
             notifications.show({
               title: "Delivery Address Required",
               message: "Please enter the delivery address.",
@@ -1742,6 +1836,8 @@ export default function POSPage() {
     currentRound,
     onViewExistingItems: () => setShowExistingItemsModal(true),
     customerActiveOrderConflict,
+    deliveryExpanded,
+    setDeliveryExpanded,
   };
 
   return (

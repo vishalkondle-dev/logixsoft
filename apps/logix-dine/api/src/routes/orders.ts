@@ -243,7 +243,9 @@ app.post(
         const tableNo = isDelivery ? 'Delivery' : (parsed.data.tableNo ?? null);
         const customerPhone = parsed.data.customerPhone || parsed.data.delivery?.customerPhone || null;
         const isTableOrder = Boolean(!isDelivery && tableNo && tableNo.trim() && tableNo !== 'Takeaway');
-        totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+        const adjustments = parsed.data.adjustments || [];
+        const adjustmentsTotalPaise = adjustments.reduce((sum: number, adj: any) => sum + (adj.amountPaise || 0), 0);
+        totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise + adjustmentsTotalPaise;
 
         if (diningSettings && orderType === 'DELIVERY' && diningSettings.minDeliveryOrderPaise && totalOrderPaise < diningSettings.minDeliveryOrderPaise) {
           throw new Error(`Minimum order for delivery is ₹${Math.round(diningSettings.minDeliveryOrderPaise / 100)}.`);
@@ -264,6 +266,7 @@ app.post(
           orderType,
           packagingChargePaise,
           deliveryChargePaise,
+          adjustments,
           tableFreedAt: isTableOrder ? null : now,
           createdAt: now,
           updatedAt: now,
@@ -494,7 +497,9 @@ app.post(
           }
         }
 
-        totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise;
+        const adjustments = parsed.data.adjustments || [];
+        const adjustmentsTotalPaise = adjustments.reduce((sum: number, adj: any) => sum + (adj.amountPaise || 0), 0);
+        totalOrderPaise = subtotalPaise + packagingChargePaise + deliveryChargePaise + adjustmentsTotalPaise;
         const customerPhone = parsed.data.customerPhone || null;
         const orderType = parsed.data.orderType || (parsed.data.tableNo && parsed.data.tableNo !== 'Takeaway' ? 'DINE_IN' : 'TAKEAWAY');
 
@@ -514,6 +519,7 @@ app.post(
           orderType,
           packagingChargePaise,
           deliveryChargePaise,
+          adjustments,
           tableFreedAt: now,
           createdAt: now,
           updatedAt: now,
@@ -718,7 +724,9 @@ app.post(
           .where(and(eq(appSchema.saleOrderItem.orderId, orderId), sql`${appSchema.saleOrderItem.status} != 'CANCELLED'`));
 
         const itemsTotal = allActiveItems.reduce((sum: number, it: any) => sum + it.pricePaiseSnapshot * it.qty, 0);
-        const newSubtotal = itemsTotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0);
+        const existingAdjustments = (order.adjustments as any[]) || [];
+        const adjTotal = existingAdjustments.reduce((sum: number, a: any) => sum + (a.amountPaise || 0), 0);
+        const newSubtotal = itemsTotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0) + adjTotal;
 
         const trimmedRoundNote = roundNote?.trim();
         const updatedOrderNote = trimmedRoundNote
@@ -769,6 +777,12 @@ const SettleBillActionSchema = z.object({
   customerPhone: z.string().optional(),
   discountPaise: z.number().int().nonnegative().optional(),
   tipPaise: z.number().int().nonnegative().optional(),
+  adjustments: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    value: z.string(),
+    amountPaise: z.number().int(),
+  })).optional(),
 });
 
 app.post(
@@ -822,7 +836,9 @@ app.post(
 
       const activeItems = items.filter((item: any) => item.status !== 'CANCELLED');
       const itemsSubtotal = activeItems.reduce((sum: number, item: any) => sum + item.pricePaiseSnapshot * item.qty, 0);
-      const totalAmount = itemsSubtotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0);
+      const adjustments = parsed.data.adjustments !== undefined ? parsed.data.adjustments : ((order.adjustments as any) || []);
+      const adjustmentsTotalPaise = adjustments.reduce((sum: number, adj: any) => sum + (adj.amountPaise || 0), 0);
+      const totalAmount = itemsSubtotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0) + adjustmentsTotalPaise;
 
       await db.transaction(async (tx: any) => {
         await tx
@@ -835,6 +851,7 @@ app.post(
           .set({
             status: 'PAID',
             method,
+            adjustments,
             subtotalPaise: totalAmount,
             paidPaise: totalAmount,
             customerPhone: customerPhone?.trim() || order.customerPhone,
@@ -955,7 +972,8 @@ app.post(
       await db.transaction(async (tx: any) => {
         const activeItems = items.filter((i: any) => i.status !== 'CANCELLED');
         const itemsSubtotal = activeItems.reduce((sum: number, it: any) => sum + it.pricePaiseSnapshot * it.qty, 0);
-        const totalAmount = itemsSubtotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0);
+        const adjTotal = ((order.adjustments as any[]) || []).reduce((s: number, a: any) => s + (a.amountPaise || 0), 0);
+        const totalAmount = itemsSubtotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0) + adjTotal;
 
         // Auto-serve any remaining active items when concluding the table
         if (unservedItems.length > 0) {

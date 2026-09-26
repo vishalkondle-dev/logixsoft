@@ -17,6 +17,7 @@ export interface TicketPayload {
   orderType?: string;
   packagingChargePaise?: number;
   deliveryChargePaise?: number;
+  adjustments?: Array<{ id: string; label: string; value: string; amountPaise: number }>;
   delivery?: {
     customerName?: string;
     customerPhone?: string;
@@ -87,7 +88,7 @@ export function buildKotPayload(
 export function buildBillPayload(
   order: any,
   restaurant: any,
-  options?: { items?: any[]; subtotalPaise?: number }
+  options?: { items?: any[]; subtotalPaise?: number; adjustments?: any[] }
 ): TicketPayload {
   const { date, time } = formatIST(order.order.createdAt);
   const itemsToPrint = options?.items ?? order.items ?? [];
@@ -101,6 +102,7 @@ export function buildBillPayload(
     orderType: order.order.orderType,
     packagingChargePaise: order.order.packagingChargePaise,
     deliveryChargePaise: order.order.deliveryChargePaise,
+    adjustments: options?.adjustments ?? order.order.adjustments ?? [],
     delivery: del ? {
       customerName: del.customerName,
       customerPhone: del.customerPhone,

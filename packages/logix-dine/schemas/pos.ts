@@ -153,6 +153,13 @@ export const MenuItemSchema = z.object({
 });
 type _ItemAssert = Expect<AssertSame<z.infer<typeof MenuItemSchema>, JsonMenuItemRow>>;
 
+export const OrderAdjustmentSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  value: z.string(),
+  amountPaise: z.number().int(),
+});
+
 export const SaleOrderSchema = z.object({
   id: z.string(),
   restaurantId: z.string(),
@@ -174,6 +181,7 @@ export const SaleOrderSchema = z.object({
   orderType: z.string(),
   packagingChargePaise: z.number().int(),
   deliveryChargePaise: z.number().int(),
+  adjustments: z.array(OrderAdjustmentSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),
@@ -517,6 +525,7 @@ export const StartOrderSchema = z.object({
   orderType: z.string().optional().default('DINE_IN'),
   packagingChargePaise: z.number().int().nonnegative().optional().default(0),
   deliveryChargePaise: z.number().int().nonnegative().optional().default(0),
+  adjustments: z.array(OrderAdjustmentSchema).optional().default([]),
   delivery: DeliveryInputSchema.optional(),
   items: z.array(OrderItemInputSchema).optional(),
 });
@@ -531,6 +540,7 @@ export const AddOrderItemSchema = z.object({
 
 export const AddOrderRoundSchema = z.object({
   items: z.array(OrderItemInputSchema).min(1),
+  adjustments: z.array(OrderAdjustmentSchema).optional(),
   settle: z.object({
     method: z.string().min(1),
   }).optional(),
@@ -561,6 +571,7 @@ export const CreateSettledSchema = z.object({
   orderType: z.string().optional().default('DINE_IN'),
   packagingChargePaise: z.number().int().nonnegative().optional().default(0),
   deliveryChargePaise: z.number().int().nonnegative().optional().default(0),
+  adjustments: z.array(OrderAdjustmentSchema).optional().default([]),
   delivery: DeliveryInputSchema.optional(),
   method: z.enum(['Cash', 'UPI', 'QR']).optional(),
   items: z.array(OrderItemInputSchema).optional(),

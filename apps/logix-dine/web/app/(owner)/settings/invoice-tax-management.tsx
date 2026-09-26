@@ -38,6 +38,7 @@ import {
   IconPrinter,
   IconDiscount2,
   IconQrcode,
+  IconEdit,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useUpdateOutlet } from "@/lib/queries";
@@ -186,6 +187,23 @@ export function InvoiceTaxManagement() {
     isActive: true,
     autoApply: false,
   });
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+
+  const handleEditRule = (rule: BillAdjustmentRule) => {
+    setEditingRuleId(rule.id);
+    setNewRule({
+      name: rule.name,
+      type: rule.type,
+      sign: rule.sign,
+      value: rule.value,
+      category: rule.category,
+      orderType: rule.orderType,
+      isTaxable: rule.isTaxable,
+      isActive: rule.isActive,
+      autoApply: rule.autoApply,
+    });
+    setRuleModalOpen(true);
+  };
 
   // Load existing settings from currentOutlet
   useEffect(() => {
@@ -278,21 +296,31 @@ export function InvoiceTaxManagement() {
     }));
   };
 
-  // Add new adjustment rule
+  // Add / Edit adjustment rule
   const handleAddRule = () => {
     if (!newRule.name.trim()) {
       notifications.show({ title: "Name required", message: "Please enter a rule name", color: "orange" });
       return;
     }
-    const rule: BillAdjustmentRule = {
-      id: `rule-${Date.now()}`,
-      ...newRule,
-    };
-    setTaxConfig((prev) => ({
-      ...prev,
-      adjustments: [...prev.adjustments, rule],
-    }));
+    if (editingRuleId) {
+      setTaxConfig((prev) => ({
+        ...prev,
+        adjustments: prev.adjustments.map((r) =>
+          r.id === editingRuleId ? { ...newRule, id: editingRuleId } : r
+        ),
+      }));
+    } else {
+      const rule: BillAdjustmentRule = {
+        id: `rule-${Date.now()}`,
+        ...newRule,
+      };
+      setTaxConfig((prev) => ({
+        ...prev,
+        adjustments: [...prev.adjustments, rule],
+      }));
+    }
     setRuleModalOpen(false);
+    setEditingRuleId(null);
     setNewRule({
       name: "",
       type: "PERCENTAGE",
@@ -577,7 +605,21 @@ export function InvoiceTaxManagement() {
                     variant="light"
                     color="indigo"
                     leftSection={<IconPlus size={14} />}
-                    onClick={() => setRuleModalOpen(true)}
+                    onClick={() => {
+                      setEditingRuleId(null);
+                      setNewRule({
+                        name: "",
+                        type: "PERCENTAGE",
+                        sign: "ADD",
+                        value: 5,
+                        category: "CUSTOM",
+                        orderType: "ALL",
+                        isTaxable: false,
+                        isActive: true,
+                        autoApply: false,
+                      });
+                      setRuleModalOpen(true);
+                    }}
                   >
                     Add Rule
                   </Button>
@@ -620,6 +662,15 @@ export function InvoiceTaxManagement() {
                           </div>
 
                           <Group gap="xs">
+                            <ActionIcon
+                              color="gray"
+                              variant="subtle"
+                              size="sm"
+                              onClick={() => handleEditRule(rule)}
+                              title="Edit rule"
+                            >
+                              <IconEdit size={14} />
+                            </ActionIcon>
                             <Switch
                               checked={rule.isActive}
                               size="xs"
@@ -631,6 +682,7 @@ export function InvoiceTaxManagement() {
                               variant="subtle"
                               size="sm"
                               onClick={() => handleDeleteRule(rule.id)}
+                              title="Delete rule"
                             >
                               <IconTrash size={14} />
                             </ActionIcon>
@@ -960,11 +1012,14 @@ export function InvoiceTaxManagement() {
         </Stack>
       </Modal>
 
-      {/* Add Bill Adjustment Rule Modal */}
+      {/* Add / Edit Bill Adjustment Rule Modal */}
       <Modal
         opened={ruleModalOpen}
-        onClose={() => setRuleModalOpen(false)}
-        title="Add Bill Adjustment Rule"
+        onClose={() => {
+          setRuleModalOpen(false);
+          setEditingRuleId(null);
+        }}
+        title={editingRuleId ? "Edit Bill Adjustment Rule" : "Add Bill Adjustment Rule"}
       >
         <Stack gap="sm">
           <TextInput
@@ -1038,8 +1093,18 @@ export function InvoiceTaxManagement() {
           )}
 
           <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={() => setRuleModalOpen(false)}>Cancel</Button>
-            <Button color="indigo" onClick={handleAddRule}>Save Rule</Button>
+            <Button
+              variant="default"
+              onClick={() => {
+                setRuleModalOpen(false);
+                setEditingRuleId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button color="indigo" onClick={handleAddRule}>
+              {editingRuleId ? "Update Rule" : "Save Rule"}
+            </Button>
           </Group>
         </Stack>
       </Modal>

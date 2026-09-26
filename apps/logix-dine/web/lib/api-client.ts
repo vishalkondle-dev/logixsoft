@@ -113,6 +113,7 @@ export const startOrder = (
     orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
     packagingChargePaise?: number;
     deliveryChargePaise?: number;
+    adjustments?: Array<{ id: string; label: string; value: string; amountPaise: number }>;
     delivery?: DeliveryDetailsInput;
     items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }
@@ -152,6 +153,7 @@ export const addOrderRound = (
   orderId: string,
   body: {
     items: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
+    adjustments?: Array<{ id: string; label: string; value: string; amountPaise: number }>;
     settle?: { method: string };
   },
   outletId?: string | null
@@ -159,7 +161,7 @@ export const addOrderRound = (
   apiFetch<any>(
     "/orders/add-round",
     restaurantId,
-    { method: "POST", body: JSON.stringify({ orderId, items: body.items, settle: body.settle }) },
+    { method: "POST", body: JSON.stringify({ orderId, items: body.items, adjustments: body.adjustments, settle: body.settle }) },
     outletId
   );
 
@@ -218,13 +220,17 @@ export const removeOrderItem = (restaurantId: string, orderId: string, orderItem
 export const settleOrder = (
   restaurantId: string,
   orderId: string,
-  body: { method?: string; customerPhone?: string },
+  body: {
+    method?: string;
+    customerPhone?: string;
+    adjustments?: Array<{ id: string; label: string; value: string; amountPaise: number }>;
+  },
   outletId?: string | null
 ) =>
   apiFetch<any>(
     "/orders/settle-bill",
     restaurantId,
-    { method: "POST", body: JSON.stringify({ orderId, method: body.method, customerPhone: body.customerPhone }) },
+    { method: "POST", body: JSON.stringify({ orderId, method: body.method, customerPhone: body.customerPhone, adjustments: body.adjustments }) },
     outletId
   );
 
@@ -240,6 +246,7 @@ export const createSettledOrder = (
     orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
     packagingChargePaise?: number;
     deliveryChargePaise?: number;
+    adjustments?: Array<{ id: string; label: string; value: string; amountPaise: number }>;
     delivery?: DeliveryDetailsInput;
     items?: Array<{ itemId: string; qty: number; note?: string; variantId?: string; addonIds?: string[] }>;
   }

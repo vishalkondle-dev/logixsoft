@@ -112,6 +112,13 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
       const delAmt = `Rs${(p.deliveryChargePaise / 100).toFixed(0)}`;
       push(twoCol("Delivery:", delAmt));
     }
+    if (p.adjustments && Array.isArray(p.adjustments) && p.adjustments.length > 0) {
+      for (const adj of p.adjustments) {
+        const sign = adj.amountPaise < 0 ? "-" : "";
+        const amtStr = `${sign}Rs${(Math.abs(adj.amountPaise) / 100).toFixed(0)}`;
+        push(twoCol(`${adj.label}:`, amtStr));
+      }
+    }
 
     // Total
     const totalAmt = `Rs${(p.subtotalPaise / 100).toFixed(0)}`;

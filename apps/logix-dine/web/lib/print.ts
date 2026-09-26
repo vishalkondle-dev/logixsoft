@@ -80,11 +80,21 @@ export function printHtml(payload: TicketPayload): void {
   const deliveryRow = (payload.deliveryChargePaise && payload.deliveryChargePaise > 0)
     ? `<tr><td colspan="2">Delivery</td><td style="text-align:right">Rs${(payload.deliveryChargePaise / 100).toFixed(0)}</td></tr>`
     : "";
+  const adjustmentsRows = (payload.adjustments && Array.isArray(payload.adjustments) && payload.adjustments.length > 0)
+    ? payload.adjustments
+        .map((a) => {
+          const sign = a.amountPaise < 0 ? "-" : "";
+          const amt = `${sign}Rs${(Math.abs(a.amountPaise) / 100).toFixed(0)}`;
+          return `<tr><td colspan="2">${esc(a.label)}</td><td style="text-align:right">${amt}</td></tr>`;
+        })
+        .join("")
+    : "";
 
   const totalSection = !isKot
     ? `<tr><td colspan="3"><hr style="border:none;border-top:1px dashed #000;margin:3px 0"/></td></tr>
        ${packagingRow}
        ${deliveryRow}
+       ${adjustmentsRows}
        <tr>
          <td colspan="2"><b>TOTAL</b></td>
          <td style="text-align:right"><b>Rs${(payload.subtotalPaise / 100).toFixed(0)}</b></td>

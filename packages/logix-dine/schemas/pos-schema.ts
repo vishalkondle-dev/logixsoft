@@ -178,6 +178,13 @@ export interface MenuItemAddon {
   pricePaise: number;
 }
 
+export interface OrderAdjustment {
+  id: string;
+  label: string;
+  value: string;
+  amountPaise: number;
+}
+
 // ─── Menu Item ────────────────────────────────────────────────────────────────
 
 export const menuItem = pgTable(
@@ -241,6 +248,7 @@ export const saleOrder = pgTable(
     orderType: text('orderType').notNull().default('DINE_IN'), // DINE_IN | TAKEAWAY | DELIVERY
     packagingChargePaise: integer('packagingChargePaise').notNull().default(0),
     deliveryChargePaise: integer('deliveryChargePaise').notNull().default(0),
+    adjustments: jsonb('adjustments').$type<OrderAdjustment[]>().notNull().default([]),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),

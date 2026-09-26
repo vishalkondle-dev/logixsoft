@@ -6,7 +6,7 @@ import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
-  UnstyledButton, Tooltip, Alert,
+  UnstyledButton, Tooltip, Alert, ThemeIcon,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import {
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
   IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
   IconTruckDelivery, IconShoppingBag, IconQrcode, IconUsers, IconNotes, IconCircleFilled,
+  IconReceiptTax, IconDiscount2, IconPercentage,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -54,6 +55,33 @@ const DEFAULT_NOTE_CHIPS = [
   "Less Sugar",
   "Serve Hot",
 ];
+
+export interface OrderAdjustment {
+  id: string;
+  label: string;
+  value: string; // e.g. "5%" or "50" or "-10%"
+  type: "charge" | "discount";
+  amountPaise: number;
+}
+
+export function computeAdjustmentAmount(
+  valueStr: string,
+  isDiscount: boolean,
+  itemsSubtotalPaise: number
+): { amountPaise: number; isPercent: boolean; num: number } {
+  const clean = (valueStr || "").trim();
+  const isPercent = clean.includes("%");
+  const num = parseFloat(clean.replace(/[%]/g, "").trim()) || 0;
+
+  let paise = isPercent
+    ? Math.round((itemsSubtotalPaise * Math.abs(num)) / 100)
+    : Math.round(Math.abs(num) * 100);
+
+  if (isDiscount || num < 0 || clean.startsWith("-")) {
+    paise = -paise;
+  }
+  return { amountPaise: paise, isPercent, num };
+}
 
 function normalizeTable(val?: string | null) {
   if (!val) return "";
@@ -120,6 +148,9 @@ interface CartPanelProps {
   isFreeDelivery?: boolean;
   minDeliveryOrder?: number;
   isMinDeliveryBlocked?: boolean;
+  adjustments?: OrderAdjustment[];
+  onOpenAdjustmentModal?: (adj?: OrderAdjustment) => void;
+  onRemoveAdjustment?: (id: string) => void;
 }
 
 function CartPanel({
@@ -167,6 +198,9 @@ function CartPanel({
   isFreeDelivery,
   minDeliveryOrder,
   isMinDeliveryBlocked,
+  adjustments = [],
+  onOpenAdjustmentModal,
+  onRemoveAdjustment,
 }: CartPanelProps) {
   const currentModes = (availableOrderModes && availableOrderModes.length > 0)
     ? availableOrderModes
@@ -497,48 +531,113 @@ function CartPanel({
       {/* Bottom Fixed Section */}
       <Box style={{ flexShrink: 0, marginTop: "auto" }}>
         <Divider my="xs" />
-        {effectiveOrderType === "DELIVERY" && cartItems.length > 0 && (
-          <Stack gap={2} mb="xs">
+        {cartItems.length > 0 && (
+          <Stack gap={3} mb="xs">
+            {/* Items Subtotal */}
             <Group justify="space-between">
               <Text size="xs" c="dimmed">Items Subtotal</Text>
               <Text size="xs" fw={500}>₹{(itemsSubtotal / 100).toFixed(0)}</Text>
             </Group>
-            {packagingCharge > 0 && (
+
+            {effectiveOrderType === "DELIVERY" && (
+              <>
+                {packagingCharge > 0 && (
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">Packaging Fee</Text>
+                    <Text size="xs" fw={500}>₹{packagingCharge}</Text>
+                  </Group>
+                )}
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed">Delivery Fee</Text>
+                  {isFreeDelivery ? (
+                    <Group gap={4}>
+                      <Text size="xs" td="line-through" c="dimmed">₹{deliveryCharge}</Text>
+                      <Badge size="xs" color="teal" variant="light">FREE</Badge>
+                    </Group>
+                  ) : (
+                    <Text size="xs" fw={500}>₹{deliveryCharge}</Text>
+                  )}
+                </Group>
+                {isMinDeliveryBlocked && minDeliveryOrder != null && (
+                  <Alert color="orange" p="xs" py={4} radius="sm" icon={<IconAlertCircle size={14} />}>
+                    <Text size="xs">Min delivery order ₹{minDeliveryOrder} (add ₹{Math.max(0, minDeliveryOrder - Math.round(itemsSubtotal / 100))} more)</Text>
+                  </Alert>
+                )}
+              </>
+            )}
+
+            {effectiveOrderType === "TAKEAWAY" && packagingCharge > 0 && (
               <Group justify="space-between">
                 <Text size="xs" c="dimmed">Packaging Fee</Text>
                 <Text size="xs" fw={500}>₹{packagingCharge}</Text>
               </Group>
             )}
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">Delivery Fee</Text>
-              {isFreeDelivery ? (
-                <Group gap={4}>
-                  <Text size="xs" td="line-through" c="dimmed">₹{deliveryCharge}</Text>
-                  <Badge size="xs" color="teal" variant="light">FREE</Badge>
-                </Group>
-              ) : (
-                <Text size="xs" fw={500}>₹{deliveryCharge}</Text>
+
+            {/* Custom Taxes, Charges & Discounts */}
+            <Group justify="space-between" align="center" mt={2}>
+              <Group gap={4} align="center">
+                <IconReceiptTax size={13} color="#868e96" />
+                <Text size="xs" fw={600} c="dimmed">Taxes & Discounts</Text>
+              </Group>
+              {onOpenAdjustmentModal && (
+                <Button
+                  variant="subtle"
+                  color="dinePrimary"
+                  size="compact-xs"
+                  px={6}
+                  h={20}
+                  style={{ fontSize: 11, fontWeight: 600 }}
+                  leftSection={<IconPlus size={11} />}
+                  onClick={() => onOpenAdjustmentModal()}
+                  aria-label="Add tax or discount"
+                >
+                  Add
+                </Button>
               )}
             </Group>
-            {isMinDeliveryBlocked && minDeliveryOrder != null && (
-              <Alert color="orange" p="xs" py={4} radius="sm" icon={<IconAlertCircle size={14} />}>
-                <Text size="xs">Min delivery order ₹{minDeliveryOrder} (add ₹{Math.max(0, minDeliveryOrder - Math.round(itemsSubtotal / 100))} more)</Text>
-              </Alert>
-            )}
-            <Divider variant="dashed" my={2} />
-          </Stack>
-        )}
 
-        {effectiveOrderType === "TAKEAWAY" && packagingCharge > 0 && cartItems.length > 0 && (
-          <Stack gap={2} mb="xs">
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">Items Subtotal</Text>
-              <Text size="xs" fw={500}>₹{(itemsSubtotal / 100).toFixed(0)}</Text>
-            </Group>
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">Packaging Fee</Text>
-              <Text size="xs" fw={500}>₹{packagingCharge}</Text>
-            </Group>
+            {adjustments.map((adj) => {
+              const isDisc = adj.amountPaise < 0;
+              return (
+                <Group key={adj.id} justify="space-between" align="center" wrap="nowrap" py={1}>
+                  <Group gap={6} align="center" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                    <Text size="xs" fw={500} lineClamp={1}>{adj.label}</Text>
+                    <Badge size="xs" variant="light" color={isDisc ? "green" : "teal"}>
+                      {adj.value.includes("%") ? adj.value : `₹${adj.value}`}
+                    </Badge>
+                  </Group>
+                  <Group gap={4} align="center" wrap="nowrap">
+                    <Text size="xs" fw={600} c={isDisc ? "green" : "dinePrimary"}>
+                      {isDisc ? "-" : "+"}₹{(Math.abs(adj.amountPaise) / 100).toFixed(0)}
+                    </Text>
+                    {onOpenAdjustmentModal && (
+                      <ActionIcon
+                        size={22}
+                        variant="subtle"
+                        color="gray"
+                        onClick={() => onOpenAdjustmentModal(adj)}
+                        title="Edit tax/discount"
+                        aria-label={`Edit ${adj.label}`}
+                      >
+                        <IconEdit size={12} />
+                      </ActionIcon>
+                    )}
+                    {onRemoveAdjustment && (
+                      <ActionIcon
+                        size={22}
+                        variant="subtle"
+                        color="red"
+                        onClick={() => onRemoveAdjustment(adj.id)}
+                        title="Remove"
+                        aria-label={`Remove ${adj.label}`}
+                      >
+                        <IconTrash size={12} />
+                      </ActionIcon>
+                    )}
+                  </Group>
+                </Group>
+              );
+            })}
             <Divider variant="dashed" my={2} />
           </Stack>
         )}
@@ -811,6 +910,111 @@ export default function POSPage() {
   const [settling, setSettling] = useState(false);
   const [sending, setSending] = useState(false);
 
+  // Adjustments (Taxes, Charges & Discounts) state
+  const [adjustments, setAdjustments] = useState<OrderAdjustment[]>([]);
+  const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
+  const [editingAdjustment, setEditingAdjustment] = useState<OrderAdjustment | null>(null);
+  const [adjLabel, setAdjLabel] = useState("");
+  const [adjValue, setAdjValue] = useState("");
+  const [adjType, setAdjType] = useState<"charge" | "discount">("charge");
+
+  const handleOpenAdjustmentModal = (adj?: OrderAdjustment) => {
+    if (adj) {
+      setEditingAdjustment(adj);
+      setAdjLabel(adj.label);
+      setAdjValue(adj.value.replace(/^-/, ""));
+      setAdjType(adj.type || (adj.amountPaise < 0 ? "discount" : "charge"));
+    } else {
+      setEditingAdjustment(null);
+      setAdjLabel("");
+      setAdjValue("");
+      setAdjType("charge");
+    }
+    setAdjustmentModalOpen(true);
+  };
+
+  const handleSaveAdjustment = () => {
+    const trimmedLabel = adjLabel.trim();
+    const trimmedVal = adjValue.trim();
+    if (!trimmedLabel) {
+      notifications.show({ title: "Label Required", message: "Please enter a label for the tax, charge, or discount.", color: "red" });
+      return;
+    }
+    if (!trimmedVal) {
+      notifications.show({ title: "Value Required", message: "Please enter a value (e.g. 5% or 50).", color: "red" });
+      return;
+    }
+
+    const isDiscount = adjType === "discount" || trimmedVal.startsWith("-") || trimmedLabel.toLowerCase().includes("discount");
+    const parsed = computeAdjustmentAmount(trimmedVal, isDiscount, itemsSubtotal);
+    if (isNaN(parsed.num) || parsed.num === 0) {
+      notifications.show({ title: "Invalid Value", message: "Please enter a valid number or percentage (e.g. 5% or 50).", color: "red" });
+      return;
+    }
+
+    const cleanValStr = parsed.isPercent ? `${parsed.num}%` : `${parsed.num}`;
+
+    if (editingAdjustment) {
+      setAdjustments((prev) =>
+        prev.map((a) =>
+          a.id === editingAdjustment.id
+            ? {
+                ...a,
+                label: trimmedLabel,
+                value: cleanValStr,
+                type: isDiscount ? "discount" : "charge",
+                amountPaise: parsed.amountPaise,
+              }
+            : a
+        )
+      );
+    } else {
+      const newAdj: OrderAdjustment = {
+        id: `adj_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        label: trimmedLabel,
+        value: cleanValStr,
+        type: isDiscount ? "discount" : "charge",
+        amountPaise: parsed.amountPaise,
+      };
+      setAdjustments((prev) => [...prev, newAdj]);
+    }
+
+    setAdjustmentModalOpen(false);
+    setEditingAdjustment(null);
+    setAdjLabel("");
+    setAdjValue("");
+  };
+
+  const handleRemoveAdjustment = (id: string) => {
+    setAdjustments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const outletTaxPresets = useMemo(() => {
+    const presets: { l: string; v: string; type: "charge" | "discount" }[] = [];
+    if (activeOutlet?.taxSettings) {
+      try {
+        const cfg = typeof activeOutlet.taxSettings === "string" ? JSON.parse(activeOutlet.taxSettings) : activeOutlet.taxSettings;
+        if (cfg?.enableGst && Array.isArray(cfg?.slabs)) {
+          for (const slab of cfg.slabs) {
+            if (slab.rate > 0) {
+              presets.push({ l: slab.name || `GST ${slab.rate}%`, v: `${slab.rate}%`, type: "charge" });
+            }
+          }
+        }
+        if (Array.isArray(cfg?.adjustments)) {
+          for (const adj of cfg.adjustments) {
+            if (adj.isActive !== false) {
+              const isDisc = adj.sign === "SUBTRACT" || adj.category === "DISCOUNT";
+              const valStr = adj.type === "PERCENTAGE" ? `${adj.value}%` : `${adj.value}`;
+              presets.push({ l: adj.name, v: valStr, type: isDisc ? "discount" : "charge" });
+            }
+          }
+        }
+      } catch {}
+    }
+    return presets;
+  }, [activeOutlet?.taxSettings]);
+
   // Item note modal state
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteTargetCartKey, setNoteTargetCartKey] = useState<string | null>(null);
@@ -865,6 +1069,7 @@ export default function POSPage() {
 
   const handleClearCart = () => {
     setCartItems([]);
+    setAdjustments([]);
     setTableNo("Takeaway");
     setCustomerPhone("");
     setDeliveryCustomerName("");
@@ -1004,6 +1209,7 @@ export default function POSPage() {
               variantId: i.variant?.id,
               addonIds: i.addons?.map((a) => a.id),
             })),
+            adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
           },
           activeOutlet.id
         );
@@ -1012,6 +1218,7 @@ export default function POSPage() {
 
         // Reset cart immediately — don't wait for print
         setCartItems([]);
+        setAdjustments([]);
         if (cartOpen) setCartOpen(false);
 
         // Print KOT for ONLY newly added items in this round
@@ -1106,6 +1313,7 @@ export default function POSPage() {
           orderType,
           packagingChargePaise: (orderType === "DELIVERY" || orderType === "TAKEAWAY") ? packagingCharge * 100 : 0,
           deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
+          adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
           delivery: deliveryPayload,
           items: cartItems.map((i) => ({
             itemId: i.itemId,
@@ -1118,6 +1326,7 @@ export default function POSPage() {
 
         // Reset cart immediately — don't wait for print
         setCartItems([]);
+        setAdjustments([]);
         setCustomerPhone("");
         setDeliveryCustomerName("");
         setDeliveryAddressLine1("");
@@ -1182,6 +1391,7 @@ export default function POSPage() {
               variantId: i.variant?.id,
               addonIds: i.addons?.map((a) => a.id),
             })),
+            adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
             settle: { method: settleMethod },
           },
           activeOutlet.id
@@ -1190,6 +1400,7 @@ export default function POSPage() {
         const currentRoundNum = addedRound.round || nextRound;
 
         setCartItems([]);
+        setAdjustments([]);
         setCustomerPhone("");
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
@@ -1277,6 +1488,7 @@ export default function POSPage() {
           orderType,
           packagingChargePaise: (orderType === "DELIVERY" || orderType === "TAKEAWAY") ? packagingCharge * 100 : 0,
           deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
+          adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
           delivery: deliveryPayload,
           method: settleMethod,
           items: cartItems.map((i) => ({
@@ -1290,6 +1502,7 @@ export default function POSPage() {
 
         // Success — close modal and clear cart
         setCartItems([]);
+        setAdjustments([]);
         setCustomerPhone("");
         setDeliveryCustomerName("");
         setDeliveryAddressLine1("");
@@ -1458,7 +1671,15 @@ export default function POSPage() {
       : 0
     : 0;
 
-  const grandTotal = itemsSubtotal + extraCharges;
+  const computedAdjustments = adjustments.map((adj) => {
+    const isDiscount = adj.type === "discount" || adj.amountPaise < 0;
+    const { amountPaise } = computeAdjustmentAmount(adj.value, isDiscount, itemsSubtotal);
+    return { ...adj, amountPaise };
+  });
+
+  const totalAdjustmentsPaise = computedAdjustments.reduce((sum, adj) => sum + adj.amountPaise, 0);
+
+  const grandTotal = Math.max(0, itemsSubtotal + extraCharges + totalAdjustmentsPaise);
   const total = grandTotal;
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
 
@@ -1506,6 +1727,9 @@ export default function POSPage() {
     isFreeDelivery,
     minDeliveryOrder,
     isMinDeliveryBlocked,
+    adjustments: computedAdjustments,
+    onOpenAdjustmentModal: handleOpenAdjustmentModal,
+    onRemoveAdjustment: handleRemoveAdjustment,
     handleClearCart,
     openNoteModal,
     handleUpdateQty,
@@ -2095,11 +2319,92 @@ export default function POSPage() {
         size="sm"
         zIndex={1300}
       >
-        <Stack>
-          <Group justify="space-between">
-            <Text fw={500}>{activeTableOrder ? `Round ${nextRound} Total` : "Order Total"}</Text>
-            <Text fw={700} c="dinePrimary" size="xl">₹{(total / 100).toFixed(0)}</Text>
-          </Group>
+        <Stack gap="sm">
+          {/* Detailed Bill Summary Card */}
+          <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-gray-0)">
+            <Stack gap={4}>
+              <Group justify="space-between">
+                <Text size="xs" c="dimmed">{activeTableOrder ? `Round ${nextRound} Items` : "Items Subtotal"}</Text>
+                <Text size="xs" fw={500}>₹{(itemsSubtotal / 100).toFixed(0)}</Text>
+              </Group>
+
+              {packagingCharge > 0 && (orderType === "DELIVERY" || orderType === "TAKEAWAY") && (
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed">Packaging Fee</Text>
+                  <Text size="xs" fw={500}>₹{packagingCharge}</Text>
+                </Group>
+              )}
+
+              {effectiveDeliveryFee > 0 && orderType === "DELIVERY" && (
+                <Group justify="space-between">
+                  <Text size="xs" c="dimmed">Delivery Fee</Text>
+                  <Text size="xs" fw={500}>₹{effectiveDeliveryFee}</Text>
+                </Group>
+              )}
+
+              {computedAdjustments.map((adj) => {
+                const isDisc = adj.amountPaise < 0;
+                return (
+                  <Group key={adj.id} justify="space-between" align="center" wrap="nowrap">
+                    <Group gap={6} align="center" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                      <Text size="xs" fw={500} lineClamp={1}>{adj.label}</Text>
+                      <Badge size="xs" variant="light" color={isDisc ? "green" : "teal"}>
+                        {adj.value.includes("%") ? adj.value : `₹${adj.value}`}
+                      </Badge>
+                    </Group>
+                    <Group gap={4} align="center" wrap="nowrap">
+                      <Text size="xs" fw={600} c={isDisc ? "green" : "dinePrimary"}>
+                        {isDisc ? "-" : "+"}₹{(Math.abs(adj.amountPaise) / 100).toFixed(0)}
+                      </Text>
+                      <ActionIcon
+                        size={20}
+                        variant="subtle"
+                        color="gray"
+                        onClick={() => handleOpenAdjustmentModal(adj)}
+                        title="Edit tax/discount"
+                        aria-label={`Edit ${adj.label}`}
+                      >
+                        <IconEdit size={12} />
+                      </ActionIcon>
+                      <ActionIcon
+                        size={20}
+                        variant="subtle"
+                        color="red"
+                        onClick={() => handleRemoveAdjustment(adj.id)}
+                        title="Remove"
+                        aria-label={`Remove ${adj.label}`}
+                      >
+                        <IconTrash size={12} />
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                );
+              })}
+
+              <Divider variant="dashed" my={2} />
+
+              <Group justify="space-between" align="center">
+                <Button
+                  variant="subtle"
+                  color="dinePrimary"
+                  size="compact-xs"
+                  px={4}
+                  h={20}
+                  style={{ fontSize: 11, fontWeight: 600 }}
+                  leftSection={<IconPlus size={11} />}
+                  onClick={() => handleOpenAdjustmentModal()}
+                  aria-label="Add tax or discount"
+                >
+                  + Add Tax / Discount
+                </Button>
+                <Group gap={6} align="center">
+                  <Text size="xs" fw={700}>Payable Total:</Text>
+                  <Text size="md" fw={700} c="dinePrimary">₹{(total / 100).toFixed(0)}</Text>
+                </Group>
+              </Group>
+            </Stack>
+          </Paper>
+
           <Text size="xs" c="dimmed">
             Table: {tableNo || "Takeaway"}{activeTableOrder ? " · Table remains occupied after round payment" : ""}
           </Text>
@@ -2152,6 +2457,194 @@ export default function POSPage() {
           >
             {activeTableOrder ? `Confirm Settlement & Send Round ${nextRound}` : "Confirm Settlement & Send"}
           </Button>
+        </Stack>
+      </Modal>
+
+      {/* Add / Edit Tax, Charge & Discount Modal */}
+      <Modal
+        opened={adjustmentModalOpen}
+        onClose={() => {
+          setAdjustmentModalOpen(false);
+          setEditingAdjustment(null);
+        }}
+        title={
+          <Group gap={8} align="center">
+            <ThemeIcon size={28} radius="md" color={adjType === "discount" ? "green" : "teal"} variant="light">
+              {adjType === "discount" ? <IconDiscount2 size={16} /> : <IconReceiptTax size={16} />}
+            </ThemeIcon>
+            <div>
+              <Text fw={700} size="sm">
+                {editingAdjustment ? "Edit Tax / Charge / Discount" : "Add Tax / Charge / Discount"}
+              </Text>
+              <Text size="xs" c="dimmed">
+                Apply a custom fee, tax, or discount to this order
+              </Text>
+            </div>
+          </Group>
+        }
+        size="sm"
+        zIndex={1400}
+      >
+        <Stack gap="sm">
+          <div>
+            <Text size="xs" fw={600} mb={4} c="dimmed">Type</Text>
+            <SegmentedControl
+              fullWidth
+              value={adjType}
+              onChange={(val: any) => setAdjType(val)}
+              data={[
+                { value: "charge", label: "+ Charge / Tax" },
+                { value: "discount", label: "- Discount" },
+              ]}
+              color={adjType === "discount" ? "green" : "teal"}
+            />
+          </div>
+
+          <TextInput
+            label="Label"
+            placeholder={adjType === "discount" ? "e.g. Staff Discount, Promo, Courtesy" : "e.g. GST, Service Charge, Packaging"}
+            value={adjLabel}
+            onChange={(e) => setAdjLabel(e.target.value)}
+            required
+            data-autofocus
+          />
+
+          <TextInput
+            label="Value"
+            placeholder={adjType === "discount" ? "e.g. 10% or 50" : "e.g. 5% or 30"}
+            description="Enter a percentage (e.g. 5%) or flat amount in ₹ (e.g. 50)"
+            value={adjValue}
+            onChange={(e) => setAdjValue(e.target.value)}
+            required
+          />
+
+          {/* Quick preset chips */}
+          <div>
+            <Text size="xs" fw={600} mb={6} c="dimmed">Quick Presets</Text>
+            <Group gap={6} wrap="wrap">
+              {adjType === "discount" ? (
+                <>
+                  {[
+                    { l: "Discount 5%", v: "5%" },
+                    { l: "Discount 10%", v: "10%" },
+                    { l: "Discount 15%", v: "15%" },
+                    { l: "Flat ₹50 Off", v: "50" },
+                    { l: "Flat ₹100 Off", v: "100" },
+                  ].map((preset) => (
+                    <Button
+                      key={preset.l}
+                      size="compact-xs"
+                      variant="light"
+                      color="green"
+                      onClick={() => {
+                        setAdjLabel(preset.l);
+                        setAdjValue(preset.v);
+                      }}
+                    >
+                      {preset.l}
+                    </Button>
+                  ))}
+                  {outletTaxPresets.filter((p) => p.type === "discount").map((preset) => (
+                    <Button
+                      key={`outlet-${preset.l}`}
+                      size="compact-xs"
+                      variant="outline"
+                      color="green"
+                      onClick={() => {
+                        setAdjLabel(preset.l);
+                        setAdjValue(preset.v);
+                      }}
+                    >
+                      {preset.l}
+                    </Button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {[
+                    { l: "GST 5%", v: "5%" },
+                    { l: "GST 12%", v: "12%" },
+                    { l: "GST 18%", v: "18%" },
+                    { l: "Service Charge 5%", v: "5%" },
+                    { l: "Packaging Charge", v: "20" },
+                  ].map((preset) => (
+                    <Button
+                      key={preset.l}
+                      size="compact-xs"
+                      variant="light"
+                      color="teal"
+                      onClick={() => {
+                        setAdjLabel(preset.l);
+                        setAdjValue(preset.v);
+                      }}
+                    >
+                      {preset.l}
+                    </Button>
+                  ))}
+                  {outletTaxPresets.filter((p) => p.type === "charge").map((preset) => (
+                    <Button
+                      key={`outlet-${preset.l}`}
+                      size="compact-xs"
+                      variant="outline"
+                      color="teal"
+                      onClick={() => {
+                        setAdjLabel(preset.l);
+                        setAdjValue(preset.v);
+                      }}
+                    >
+                      {preset.l}
+                    </Button>
+                  ))}
+                </>
+              )}
+            </Group>
+          </div>
+
+          {/* Live Preview Card */}
+          {(() => {
+            const previewParsed = computeAdjustmentAmount(adjValue, adjType === "discount", itemsSubtotal);
+            const previewAmtPaise = previewParsed.amountPaise;
+            const previewAmtRs = (Math.abs(previewAmtPaise) / 100).toFixed(2);
+            const isNegative = previewAmtPaise < 0;
+            return (
+              <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-gray-0)">
+                <Stack gap={2}>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">Current Items Subtotal:</Text>
+                    <Text size="xs" fw={500}>₹{(itemsSubtotal / 100).toFixed(0)}</Text>
+                  </Group>
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">Calculated Adjustment:</Text>
+                    <Text size="xs" fw={700} c={isNegative ? "green" : "teal"}>
+                      {isNegative ? "-" : "+"}₹{previewAmtRs}
+                      {previewParsed.isPercent && ` (${previewParsed.num}% of subtotal)`}
+                    </Text>
+                  </Group>
+                </Stack>
+              </Paper>
+            );
+          })()}
+
+          <Group justify="flex-end" gap="xs" mt="xs">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                setAdjustmentModalOpen(false);
+                setEditingAdjustment(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color={adjType === "discount" ? "green" : "dinePrimary"}
+              size="sm"
+              onClick={handleSaveAdjustment}
+              leftSection={<IconCheck size={16} />}
+            >
+              {editingAdjustment ? "Update Adjustment" : "Apply to Order"}
+            </Button>
+          </Group>
         </Stack>
       </Modal>
 

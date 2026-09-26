@@ -838,6 +838,45 @@ export default function OrdersPage() {
                   </Badge>
                 </Group>
 
+                {Array.isArray((order as any).adjustments) && (order as any).adjustments.length > 0 && (
+                  <Stack gap={4} mb="xs" p="xs" style={{ background: "var(--mantine-color-gray-0)", borderRadius: 6, border: "1px dashed var(--mantine-color-gray-3)" }}>
+                    <Group justify="space-between">
+                      <Text size="xs" c="dimmed">Items Subtotal</Text>
+                      <Text size="xs" fw={600}>
+                        ₹{(
+                          (selected.items?.reduce((sum: number, it: any) => {
+                            if (it.status === "CANCELLED") return sum;
+                            return sum + (it.pricePaiseSnapshot ?? it.pricePaise ?? 0) * (it.qty ?? 1);
+                          }, 0) || 0) / 100
+                        ).toFixed(0)}
+                      </Text>
+                    </Group>
+                    {((order as any).adjustments as any[]).map((adj, idx) => {
+                      const isDiscount = adj.isDiscount || String(adj.value || "").startsWith("-") || (adj.amountPaise !== undefined && adj.amountPaise < 0);
+                      const itemsTotal = selected.items?.reduce((sum: number, it: any) => {
+                        if (it.status === "CANCELLED") return sum;
+                        return sum + (it.pricePaiseSnapshot ?? it.pricePaise ?? 0) * (it.qty ?? 1);
+                      }, 0) || 0;
+                      const amountPaise = adj.amountPaise !== undefined
+                        ? Math.abs(adj.amountPaise)
+                        : (String(adj.value).endsWith("%")
+                            ? Math.round((itemsTotal * Math.abs(parseFloat(adj.value))) / 100)
+                            : Math.round(Math.abs(parseFloat(adj.value) || 0) * 100));
+                      return (
+                        <Group key={adj.id || idx} justify="space-between">
+                          <Group gap={6}>
+                            <Text size="xs" c={isDiscount ? "teal" : "dimmed"}>{adj.label}</Text>
+                            <Badge size="xs" variant="light" color={isDiscount ? "teal" : "gray"}>{adj.value}</Badge>
+                          </Group>
+                          <Text size="xs" fw={600} c={isDiscount ? "teal" : "dark"}>
+                            {isDiscount ? "-" : "+"}₹{(amountPaise / 100).toFixed(0)}
+                          </Text>
+                        </Group>
+                      );
+                    })}
+                  </Stack>
+                )}
+
                 <SimpleGrid cols={{ base: 3, sm: 3 }} spacing="xs">
                   <div>
                     <Text size="xs" c="dimmed">Total Bill</Text>

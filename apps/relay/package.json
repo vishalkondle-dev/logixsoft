@@ -1,0 +1,28 @@
+{
+  "name": "@logixsoft/relay",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "worker:dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.1",
+    "@logixsoft/helpers": "workspace:*",
+    "@logixsoft/relay-schema": "workspace:*",
+    "@logixsoft/wa": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.13.7",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.14",
+    "typescript": "^5.0.0"
+  }
+}

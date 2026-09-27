@@ -2,7 +2,8 @@
   "private": true,
   "scripts": {
     "deploy:dine-api": "pnpm --filter logix-dine-api run deploy",
-    "deploy:dine-web": "pnpm --filter logix-dine-web run deploy"
+    "deploy:dine-web": "pnpm --filter logix-dine-web run deploy",
+    "deploy:relay": "pnpm --filter @logixsoft/relay run deploy"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

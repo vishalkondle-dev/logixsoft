@@ -12,6 +12,7 @@ import {
   Badge,
   Box,
   Divider,
+  Button,
 } from "@mantine/core";
 import {
   IconBuildingStore,
@@ -112,6 +113,30 @@ export function SettingsOverview() {
       ],
     },
     {
+      category: "Online Delivery & Integrations (Relay)",
+      items: [
+        {
+          id: "aggregators",
+          title: "Online Delivery Partners",
+          description: "Connect Swiggy, Zomato, Magicpin & ONDC. Manage store IDs, API keys, auto-accept & webhooks",
+          icon: IconTruckDelivery,
+          color: "orange",
+          href: "/settings/aggregators",
+          badge: "Swiggy • Zomato • ONDC",
+          isAvailable: true,
+        },
+        {
+          id: "delivery-agents",
+          title: "In-House Delivery & Riders",
+          description: "Manage delivery riders, external couriers (Shadowfax, Dunzo, Porter), and dispatch",
+          icon: IconMotorbike,
+          color: "red",
+          href: "/settings/riders",
+          isAvailable: true,
+        },
+      ],
+    },
+    {
       category: "Team & Permissions",
       items: [
         {
@@ -206,15 +231,6 @@ export function SettingsOverview() {
           href: "/settings/reservations",
           isAvailable: true,
         },
-        {
-          id: "delivery-agents",
-          title: "Delivery & Riders",
-          description: "Manage delivery riders, external couriers, and dispatch",
-          icon: IconMotorbike,
-          color: "red",
-          href: "/settings/riders",
-          isAvailable: true,
-        },
       ],
     },
   ];
@@ -222,7 +238,7 @@ export function SettingsOverview() {
   return (
     <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
       {/* Header */}
-      <Box mb="xl">
+      <Box mb="md">
         <Group justify="space-between" align="flex-end" wrap="wrap" gap="xs">
           <div>
             <Title order={2} style={{ letterSpacing: "-0.5px" }}>Settings</Title>
@@ -232,6 +248,47 @@ export function SettingsOverview() {
           </div>
         </Group>
       </Box>
+
+      {/* Prominent Quick-Access Banner: Online Delivery Aggregators */}
+      <Paper
+        p="md"
+        radius="md"
+        mb="xl"
+        style={{
+          background: "linear-gradient(135deg, #fff4e6 0%, #ffe8cc 100%)",
+          border: "1px solid #ffd8a8",
+        }}
+      >
+        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+          <Group gap="sm" wrap="nowrap">
+            <ThemeIcon size={44} radius="md" color="orange" variant="filled">
+              <IconTruckDelivery size={24} />
+            </ThemeIcon>
+            <div>
+              <Group gap="xs">
+                <Text fw={700} size="sm" c="dark.9">
+                  Online Food Delivery Partners (Swiggy • Zomato • ONDC • Magicpin)
+                </Text>
+                <Badge color="orange" variant="filled" size="xs">
+                  New Relay Gateway
+                </Badge>
+              </Group>
+              <Text size="xs" c="dark.6" mt={2}>
+                Configure outlet store IDs, partner API keys, auto-accept rules, markup pricing, and webhooks in one place.
+              </Text>
+            </div>
+          </Group>
+          <Button
+            component={Link}
+            href="/settings/aggregators"
+            color="orange"
+            size="sm"
+            rightSection={<IconChevronRight size={14} />}
+          >
+            Configure Online Partners
+          </Button>
+        </Group>
+      </Paper>
 
       {/* Categories & Cards Grid */}
       <Box style={{ display: "flex", flexDirection: "column", gap: 32 }}>

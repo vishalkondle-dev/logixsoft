@@ -16,6 +16,7 @@ export const VALID_SETTINGS_TABS = [
   "whatsapp",
   "reservations",
   "riders",
+  "aggregators",
 ] as const;
 
 export function generateStaticParams() {
@@ -39,6 +40,9 @@ export default async function SettingsTabPage({
   }
   if (tab === "delivery-agents") {
     redirect("/settings/riders");
+  }
+  if (tab === "delivery-partners") {
+    redirect("/settings/aggregators");
   }
   return <SettingsView currentTab={tab} />;
 }

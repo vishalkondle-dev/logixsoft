@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Paper,
   Stack,
@@ -26,6 +27,8 @@ import {
   IconAlertCircle,
   IconClock,
   IconCurrencyRupee,
+  IconTruckDelivery,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -253,6 +256,31 @@ export function DiningOptionsManagement() {
           </Badge>
         </Card>
       </SimpleGrid>
+
+      {/* Online Delivery Aggregators Notice */}
+      <Alert
+        icon={<IconTruckDelivery size={20} />}
+        color="orange"
+        variant="light"
+        radius="md"
+        title="Looking for Swiggy, Zomato, or ONDC Integration?"
+      >
+        <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+          <Text size="xs" c="dark.7">
+            To configure marketplace credentials, partner store IDs, auto-accept rules, price markups, and webhook URLs, use the Aggregators Gateway.
+          </Text>
+          <Button
+            component={Link}
+            href="/settings/aggregators"
+            size="xs"
+            color="orange"
+            variant="filled"
+            rightSection={<IconChevronRight size={14} />}
+          >
+            Configure Online Partners
+          </Button>
+        </Group>
+      </Alert>
 
       {/* POS Default Channel */}
       <Paper withBorder p="md" radius="md">

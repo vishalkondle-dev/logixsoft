@@ -33,6 +33,27 @@ export async function printTicket(payload: TicketPayload): Promise<PrintResult> 
  * (e.g. after Settle & Send, where the modal just closed).
  */
 export async function printTicketSilent(payload: TicketPayload): Promise<PrintResult> {
+  // 1. Desktop PC / Electron silent thermal printing
+  if (typeof window !== "undefined" && (window as any).logixDinePC?.printReceipt) {
+    try {
+      await (window as any).logixDinePC.printReceipt({
+        silent: true,
+        type: payload.type,
+        orderNo: payload.orderNo,
+        restaurantName: payload.restaurantName,
+        items: payload.items,
+        time: payload.time,
+        date: payload.date,
+        subtotalPaise: payload.subtotalPaise,
+        delivery: payload.delivery,
+      });
+      return "ble"; // silent print handled
+    } catch (err) {
+      console.error("[print] Desktop PC silent print failed:", err);
+    }
+  }
+
+  // 2. Bluetooth thermal printer
   if (isSupported() && isPaired()) {
     try {
       const bytes = encodeTicket(payload);

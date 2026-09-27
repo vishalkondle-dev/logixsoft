@@ -21,6 +21,7 @@ import {
   Loader,
   Center,
   SegmentedControl,
+  Alert,
 } from "@mantine/core";
 import {
   IconMotorbike,
@@ -31,6 +32,8 @@ import {
   IconPhone,
   IconUser,
   IconMapPin,
+  IconTruckDelivery,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -121,6 +124,31 @@ export function RidersManagement() {
 
   return (
     <Stack gap="lg" w="100%">
+      {/* Aggregators Promotion in Riders Management */}
+      <Alert
+        icon={<IconTruckDelivery size={20} />}
+        color="orange"
+        variant="light"
+        radius="md"
+        title="Looking for Swiggy, Zomato, or ONDC Integration?"
+      >
+        <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+          <Text size="xs" c="dark.7">
+            Manage online aggregator API keys, store identifiers, auto-accept, and webhooks in the dedicated Aggregators Gateway.
+          </Text>
+          <Button
+            component={Link}
+            href="/settings/aggregators"
+            size="xs"
+            color="orange"
+            variant="filled"
+            rightSection={<IconChevronRight size={14} />}
+          >
+            Configure Online Partners
+          </Button>
+        </Group>
+      </Alert>
+
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <div>
           <Title order={3} fw={700}>Delivery Fleet & Dispatch</Title>

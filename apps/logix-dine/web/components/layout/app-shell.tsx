@@ -14,7 +14,7 @@ import {
   IconFlame, IconHistory, IconUser, IconBellRinging, IconMotorbike,
   IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
-  IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages,
+  IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages, IconTruckDelivery,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -42,6 +42,7 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar },
   { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax },
   { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee },
+  { id: "aggregators", label: "Online Delivery (Swiggy/Zomato)", href: "/settings/aggregators", icon: IconTruckDelivery },
   { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter },
   { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode },
   { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp },
@@ -96,6 +97,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       if (seg === "outlets") return "restaurant";
       if (seg === "dining-options") return "dining";
       if (seg === "delivery-agents") return "riders";
+      if (seg === "delivery-partners") return "aggregators";
       return seg;
     }
     return "overview";
@@ -422,6 +424,25 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       >
                         Switch to {staffRoleLabel}
                       </Menu.Item>
+                    )}
+
+                    {canAccessSettings && (
+                      <>
+                        <Menu.Item
+                          component={Link}
+                          href="/settings"
+                          leftSection={<IconSettings size={16} color="#af73d7" />}
+                        >
+                          All Settings
+                        </Menu.Item>
+                        <Menu.Item
+                          component={Link}
+                          href="/settings/aggregators"
+                          leftSection={<IconTruckDelivery size={16} color="#e8590c" />}
+                        >
+                          Online Delivery (Swiggy/Zomato)
+                        </Menu.Item>
+                      </>
                     )}
 
                     <Menu.Item

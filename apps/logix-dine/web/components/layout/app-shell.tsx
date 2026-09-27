@@ -75,6 +75,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
 
   const isPortal = pathname === "/portal";
+  const isLanding = pathname === "/";
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
   const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER", "KITCHEN"].includes(effectiveRole));
   const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
@@ -136,7 +137,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell
-      header={{ height: { base: 60, sm: 64 } }}
+      header={isLanding ? undefined : { height: { base: 60, sm: 64 } }}
       navbar={
         canAccessSettings
           ? {
@@ -151,7 +152,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       <React.Suspense fallback={null}>
         <SearchParamsWatcher onTabChange={setCurrentTab} />
       </React.Suspense>
-      <AppShell.Header withBorder={false}>
+      {!isLanding && (
+        <AppShell.Header withBorder={false}>
         <Box h="100%" px={{ base: "xs", sm: "md" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
             <Group gap="xs" wrap="nowrap" align="center">
@@ -469,6 +471,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           </Group>
         </Box>
       </AppShell.Header>
+      )}
 
       {canAccessSettings && (
         <AppShell.Navbar
@@ -547,7 +550,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         <LoginModal />
       </AppShell.Main>
 
-      {visibleNav.length > 0 && !isPortal && (
+      {visibleNav.length > 0 && !isPortal && !isLanding && (
         <Box
           component="nav"
           aria-label="Bottom Navigation"

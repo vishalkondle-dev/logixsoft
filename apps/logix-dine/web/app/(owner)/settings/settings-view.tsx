@@ -453,7 +453,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       title: "Customer Reviews & Ratings",
       subtitle: "Authentic customer feedback, rating metrics, dish ratings & official responses",
     },
-    },
   };
 
   const currentTabMeta = TAB_TITLES[activeTab] || TAB_TITLES.restaurant;

@@ -10,6 +10,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconPlus, IconEdit, IconTrash, IconCheck, IconPhoto, IconCamera, IconUpload,
+  IconStar,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useQueryClient } from "@tanstack/react-query";
@@ -174,6 +175,16 @@ function MenuItemCard({
                 {item.addons.length} {item.addons.length === 1 ? "addon" : "addons"}
               </Badge>
             )}
+            {item.ratingAvg && item.ratingAvg > 0 ? (
+              <Badge
+                size="xs"
+                variant="light"
+                color="yellow"
+                leftSection={<IconStar size={10} fill="currentColor" />}
+              >
+                {item.ratingAvg.toFixed(1)} ({item.ratingCount || 0})
+              </Badge>
+            ) : null}
           </Group>
         </div>
 

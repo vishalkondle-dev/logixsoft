@@ -108,12 +108,51 @@ async function handleGetPortalSession(c: any) {
               inArray(appSchema.waiterRequest.orderId, orderIds),
               or(
                 eq(appSchema.waiterRequest.status, 'PENDING'),
-                eq(appSchema.waiterRequest.status, 'IN_PROGRESS')
+                eq(appSchema.waiterRequest.status, 'IN_PROGRESS'),
+                and(
+                  eq(appSchema.waiterRequest.status, 'COMPLETED'),
+                  sql`${appSchema.waiterRequest.completedAt} >= NOW() - INTERVAL '15 minutes'`
+                )
               )
             )
           )
+          .orderBy(desc(appSchema.waiterRequest.createdAt))
       : [];
-    const waiterRequestMap = new Map<string, any>(waiterRequestRows.map((wr: any) => [wr.orderId, wr]));
+    const waiterRequestMap = new Map<string, any>();
+    for (const wr of waiterRequestRows) {
+      if (wr.orderId && !waiterRequestMap.has(wr.orderId)) {
+        waiterRequestMap.set(wr.orderId, wr);
+      }
+    }
+
+    // Batch fetch customer reviews/feedback for these orders
+    const feedbackRows = orderIds.length > 0
+      ? await db
+          .select()
+          .from(appSchema.orderFeedback)
+          .where(inArray(appSchema.orderFeedback.orderId, orderIds))
+      : [];
+    const feedbackMap = new Map<string, any>(feedbackRows.map((f: any) => [f.orderId, f]));
+
+    const reviewIds = feedbackRows.map((f: any) => f.id);
+    const itemFeedbackRows = reviewIds.length > 0
+      ? await db
+          .select({
+            id: appSchema.orderItemFeedback.id,
+            reviewId: appSchema.orderItemFeedback.reviewId,
+            menuItemId: appSchema.orderItemFeedback.menuItemId,
+            rating: appSchema.orderItemFeedback.rating,
+            comment: appSchema.orderItemFeedback.comment,
+          })
+          .from(appSchema.orderItemFeedback)
+          .where(inArray(appSchema.orderItemFeedback.reviewId, reviewIds))
+      : [];
+    const itemFeedbackMap = new Map<string, any[]>();
+    for (const ifb of itemFeedbackRows) {
+      const list = itemFeedbackMap.get(ifb.reviewId) || [];
+      list.push(ifb);
+      itemFeedbackMap.set(ifb.reviewId, list);
+    }
 
     const itemsByOrder = new Map<string, any[]>();
     for (const item of itemRows) {
@@ -183,6 +222,7 @@ async function handleGetPortalSession(c: any) {
         },
         items: items.map((it: any) => ({
           id: it.id,
+          itemId: it.itemId,
           name: it.nameSnapshot || it.name,
           pricePaise: it.pricePaiseSnapshot || it.pricePaise,
           qty: it.qty,
@@ -210,6 +250,26 @@ async function handleGetPortalSession(c: any) {
           status: wr.status,
           createdAt: wr.createdAt instanceof Date ? wr.createdAt.toISOString() : wr.createdAt,
         } : null,
+        feedback: (() => {
+          const fb = feedbackMap.get(ord.id);
+          if (!fb) return null;
+          return {
+            id: fb.id,
+            orderId: fb.orderId,
+            rating: fb.rating,
+            foodRating: fb.foodRating,
+            serviceRating: fb.serviceRating,
+            deliveryRating: fb.deliveryRating,
+            tags: (fb.tags as string[]) || [],
+            comment: fb.comment || null,
+            isAnonymous: fb.isAnonymous,
+            ownerReply: fb.ownerReply || null,
+            ownerRepliedAt: fb.ownerRepliedAt instanceof Date ? fb.ownerRepliedAt.toISOString() : fb.ownerRepliedAt,
+            createdAt: fb.createdAt instanceof Date ? fb.createdAt.toISOString() : fb.createdAt,
+            updatedAt: fb.updatedAt instanceof Date ? fb.updatedAt.toISOString() : fb.updatedAt,
+            itemRatings: itemFeedbackMap.get(fb.id) || [],
+          };
+        })(),
       };
 
       if (isActive) {
@@ -331,6 +391,8 @@ async function handleGetCustomerMenu(c: any) {
       categories,
       items: items.map((it: any) => ({
         ...it,
+        ratingAvg: it.ratingAvg != null ? Number(it.ratingAvg) : null,
+        ratingCount: it.ratingCount != null ? Number(it.ratingCount) : 0,
         isNonVeg: checkIsNonVeg(it.name),
       })),
     });
@@ -666,8 +728,8 @@ app.post(
 
 // ─── POST /portal/call-waiter ─────────────────────────────────────────────────
 const CustomerCallWaiterSchema = z.object({
-  outletId: z.string(),
-  tableNo: z.string().min(1).max(50),
+  outletId: z.string().optional(),
+  tableNo: z.string().min(1).max(50).optional(),
   orderId: z.string().optional(),
   serviceType: z.enum(['WATER', 'CUTLERY', 'BILL', 'CLEAN_TABLE', 'OTHER']).default('OTHER'),
   note: z.string().max(250).optional(),
@@ -697,13 +759,39 @@ app.post(
 
     const { db, close } = getDb(c);
     try {
+      let outletId = parsed.data.outletId;
+      let tableNo = parsed.data.tableNo;
+      let restaurantId: string | null = null;
+
+      if (parsed.data.orderId) {
+        const [order] = await db
+          .select()
+          .from(appSchema.saleOrder)
+          .where(eq(appSchema.saleOrder.id, parsed.data.orderId))
+          .limit(1);
+
+        if (order) {
+          if (!outletId) outletId = order.outletId;
+          if (!tableNo) tableNo = order.tableNo || 'Table';
+          restaurantId = order.restaurantId;
+        }
+      }
+
+      if (!outletId || !tableNo) {
+        return c.json({ error: 'Bad Request', message: 'outletId and tableNo are required (or a valid orderId)' }, 400);
+      }
+
       const [outlet] = await db
         .select()
         .from(appSchema.restaurantOutlet)
-        .where(eq(appSchema.restaurantOutlet.id, parsed.data.outletId))
+        .where(eq(appSchema.restaurantOutlet.id, outletId))
         .limit(1);
 
       if (!outlet) return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+
+      if (!restaurantId) {
+        restaurantId = outlet.restaurantId;
+      }
 
       const qrSettings = (outlet.qrMenuSettings as any) || null;
       if (qrSettings && qrSettings.allowCallWaiter === false) {
@@ -717,10 +805,10 @@ app.post(
         .insert(appSchema.waiterRequest)
         .values({
           id,
-          restaurantId: outlet.restaurantId,
-          outletId: parsed.data.outletId,
+          restaurantId,
+          outletId,
           orderId: parsed.data.orderId || null,
-          tableNo: parsed.data.tableNo,
+          tableNo,
           serviceType: parsed.data.serviceType,
           serviceLabel: parsed.data.serviceType,
           note: parsed.data.note || null,
@@ -734,13 +822,13 @@ app.post(
 
       await broadcastToOutlet(
         c.env,
-        parsed.data.outletId,
+        outletId,
         {
           topic: 'ORDERS',
           type: 'WAITER_CALL',
           data: {
             id,
-            tableNo: parsed.data.tableNo,
+            tableNo,
             serviceType: parsed.data.serviceType,
             serviceLabel: parsed.data.serviceType,
             note: parsed.data.note || null,
@@ -751,7 +839,11 @@ app.post(
         customerPhone
       );
 
-      return c.json(newRow, 201);
+      return c.json({
+        ...newRow,
+        success: true,
+        serviceLabel: newRow.serviceLabel || parsed.data.serviceType,
+      }, 201);
     } finally {
       await close();
     }

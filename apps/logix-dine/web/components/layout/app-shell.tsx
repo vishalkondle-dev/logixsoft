@@ -15,6 +15,7 @@ import {
   IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
   IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages,
+  IconStar,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -40,6 +41,7 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock },
   { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, ownerOnly: true },
   { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar },
+  { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar },
   { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax },
   { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee },
   { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter },

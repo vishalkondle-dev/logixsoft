@@ -82,6 +82,10 @@ import {
   updateInventorySupplier,
   getInventorySettings,
   updateInventorySettings,
+  getOwnerFeedback,
+  replyToFeedback,
+  submitOrderFeedback,
+  getOrderFeedback,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
@@ -137,6 +141,10 @@ export const qk = {
     ["inventorySuppliers", restaurantId] as const,
   inventorySettings: (restaurantId: string, outletId?: string | null) =>
     ["inventorySettings", restaurantId, outletId ?? "all"] as const,
+  feedback: (restaurantId: string, params?: Record<string, any>) =>
+    ["feedback", restaurantId, params ?? {}] as const,
+  orderFeedback: (orderId: string) =>
+    ["orderFeedback", orderId] as const,
 };
 
 // ─── Bootstrap (categories + items + outlet info) ────────────────────────────
@@ -623,11 +631,14 @@ export function useCallWaiter() {
       body: {
         serviceType: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER";
         note?: string;
+        outletId?: string;
+        tableNo?: string;
       };
     }) => callWaiterAssistance(orderId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["waiterRequests"] });
       qc.invalidateQueries({ queryKey: ["waiterStats"] });
+      qc.invalidateQueries({ queryKey: qk.customerPortal() });
     },
   });
 }
@@ -1033,6 +1044,62 @@ export function useUpdateInventorySettings(restaurantId: string, outletId: strin
     },
   });
 }
+
+// ─── Feedback & Reviews Hooks ──────────────────────────────────────────────────
+
+export function useOwnerFeedback(
+  restaurantId: string,
+  params?: {
+    outletId?: string | null;
+    rating?: number | null;
+    orderType?: string | null;
+    search?: string | null;
+    page?: number;
+    limit?: number;
+  },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.feedback(restaurantId, params),
+    queryFn: () => getOwnerFeedback(restaurantId, params),
+    enabled: !!restaurantId && enabled,
+    staleTime: 15_000,
+  });
+}
+
+export function useReplyFeedback(restaurantId: string, outletId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reviewId, reply }: { reviewId: string; reply: string }) =>
+      replyToFeedback(restaurantId, reviewId, reply, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["feedback", restaurantId] });
+    },
+  });
+}
+
+export function useSubmitOrderFeedback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof submitOrderFeedback>[0]) => submitOrderFeedback(data),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["orderFeedback", variables.orderId] });
+      qc.invalidateQueries({ queryKey: ["customerPortal"] });
+      qc.invalidateQueries({ queryKey: ["customerMenu"] });
+      qc.invalidateQueries({ queryKey: ["feedback"] });
+    },
+  });
+}
+
+export function useOrderFeedback(orderId?: string, enabled = true) {
+  return useQuery({
+    queryKey: orderId ? qk.orderFeedback(orderId) : ["orderFeedback", "none"],
+    queryFn: () => (orderId ? getOrderFeedback(orderId) : Promise.resolve({ feedback: null })),
+    enabled: !!orderId && enabled,
+    staleTime: 30_000,
+  });
+}
+
 
 
 

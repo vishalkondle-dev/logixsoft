@@ -33,6 +33,7 @@ import {
   IconCheck,
   IconX,
   IconNotes,
+  IconStar,
 } from "@tabler/icons-react";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import { notifications } from "@mantine/notifications";
@@ -235,6 +236,7 @@ export function OrderMoreDrawer({
         onClose={onClose}
         position="right"
         size="lg"
+        zIndex={1500}
         title={
           <Group justify="space-between" style={{ width: "100%" }} pr="xs">
             <div>
@@ -404,6 +406,20 @@ export function OrderMoreDrawer({
                           </Badge>
                         )}
                       </Group>
+
+                      {item.ratingAvg && item.ratingAvg > 0 ? (
+                        <Group gap={4} align="center" mb={4}>
+                          <Badge
+                            size="xs"
+                            color="yellow"
+                            variant="light"
+                            leftSection={<IconStar size={10} fill="currentColor" />}
+                            styles={{ root: { paddingLeft: 4, paddingRight: 6, height: 18, fontSize: "10px" } }}
+                          >
+                            {item.ratingAvg.toFixed(1)} {item.ratingCount ? `(${item.ratingCount})` : ""}
+                          </Badge>
+                        </Group>
+                      ) : null}
 
                       {item.description && (
                         <Text size="xs" c="dimmed" lineClamp={2} mb="xs">

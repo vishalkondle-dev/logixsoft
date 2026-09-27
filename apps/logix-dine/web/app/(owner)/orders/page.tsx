@@ -831,10 +831,10 @@ export default function OrdersPage() {
                   <Text size="sm" fw={700}>Financial Summary</Text>
                   <Badge
                     size="md"
-                    color={duePaise === 0 ? "teal" : order.status === "PARTIAL" ? "orange" : "red"}
+                    color={(duePaise === 0 || order.status === "PAID") ? "teal" : order.status === "PARTIAL" ? "orange" : "red"}
                     variant="filled"
                   >
-                    {duePaise === 0 ? "PAID IN FULL" : `DUE BALANCE: ₹${(duePaise / 100).toFixed(0)}`}
+                    {(duePaise === 0 || order.status === "PAID") ? "PAID IN FULL" : `DUE BALANCE: ₹${(duePaise / 100).toFixed(0)}`}
                   </Badge>
                 </Group>
 
@@ -955,7 +955,7 @@ export default function OrdersPage() {
 
                 <Group gap="xs">
                   {/* Settle Balance Button */}
-                  {duePaise > 0 && order.status !== "VOID" && (
+                  {duePaise > 0 && order.status !== "VOID" && order.status !== "PAID" && (
                     <Button
                       size="xs"
                       color="teal"

@@ -187,7 +187,7 @@ export function useOutletSync(
               color: "yellow",
               autoClose: 12000,
             });
-          } else if (msg.type === "WAITER_REQUEST_UPDATED") {
+          } else if (msg.type === "WAITER_REQUEST_UPDATED" || msg.type === "WAITER_CALL_STATUS_CHANGED") {
             const d = (msg.data || {}) as any;
             if (d.status === "COMPLETED") {
               notifications.show({

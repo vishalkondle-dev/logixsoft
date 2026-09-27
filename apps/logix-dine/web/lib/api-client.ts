@@ -710,6 +710,7 @@ export interface CustomerPortalOrder {
     qrMenuSettings?: any;
     diningSettings?: any;
   } | null;
+  feedback?: OrderFeedbackData | null;
 }
 
 export interface CustomerMenuItem {
@@ -722,6 +723,8 @@ export interface CustomerMenuItem {
   isNonVeg: boolean;
   variants: Array<{ id: string; name: string; pricePaise: number }>;
   addons: Array<{ id: string; name: string; pricePaise: number }>;
+  ratingAvg?: number | null;
+  ratingCount?: number | null;
 }
 
 export interface CustomerMenuCategory {
@@ -1354,6 +1357,127 @@ export const updateInventorySettings = (restaurantId: string, outletId: string, 
     { method: "PATCH", body: JSON.stringify(data) },
     outletId
   );
+
+// ─── Feedback & Reviews ────────────────────────────────────────────────────────
+
+export interface OrderItemFeedbackItem {
+  id?: string;
+  menuItemId: string;
+  itemName?: string;
+  rating: number;
+  comment?: string | null;
+}
+
+export interface OrderFeedbackData {
+  id: string;
+  orderId: string;
+  orderNo?: number;
+  tableNo?: string;
+  orderType?: string;
+  customerName?: string;
+  customerPhone?: string;
+  isAnonymous: boolean;
+  rating: number;
+  foodRating?: number | null;
+  serviceRating?: number | null;
+  deliveryRating?: number | null;
+  tags?: string[];
+  comment?: string | null;
+  ownerReply?: string | null;
+  ownerRepliedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items?: OrderItemFeedbackItem[];
+  itemRatings?: OrderItemFeedbackItem[];
+}
+
+export interface FeedbackSummaryResponse {
+  summary: {
+    totalReviews: number;
+    averageRating: number;
+    distribution: Record<number, number>;
+    categoryAverages: {
+      food: number | null;
+      service: number | null;
+      delivery: number | null;
+    };
+    topTags: Array<{ tag: string; count: number }>;
+    topItems: Array<{ id: string; name: string; ratingAvg: number; ratingCount: number }>;
+    needsAttentionItems: Array<{ id: string; name: string; ratingAvg: number; ratingCount: number }>;
+  };
+  reviews: OrderFeedbackData[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export const getOwnerFeedback = (
+  restaurantId: string,
+  params?: {
+    outletId?: string | null;
+    rating?: number | null;
+    orderType?: string | null;
+    search?: string | null;
+    page?: number;
+    limit?: number;
+  }
+) => {
+  const query = new URLSearchParams();
+  if (params?.outletId) query.set("outletId", params.outletId);
+  if (params?.rating) query.set("rating", String(params.rating));
+  if (params?.orderType) query.set("orderType", params.orderType);
+  if (params?.search) query.set("search", params.search);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const qs = query.toString();
+  return apiFetch<FeedbackSummaryResponse>(
+    `/feedback${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    params?.outletId
+  );
+};
+
+export const replyToFeedback = (
+  restaurantId: string,
+  reviewId: string,
+  reply: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; message: string; ownerReply: string; ownerRepliedAt: string }>(
+    `/feedback/${reviewId}/reply`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ reply }) },
+    outletId
+  );
+
+export const submitOrderFeedback = (data: {
+  orderId: string;
+  rating: number;
+  foodRating?: number;
+  serviceRating?: number;
+  deliveryRating?: number;
+  tags?: string[];
+  comment?: string;
+  isAnonymous?: boolean;
+  itemRatings?: Array<{ itemId: string; rating: number; comment?: string }>;
+}) =>
+  apiFetch<{ success: boolean; message: string; reviewId: string; isUpdate: boolean }>(
+    `/feedback/submit`,
+    "", // Uses session cookie
+    { method: "POST", body: JSON.stringify(data) }
+  );
+
+export const getOrderFeedback = (orderId: string) =>
+  apiFetch<{ feedback: OrderFeedbackData | null }>(
+    `/feedback/order/${orderId}`,
+    ""
+  );
+
 
 
 

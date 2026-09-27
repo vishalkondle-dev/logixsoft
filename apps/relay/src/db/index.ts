@@ -110,6 +110,130 @@ export class MemoryRelayStore implements RelayStore {
     for (const ch of defaultChannels) {
       this.channels.set(ch.code, ch);
     }
+
+    const defaultOutletId = 'outlet_default';
+    const defaultIntegrations = [
+      {
+        outletId: defaultOutletId,
+        channelCode: 'SWIGGY',
+        merchantStoreId: 'swiggy_rest_94821',
+        credentials: {
+          isLive: false,
+          apiKey: 'swiggy_pos_key_test_7788',
+          apiSecret: 'swiggy_webhook_secret_xyz123',
+          webhookSecret: 'swiggy_webhook_secret_xyz123',
+          baseUrl: 'https://api.swiggy.com',
+        },
+        isOnline: true,
+        autoAcceptOrders: false,
+        defaultPrepMinutes: 20,
+        channelPriceMarkupPercent: 15.0,
+      },
+      {
+        outletId: defaultOutletId,
+        channelCode: 'ZOMATO',
+        merchantStoreId: 'zomato_res_55123',
+        credentials: {
+          isLive: false,
+          apiKey: 'zomato_partner_v2_key_8899',
+          apiSecret: 'zomato_webhook_secret_abc456',
+          webhookSecret: 'zomato_webhook_secret_abc456',
+          baseUrl: 'https://api.zomato.com',
+        },
+        isOnline: true,
+        autoAcceptOrders: false,
+        defaultPrepMinutes: 25,
+        channelPriceMarkupPercent: 20.0,
+      },
+      {
+        outletId: defaultOutletId,
+        channelCode: 'MAGICPIN',
+        merchantStoreId: 'magicpin_store_3321',
+        credentials: {
+          isLive: false,
+          apiKey: 'magicpin_api_key_5544',
+          apiSecret: 'magicpin_secret_7711',
+          webhookSecret: 'magicpin_secret_7711',
+          baseUrl: 'https://api.magicpin.in',
+        },
+        isOnline: true,
+        autoAcceptOrders: false,
+        defaultPrepMinutes: 20,
+        channelPriceMarkupPercent: 10.0,
+      },
+      {
+        outletId: defaultOutletId,
+        channelCode: 'ONDC',
+        merchantStoreId: 'ondc_bpp_seller_001',
+        credentials: {
+          subscriberId: 'bpp.logixsoft.in',
+          uniqueKeyId: 'key-1',
+          bppUri: 'https://relay.logixsoft.in/onboard/beckn/bpp',
+        },
+        isOnline: true,
+        autoAcceptOrders: true,
+        defaultPrepMinutes: 15,
+        channelPriceMarkupPercent: 0.0,
+      },
+      {
+        outletId: defaultOutletId,
+        channelCode: 'OWNLY',
+        merchantStoreId: 'ownly_store_101',
+        credentials: {
+          apiKey: 'ownly_api_key_direct_991',
+          webhookSecret: 'ownly_secret_991',
+        },
+        isOnline: true,
+        autoAcceptOrders: true,
+        defaultPrepMinutes: 15,
+        channelPriceMarkupPercent: 0.0,
+      },
+      {
+        outletId: defaultOutletId,
+        channelCode: 'TOING',
+        merchantStoreId: 'toing_agent_202',
+        credentials: {
+          apiKey: 'toing_voice_api_key_882',
+          webhookSecret: 'toing_secret_882',
+        },
+        isOnline: true,
+        autoAcceptOrders: true,
+        defaultPrepMinutes: 15,
+        channelPriceMarkupPercent: 0.0,
+      },
+    ];
+
+    for (const intg of defaultIntegrations) {
+      this.outletIntegrations.set(`${intg.outletId}:${intg.channelCode}`, {
+        id: `intg_${intg.channelCode.toLowerCase()}`,
+        ...intg,
+        credentials: intg.credentials,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    const defaultCatalog = {
+      outletId: defaultOutletId,
+      name: 'Logix Dine Kitchen',
+      operatingHours: [],
+      categories: [
+        {
+          id: 'cat_mains',
+          name: 'Main Courses',
+          items: [
+            {
+              id: 'dish_biryani_01',
+              name: 'Hyderabadi Dum Biryani',
+              price: 320,
+              isVeg: false,
+              inStock: true,
+            },
+          ],
+        },
+      ],
+    };
+    this.menus.set(defaultOutletId, defaultCatalog);
   }
 
   async getChannel(code: ChannelCode) {
@@ -130,7 +254,7 @@ export class MemoryRelayStore implements RelayStore {
     if (!row) return null;
     return {
       ...row,
-      credentials: decryptJson(row.credentialsEncrypted),
+      credentials: row.credentials || (row.credentialsEncrypted ? decryptJson(row.credentialsEncrypted) : {}),
     };
   }
 
@@ -140,7 +264,7 @@ export class MemoryRelayStore implements RelayStore {
       if (key.startsWith(`${outletId}:`)) {
         result.push({
           ...val,
-          credentials: decryptJson(val.credentialsEncrypted),
+          credentials: val.credentials || (val.credentialsEncrypted ? decryptJson(val.credentialsEncrypted) : {}),
         });
       }
     }
@@ -160,23 +284,23 @@ export class MemoryRelayStore implements RelayStore {
   }) {
     const id = data.id || generateId('intg');
     const key = `${data.outletId}:${data.channelCode}`;
-    const encrypted = encryptJson(data.credentials);
+    const existing = this.outletIntegrations.get(key);
 
     const record = {
       id,
       outletId: data.outletId,
       channelCode: data.channelCode,
-      merchantStoreId: data.merchantStoreId,
-      credentialsEncrypted: encrypted,
-      isOnline: data.isOnline ?? true,
-      autoAcceptOrders: data.autoAcceptOrders ?? false,
-      defaultPrepMinutes: data.defaultPrepMinutes ?? 20,
-      channelPriceMarkupPercent: data.channelPriceMarkupPercent ?? 0.0,
+      merchantStoreId: data.merchantStoreId || existing?.merchantStoreId || `store_${data.channelCode.toLowerCase()}`,
+      credentials: data.credentials,
+      isOnline: data.isOnline ?? existing?.isOnline ?? true,
+      autoAcceptOrders: data.autoAcceptOrders ?? existing?.autoAcceptOrders ?? false,
+      defaultPrepMinutes: data.defaultPrepMinutes ?? existing?.defaultPrepMinutes ?? 20,
+      channelPriceMarkupPercent: data.channelPriceMarkupPercent ?? existing?.channelPriceMarkupPercent ?? 0.0,
       updatedAt: new Date(),
     };
 
     this.outletIntegrations.set(key, record);
-    return { ...record, credentials: data.credentials };
+    return { ...record };
   }
 
   async updateOutletStoreStatus(outletId: string, channelCode: ChannelCode, isOnline: boolean) {

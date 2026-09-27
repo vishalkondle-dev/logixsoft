@@ -13,9 +13,15 @@ catalogRouter.post('/:id/menu/publish', async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const targetChannels: ChannelCode[] = body.channels || ['SWIGGY', 'ZOMATO', 'MAGICPIN', 'ONDC', 'OWNLY', 'TOING'];
 
-  const menu = await relayStore.getOutletMenu(outletId);
+  let menu = await relayStore.getOutletMenu(outletId);
   if (!menu) {
-    return c.json({ error: 'Not Found', message: `No catalog found for outlet ${outletId}` }, 404);
+    if (body.catalog || body.menu || body.categories) {
+      const rawCatalog = body.catalog || body.menu || { outletId, name: 'Main Menu', categories: body.categories || [] };
+      await relayStore.saveOutletMenu(outletId, 'Main Menu', rawCatalog);
+      menu = rawCatalog;
+    } else {
+      return c.json({ error: 'Not Found', message: `No catalog found for outlet ${outletId}` }, 404);
+    }
   }
 
   const results: SyncResult[] = [];

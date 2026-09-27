@@ -15,11 +15,6 @@ import { desktopPosBridge } from './bridge/desktop-bridge';
 import { relayOpenApiSpec } from './docs/openapi';
 import './normalizer/worker';
 
-// Seed default integrations and catalog on bootstrap
-seedRelayDatabase().catch((err) => {
-  console.error('[Relay] Seed error:', err);
-});
-
 export const app = new Hono();
 
 // CORS Middleware

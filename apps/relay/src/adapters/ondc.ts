@@ -153,23 +153,23 @@ export class OndcBecknAdapter implements ChannelAdapter {
     catalog: OutletCatalog,
     bppCredentials: any
   ) {
-    const items = catalog.categories.flatMap((cat) =>
-      cat.items.map((item) => ({
+    const items = (catalog?.categories || []).flatMap((cat) =>
+      (cat?.items || []).map((item: any) => ({
         id: item.id,
         descriptor: {
-          name: item.title,
-          short_desc: item.description,
-          images: item.imageUrls,
+          name: item.title || item.name || 'Dish',
+          short_desc: item.description || '',
+          images: item.imageUrls || [],
         },
         price: {
           currency: 'INR',
-          value: item.basePrice.toFixed(2),
+          value: Number(item.basePrice ?? item.price ?? 0).toFixed(2),
         },
         category_id: cat.id,
         tags: [
           {
             code: 'veg_nonveg',
-            list: [{ code: 'type', value: item.foodType.toLowerCase() }],
+            list: [{ code: 'type', value: String(item.foodType || (item.isVeg ? 'VEG' : 'NON_VEG')).toLowerCase() }],
           },
         ],
       }))
@@ -240,13 +240,13 @@ export class OndcBecknAdapter implements ChannelAdapter {
         }
       }
 
-      const unitPrice = foundItem ? foundItem.basePrice : 200;
-      const count = sel.quantity?.count || 1;
+      const unitPrice = Number(foundItem?.basePrice ?? foundItem?.price ?? 200);
+      const count = Number(sel.quantity?.count || 1);
       const itemTotal = unitPrice * count;
       subtotal += itemTotal;
 
       breakup.push({
-        title: foundItem?.title || 'Selected Item',
+        title: foundItem?.title || foundItem?.name || 'Selected Item',
         price: { currency: 'INR', value: itemTotal.toFixed(2) },
         item: {
           id: sel.id,

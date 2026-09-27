@@ -212,6 +212,16 @@ async function runAllTests() {
     { 'x-swiggy-signature': swiggySignature }
   );
 
+  // OpenAPI Spec Exact Path: POST /webhooks/swiggy
+  await request(
+    'Webhooks (OpenAPI)',
+    'Swiggy Base Webhook (OpenAPI Path)',
+    '/webhooks/swiggy',
+    'POST',
+    swiggyOrderPayload,
+    { 'x-swiggy-signature': swiggySignature }
+  );
+
   // Swiggy Rider Status webhook
   const swiggyStatusPayload = JSON.stringify({
     order_id: `sw_${Date.now()}`,
@@ -247,6 +257,16 @@ async function runAllTests() {
     { 'x-zomato-signature': hmacSha256(zomatoOrderPayload, zomatoSecret) }
   );
 
+  // OpenAPI Spec Exact Path: POST /webhooks/zomato
+  await request(
+    'Webhooks (OpenAPI)',
+    'Zomato Base Webhook (OpenAPI Path)',
+    '/webhooks/zomato',
+    'POST',
+    zomatoOrderPayload,
+    { 'x-zomato-signature': hmacSha256(zomatoOrderPayload, zomatoSecret) }
+  );
+
   // Zomato Status Webhook
   const zomatoStatusPayload = JSON.stringify({
     order_id: `zom_${Date.now()}`,
@@ -273,6 +293,16 @@ async function runAllTests() {
     'Webhooks',
     'Magicpin Order - Valid HMAC FastAck',
     '/webhooks/magicpin/order',
+    'POST',
+    magicpinPayload,
+    { 'x-signature': hmacSha256(magicpinPayload, magicpinSecret) }
+  );
+
+  // OpenAPI Spec Exact Path: POST /webhooks/magicpin
+  await request(
+    'Webhooks (OpenAPI)',
+    'Magicpin Base Webhook (OpenAPI Path)',
+    '/webhooks/magicpin',
     'POST',
     magicpinPayload,
     { 'x-signature': hmacSha256(magicpinPayload, magicpinSecret) }
@@ -448,6 +478,28 @@ async function runAllTests() {
     }
   );
 
+  // OpenAPI Spec Exact Path: POST /outlets/{outletId}/items/{itemId}/status
+  await request(
+    'Outlets & Config (OpenAPI)',
+    'Real-time 86ing Item Status (OpenAPI Path)',
+    `/outlets/${OUTLET_ID}/items/dish_biryani_01/status`,
+    'POST',
+    {
+      inStock: false,
+      reason: 'Sold out for the day',
+    }
+  );
+
+  await request(
+    'Outlets & Config (OpenAPI)',
+    'Real-time 86ing Item Back in Stock (OpenAPI Path)',
+    `/outlets/${OUTLET_ID}/items/dish_biryani_01/status`,
+    'POST',
+    {
+      inStock: true,
+    }
+  );
+
   await request(
     'Relay Operations',
     "Real-time 86'ing (Item Back in Stock fanout)",
@@ -480,6 +532,28 @@ async function runAllTests() {
     'POST',
     {
       outletId: OUTLET_ID,
+      isOnline: true,
+    }
+  );
+
+  // OpenAPI Spec Exact Path: POST /outlets/{outletId}/status
+  await request(
+    'Outlets & Config (OpenAPI)',
+    'Store Status Pause (OpenAPI Path)',
+    `/outlets/${OUTLET_ID}/status`,
+    'POST',
+    {
+      isOnline: false,
+      reason: 'Rush hour capacity limit',
+    }
+  );
+
+  await request(
+    'Outlets & Config (OpenAPI)',
+    'Store Status Resume (OpenAPI Path)',
+    `/outlets/${OUTLET_ID}/status`,
+    'POST',
+    {
       isOnline: true,
     }
   );
@@ -552,6 +626,18 @@ MAGICPIN,mp_11200,500.00,50.00,10.00,9.00,431.00,2026-09-25`;
     'Reconciliation',
     'Upload Weekly Aggregator Settlement CSV',
     '/reconciliation/upload-settlement',
+    'POST',
+    {
+      channelCode: 'SWIGGY',
+      csvContent: sampleSettlementCsv,
+    }
+  );
+
+  // OpenAPI Spec Exact Path: POST /reconciliation/upload
+  await request(
+    'Reconciliation (OpenAPI)',
+    'Upload Weekly Settlement (OpenAPI Path)',
+    '/reconciliation/upload',
     'POST',
     {
       channelCode: 'SWIGGY',

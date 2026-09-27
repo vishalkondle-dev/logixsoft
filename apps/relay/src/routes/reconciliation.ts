@@ -5,8 +5,7 @@ import type { ChannelCode } from '@logixsoft/relay-schema';
 
 export const reconciliationRouter = new Hono();
 
-// ─── POST /reconciliation/upload-settlement ───────────────────────────────────
-reconciliationRouter.post('/upload-settlement', async (c) => {
+async function handleUploadSettlement(c: any) {
   const contentType = c.req.header('content-type') || '';
   let csvContent = '';
   let outletId = 'outlet_default';
@@ -47,7 +46,13 @@ reconciliationRouter.post('/upload-settlement', async (c) => {
     success: true,
     summary: auditResult,
   });
-});
+}
+
+// ─── POST /reconciliation/upload-settlement ───────────────────────────────────
+reconciliationRouter.post('/upload-settlement', (c) => handleUploadSettlement(c));
+
+// OpenAPI Spec Alias: POST /reconciliation/upload
+reconciliationRouter.post('/upload', (c) => handleUploadSettlement(c));
 
 // ─── GET /reconciliation/discrepancies ────────────────────────────────────────
 reconciliationRouter.get('/discrepancies', async (c) => {

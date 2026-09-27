@@ -82,6 +82,12 @@ async function handleWebhookIngest(
 }
 
 // ─── Swiggy Webhooks ──────────────────────────────────────────────────────────
+webhooksRouter.post('/swiggy', (c) =>
+  handleWebhookIngest(c, 'SWIGGY', 'ORDER_PLACED', (body) => {
+    return String(body.order_id || body.order?.order_id || body.id || `sw_${Date.now()}`);
+  })
+);
+
 webhooksRouter.post('/swiggy/order', (c) =>
   handleWebhookIngest(c, 'SWIGGY', 'ORDER_PLACED', (body) => {
     return String(body.order_id || body.order?.order_id || body.id || `sw_${Date.now()}`);
@@ -95,6 +101,12 @@ webhooksRouter.post('/swiggy/status', (c) =>
 );
 
 // ─── Zomato Webhooks ──────────────────────────────────────────────────────────
+webhooksRouter.post('/zomato', (c) =>
+  handleWebhookIngest(c, 'ZOMATO', 'ORDER_PLACED', (body) => {
+    return String(body.order_id || body.order_data?.order_id || body.id || `zom_${Date.now()}`);
+  })
+);
+
 webhooksRouter.post('/zomato/order', (c) =>
   handleWebhookIngest(c, 'ZOMATO', 'ORDER_PLACED', (body) => {
     return String(body.order_id || body.order_data?.order_id || body.id || `zom_${Date.now()}`);
@@ -108,6 +120,12 @@ webhooksRouter.post('/zomato/status', (c) =>
 );
 
 // ─── Magicpin Webhooks ────────────────────────────────────────────────────────
+webhooksRouter.post('/magicpin', (c) =>
+  handleWebhookIngest(c, 'MAGICPIN', 'ORDER_PLACED', (body) => {
+    return String(body.order_id || body.data?.order_id || body.id || `mp_${Date.now()}`);
+  })
+);
+
 webhooksRouter.post('/magicpin/order', (c) =>
   handleWebhookIngest(c, 'MAGICPIN', 'ORDER_PLACED', (body) => {
     return String(body.order_id || body.data?.order_id || body.id || `mp_${Date.now()}`);

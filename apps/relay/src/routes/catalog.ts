@@ -71,11 +71,41 @@ catalogRouter.post('/:id/item-stock', async (c) => {
   return c.json(result);
 });
 
+// OpenAPI Spec Alias: POST /outlets/{outletId}/items/{itemId}/status
+catalogRouter.post('/:id/items/:itemId/status', async (c) => {
+  const outletId = c.req.param('id');
+  const itemId = c.req.param('itemId');
+  const body = await c.req.json().catch(() => ({}));
+  const inStock = body.inStock !== undefined ? Boolean(body.inStock) : body.status !== 'OUT_OF_STOCK';
+  const reason = body.reason;
+
+  const result = await updateItemStockFanOut({ outletId, itemId, inStock, reason });
+  return c.json(result);
+});
+
 // ─── POST /outlets/:id/store-status ───────────────────────────────────────────
 catalogRouter.post('/:id/store-status', async (c) => {
   const outletId = c.req.param('id');
   const body = await c.req.json();
   const isOnline = Boolean(body.isOnline);
+  const reason = body.reason;
+  const durationMinutes = body.durationMinutes;
+
+  const result = await updateStoreStatusFanOut({
+    outletId,
+    isOnline,
+    reason,
+    durationMinutes,
+  });
+
+  return c.json(result);
+});
+
+// OpenAPI Spec Alias: POST /outlets/{outletId}/status
+catalogRouter.post('/:id/status', async (c) => {
+  const outletId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const isOnline = body.isOnline !== undefined ? Boolean(body.isOnline) : (body.status === 'ONLINE' || body.status === 'OPEN');
   const reason = body.reason;
   const durationMinutes = body.durationMinutes;
 

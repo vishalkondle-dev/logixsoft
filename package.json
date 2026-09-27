@@ -3,6 +3,7 @@
   "scripts": {
     "deploy:dine-api": "pnpm --filter logix-dine-api run deploy",
     "deploy:dine-web": "pnpm --filter logix-dine-web run deploy",
+    "deploy:relay": "pnpm --filter @logixsoft/relay run deploy",
     "native:build": "pnpm --filter logix-dine-native run build",
     "native:sync": "pnpm --filter logix-dine-native run cap:sync",
     "native:open:android": "pnpm --filter logix-dine-native run cap:open:android",

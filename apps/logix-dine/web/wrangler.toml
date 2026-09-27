@@ -13,3 +13,4 @@ binding = "ASSETS"
 
 [vars]
 NEXT_PUBLIC_API_URL = "https://dine-api.logixsoft.in"
+NEXT_PUBLIC_RELAY_URL = "https://relay.logixsoft.in"

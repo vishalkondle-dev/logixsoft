@@ -1358,6 +1358,112 @@ export const updateInventorySettings = (restaurantId: string, outletId: string, 
     outletId
   );
 
+// ─── Relay Gateway Integrations (Swiggy, Zomato, ONDC, Magicpin) ──────────────
+
+const RELAY_BASE = process.env.NEXT_PUBLIC_RELAY_URL || "https://relay.logixsoft.in";
+
+export interface ChannelIntegration {
+  channelCode: "SWIGGY" | "ZOMATO" | "MAGICPIN" | "ONDC" | string;
+  channelName: string;
+  isActiveChannel: boolean;
+  isConfigured: boolean;
+  merchantStoreId: string | null;
+  isOnline: boolean;
+  autoAcceptOrders: boolean;
+  defaultPrepMinutes: number;
+  channelPriceMarkupPercent: number;
+  credentials?: {
+    apiKey?: string;
+    apiSecret?: string;
+    webhookSecret?: string;
+    bppId?: string;
+    bppUri?: string;
+    [key: string]: any;
+  } | null;
+  updatedAt?: string | null;
+}
+
+export interface WebhookUrlsResponse {
+  instructions: string;
+  webhooks: {
+    SWIGGY?: {
+      partnerPortal: string;
+      orderWebhookUrl: string;
+      riderStatusWebhookUrl: string;
+      requiredHeaders?: string;
+    };
+    ZOMATO?: {
+      partnerPortal: string;
+      orderWebhookUrl: string;
+      riderStatusWebhookUrl: string;
+      requiredHeaders?: string;
+    };
+    MAGICPIN?: {
+      partnerPortal: string;
+      orderWebhookUrl: string;
+    };
+    ONDC?: {
+      protocol: string;
+      bppUri: string;
+      supportedActions: string[];
+    };
+    DIRECT_D2C?: {
+      ownlyWebhookUrl: string;
+      toingWebhookUrl: string;
+    };
+  };
+}
+
+export async function fetchOutletIntegrations(
+  outletId: string
+): Promise<{ outletId: string; integrations: ChannelIntegration[] }> {
+  const res = await fetch(`${RELAY_BASE}/outlets/${encodeURIComponent(outletId)}/integrations`, {
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function saveOutletIntegration(
+  outletId: string,
+  data: {
+    channelCode: string;
+    merchantStoreId?: string;
+    credentials?: Record<string, string>;
+    isOnline?: boolean;
+    autoAcceptOrders?: boolean;
+    defaultPrepMinutes?: number;
+    channelPriceMarkupPercent?: number;
+  }
+): Promise<{ success: boolean; message: string; integration: ChannelIntegration }> {
+  const res = await fetch(`${RELAY_BASE}/outlets/${encodeURIComponent(outletId)}/integrations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function fetchOutletWebhookUrls(
+  outletId: string
+): Promise<WebhookUrlsResponse> {
+  const res = await fetch(`${RELAY_BASE}/outlets/${encodeURIComponent(outletId)}/webhook-urls`, {
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 // ─── Feedback & Reviews ────────────────────────────────────────────────────────
 
 export interface OrderItemFeedbackItem {

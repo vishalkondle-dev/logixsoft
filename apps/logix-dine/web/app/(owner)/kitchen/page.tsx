@@ -23,6 +23,7 @@ import {
   getNextItemStatus,
 } from "@/lib/order-status-ui";
 import { useOutletSync } from "@/lib/use-outlet-sync";
+import { getOrderChannel } from "@/lib/channel-helpers";
 
 function playChime() {
   try {
@@ -447,7 +448,8 @@ export default function KitchenPage() {
                 activeItems.length > 0 &&
                 activeItems.every((i: any) => i.status === "PREPARED" || i.status === "SERVED");
 
-              const isDelivery = order.orderType === "DELIVERY" || order.tableNo === "Delivery" || Boolean(entry.delivery);
+              const channel = getOrderChannel(order, entry.delivery);
+              const isDelivery = order.orderType === "DELIVERY" || order.tableNo === "Delivery" || Boolean(entry.delivery) || Boolean(channel);
               const isTakeaway = !isDelivery && (order.orderType === "TAKEAWAY" || order.tableNo === "Takeaway");
 
               return (
@@ -497,7 +499,18 @@ export default function KitchenPage() {
 
                     {/* Order Type & Status Badges */}
                     <Group gap={6} mb="sm" wrap="wrap">
-                      {isDelivery ? (
+                      {channel ? (
+                        <>
+                          <Badge size="sm" variant="filled" color={channel.color} leftSection={<IconMotorbike size={12} />}>
+                            {channel.name.toUpperCase()} DELIVERY
+                          </Badge>
+                          {channel.tag && (
+                            <Badge size="xs" variant="light" color={channel.color}>
+                              {channel.tag}
+                            </Badge>
+                          )}
+                        </>
+                      ) : isDelivery ? (
                         <Badge size="sm" variant="filled" color="teal" leftSection={<IconMotorbike size={12} />}>
                           DELIVERY
                         </Badge>

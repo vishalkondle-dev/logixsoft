@@ -32,6 +32,7 @@ import {
   getNextItemStatus,
   type OrderItemStatus,
 } from "@/lib/order-status-ui";
+import { getOrderChannel } from "@/lib/channel-helpers";
 
 export default function OrdersPage() {
   const { restaurant, activeOutlet, allOutlets, outlets } = useRestaurant();
@@ -315,7 +316,8 @@ export default function OrdersPage() {
             const duePaise = Math.max(0, (order.subtotalPaise || 0) - paidPaise);
             const maxRound = (items || []).reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
             const isDelivery = order.orderType === "DELIVERY" || Boolean(entry.delivery) || order.tableNo === "Delivery";
-            const isTable = Boolean(!isDelivery && order.tableNo && order.tableNo !== "Takeaway");
+            const channel = getOrderChannel(order, entry.delivery);
+            const isTable = Boolean(!isDelivery && !channel && order.tableNo && order.tableNo !== "Takeaway");
             const isTableFreed = Boolean(order.tableFreedAt);
 
             return (
@@ -334,7 +336,23 @@ export default function OrdersPage() {
                         {order.id}
                       </Badge>
                     )}
-                    {isDelivery ? (
+                    {channel ? (
+                      <Group gap={4} align="center">
+                        <Badge
+                          size="xs"
+                          color={channel.color}
+                          variant="filled"
+                          leftSection={<IconMotorbike size={11} />}
+                        >
+                          {channel.name}
+                        </Badge>
+                        {channel.tag && (
+                          <Badge size="xs" color={channel.color} variant="light">
+                            {channel.tag}
+                          </Badge>
+                        )}
+                      </Group>
+                    ) : isDelivery ? (
                       <Badge size="xs" color="teal" variant="filled" leftSection={<IconMotorbike size={11} />}>
                         Delivery
                       </Badge>
@@ -480,9 +498,10 @@ export default function OrdersPage() {
           const paidPaise = order.paidPaise ?? (order.status === "PAID" ? order.subtotalPaise : 0);
           const duePaise = Math.max(0, (order.subtotalPaise || 0) - paidPaise);
           const maxRound = (items || []).reduce((max: number, it: any) => Math.max(max, it.round || 1), 1);
-          const isDelivery = order.orderType === "DELIVERY" || order.tableNo === "Delivery";
-          const isTakeaway = order.orderType === "TAKEAWAY" || order.tableNo === "Takeaway";
-          const isTable = Boolean(!isDelivery && !isTakeaway && order.tableNo);
+          const isDelivery = order.orderType === "DELIVERY" || order.tableNo === "Delivery" || Boolean(selected.delivery);
+          const channel = getOrderChannel(order, selected.delivery);
+          const isTakeaway = !isDelivery && !channel && (order.orderType === "TAKEAWAY" || order.tableNo === "Takeaway");
+          const isTable = Boolean(!isDelivery && !isTakeaway && !channel && order.tableNo);
           const isTableFreed = Boolean(order.tableFreedAt);
 
           return (
@@ -490,11 +509,22 @@ export default function OrdersPage() {
               {/* Header Badges & Table Occupancy */}
               <Group justify="space-between" align="center" wrap="wrap">
                 <Group gap="xs" align="center">
-                  {order.tableNo && (
+                  {channel ? (
+                    <Group gap={4} align="center">
+                      <Badge size="sm" color={channel.color} variant="filled" leftSection={<IconMotorbike size={12} />}>
+                        {channel.name} Delivery
+                      </Badge>
+                      {channel.tag && (
+                        <Badge size="sm" color={channel.color} variant="light">
+                          {channel.tag}
+                        </Badge>
+                      )}
+                    </Group>
+                  ) : order.tableNo ? (
                     <Badge size="sm" variant="outline">
                       {isDelivery ? "Delivery" : isTakeaway ? "Takeaway" : `Table: ${order.tableNo}`}
                     </Badge>
-                  )}
+                  ) : null}
                   {isTable && (
                     <Badge
                       size="sm"
@@ -539,20 +569,24 @@ export default function OrdersPage() {
               )}
 
               {/* Delivery Details Card if delivery order */}
-              {(Boolean(selected.delivery) || selected.order?.orderType === "DELIVERY" || selected.order?.tableNo === "Delivery") && (
+              {(Boolean(selected.delivery) || isDelivery || channel) && (
                 <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }}>
                   <Group justify="space-between" align="center" mb={6}>
                     <Group gap={6} align="center">
                       <IconMotorbike size={14} color="var(--mantine-color-teal-9)" />
                       <Text size="xs" fw={700} c="teal.9">
-                        DELIVERY DETAILS
+                        DELIVERY DETAILS {channel ? `(${channel.name.toUpperCase()})` : ""}
                       </Text>
                     </Group>
-                    {selected.delivery?.status && (
+                    {channel ? (
+                      <Badge size="xs" color={channel.color} variant="filled">
+                        via {channel.name}
+                      </Badge>
+                    ) : selected.delivery?.status ? (
                       <Badge size="xs" color="teal" variant="filled">
                         {selected.delivery.status}
                       </Badge>
-                    )}
+                    ) : null}
                   </Group>
 
                   <Stack gap={4}>
@@ -580,7 +614,7 @@ export default function OrdersPage() {
                         <Text size="xs" c="blue.8">Rider: <b>{selected.delivery.riderName}</b> {selected.delivery.riderPhone ? `(${selected.delivery.riderPhone})` : ""}</Text>
                       </Group>
                     )}
-                    {selected.delivery?.deliveryOtp && (
+                    {!channel && selected.delivery?.deliveryOtp && (
                       <Group gap={6} mt={2}>
                         <Text size="xs" fw={600}>Delivery PIN:</Text>
                         <Badge size="xs" color="teal" variant="outline">{selected.delivery.deliveryOtp}</Badge>

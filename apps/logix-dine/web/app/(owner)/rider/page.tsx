@@ -22,6 +22,7 @@ import {
 } from "@/lib/queries";
 import { useOutletSync } from "@/lib/use-outlet-sync";
 import { useQueryClient } from "@tanstack/react-query";
+import { getOrderChannel } from "@/lib/channel-helpers";
 
 function playChime() {
   try {
@@ -145,11 +146,16 @@ export default function RiderPage() {
     });
   }, [deliveryOrders, activeRider]);
 
-  // Outlet Unassigned Delivery Pool
+  // Outlet Unassigned Delivery Pool (excludes aggregator-managed deliveries)
   const unassignedDeliveries = useMemo(() => {
     return deliveryOrders.filter((entry) => {
       const status = entry.delivery?.status;
-      return (status === "PENDING_ASSIGNMENT" || !entry.delivery?.riderId) && status !== "CANCELLED" && entry.order?.status !== "VOID";
+      if (status === "CANCELLED" || entry.order?.status === "VOID") return false;
+      if (status !== "PENDING_ASSIGNMENT" && entry.delivery?.riderId) return false;
+      // Skip aggregator-managed deliveries — their riders are assigned by the platform
+      const channel = getOrderChannel(entry.order, entry.delivery);
+      if (channel?.isAggregator) return false;
+      return true;
     });
   }, [deliveryOrders]);
 

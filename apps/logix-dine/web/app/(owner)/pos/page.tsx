@@ -31,6 +31,7 @@ import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
 import { useOutletSync } from "@/lib/use-outlet-sync";
+import { getOrderChannel } from "@/lib/channel-helpers";
 
 interface LocalCartItem {
   cartKey: string;
@@ -3178,6 +3179,11 @@ export default function POSPage() {
                     const customerName = delivery?.customerName || "Customer";
                     const customerPhone = delivery?.customerPhone || order.customerPhone || "";
                     const fullAddr = [delivery?.addressLine1, delivery?.landmark, delivery?.pincode].filter(Boolean).join(", ");
+                    // Detect aggregator channel (Swiggy, Zomato, ONDC, Magicpin)
+                    const channel = getOrderChannel(order, delivery);
+                    const isThirdPartyManaged = Boolean(channel?.isAggregator) || delivery?.deliveryMode === "THIRD_PARTY";
+                    const providerLabel = channel?.name || delivery?.deliveryProvider || "Platform";
+                    const brandColor = channel?.color || "grape";
 
                     return (
                       <Paper key={order.id} p="sm" radius="md" withBorder style={{ backgroundColor: "#ffffff" }}>
@@ -3189,14 +3195,30 @@ export default function POSPage() {
                                 #{order.orderNo}
                               </Badge>
                               <Text fw={700} size="sm">{customerName}</Text>
+                              {channel ? (
+                                <>
+                                  <Badge color={channel.color} variant="filled" size="xs">
+                                    {channel.name}
+                                  </Badge>
+                                  {channel.tag && (
+                                    <Badge color={channel.color} variant="light" size="xs">
+                                      {channel.tag}
+                                    </Badge>
+                                  )}
+                                </>
+                              ) : isThirdPartyManaged ? (
+                                <Badge color="grape" variant="light" size="xs">
+                                  via {providerLabel}
+                                </Badge>
+                              ) : null}
                             </Group>
                             <Badge
-                              color={isOut ? "orange" : isAssigned ? "blue" : "yellow"}
+                              color={channel ? channel.color : isOut ? "orange" : isAssigned ? "blue" : "yellow"}
                               variant="light"
                               size="sm"
-                              leftSection={isOut ? <IconMotorbike size={12} /> : isAssigned ? <IconUser size={12} /> : <IconClock size={12} />}
+                              leftSection={channel ? <IconMotorbike size={12} /> : isOut ? <IconMotorbike size={12} /> : isAssigned ? <IconUser size={12} /> : <IconClock size={12} />}
                             >
-                              {isOut ? "Out for Delivery" : isAssigned ? "Rider Assigned" : "Unassigned"}
+                              {channel ? `Delivery by ${channel.name}` : isOut ? "Out for Delivery" : isAssigned ? "Rider Assigned" : "Unassigned"}
                             </Badge>
                           </Group>
 
@@ -3261,7 +3283,11 @@ export default function POSPage() {
                           {/* Rider Info & OTP */}
                           <Group justify="space-between" align="center">
                             <div>
-                              {delivery?.riderName ? (
+                              {isThirdPartyManaged ? (
+                                <Text size="xs" fw={600} c={`${brandColor}.8`}>
+                                  {providerLabel} Rider{delivery?.riderName ? `: ${delivery.riderName}` : ""} {delivery?.riderPhone ? `(${delivery.riderPhone})` : "— will be assigned by platform"}
+                                </Text>
+                              ) : delivery?.riderName ? (
                                 <Text size="xs" fw={600} c="blue.8">
                                   Rider: {delivery.riderName} {delivery.riderPhone ? `(${delivery.riderPhone})` : ""}
                                 </Text>
@@ -3269,7 +3295,7 @@ export default function POSPage() {
                                 <Text size="xs" c="dimmed">No rider assigned yet</Text>
                               )}
                             </div>
-                            {delivery?.deliveryOtp && (
+                            {!isThirdPartyManaged && !channel && delivery?.deliveryOtp && (
                               <Badge color="teal" variant="outline" size="sm">
                                 PIN: {delivery.deliveryOtp}
                               </Badge>
@@ -3301,58 +3327,64 @@ export default function POSPage() {
                               Reprint Bill
                             </Button>
 
-                            <Group gap={6}>
-                              {isPending && (
-                                <Button
-                                  size="xs"
-                                  color="blue"
-                                  onClick={() => {
-                                    setAssigningOrder(entry);
-                                    setAssignRiderId(null);
-                                  }}
-                                >
-                                  Assign Rider
-                                </Button>
-                              )}
-
-                              {isAssigned && (
-                                <>
+                            {isThirdPartyManaged ? (
+                              <Text size="xs" c="dimmed" fs="italic">
+                                Delivery managed by {providerLabel}
+                              </Text>
+                            ) : (
+                              <Group gap={6}>
+                                {isPending && (
                                   <Button
                                     size="xs"
-                                    variant="light"
                                     color="blue"
                                     onClick={() => {
                                       setAssigningOrder(entry);
-                                      setAssignRiderId(delivery?.riderId || null);
+                                      setAssignRiderId(null);
                                     }}
                                   >
-                                    Change Rider
+                                    Assign Rider
                                   </Button>
+                                )}
+
+                                {isAssigned && (
+                                  <>
+                                    <Button
+                                      size="xs"
+                                      variant="light"
+                                      color="blue"
+                                      onClick={() => {
+                                        setAssigningOrder(entry);
+                                        setAssignRiderId(delivery?.riderId || null);
+                                      }}
+                                    >
+                                      Change Rider
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      color="orange"
+                                      leftSection={<IconMotorbike size={14} />}
+                                      onClick={() => handleMarkOutForDelivery(order.id, delivery?.riderId)}
+                                    >
+                                      Out for Delivery
+                                    </Button>
+                                  </>
+                                )}
+
+                                {isOut && (
                                   <Button
                                     size="xs"
-                                    color="orange"
-                                    leftSection={<IconMotorbike size={14} />}
-                                    onClick={() => handleMarkOutForDelivery(order.id, delivery?.riderId)}
+                                    color="green"
+                                    leftSection={<IconCheck size={14} />}
+                                    onClick={() => {
+                                      setOtpModalOrder(entry);
+                                      setOtpInput("");
+                                    }}
                                   >
-                                    Out for Delivery
+                                    Mark Delivered
                                   </Button>
-                                </>
-                              )}
-
-                              {isOut && (
-                                <Button
-                                  size="xs"
-                                  color="green"
-                                  leftSection={<IconCheck size={14} />}
-                                  onClick={() => {
-                                    setOtpModalOrder(entry);
-                                    setOtpInput("");
-                                  }}
-                                >
-                                  Mark Delivered
-                                </Button>
-                              )}
-                            </Group>
+                                )}
+                              </Group>
+                            )}
                           </Group>
                         </Stack>
                       </Paper>

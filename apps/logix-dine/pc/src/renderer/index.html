@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logix Dine Desktop</title>
+    <style>
+      :root {
+        --bg-main: #121316;
+        --card-bg: #1a1b1e;
+        --card-border: #2c2e33;
+        --primary: #845ec2;
+        --primary-hover: #704db3;
+        --text: #f8f9fa;
+        --text-dim: #909296;
+        --success: #20c997;
+        --warning: #fcc419;
+        --danger: #ff6b6b;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-main);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        user-select: none;
+      }
+
+      .app-container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 24px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--card-border);
+      }
+
+      .logo-area {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .logo-badge {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #845ec2 0%, #d65db1 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(132, 94, 194, 0.4);
+      }
+
+      .logo-badge svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+      }
+
+      .brand-title {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+
+      .brand-subtitle {
+        font-size: 13px;
+        color: var(--text-dim);
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        background: rgba(32, 201, 151, 0.15);
+        color: var(--success);
+      }
+
+      .status-pill.offline {
+        background: rgba(255, 107, 107, 0.15);
+        color: var(--danger);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: currentColor;
+      }
+
+      .grid-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 768px) {
+        .grid-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+      }
+
+      .card-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .input, .select {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: var(--text);
+        font-size: 13px;
+        outline: none;
+      }
+
+      .input:focus, .select:focus {
+        border-color: var(--primary);
+      }
+
+      .btn {
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: transform 0.1s ease, background 0.2s ease;
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #845ec2 0%, #704db3 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(132, 94, 194, 0.35);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        border: 1px solid var(--card-border);
+      }
+
+      .btn-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .shortcut-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 13px;
+      }
+
+      .shortcut-row:last-child {
+        border-bottom: none;
+      }
+
+      .kbd {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--card-border);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        font-size: 12px;
+      }
+
+      .info-box {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 10px;
+        border-radius: 8px;
+      }
+
+      .info-label {
+        color: var(--text-dim);
+        font-size: 11px;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+
+      .info-value {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <div class="header">
+        <div class="logo-area">
+          <div class="logo-badge">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-title">Logix Dine POS Desktop</div>
+            <div class="brand-subtitle">Cross-Platform Restaurant Management Shell</div>
+          </div>
+        </div>
+        <div id="status-badge" class="status-pill">
+          <span class="status-dot"></span>
+          <span id="status-text">Connected</span>
+        </div>
+      </div>
+
+      <div class="grid-layout">
+        <!-- Cloud Connect Card -->
+        <div class="card">
+          <div class="card-title">Cloud POS Server</div>
+          <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">
+            Connect this terminal to the live cloud or a local network POS server.
+          </p>
+          <div class="input-group">
+            <input id="server-url-input" class="input" type="url" placeholder="https://dine.logixsoft.in" value="https://dine.logixsoft.in" />
+            <button id="btn-connect" class="btn btn-primary">Connect</button>
+          </div>
+          <div class="btn-group">
+            <button id="preset-cloud" class="btn btn-secondary" style="font-size: 12px; padding: 6px 10px;">Cloud Production</button>
+            <button id="preset-local" class="btn btn-secondary" style="font-size: 12px; padding: 6px 10px;">Local Dev (:3000)</button>
+          </div>
+        </div>
+
+        <!-- Thermal Printer Station -->
+        <div class="card">
+          <div class="card-title">POS Thermal Printer Station</div>
+          <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 12px;">
+            Hardware receipt printing with silent print support.
+          </p>
+          <div class="input-group">
+            <select id="printer-select" class="select">
+              <option value="">Default System Printer</option>
+            </select>
+            <button id="btn-test-print" class="btn btn-primary">Test Print</button>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="silent-print-checkbox" />
+            <span>Enable Silent Printing (No print dialog for faster checkout)</span>
+          </label>
+        </div>
+
+        <!-- POS Shortcuts Cheatsheet -->
+        <div class="card">
+          <div class="card-title">POS Keyboard Accelerators</div>
+          <div class="shortcut-row">
+            <span>Orders & Table Management</span>
+            <span class="kbd">F2</span>
+          </div>
+          <div class="shortcut-row">
+            <span>POS Cashier Register</span>
+            <span class="kbd">F3</span>
+          </div>
+          <div class="shortcut-row">
+            <span>Instant Bill Print</span>
+            <span class="kbd">Ctrl+P / Cmd+P</span>
+          </div>
+          <div class="shortcut-row">
+            <span>Counter Fullscreen / Kiosk Mode</span>
+            <span class="kbd">F11</span>
+          </div>
+          <div class="shortcut-row">
+            <span>Refresh Application</span>
+            <span class="kbd">Ctrl+R / Cmd+R</span>
+          </div>
+        </div>
+
+        <!-- System & Hardware Info -->
+        <div class="card">
+          <div class="card-title">Desktop Environment</div>
+          <div class="info-grid">
+            <div class="info-box">
+              <div class="info-label">Operating System</div>
+              <div id="info-platform" class="info-value">Loading...</div>
+            </div>
+            <div class="info-box">
+              <div class="info-label">Architecture</div>
+              <div id="info-arch" class="info-value">--</div>
+            </div>
+            <div class="info-box">
+              <div class="info-label">Electron</div>
+              <div id="info-electron" class="info-value">--</div>
+            </div>
+            <div class="info-box">
+              <div class="info-label">Chrome / Node</div>
+              <div id="info-engine" class="info-value">--</div>
+            </div>
+          </div>
+          <div style="margin-top: 14px;">
+            <button id="btn-toggle-kiosk" class="btn btn-secondary" style="width: 100%;">
+              Toggle Kiosk Mode (F11)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

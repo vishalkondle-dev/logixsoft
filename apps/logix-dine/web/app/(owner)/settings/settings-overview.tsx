@@ -37,6 +37,7 @@ import {
   IconBook,
   IconChartBar,
   IconPackages,
+  IconStar,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 
@@ -140,6 +141,15 @@ export function SettingsOverview() {
           icon: IconChartBar,
           color: "grape",
           href: "/settings/reports",
+          isAvailable: true,
+        },
+        {
+          id: "feedback",
+          title: "Customer Reviews & Ratings",
+          description: "Real-time guest ratings, dish feedback, praise tags & official responses",
+          icon: IconStar,
+          color: "yellow",
+          href: "/settings/feedback",
           isAvailable: true,
         },
       ],

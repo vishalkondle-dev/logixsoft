@@ -58,6 +58,7 @@ import { QrMenuManagement } from "./qr-menu-management";
 import { WhatsappManagement } from "./whatsapp-management";
 import { ReservationsManagement } from "./reservations-management";
 import { RidersManagement } from "./riders-management";
+import { FeedbackManagement } from "./feedback-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -80,6 +81,7 @@ export const VALID_SETTINGS_TABS = [
   "whatsapp",
   "reservations",
   "riders",
+  "feedback",
 ] as const;
 
 export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
@@ -441,6 +443,10 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       title: "Delivery & Riders",
       subtitle: "Manage delivery riders, external couriers, and dispatch",
     },
+    feedback: {
+      title: "Customer Reviews & Ratings",
+      subtitle: "Authentic customer feedback, rating metrics, dish ratings & official responses",
+    },
   };
 
   const currentTabMeta = TAB_TITLES[activeTab] || TAB_TITLES.restaurant;
@@ -688,6 +694,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Riders tab */}
         <Tabs.Panel value="riders">
           <RidersManagement />
+        </Tabs.Panel>
+
+        {/* Feedback tab */}
+        <Tabs.Panel value="feedback">
+          <FeedbackManagement />
         </Tabs.Panel>
       </Tabs>
 

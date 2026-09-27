@@ -146,6 +146,8 @@ export const MenuItemSchema = z.object({
   sortOrder: z.number().int(),
   variants: z.array(MenuItemVariantSchema),
   addons: z.array(MenuItemAddonSchema),
+  ratingAvg: z.number().nullable(),
+  ratingCount: z.number().int().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),

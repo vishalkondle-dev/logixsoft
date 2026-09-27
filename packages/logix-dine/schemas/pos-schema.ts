@@ -207,6 +207,8 @@ export const menuItem = pgTable(
     sortOrder: integer('sortOrder').notNull().default(0),
     variants: jsonb('variants').$type<MenuItemVariant[]>().notNull().default([]),
     addons: jsonb('addons').$type<MenuItemAddon[]>().notNull().default([]),
+    ratingAvg: doublePrecision('ratingAvg').default(0),
+    ratingCount: integer('ratingCount').default(0),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
@@ -667,6 +669,69 @@ export const purchaseOrderItem = pgTable(
   (t) => [index('purchaseOrderItem_purchaseOrderId_idx').on(t.purchaseOrderId)],
 );
 
+// ─── Order & Item Feedback ───────────────────────────────────────────────────
+
+export const orderFeedback = pgTable(
+  'orderFeedback',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    orderId: text('orderId')
+      .notNull()
+      .references(() => saleOrder.id, { onDelete: 'cascade' }),
+    customerPhone: text('customerPhone').notNull(),
+    customerName: text('customerName'),
+    isAnonymous: boolean('isAnonymous').notNull().default(false),
+    rating: integer('rating').notNull(), // 1 to 5
+    foodRating: integer('foodRating'), // 1 to 5
+    serviceRating: integer('serviceRating'), // 1 to 5
+    deliveryRating: integer('deliveryRating'), // 1 to 5
+    tags: jsonb('tags').$type<string[]>().default([]),
+    comment: text('comment'),
+    ownerReply: text('ownerReply'),
+    ownerRepliedAt: timestamp('ownerRepliedAt'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('orderFeedback_orderId_unique').on(t.orderId),
+    index('orderFeedback_restaurantId_idx').on(t.restaurantId),
+    index('orderFeedback_outletId_idx').on(t.outletId),
+    index('orderFeedback_customerPhone_idx').on(t.customerPhone),
+    index('orderFeedback_rating_idx').on(t.rating),
+    index('orderFeedback_createdAt_idx').on(t.createdAt),
+  ],
+);
+
+export const orderItemFeedback = pgTable(
+  'orderItemFeedback',
+  {
+    id: text('id').primaryKey(),
+    reviewId: text('reviewId')
+      .notNull()
+      .references(() => orderFeedback.id, { onDelete: 'cascade' }),
+    orderId: text('orderId')
+      .notNull(),
+    menuItemId: text('menuItemId')
+      .notNull()
+      .references(() => menuItem.id, { onDelete: 'cascade' }),
+    rating: integer('rating').notNull(), // 1 to 5
+    comment: text('comment'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('orderItemFeedback_reviewId_idx').on(t.reviewId),
+    index('orderItemFeedback_orderId_idx').on(t.orderId),
+    index('orderItemFeedback_menuItemId_idx').on(t.menuItemId),
+  ],
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
@@ -691,6 +756,8 @@ export const posSchema = {
   inventoryTransaction,
   purchaseOrder,
   purchaseOrderItem,
+  orderFeedback,
+  orderItemFeedback,
 };
 
 

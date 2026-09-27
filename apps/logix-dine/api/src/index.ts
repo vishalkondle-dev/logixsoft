@@ -44,6 +44,7 @@ import { waiterRoutes } from './routes/waiter';
 import { deliveryRoutes } from './routes/delivery';
 import { reservationRoutes } from './routes/reservations';
 import { inventoryRoutes } from './routes/inventory';
+import feedbackRoutes from './routes/feedback';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -590,6 +591,9 @@ app.route('/api/reservations', reservationRoutes);
 
 app.route('/inventory', inventoryRoutes);
 app.route('/api/inventory', inventoryRoutes);
+
+app.route('/feedback', feedbackRoutes);
+app.route('/api/feedback', feedbackRoutes);
 
 
 

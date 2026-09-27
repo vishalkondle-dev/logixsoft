@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Group,
@@ -72,6 +72,13 @@ export function ActiveOrderCard({ order, onRefresh }: ActiveOrderCardProps) {
 
   // Merge server activeWaiterRequest with local optimistic lastWaiterCall
   const serverReq = order.activeWaiterRequest;
+
+  useEffect(() => {
+    if (serverReq) {
+      setLastWaiterCall(null);
+    }
+  }, [serverReq]);
+
   const activeWaiterCall = React.useMemo(() => {
     if (serverReq && serverReq.status !== "CANCELLED") {
       const time = serverReq.createdAt
@@ -805,7 +812,7 @@ Enjoying dining with Logix Dine!`;
         opened={isBillModalOpen}
         onClose={() => setIsBillModalOpen(false)}
         order={order}
-        onRequestBill={() => setIsWaiterModalOpen(true)}
+        onRequestBill={() => handleWaiterCallSuccess("Request Bill")}
       />
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
@@ -870,17 +870,28 @@ export default function POSPage() {
   const [deliveryCharge, setDeliveryCharge] = useState(40);
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
 
+  // Track whether we've applied the initial default from settings
+  const defaultAppliedRef = useRef(false);
+
   // Synchronize orderType with available modes & default preferences
   useEffect(() => {
-    if (availableOrderModes.length > 0 && !availableOrderModes.some((m) => m.value === orderType)) {
+    if (availableOrderModes.length === 0) return;
+
+    // If current orderType is not in available modes, force switch
+    const currentValid = availableOrderModes.some((m) => m.value === orderType);
+    // Apply default preference on first load OR when current mode is invalid
+    if (!currentValid || !defaultAppliedRef.current) {
       const defaultPref = diningSettings?.defaultOrderType;
-      const targetMode = availableOrderModes.some((m) => m.value === defaultPref)
+      const targetMode = (defaultPref && availableOrderModes.some((m) => m.value === defaultPref))
         ? defaultPref
         : availableOrderModes[0].value;
-      setOrderType(targetMode);
-      if (targetMode === "TAKEAWAY") setTableNo("Takeaway");
-      else if (targetMode === "DELIVERY") setTableNo("Delivery");
-      else if (targetMode === "DINE_IN" && tables.length > 0) setTableNo(tables[0].name);
+      defaultAppliedRef.current = true;
+      if (targetMode !== orderType) {
+        setOrderType(targetMode);
+        if (targetMode === "TAKEAWAY") setTableNo("Takeaway");
+        else if (targetMode === "DELIVERY") setTableNo("Delivery");
+        else if (targetMode === "DINE_IN" && tables.length > 0) setTableNo(tables[0].name);
+      }
     }
   }, [availableOrderModes, orderType, diningSettings?.defaultOrderType, tables]);
 

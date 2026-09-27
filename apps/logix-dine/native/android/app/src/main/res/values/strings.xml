@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Logix Dine</string>
+    <string name="title_activity_main">Logix Dine</string>
+    <string name="package_name">in.logixsoft.dine</string>
+    <string name="custom_url_scheme">in.logixsoft.dine</string>
+</resources>

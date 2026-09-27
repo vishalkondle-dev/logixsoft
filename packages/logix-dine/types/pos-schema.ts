@@ -21,6 +21,8 @@ import {
   inventoryTransaction,
   purchaseOrder,
   purchaseOrderItem,
+  orderFeedback,
+  orderItemFeedback,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -246,5 +248,20 @@ export type PurchaseOrderItemRow = InferSelectModel<typeof purchaseOrderItem>;
 export type NewPurchaseOrderItemRow = InferInsertModel<typeof purchaseOrderItem>;
 export type JsonPurchaseOrderItemRow = Omit<PurchaseOrderItemRow, 'createdAt'> & {
   createdAt: string;
+};
+
+export type OrderFeedbackRow = InferSelectModel<typeof orderFeedback>;
+export type NewOrderFeedbackRow = InferInsertModel<typeof orderFeedback>;
+export type JsonOrderFeedbackRow = Omit<OrderFeedbackRow, 'createdAt' | 'updatedAt' | 'ownerRepliedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  ownerRepliedAt: string | null;
+};
+
+export type OrderItemFeedbackRow = InferSelectModel<typeof orderItemFeedback>;
+export type NewOrderItemFeedbackRow = InferInsertModel<typeof orderItemFeedback>;
+export type JsonOrderItemFeedbackRow = Omit<OrderItemFeedbackRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
 };
 

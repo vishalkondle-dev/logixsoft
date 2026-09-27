@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <title>Logix Dine</title>
+    <meta name="color-scheme" content="dark" />
+    <style>
+      :root {
+        --bg-dark: #121316;
+        --card-bg: #1a1b1e;
+        --card-border: #2c2e33;
+        --primary: #845ec2;
+        --primary-hover: #704db3;
+        --text: #f8f9fa;
+        --text-dim: #909296;
+        --success: #20c997;
+        --warning: #fcc419;
+        --danger: #ff6b6b;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-dark);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        overflow-x: hidden;
+      }
+
+      .container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 24px 20px;
+        max-width: 480px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .header {
+        text-align: center;
+        margin-top: 20px;
+        margin-bottom: 28px;
+      }
+
+      .logo-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #845ec2 0%, #d65db1 100%);
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 25px rgba(132, 94, 194, 0.4);
+        margin-bottom: 14px;
+      }
+
+      .logo-icon svg {
+        width: 36px;
+        height: 36px;
+        fill: white;
+      }
+
+      h1 {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+      }
+
+      .tagline {
+        color: var(--text-dim);
+        font-size: 14px;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      .card-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        background: rgba(32, 201, 151, 0.15);
+        color: var(--success);
+      }
+
+      .status-pill.offline {
+        background: rgba(255, 107, 107, 0.15);
+        color: var(--danger);
+      }
+
+      .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: currentColor;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        font-size: 13px;
+      }
+
+      .info-item {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 10px 12px;
+        border-radius: 10px;
+      }
+
+      .info-label {
+        color: var(--text-dim);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+      }
+
+      .info-val {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: transform 0.1s ease, background-color 0.2s ease;
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #845ec2 0%, #704db3 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(132, 94, 194, 0.35);
+        margin-bottom: 12px;
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        border: 1px solid var(--card-border);
+      }
+
+      .btn-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .btn-sm {
+        padding: 8px 10px;
+        font-size: 12px;
+        border-radius: 8px;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .input {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: var(--text);
+        font-size: 13px;
+        outline: none;
+      }
+
+      .input:focus {
+        border-color: var(--primary);
+      }
+
+      .footer {
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-dim);
+        margin-top: auto;
+        padding-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+          </svg>
+        </div>
+        <h1>Logix Dine</h1>
+        <p class="tagline">Next-Gen Restaurant OS & Guest Portal</p>
+      </div>
+
+      <!-- Action Card -->
+      <div class="card">
+        <button id="btn-launch" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Open Logix Dine Web
+        </button>
+
+        <div class="input-group">
+          <input id="server-url-input" class="input" type="url" value="https://dine.logixsoft.in" placeholder="https://dine.logixsoft.in" />
+          <button id="btn-save-url" class="btn btn-secondary" style="width: auto; padding: 10px 16px;">Go</button>
+        </div>
+      </div>
+
+      <!-- Device Diagnostics -->
+      <div class="card">
+        <div class="card-title">
+          <span>Native Environment</span>
+          <span id="connection-status" class="status-pill">
+            <span class="status-indicator"></span>
+            Checking...
+          </span>
+        </div>
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Platform</div>
+            <div id="device-platform" class="info-val">Web</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Network</div>
+            <div id="network-type" class="info-val">Unknown</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Device Model</div>
+            <div id="device-model" class="info-val">Browser</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">OS Version</div>
+            <div id="device-os" class="info-val">--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Native Haptics & Feedback -->
+      <div class="card">
+        <div class="card-title">Native Haptics & Vibrations</div>
+        <div class="btn-group">
+          <button id="haptic-light" class="btn btn-secondary btn-sm">Light</button>
+          <button id="haptic-medium" class="btn btn-secondary btn-sm">Medium</button>
+          <button id="haptic-heavy" class="btn btn-secondary btn-sm">Heavy</button>
+        </div>
+        <div class="btn-group">
+          <button id="haptic-success" class="btn btn-secondary btn-sm" style="color: var(--success)">Success</button>
+          <button id="haptic-warning" class="btn btn-secondary btn-sm" style="color: var(--warning)">Warning</button>
+          <button id="haptic-error" class="btn btn-secondary btn-sm" style="color: var(--danger)">Error</button>
+        </div>
+      </div>
+
+      <div class="footer">
+        Logix Dine Native v0.1.0 • Capacitor 8.5
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

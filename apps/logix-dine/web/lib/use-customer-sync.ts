@@ -34,11 +34,14 @@ async function fetchWsTicket(): Promise<string | null> {
 
 /**
  * Real-time Customer WebSocket hook connecting to Cloudflare Durable Objects.
- * Subscribes to customer-specific and outlet-specific rooms for 0ms push updates
- * when orders are created, items progress in the kitchen, bills are settled, or profile is updated.
+ * Subscribes to customer-specific DO rooms for 0ms push updates when orders are created,
+ * waiter calls change status, items progress in the kitchen, bills are settled, or profile is updated.
  *
- * Replaces polling entirely with native Cloudflare WebSocket Hibernation.
- * Uses ticket-based auth via ?token= to prevent browser cross-origin cookie omission.
+ * Implements:
+ * 1. Single authoritative customer room connection when phone number is available.
+ * 2. Fallback outlet room connection only for anonymous table guests without phone login.
+ * 3. Message deduplication (2.5s window) to eliminate duplicate toasts.
+ * 4. Debounced query invalidation (150ms) to ensure exactly 1 /portal/session network request.
  */
 export function useCustomerSync(
   phone: string | undefined | null,
@@ -52,13 +55,119 @@ export function useCustomerSync(
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const retryCountRef = useRef(0);
 
+  // Debounce timer for query invalidations to prevent burst requests
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cache to deduplicate events received in rapid succession or across sockets
+  const recentEventsRef = useRef<Map<string, number>>(new Map());
+
   const rawPhone = useMemo(() => {
     if (!phone) return "";
     const digits = phone.replace(/\D/g, "");
     return digits.slice(-10);
   }, [phone]);
 
-  const activeOutletIds = options.activeOutletIds || [];
+  /**
+   * Debounced invalidation of customer portal query.
+   * Only calls queryClient.invalidateQueries once per 150ms window.
+   * Does NOT call refetchQueries concurrently, letting React Query manage the active fetch cleanly.
+   */
+  const triggerCustomerPortalRefresh = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
+      debounceTimerRef.current = null;
+    }, 150);
+  }, [queryClient]);
+
+  /**
+   * Checks whether an incoming message is a duplicate within a 2.5s window.
+   */
+  const shouldProcessEvent = useCallback((msg: any): boolean => {
+    if (!msg || typeof msg !== "object") return false;
+    const now = Date.now();
+    const d = msg.data || {};
+    const key = `${msg.type}_${d.id || d.orderId || ""}_${d.status || d.targetStatus || ""}_${d.round || ""}`;
+
+    const lastSeen = recentEventsRef.current.get(key);
+    if (lastSeen && now - lastSeen < 2500) {
+      return false; // Duplicate event
+    }
+
+    recentEventsRef.current.set(key, now);
+
+    // Prune stale cache entries
+    if (recentEventsRef.current.size > 100) {
+      for (const [k, t] of recentEventsRef.current.entries()) {
+        if (now - t > 10000) recentEventsRef.current.delete(k);
+      }
+    }
+
+    return true;
+  }, []);
+
+  /**
+   * Centralized message handler for both customer DO socket and fallback outlet DO socket.
+   */
+  const handleEventMessage = useCallback(
+    (msg: any) => {
+      try {
+        if (!msg || msg.type === "pong") return;
+        if (!shouldProcessEvent(msg)) return;
+
+        // Invalidate customer portal query (debounced to avoid multiple /portal/session requests)
+        triggerCustomerPortalRefresh();
+
+        if (msg.type === "WAITER_REQUEST_UPDATED" || msg.type === "WAITER_CALL_STATUS_CHANGED") {
+          const d = (msg.data || {}) as any;
+          if (d.status === "IN_PROGRESS") {
+            notifications.show({
+              title: "Staff Attending",
+              message: `Staff is attending to your request for "${d.serviceLabel || "Staff Assistance"}"`,
+              color: "blue",
+              autoClose: 6000,
+            });
+          } else if (d.status === "COMPLETED") {
+            notifications.show({
+              title: "Request Resolved",
+              message: `Your request for "${d.serviceLabel || "Staff Assistance"}" has been completed`,
+              color: "green",
+              autoClose: 5000,
+            });
+          }
+        } else if (msg.type === "ITEM_STATUS_CHANGED") {
+          const d = (msg.data || {}) as any;
+          if (d.targetStatus === "PREPARED") {
+            notifications.show({
+              title: "Dish Ready!",
+              message: "Your dish is freshly prepared and will be served shortly",
+              color: "teal",
+              autoClose: 5000,
+            });
+          } else if (d.targetStatus === "SERVED") {
+            notifications.show({
+              title: "Dish Served",
+              message: "Served to your table. Enjoy your meal!",
+              color: "green",
+              autoClose: 4000,
+            });
+          }
+        } else if (msg.type === "ROUND_ADDED" || msg.type === "NEW_ROUND") {
+          notifications.show({
+            title: "New Round Placed",
+            message: "Your new items have been queued in the kitchen",
+            color: "violet",
+            autoClose: 5000,
+          });
+        }
+      } catch (e) {
+        console.warn("[useCustomerSync] Error processing event:", e);
+      }
+    },
+    [shouldProcessEvent, triggerCustomerPortalRefresh]
+  );
 
   // Stable ref holding latest connect function to prevent stale closures in onclose
   const connectRef = useRef<() => void>(() => {});
@@ -69,13 +178,11 @@ export function useCustomerSync(
       return;
     }
 
-    // Cancel any pending reconnect before opening a new socket
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
 
-    // Clean up previous main customer socket cleanly
     if (wsRef.current) {
       wsRef.current.onclose = null;
       wsRef.current.onerror = null;
@@ -89,7 +196,6 @@ export function useCustomerSync(
 
     setStatus("connecting");
 
-    // Fetch a short-lived WS auth ticket
     const ticket = await fetchWsTicket();
     if (!ticket) {
       setStatus("disconnected");
@@ -112,7 +218,6 @@ export function useCustomerSync(
         setStatus("connected");
         retryCountRef.current = 0;
 
-        // Keep-alive heartbeat ping every 25 seconds
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
@@ -124,56 +229,9 @@ export function useCustomerSync(
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === "pong") return;
-
-          // Invalidate and immediately refetch customer portal query upon any event from Durable Object
-          queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
-          queryClient.refetchQueries({ queryKey: qk.customerPortal() });
-
-          if (msg.type === "WAITER_REQUEST_UPDATED") {
-            const d = (msg.data || {}) as any;
-            if (d.status === "IN_PROGRESS") {
-              notifications.show({
-                title: "Staff Attending",
-                message: `Staff is attending to your request for "${d.serviceLabel || "Staff Assistance"}"`,
-                color: "blue",
-                autoClose: 6000,
-              });
-            } else if (d.status === "COMPLETED") {
-              notifications.show({
-                title: "Request Resolved",
-                message: `Your request for "${d.serviceLabel || "Staff Assistance"}" has been completed`,
-                color: "green",
-                autoClose: 5000,
-              });
-            }
-          } else if (msg.type === "ITEM_STATUS_CHANGED") {
-            const d = (msg.data || {}) as any;
-            if (d.targetStatus === "PREPARED") {
-              notifications.show({
-                title: "Dish Ready!",
-                message: "Your dish is freshly prepared and will be served shortly",
-                color: "teal",
-                autoClose: 5000,
-              });
-            } else if (d.targetStatus === "SERVED") {
-              notifications.show({
-                title: "Dish Served",
-                message: "Served to your table. Enjoy your meal!",
-                color: "green",
-                autoClose: 4000,
-              });
-            }
-          } else if (msg.type === "ROUND_ADDED" || msg.type === "NEW_ROUND") {
-            notifications.show({
-              title: "New Round Placed",
-              message: "Your new items have been queued in the kitchen",
-              color: "violet",
-              autoClose: 5000,
-            });
-          }
-        } catch (e) {
-          console.warn("[useCustomerSync] Error processing event:", e);
+          handleEventMessage(msg);
+        } catch {
+          // ignore
         }
       };
 
@@ -184,32 +242,30 @@ export function useCustomerSync(
           pingIntervalRef.current = null;
         }
 
-        // Exponential backoff reconnect: 1s, 2s, 4s, 8s, capped at 10s
         const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 10000);
         retryCountRef.current += 1;
         reconnectTimeoutRef.current = setTimeout(() => connectRef.current(), delay);
       };
 
       ws.onerror = () => {
-        // onclose will trigger reconnect
+        // onclose handles reconnect
       };
     } catch (err) {
       console.warn("[useCustomerSync] Failed to initialize WebSocket:", err);
       setStatus("disconnected");
     }
-  }, [rawPhone, queryClient]);
+  }, [rawPhone, handleEventMessage]);
 
-  // Keep ref up to date
   useEffect(() => {
     connectRef.current = connect;
   }, [connect]);
 
-  // Connect to customer room DO
   useEffect(() => {
     connect();
     return () => {
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (wsRef.current) {
         wsRef.current.onclose = null;
         wsRef.current.onerror = null;
@@ -225,9 +281,10 @@ export function useCustomerSync(
 
   const activeOutletIdsKey = (options.activeOutletIds || []).filter(Boolean).sort().join(",");
 
-  // Also connect to active outlet DOs for redundant real-time kitchen & order events
+  // Fallback: connect to outlet DO room ONLY when customer is NOT signed in with phone (anonymous table guest)
+  // When rawPhone is available, the customer room DO receives all events exclusively and authoritatively
   useEffect(() => {
-    if (typeof window === "undefined" || !activeOutletIdsKey) return;
+    if (typeof window === "undefined" || !activeOutletIdsKey || Boolean(rawPhone)) return;
 
     const outletList = activeOutletIdsKey.split(",").filter(Boolean);
     let isCancelled = false;
@@ -250,29 +307,7 @@ export function useCustomerSync(
           outletWs.onmessage = (event) => {
             try {
               const msg = JSON.parse(event.data);
-              if (msg.type === "pong") return;
-              // Instantly invalidate and refetch customer portal queries
-              queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
-              queryClient.refetchQueries({ queryKey: qk.customerPortal() });
-
-              if (msg.type === "WAITER_REQUEST_UPDATED") {
-                const d = (msg.data || {}) as any;
-                if (d.status === "IN_PROGRESS") {
-                  notifications.show({
-                    title: "Staff Attending",
-                    message: `Staff is attending to your request for "${d.serviceLabel || "Staff Assistance"}"`,
-                    color: "blue",
-                    autoClose: 6000,
-                  });
-                } else if (d.status === "COMPLETED") {
-                  notifications.show({
-                    title: "Request Resolved",
-                    message: `Your request for "${d.serviceLabel || "Staff Assistance"}" has been completed`,
-                    color: "green",
-                    autoClose: 5000,
-                  });
-                }
-              }
+              handleEventMessage(msg);
             } catch {
               // ignore
             }
@@ -300,7 +335,7 @@ export function useCustomerSync(
       });
       outletWsRefs.current.clear();
     };
-  }, [activeOutletIdsKey, queryClient]);
+  }, [activeOutletIdsKey, rawPhone, handleEventMessage]);
 
   return {
     status,

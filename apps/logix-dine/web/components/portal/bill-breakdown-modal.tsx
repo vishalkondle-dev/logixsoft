@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   Text,
@@ -22,7 +22,10 @@ import {
   IconMotorbike,
   IconShoppingBag,
   IconToolsKitchen2,
+  IconCheck,
 } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { useCallWaiter } from "@/lib/queries";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type { CustomerPortalOrder } from "@/lib/api-client";
 
@@ -47,7 +50,47 @@ export function BillBreakdownModal({
   order,
   onRequestBill,
 }: BillBreakdownModalProps) {
+  const [isRequestingBill, setIsRequestingBill] = useState(false);
+  const callWaiterMutation = useCallWaiter();
+
   if (!order) return null;
+
+  const handleDirectRequestBill = async () => {
+    if (!order) return;
+    setIsRequestingBill(true);
+    try {
+      await callWaiterMutation.mutateAsync({
+        orderId: order.id,
+        body: {
+          serviceType: "BILL",
+          note: "Customer requested printed bill and payment device at table",
+          outletId: order.outletId,
+          tableNo: order.tableNo || "Table",
+        },
+      });
+
+      notifications.show({
+        title: "Bill Requested!",
+        message: `Floor staff notified. Someone is bringing your bill to Table ${order.tableNo || ""}.`,
+        color: "grape",
+        icon: <IconCheck size={18} />,
+        autoClose: 6000,
+      });
+
+      if (onRequestBill) {
+        onRequestBill();
+      }
+      onClose();
+    } catch (err: any) {
+      notifications.show({
+        title: "Request Failed",
+        message: err.message || "Failed to notify staff for bill. Please try again.",
+        color: "red",
+      });
+    } finally {
+      setIsRequestingBill(false);
+    }
+  };
 
   const totalItemQty = order.items.reduce((acc, it) => acc + (Number(it.qty) || 1), 0);
   const itemsSubtotalPaise = order.items.reduce(
@@ -132,6 +175,7 @@ Thank you for dining with us!`;
       radius="md"
       padding="md"
       size="lg"
+      zIndex={1500}
     >
       <Stack gap="sm">
         <Paper p="xs" radius="md" withBorder style={{ backgroundColor: "#f8f9fa" }}>
@@ -320,21 +364,19 @@ Thank you for dining with us!`;
           </Button>
 
           <Group gap="xs">
-            {onRequestBill && !isDelivery && !isTakeaway && (
+            {!isDelivery && !isTakeaway && (
               <Button
                 variant="filled"
-                color="orange"
+                color="grape"
                 size="xs"
-                leftSection={<IconBellRinging size={14} />}
-                onClick={() => {
-                  onClose();
-                  onRequestBill();
-                }}
+                leftSection={<IconReceipt size={14} />}
+                loading={isRequestingBill}
+                onClick={handleDirectRequestBill}
               >
                 Request Bill at Table
               </Button>
             )}
-            <Button variant="default" size="xs" onClick={onClose}>
+            <Button variant="default" size="xs" onClick={onClose} disabled={isRequestingBill}>
               Close
             </Button>
           </Group>

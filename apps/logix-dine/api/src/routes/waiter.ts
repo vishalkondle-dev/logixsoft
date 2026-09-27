@@ -395,6 +395,7 @@ async function updateStatusHelper(c: any, requestId: string, nextStatus: any) {
           status: nextStatus,
           tableNo: existing.tableNo,
           customerPhone: existing.customerPhone,
+          serviceLabel: existing.serviceLabel,
           updatedAt: now.getTime(),
         },
       },

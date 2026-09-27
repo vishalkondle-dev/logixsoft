@@ -5,5 +5,7 @@ packages:
 
 allowBuilds:
   aws-sdk: true
+  electron: true
+  electron-winstaller: true
   esbuild: true
   workerd: true

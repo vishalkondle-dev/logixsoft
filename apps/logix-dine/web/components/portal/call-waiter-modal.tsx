@@ -31,6 +31,7 @@ interface CallWaiterModalProps {
   opened: boolean;
   onClose: () => void;
   order: CustomerPortalOrder | null;
+  initialServiceType?: ServiceType;
   onSuccess?: (serviceLabel: string) => void;
 }
 
@@ -80,10 +81,23 @@ const SERVICE_OPTIONS: Array<{
   },
 ];
 
-export function CallWaiterModal({ opened, onClose, order, onSuccess }: CallWaiterModalProps) {
-  const [selectedType, setSelectedType] = useState<ServiceType>("WATER");
+export function CallWaiterModal({
+  opened,
+  onClose,
+  order,
+  initialServiceType = "WATER",
+  onSuccess,
+}: CallWaiterModalProps) {
+  const [selectedType, setSelectedType] = useState<ServiceType>(initialServiceType);
   const [customNote, setCustomNote] = useState("");
   const callWaiterMutation = useCallWaiter();
+
+  React.useEffect(() => {
+    if (opened) {
+      setSelectedType(initialServiceType);
+      setCustomNote("");
+    }
+  }, [opened, initialServiceType]);
 
   if (!order) return null;
 
@@ -94,19 +108,22 @@ export function CallWaiterModal({ opened, onClose, order, onSuccess }: CallWaite
         body: {
           serviceType: selectedType,
           note: customNote.trim() || undefined,
+          outletId: order.outletId,
+          tableNo: order.tableNo || "Table",
         },
       });
 
+      const serviceLabel = res.serviceLabel || selectedType;
       notifications.show({
         title: "Staff Notified!",
-        message: `${res.serviceLabel} requested for Table ${order.tableNo}. Someone is on their way!`,
+        message: `${serviceLabel} requested for Table ${order.tableNo || ""}. Someone is on their way!`,
         color: "teal",
         icon: <IconCheck size={18} />,
         autoClose: 6000,
       });
 
       if (onSuccess) {
-        onSuccess(res.serviceLabel);
+        onSuccess(serviceLabel);
       }
       setCustomNote("");
       onClose();
@@ -142,6 +159,7 @@ export function CallWaiterModal({ opened, onClose, order, onSuccess }: CallWaite
       radius="md"
       padding="md"
       size="md"
+      zIndex={1500}
     >
       <Stack gap="md">
         <Text size="sm" c="dimmed">

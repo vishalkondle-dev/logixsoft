@@ -17,6 +17,7 @@ export const VALID_SETTINGS_TABS = [
   "reservations",
   "riders",
   "aggregators",
+  "feedback",
 ] as const;
 
 export function generateStaticParams() {

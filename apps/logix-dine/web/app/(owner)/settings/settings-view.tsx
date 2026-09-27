@@ -59,6 +59,7 @@ import { WhatsappManagement } from "./whatsapp-management";
 import { ReservationsManagement } from "./reservations-management";
 import { RidersManagement } from "./riders-management";
 import { AggregatorsManagement } from "./aggregators-management";
+import { FeedbackManagement } from "./feedback-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -82,6 +83,7 @@ export const VALID_SETTINGS_TABS = [
   "reservations",
   "riders",
   "aggregators",
+  "feedback",
 ] as const;
 
 export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
@@ -447,6 +449,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       title: "Online Delivery Partners & Aggregators",
       subtitle: "Configure credentials, store IDs, prep time, price markups, and webhooks for Swiggy, Zomato, Magicpin & ONDC",
     },
+    feedback: {
+      title: "Customer Reviews & Ratings",
+      subtitle: "Authentic customer feedback, rating metrics, dish ratings & official responses",
+    },
+    },
   };
 
   const currentTabMeta = TAB_TITLES[activeTab] || TAB_TITLES.restaurant;
@@ -699,6 +706,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Online Delivery Partners / Aggregators tab */}
         <Tabs.Panel value="aggregators">
           <AggregatorsManagement />
+        </Tabs.Panel>
+
+        {/* Feedback tab */}
+        <Tabs.Panel value="feedback">
+          <FeedbackManagement />
         </Tabs.Panel>
       </Tabs>
 

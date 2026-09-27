@@ -3,7 +3,21 @@
   "scripts": {
     "deploy:dine-api": "pnpm --filter logix-dine-api run deploy",
     "deploy:dine-web": "pnpm --filter logix-dine-web run deploy",
-    "deploy:relay": "pnpm --filter @logixsoft/relay run deploy"
+    "deploy:relay": "pnpm --filter @logixsoft/relay run deploy",
+    "native:build": "pnpm --filter logix-dine-native run build",
+    "native:sync": "pnpm --filter logix-dine-native run cap:sync",
+    "native:open:android": "pnpm --filter logix-dine-native run cap:open:android",
+    "native:open:ios": "pnpm --filter logix-dine-native run cap:open:ios",
+    "native:run:android": "pnpm --filter logix-dine-native run cap:run:android",
+    "native:run:ios": "pnpm --filter logix-dine-native run cap:run:ios",
+    "native:assemble:android": "cd apps/logix-dine/native/android && ./gradlew assembleDebug",
+    "pc:dev": "pnpm --filter logix-dine-pc run dev",
+    "pc:build": "pnpm --filter logix-dine-pc run build",
+    "pc:test": "xvfb-run --auto-servernum pnpm --filter logix-dine-pc run test:e2e",
+    "pc:pack": "pnpm --filter logix-dine-pc run pack",
+    "pc:dist:win": "pnpm --filter logix-dine-pc run dist:win",
+    "pc:dist:mac": "pnpm --filter logix-dine-pc run dist:mac",
+    "pc:dist:linux": "pnpm --filter logix-dine-pc run dist:linux"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

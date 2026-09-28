@@ -103,6 +103,26 @@ export const GRANULAR_PERMISSIONS = [
   'staff:invite',
   'staff:manage',
   'roles:manage',
+
+  // 14. Table Reservations & Bookings
+  'reservations:view',
+  'reservations:manage',
+
+  // 15. Customer Directory & CRM
+  'customers:view',
+  'customers:manage',
+
+  // 16. Invoice, Tax & Service Charges
+  'tax:view',
+  'tax:manage',
+
+  // 17. QR Menu Table Ordering
+  'qr_menu:view',
+  'qr_menu:manage',
+
+  // 18. WhatsApp Alerts & Automation
+  'whatsapp:view',
+  'whatsapp:manage',
 ] as const;
 
 /**
@@ -146,16 +166,16 @@ export type Permission = (typeof PERMISSIONS)[number];
  * Mapping between legacy permission keys and their modern granular counterparts.
  */
 export const LEGACY_TO_GRANULAR_MAP: Record<string, readonly Permission[]> = {
-  'restaurant:read': ['settings:view'],
-  'restaurant:write': ['settings:edit_store'],
+  'restaurant:read': ['settings:view', 'tax:view', 'qr_menu:view', 'whatsapp:view'],
+  'restaurant:write': ['settings:edit_store', 'tax:manage', 'qr_menu:manage', 'whatsapp:manage'],
   'outlet:read': ['settings:view'],
   'outlet:write': ['settings:manage_outlets'],
-  'table:read': ['tables:view'],
-  'table:write': ['tables:layout_edit', 'tables:status_change'],
-  'menu:read': ['menu:view'],
-  'menu:write': ['menu:create_edit', 'menu:toggle_stock', 'menu:delete'],
-  'order:create': ['pos:order_create', 'waiter:punch_order'],
-  'order:read': ['pos:view', 'waiter:view', 'kitchen:view', 'delivery:view'],
+  'table:read': ['tables:view', 'reservations:view'],
+  'table:write': ['tables:layout_edit', 'tables:status_change', 'reservations:manage'],
+  'menu:read': ['menu:view', 'qr_menu:view'],
+  'menu:write': ['menu:create_edit', 'menu:toggle_stock', 'menu:delete', 'qr_menu:manage'],
+  'order:create': ['pos:order_create', 'waiter:punch_order', 'customers:manage'],
+  'order:read': ['pos:view', 'waiter:view', 'kitchen:view', 'delivery:view', 'customers:view'],
   'order:settle': ['pos:bill_settle', 'waiter:settle_bill'],
   'order:void': ['pos:bill_void'],
   'kitchen:read': ['kitchen:view', 'kitchen:station_filter'],
@@ -189,12 +209,17 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'menu:view', 'menu:toggle_stock', 'menu:create_edit', 'menu:delete',
     'inventory:view', 'inventory:adjust_stock', 'inventory:manage_recipes',
     'delivery:view', 'delivery:assign_rider', 'delivery:status_update', 'delivery:manage_riders',
-    'aggregators:view', 'aggregators:toggle_store',
+    'aggregators:view', 'aggregators:toggle_store', 'aggregators:manage_config',
     'feedback:view', 'feedback:reply',
     'reports:view_summary', 'reports:view_analytics', 'reports:export',
     'printing:view', 'printing:test', 'printing:manage',
-    'settings:view', 'settings:edit_store',
+    'settings:view', 'settings:edit_store', 'settings:manage_outlets',
     'staff:view', 'staff:invite', 'staff:manage',
+    'reservations:view', 'reservations:manage',
+    'customers:view', 'customers:manage',
+    'tax:view', 'tax:manage',
+    'qr_menu:view', 'qr_menu:manage',
+    'whatsapp:view', 'whatsapp:manage',
   ],
   CASHIER: [
     'pos:view', 'pos:order_create', 'pos:bill_settle', 'pos:table_transfer', 'pos:reprint_bill', 'pos:kiosk_lock',
@@ -202,6 +227,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'reports:view_summary',
     'printing:view', 'printing:test',
     'menu:view',
+    'customers:view', 'customers:manage',
+    'reservations:view',
   ],
   CAPTAIN: [
     'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill', 'waiter:settle_bill',
@@ -209,11 +236,14 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'menu:view', 'menu:toggle_stock',
     'pos:view', 'pos:order_create',
     'printing:view', 'printing:test',
+    'reservations:view', 'reservations:manage',
+    'customers:view',
   ],
   WAITER: [
     'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill',
     'tables:view',
     'menu:view',
+    'customers:view',
   ],
   KITCHEN: [
     'kitchen:view', 'kitchen:item_bump', 'kitchen:recall', 'kitchen:station_filter',
@@ -402,6 +432,56 @@ export const PERMISSION_MODULES: PermissionModule[] = [
       { key: 'staff:invite', label: 'Invite Staff Members', description: 'Send WhatsApp OTP invites to new cashiers, cooks, waiters', badge: 'Operational' },
       { key: 'staff:manage', label: 'Manage Staff Accounts', description: 'Reassign member roles, change outlet scopes, or remove staff', badge: 'High Risk' },
       { key: 'roles:manage', label: 'Manage Roles & Matrix', description: 'Create custom roles, edit permissions matrix (Owner Only)', badge: 'High Risk' },
+    ],
+  },
+  {
+    id: 'reservations',
+    label: 'Table Reservations & Bookings',
+    icon: 'IconCalendarEvent',
+    description: 'Guest table bookings, party sizes, time slots, and guest arrivals',
+    permissions: [
+      { key: 'reservations:view', label: 'View Reservations & Bookings', description: 'Monitor upcoming guest table reservations, party sizes, and notes', badge: 'Read Only' },
+      { key: 'reservations:manage', label: 'Manage & Seat Bookings', description: 'Create, confirm, cancel reservations, and seat arriving parties', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'customers',
+    label: 'Customer Directory & CRM',
+    icon: 'IconUserCheck',
+    description: 'Guest database, visit history, customer profiles, and loyalty metrics',
+    permissions: [
+      { key: 'customers:view', label: 'View Customer Directory', description: 'Browse guest database, dining history, visits, and loyalty stats', badge: 'Read Only' },
+      { key: 'customers:manage', label: 'Manage Customer Profiles', description: 'Edit contact details, guest tags, allergies, and delivery addresses', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'tax',
+    label: 'Invoice, Tax & Service Charges',
+    icon: 'IconReceiptTax',
+    description: 'GST slabs, VAT, invoice numbering, and dine-in/takeaway service charges',
+    permissions: [
+      { key: 'tax:view', label: 'View Tax Rates & Invoices', description: 'Inspect GST slabs, VAT, service charges, and packaging fee rules', badge: 'Read Only' },
+      { key: 'tax:manage', label: 'Configure Taxes & Charges', description: 'Modify GST rates, tax-inclusive pricing, and service charge percentages', badge: 'Financial' },
+    ],
+  },
+  {
+    id: 'qr_menu',
+    label: 'QR Menu Table Ordering',
+    icon: 'IconQrcode',
+    description: 'Table QR code generator, live digital menu, and guest self-ordering',
+    permissions: [
+      { key: 'qr_menu:view', label: 'View QR Menu Settings', description: 'Inspect QR table codes, live digital menu links, and ordering rules', badge: 'Read Only' },
+      { key: 'qr_menu:manage', label: 'Configure QR Ordering', description: 'Enable/disable direct table self-ordering, payment-first, and guest bill requests', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'whatsapp',
+    label: 'WhatsApp Alerts & Automation',
+    icon: 'IconBrandWhatsapp',
+    description: 'Automated digital receipt dispatch, OTP notifications, and order updates',
+    permissions: [
+      { key: 'whatsapp:view', label: 'View WhatsApp Automation', description: 'View WhatsApp bill sharing logs, OTP notifications, and templates', badge: 'Read Only' },
+      { key: 'whatsapp:manage', label: 'Configure WhatsApp Alerts', description: 'Connect WhatsApp Business API, toggle bill dispatch, and order status pings', badge: 'Operational' },
     ],
   },
 ];

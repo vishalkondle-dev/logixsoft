@@ -41,6 +41,21 @@ async function ensureDefaultRoles(db: any, restaurantId: string, actorPhone?: st
         r.permissions = filtered;
       }
     }
+
+    // Ensure existing system roles have the latest default permissions
+    if (r.isSystem && r.name in DEFAULT_ROLE_PERMISSIONS && r.name !== 'OWNER') {
+      const defaultPerms = DEFAULT_ROLE_PERMISSIONS[r.name as SystemRestaurantRole] || [];
+      const currentPerms: string[] = Array.isArray(r.permissions) ? r.permissions : [];
+      const missing = defaultPerms.filter((p) => !currentPerms.includes(p));
+      if (missing.length > 0) {
+        const updated = Array.from(new Set([...currentPerms, ...missing]));
+        await db
+          .update(appSchema.restaurantRole)
+          .set({ permissions: updated, updatedAt: new Date() })
+          .where(eq(appSchema.restaurantRole.id, r.id));
+        r.permissions = updated;
+      }
+    }
   }
 
   const existingNames = new Set(existing.map((r: any) => r.name.toUpperCase()));

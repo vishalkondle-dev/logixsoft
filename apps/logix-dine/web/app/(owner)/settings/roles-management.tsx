@@ -50,6 +50,11 @@ import {
   IconStar,
   IconSettings,
   IconFilter,
+  IconCalendarEvent,
+  IconUserCheck,
+  IconReceiptTax,
+  IconQrcode,
+  IconBrandWhatsapp,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useRestaurant, useRestaurantRole } from "@/lib/restaurant-context";
@@ -69,18 +74,24 @@ import {
 
 const MODULE_ICON_MAP: Record<string, any> = {
   pos: IconShoppingCart,
+  tables: IconTableAlias,
   kitchen: IconToolsKitchen2,
   waiter: IconBellRinging,
-  tables: IconTableAlias,
   menu: IconBook,
   inventory: IconPackages,
   delivery: IconMotorbike,
   aggregators: IconTruckDelivery,
-  printing: IconPrinter,
-  reports: IconChartBar,
   feedback: IconStar,
-  staff: IconUsers,
+  reports: IconChartBar,
+  printing: IconPrinter,
   settings: IconSettings,
+  roles: IconShieldLock,
+  staff: IconUsers,
+  reservations: IconCalendarEvent,
+  customers: IconUserCheck,
+  tax: IconReceiptTax,
+  qr_menu: IconQrcode,
+  whatsapp: IconBrandWhatsapp,
 };
 
 const BADGE_COLOR_MAP: Record<string, string> = {

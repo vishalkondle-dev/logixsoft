@@ -452,8 +452,77 @@ async function run() {
     await page.screenshot({ path: systemScreenshot, fullPage: true });
     console.log('✅ TEST 17 PASSED: System Infrastructure & SQL Runner verified!\n');
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // TEST 18: Separated Dedicated Page Routes & URL Params Filter Syncing
+    // ─────────────────────────────────────────────────────────────────────────────
+    console.log('--- TEST 18: Dedicated Route URLs & URL Filter Params Syncing ---');
+    
+    // 1. Direct navigation with URL query params
+    console.log('[Router] Navigating directly to /admin/restaurants?search=Spice...');
+    await page.goto(`${WEB_BASE}/admin/restaurants?search=Spice`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('table tr:has-text("Spice Symphony Gourmet")', { timeout: 15000 });
+
+    const currentUrl = page.url();
+    console.log(`[Router] Verified URL contains params: ${currentUrl}`);
+    if (!currentUrl.includes('/admin/restaurants') || !currentUrl.includes('search=Spice')) {
+      throw new Error(`Expected URL to include /admin/restaurants?search=Spice, got: ${currentUrl}`);
+    }
+
+    const searchInput = page.locator('input[placeholder*="Search by store name"]').first();
+    const inputValue = await searchInput.inputValue();
+    console.log(`[Router] Search input initialized from URL param: "${inputValue}"`);
+    if (inputValue !== 'Spice') {
+      throw new Error(`Expected search input to equal 'Spice', got: '${inputValue}'`);
+    }
+
+    // 2. Clear filters restores clean URL
+    const clearBtn = page.locator('button:has-text("Clear Filters")').first();
+    const hasClear = await clearBtn.isVisible();
+    console.log(`[Router] 'Clear Filters' button visible: ${hasClear}`);
+    if (hasClear) {
+      await clearBtn.click();
+      await page.waitForTimeout(1000);
+      const clearedUrl = page.url();
+      console.log(`[Router] URL after clearing filters: ${clearedUrl}`);
+      if (clearedUrl.includes('search=Spice')) {
+        throw new Error(`Expected search param to be cleared from URL! Got: ${clearedUrl}`);
+      }
+    }
+
+    // 3. Verify separated route navigation via sidebar links and URL updates
+    const dedicatedRoutes = [
+      { href: '/admin/overview', text: 'Platform Overview' },
+      { href: '/admin/restaurants', text: 'Restaurants & Stores' },
+      { href: '/admin/outlets', text: 'All Outlets Directory' },
+      { href: '/admin/users', text: 'Users & Staff Directory' },
+      { href: '/admin/subscriptions', text: 'Subscriptions & Plans' },
+      { href: '/admin/orders', text: 'Platform Orders Feed' },
+      { href: '/admin/menu', text: 'Menu Catalogs & Offerings' },
+      { href: '/admin/tables', text: 'Dining Tables Directory' },
+      { href: '/admin/inventory', text: 'Inventory & Stock BOM' },
+      { href: '/admin/delivery', text: 'Delivery Fleet Operations' },
+      { href: '/admin/customers', text: 'Customer Directory & CRM' },
+      { href: '/admin/reservations', text: 'Table Reservations Directory' },
+      { href: '/admin/feedback', text: 'Reviews & Customer Feedback' },
+      { href: '/admin/system', text: 'Operations, DB & SQL' },
+    ];
+
+    for (const r of dedicatedRoutes) {
+      console.log(`[Route Verification] Clicking link to ${r.href}...`);
+      await page.locator(`nav a[href="${r.href}"]`).first().click();
+      await page.waitForTimeout(700);
+      const url = page.url();
+      if (!url.includes(r.href)) {
+        throw new Error(`Expected URL to include ${r.href}, got: ${url}`);
+      }
+      await page.locator('main').getByText(r.text).first().waitFor({ state: 'visible', timeout: 10000 });
+      console.log(`[Route Verification] ${r.href} navigated and verified (URL: ${url}).`);
+    }
+
+    console.log('✅ TEST 18 PASSED: Separated pages and URL query filter synchronization verified!\n');
+
     console.log('=======================================================================');
-    console.log('🎉 ALL 17 COMPREHENSIVE SUPERADMIN E2E TESTS PASSED WITH 100% SUCCESS! 🎉');
+    console.log('🎉 ALL 18 COMPREHENSIVE SUPERADMIN E2E TESTS PASSED WITH 100% SUCCESS! 🎉');
     console.log('=======================================================================');
   } finally {
     await browser.close();

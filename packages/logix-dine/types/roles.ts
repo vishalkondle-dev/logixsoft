@@ -155,7 +155,7 @@ export const LEGACY_TO_GRANULAR_MAP: Record<string, readonly Permission[]> = {
   'menu:read': ['menu:view'],
   'menu:write': ['menu:create_edit', 'menu:toggle_stock', 'menu:delete'],
   'order:create': ['pos:order_create', 'waiter:punch_order'],
-  'order:read': ['pos:view', 'waiter:view', 'kitchen:view'],
+  'order:read': ['pos:view', 'waiter:view', 'kitchen:view', 'delivery:view'],
   'order:settle': ['pos:bill_settle', 'waiter:settle_bill'],
   'order:void': ['pos:bill_void'],
   'kitchen:read': ['kitchen:view', 'kitchen:station_filter'],

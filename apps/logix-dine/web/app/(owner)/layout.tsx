@@ -7,6 +7,60 @@ import { IconLock, IconBrandWhatsapp } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 
+function getRoleHomePath(role: string | null, outletId?: string | null): string {
+  const q = outletId ? `?outletId=${outletId}` : "";
+  switch (role) {
+    case "KITCHEN":
+      return `/kitchen${q}`;
+    case "RIDER":
+      return `/rider${q}`;
+    case "WAITER":
+    case "CAPTAIN":
+      return `/waiter${q}`;
+    case "CASHIER":
+      return `/pos${q}`;
+    default:
+      return `/pos${q}`;
+  }
+}
+
+function isPathAllowedForRole(role: string | null, pathname: string): boolean {
+  if (!role || role === "OWNER" || role === "MANAGER") return true;
+
+  // Settings are never allowed for staff roles below MANAGER
+  if (pathname.startsWith("/settings")) return false;
+
+  switch (role) {
+    case "KITCHEN":
+      return pathname.startsWith("/kitchen");
+    case "RIDER":
+      return pathname.startsWith("/rider");
+    case "WAITER":
+      return (
+        pathname.startsWith("/waiter") ||
+        pathname.startsWith("/tables") ||
+        pathname.startsWith("/pos") ||
+        pathname.startsWith("/orders")
+      );
+    case "CAPTAIN":
+      return (
+        pathname.startsWith("/waiter") ||
+        pathname.startsWith("/tables") ||
+        pathname.startsWith("/pos") ||
+        pathname.startsWith("/orders") ||
+        pathname.startsWith("/kitchen")
+      );
+    case "CASHIER":
+      return (
+        pathname.startsWith("/pos") ||
+        pathname.startsWith("/tables") ||
+        pathname.startsWith("/orders")
+      );
+    default:
+      return true;
+  }
+}
+
 export default function OwnerLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
   const { restaurant, myRestaurants, activeOutlet, isLoading: restLoading, role } = useRestaurant();
@@ -32,27 +86,10 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
       }
       return;
     }
-    // KITCHEN role can only access /kitchen
-    if (restaurant && role === "KITCHEN" && !redirected.current && pathname !== "/kitchen") {
+    // Enforce role-based allowed routes for all staff roles
+    if (restaurant && role && !isPathAllowedForRole(role, pathname) && !redirected.current) {
       redirected.current = true;
-      router.replace(activeOutlet ? `/kitchen?outletId=${activeOutlet.id}` : "/kitchen");
-      return;
-    }
-    // WAITER role can access /waiter, /rider, /pos, /orders, /tables, /kitchen, and /customers
-    if (
-      restaurant &&
-      role === "WAITER" &&
-      !redirected.current &&
-      !pathname.startsWith("/waiter") &&
-      !pathname.startsWith("/rider") &&
-      !pathname.startsWith("/pos") &&
-      !pathname.startsWith("/orders") &&
-      !pathname.startsWith("/tables") &&
-      !pathname.startsWith("/kitchen") &&
-      !pathname.startsWith("/customers")
-    ) {
-      redirected.current = true;
-      router.replace(activeOutlet ? `/waiter?outletId=${activeOutlet.id}` : "/waiter");
+      router.replace(getRoleHomePath(role, activeOutlet?.id));
       return;
     }
   }, [authLoading, restLoading, isAuthenticated, restaurant, myRestaurants, activeOutlet, role, pathname, router]);
@@ -86,17 +123,8 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // Authenticated but no restaurant yet, or KITCHEN/WAITER restricted role being redirected — show loader
-  const isRestrictedRole =
-    (role === "KITCHEN" && pathname !== "/kitchen") ||
-    (role === "WAITER" &&
-      !pathname.startsWith("/waiter") &&
-      !pathname.startsWith("/rider") &&
-      !pathname.startsWith("/pos") &&
-      !pathname.startsWith("/orders") &&
-      !pathname.startsWith("/tables") &&
-      !pathname.startsWith("/kitchen") &&
-      !pathname.startsWith("/customers"));
+  // Authenticated but no restaurant yet, or restricted role being redirected — show loader
+  const isRestrictedRole = Boolean(role && !isPathAllowedForRole(role, pathname));
   if (!restaurant || isRestrictedRole) {
     return (
       <Center py={100}>

@@ -3,7 +3,7 @@ import { eq, and, inArray } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission, assertOutletAccess } from '../lib/tenancy';
+import { requirePermission, requireMembership, assertOutletAccess } from '../lib/tenancy';
 import {
   CreateOutletSchema,
   UpdateOutletSchema,
@@ -32,7 +32,7 @@ app.get(
     description: 'Returns all outlets for the active restaurant.',
     responses: { 200: z.array(RestaurantOutletSchema) },
   }),
-  requirePermission('outlet:read'),
+  requireMembership(),
   async (c) => {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;

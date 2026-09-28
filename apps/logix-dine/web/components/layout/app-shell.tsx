@@ -23,12 +23,12 @@ import { LoginModal } from "@/components/auth/login-modal";
 
 // Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
 const STAFF_NAV_ITEMS = [
-  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "WAITER", "KITCHEN"] },
-  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "WAITER"] },
+  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"] },
+  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"] },
+  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"] },
+  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"] },
+  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"] },
+  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"] },
 ];
 
 // Settings sidebar items (clean flat list without descriptions or category groupings)
@@ -77,8 +77,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
   const isPortal = pathname === "/portal";
   const isLanding = pathname === "/";
+  const ALL_STAFF_ROLES = ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER", "KITCHEN", "RIDER"];
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
-  const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER", "KITCHEN"].includes(effectiveRole));
+  const isStaffOrOwner = Boolean(
+    effectiveRole && (ALL_STAFF_ROLES.includes(effectiveRole) || effectiveRole !== "CUSTOMER")
+  );
   const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
   const isCustomer = isAuthenticated && !isStaffOrOwner;
 
@@ -121,15 +124,19 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     const oId = activeOutlet?.id;
     const q = oId ? `?outletId=${oId}` : "";
     if (effectiveRole === "WAITER") return `/waiter${q}`;
+    if (effectiveRole === "CAPTAIN") return `/waiter${q}`;
     if (effectiveRole === "KITCHEN") return `/kitchen${q}`;
     if (effectiveRole === "RIDER") return `/rider${q}`;
+    if (effectiveRole === "CASHIER") return `/pos${q}`;
     return `/pos${q}`;
   }, [effectiveRole, activeOutlet]);
 
   const staffRoleLabel = React.useMemo(() => {
     if (effectiveRole === "WAITER") return "Waiter Floor";
+    if (effectiveRole === "CAPTAIN") return "Captain Floor";
     if (effectiveRole === "KITCHEN") return "Kitchen KDS";
     if (effectiveRole === "RIDER") return "Rider Deliveries";
+    if (effectiveRole === "CASHIER") return "Cashier Counter";
     if (effectiveRole === "MANAGER") return "Manager Dashboard";
     if (effectiveRole === "OWNER") return "POS Billing";
     return "Staff Dashboard";
@@ -280,7 +287,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   color="dinePrimary"
                   radius="xl"
                   leftSection={
-                    effectiveRole === "WAITER" ? <IconBellRinging size={14} /> :
+                    effectiveRole === "WAITER" || effectiveRole === "CAPTAIN" ? <IconBellRinging size={14} /> :
                     effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={14} /> :
                     effectiveRole === "RIDER" ? <IconMotorbike size={14} /> :
                     <IconShoppingCart size={14} />
@@ -420,7 +427,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         component={Link}
                         href={staffHomeHref}
                         leftSection={
-                          effectiveRole === "WAITER" ? <IconBellRinging size={16} color="#af73d7" /> :
+                          effectiveRole === "WAITER" || effectiveRole === "CAPTAIN" ? <IconBellRinging size={16} color="#af73d7" /> :
                           effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={16} color="#af73d7" /> :
                           effectiveRole === "RIDER" ? <IconMotorbike size={16} color="#af73d7" /> :
                           <IconShoppingCart size={16} color="#af73d7" />

@@ -1301,7 +1301,7 @@ app.get(
           return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
         }
         conditions.push(eq(appSchema.saleOrder.outletId, outletId));
-      } else if (!isAllOutletRole(tenant.role as RestaurantRole)) {
+      } else if (!tenant.allOutlets && !isAllOutletRole(tenant.role as RestaurantRole)) {
         return c.json({ error: 'Bad Request', message: 'outletId is required for this role' }, 400);
       } else if (tenant.outletIds && tenant.outletIds.length > 0) {
         conditions.push(inArray(appSchema.saleOrder.outletId, tenant.outletIds));

@@ -369,7 +369,7 @@ const handleVerifyOtp = async (c: any) => {
         .join('; ')
     );
     if (sessionToken) {
-      await storeSessionPayload(c, sessionToken).catch((err) =>
+      await storeSessionPayload(c, sessionToken, freshUser).catch((err) =>
         console.warn('[verify-otp] storeSessionPayload failed:', err)
       );
     }

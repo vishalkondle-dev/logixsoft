@@ -1,5 +1,5 @@
 import type { Context, MiddlewareHandler } from 'hono';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, or, inArray } from 'drizzle-orm';
 import { createDbWithClient } from '../db';
 import { appSchema } from '../db';
 import {
@@ -44,23 +44,42 @@ function dbFromEnv(c: Context) {
  */
 export async function buildSessionPayload(
   c: Context,
+  userOverride?: any,
 ): Promise<SessionPayload | null> {
-  const { auth, close: closeAuth } = createAuth(c.env);
-  let authUser: any = null;
-  try {
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    authUser = session?.user ?? null;
-  } finally {
-    await closeAuth();
+  let authUser: any = userOverride ?? null;
+  if (!authUser) {
+    const { auth, close: closeAuth } = createAuth(c.env);
+    try {
+      const session = await auth.api.getSession({ headers: c.req.raw.headers });
+      authUser = session?.user ?? null;
+    } finally {
+      await closeAuth();
+    }
   }
   if (!authUser) return null;
 
   const { db, close } = dbFromEnv(c);
   try {
+    const phone = authUser.phoneNumber ?? null;
+    const memberConditions = [eq(appSchema.restaurantMember.userId, authUser.id)];
+    if (phone) {
+      memberConditions.push(eq(appSchema.restaurantMember.phone, phone));
+    }
     const members = await db
       .select()
       .from(appSchema.restaurantMember)
-      .where(eq(appSchema.restaurantMember.userId, authUser.id));
+      .where(or(...memberConditions));
+
+    // Auto-link any pending member rows to this authUser
+    for (const m of members) {
+      if (!m.userId) {
+        await db
+          .update(appSchema.restaurantMember)
+          .set({ userId: authUser.id, inviteStatus: 'ACCEPTED', updatedAt: new Date() })
+          .where(eq(appSchema.restaurantMember.id, m.id))
+          .catch(() => {});
+      }
+    }
 
     // Batch fetch custom roles for all restaurants the user belongs to
     const restaurantIds = Array.from(new Set(members.map((m: any) => m.restaurantId as string)));
@@ -189,9 +208,9 @@ export async function resolveSessionPayload(c: Context): Promise<{ payload: Sess
  * Stores the complete session payload in KV so every subsequent request
  * is a single KV read with zero DB queries in the hot path.
  */
-export async function storeSessionPayload(c: Context, token: string): Promise<void> {
+export async function storeSessionPayload(c: Context, token: string, userObj?: any): Promise<void> {
   try {
-    const payload = await buildSessionPayload(c);
+    const payload = await buildSessionPayload(c, userObj);
     if (payload) await setSessionPayload(kv(c), token, payload);
   } catch (err) {
     console.warn('[storeSessionPayload] failed:', err);
@@ -246,6 +265,73 @@ export function requireAuth(): MiddlewareHandler {
     c.set('sessionUser', payload.user);
     c.set('actorPhone', payload.user.phoneNumber ?? null);
     c.set('memberships', payload.memberships);
+    await next();
+  };
+}
+
+// ─── requireMembership ────────────────────────────────────────────────────────
+
+export function requireMembership(): MiddlewareHandler {
+  return async (c, next) => {
+    const { payload } = await resolveSessionPayload(c);
+    if (!payload) {
+      return c.json({ error: 'Unauthorized', message: 'Authentication required' }, 401);
+    }
+
+    const { user, memberships } = payload;
+    c.set('sessionUser', user);
+    c.set('actorPhone', user.phoneNumber ?? null);
+    c.set('memberships', memberships);
+
+    const headerOutletId = c.req.header('X-Outlet-Id') || null;
+
+    // Platform ADMIN bypasses everything
+    if (user.role === 'ADMIN') {
+      const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      c.set('tenant', {
+        restaurantId,
+        role: 'OWNER',
+        roleName: 'OWNER',
+        member: null,
+        outletId: headerOutletId,
+        outletIds: headerOutletId ? [headerOutletId] : [],
+        allOutlets: true,
+      });
+      return next();
+    }
+
+    const restaurantId = c.req.header('X-Restaurant-Id');
+    if (!restaurantId) {
+      return c.json({ error: 'Bad Request', message: 'X-Restaurant-Id header required' }, 400);
+    }
+
+    const membership = memberships.find((m) => m.restaurantId === restaurantId);
+    if (!membership) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this restaurant' }, 403);
+    }
+
+    // Strict Outlet scope check
+    if (headerOutletId && !membership.allOutlets) {
+      if (!membership.outletIds.includes(headerOutletId)) {
+        return c.json({
+          error: 'Forbidden',
+          message: `You do not have access to outlet '${headerOutletId}'`,
+        }, 403);
+      }
+    }
+
+    const userPerms = membership.permissions || ROLE_PERMISSIONS[membership.role as keyof typeof ROLE_PERMISSIONS] || [];
+
+    c.set('tenant', {
+      restaurantId,
+      role: membership.role,
+      roleName: membership.roleName || membership.role,
+      permissions: userPerms,
+      member: { id: membership.memberId, restaurantId, role: membership.role, userId: user.id },
+      outletId: headerOutletId,
+      outletIds: membership.outletIds,
+      allOutlets: membership.allOutlets,
+    });
     await next();
   };
 }

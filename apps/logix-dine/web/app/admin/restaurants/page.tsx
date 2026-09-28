@@ -231,6 +231,8 @@ function RestaurantsContent() {
             data={[
               { value: "recent", label: "Most Recent" },
               { value: "name", label: "Name (A-Z)" },
+              { value: "gmv", label: "Highest GMV" },
+              { value: "orders", label: "Most Orders" },
               { value: "outlets", label: "Outlets Count" },
             ]}
             value={sortBy}

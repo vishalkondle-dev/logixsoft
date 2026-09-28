@@ -60,6 +60,7 @@ function OrdersContent() {
   const outletFilter = getFilter("outletId", "ALL");
   const statusFilter = getFilter("status", "ALL");
   const typeFilter = getFilter("orderType", "ALL");
+  const sortBy = getFilter("sortBy", "newest");
 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +82,7 @@ function OrdersContent() {
       if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
       if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
       if (typeFilter && typeFilter !== "ALL") params.set("orderType", typeFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const res = await fetch(`${API_BASE}/admin/orders?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -92,7 +94,7 @@ function OrdersContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, restaurantFilter, outletFilter, statusFilter, typeFilter]);
+  }, [debouncedSearch, restaurantFilter, outletFilter, statusFilter, typeFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -184,7 +186,20 @@ function OrdersContent() {
             data={ORDER_TYPES}
             value={typeFilter}
             onChange={(val) => setFilter("orderType", val || "ALL")}
-            w={{ base: "100%", sm: 130 }}
+            w={{ base: "100%", sm: 120 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "newest", label: "Newest First" },
+              { value: "oldest", label: "Oldest First" },
+              { value: "total", label: "Highest Total" },
+              { value: "orderNo", label: "Order Number" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "newest")}
+            w={{ base: "100%", sm: 140 }}
             size="xs"
           />
           {hasActiveFilters && (

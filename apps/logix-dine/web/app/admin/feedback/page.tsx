@@ -49,6 +49,7 @@ function FeedbackContent() {
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const ratingFilter = getFilter("rating", "ALL");
   const repliedFilter = getFilter("replied", "ALL");
+  const sortBy = getFilter("sortBy", "newest");
 
   const [feedback, setFeedback] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +67,7 @@ function FeedbackContent() {
       if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
       if (ratingFilter && ratingFilter !== "ALL") params.set("rating", ratingFilter);
       if (repliedFilter && repliedFilter !== "ALL") params.set("replied", repliedFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const qs = params.toString() ? `?${params.toString()}` : "";
       const res = await fetch(`${API_BASE}/admin/feedback${qs}`, { credentials: "include" });
@@ -78,7 +80,7 @@ function FeedbackContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, restaurantFilter, ratingFilter, repliedFilter]);
+  }, [debouncedSearch, restaurantFilter, ratingFilter, repliedFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -176,7 +178,20 @@ function FeedbackContent() {
             ]}
             value={repliedFilter}
             onChange={(val) => setFilter("replied", val || "ALL")}
-            w={{ base: "100%", sm: 150 }}
+            w={{ base: "100%", sm: 140 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "newest", label: "Newest First" },
+              { value: "oldest", label: "Oldest First" },
+              { value: "rating_desc", label: "Highest Rating" },
+              { value: "rating_asc", label: "Lowest Rating" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "newest")}
+            w={{ base: "100%", sm: 140 }}
             size="xs"
           />
           {hasActiveFilters && (

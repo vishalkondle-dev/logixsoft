@@ -43,6 +43,7 @@ function SubscriptionsContent() {
   const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const tierFilter = getFilter("tier", "ALL");
   const statusFilter = getFilter("status", "ALL");
+  const sortBy = getFilter("sortBy", "name");
 
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,7 @@ function SubscriptionsContent() {
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (tierFilter && tierFilter !== "ALL") params.set("tier", tierFilter);
       if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const qs = params.toString() ? `?${params.toString()}` : "";
       const res = await fetch(`${API_BASE}/admin/subscriptions${qs}`, { credentials: "include" });
@@ -72,7 +74,7 @@ function SubscriptionsContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, tierFilter, statusFilter]);
+  }, [debouncedSearch, tierFilter, statusFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -144,6 +146,19 @@ function SubscriptionsContent() {
             ]}
             value={statusFilter}
             onChange={(val) => setFilter("status", val || "ALL")}
+            w={{ base: "100%", sm: 130 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "name", label: "Store Name (A-Z)" },
+              { value: "status", label: "Status" },
+              { value: "recent", label: "Most Recent" },
+              { value: "oldest", label: "Oldest" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "name")}
             w={{ base: "100%", sm: 150 }}
             size="xs"
           />

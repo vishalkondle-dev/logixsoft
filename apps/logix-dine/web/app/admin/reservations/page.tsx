@@ -50,6 +50,7 @@ function ReservationsContent() {
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const outletFilter = getFilter("outletId", "ALL");
   const statusFilter = getFilter("status", "ALL");
+  const sortBy = getFilter("sortBy", "newest");
 
   const [reservations, setReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +80,7 @@ function ReservationsContent() {
       if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
       if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
       if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const res = await fetch(`${API_BASE}/admin/reservations?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -90,7 +92,7 @@ function ReservationsContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, restaurantFilter, outletFilter, statusFilter]);
+  }, [debouncedSearch, restaurantFilter, outletFilter, statusFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -178,7 +180,14 @@ function ReservationsContent() {
         <Button
           color="dinePrimary"
           leftSection={<IconPlus size={16} />}
-          onClick={() => setCreateOpened(true)}
+          onClick={() => {
+            setCreateForm((f) => ({
+              ...f,
+              restaurantId: restaurantFilter !== "ALL" ? restaurantFilter : "",
+              outletId: (restaurantFilter !== "ALL" && outletFilter !== "ALL") ? outletFilter : "",
+            }));
+            setCreateOpened(true);
+          }}
         >
           Add Reservation
         </Button>
@@ -192,7 +201,7 @@ function ReservationsContent() {
             leftSection={<IconSearch size={16} />}
             value={searchQuery}
             onChange={(e) => setFilter("search", e.target.value)}
-            w={{ base: "100%", sm: 280 }}
+            w={{ base: "100%", sm: 260 }}
             size="xs"
           />
           <Select
@@ -225,7 +234,20 @@ function ReservationsContent() {
             data={RESV_STATUSES}
             value={statusFilter}
             onChange={(val) => setFilter("status", val || "ALL")}
-            w={{ base: "100%", sm: 160 }}
+            w={{ base: "100%", sm: 150 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "newest", label: "Newest First" },
+              { value: "oldest", label: "Oldest First" },
+              { value: "guestName", label: "Guest Name" },
+              { value: "partySize", label: "Party Size" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "newest")}
+            w={{ base: "100%", sm: 140 }}
             size="xs"
           />
           {hasActiveFilters && (

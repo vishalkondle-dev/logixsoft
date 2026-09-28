@@ -36,13 +36,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.
 
 function MenuContent() {
   const { restaurants } = useAdmin();
-  const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
+  const { getFilter, setFilter, setFilters, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
   const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const categoryFilter = getFilter("categoryId", "ALL");
   const stockFilter = getFilter("stockStatus", "ALL");
+  const sortBy = getFilter("sortBy", "name");
 
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -87,6 +88,7 @@ function MenuContent() {
       if (stockFilter && stockFilter !== "ALL") {
         params.set("stockStatus", stockFilter === "AVAILABLE" ? "IN_STOCK" : "OUT_OF_STOCK");
       }
+      if (sortBy) params.set("sortBy", sortBy);
 
       const [itemsRes, catsRes] = await Promise.all([
         fetch(`${API_BASE}/admin/menu/items?${params.toString()}`, { credentials: "include" }),
@@ -105,7 +107,7 @@ function MenuContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, restaurantFilter, categoryFilter, stockFilter]);
+  }, [debouncedSearch, restaurantFilter, categoryFilter, stockFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -236,14 +238,30 @@ function MenuContent() {
             variant="light"
             color="dinePrimary"
             leftSection={<IconFolderPlus size={16} />}
-            onClick={() => setCreateCatOpened(true)}
+            onClick={() => {
+              setCatForm({
+                restaurantId: restaurantFilter !== "ALL" ? restaurantFilter : "",
+                name: "",
+              });
+              setCreateCatOpened(true);
+            }}
           >
             Add Category
           </Button>
           <Button
             color="dinePrimary"
             leftSection={<IconPlus size={16} />}
-            onClick={() => setCreateItemOpened(true)}
+            onClick={() => {
+              setItemForm({
+                restaurantId: restaurantFilter !== "ALL" ? restaurantFilter : "",
+                categoryId: (restaurantFilter !== "ALL" && categoryFilter !== "ALL") ? categoryFilter : "",
+                name: "",
+                pricePaise: 25000,
+                description: "",
+                available: true,
+              });
+              setCreateItemOpened(true);
+            }}
           >
             Add Menu Item
           </Button>
@@ -268,7 +286,12 @@ function MenuContent() {
               ...restaurants.map((r) => ({ value: r.id, label: r.name })),
             ]}
             value={restaurantFilter}
-            onChange={(val) => setFilter("restaurantId", val || "ALL")}
+            onChange={(val) => {
+              setFilters({
+                restaurantId: val || "ALL",
+                categoryId: "ALL",
+              });
+            }}
             w={{ base: "100%", sm: 190 }}
             size="xs"
           />
@@ -276,11 +299,14 @@ function MenuContent() {
             placeholder="Category"
             data={[
               { value: "ALL", label: "All Categories" },
-              ...categories.map((c) => ({ value: c.id, label: c.name })),
+              ...(restaurantFilter !== "ALL"
+                ? categories.filter((c) => c.restaurantId === restaurantFilter)
+                : categories
+              ).map((c) => ({ value: c.id, label: c.name })),
             ]}
             value={categoryFilter}
             onChange={(val) => setFilter("categoryId", val || "ALL")}
-            w={{ base: "100%", sm: 160 }}
+            w={{ base: "100%", sm: 150 }}
             size="xs"
           />
           <Select
@@ -292,7 +318,21 @@ function MenuContent() {
             ]}
             value={stockFilter}
             onChange={(val) => setFilter("stockStatus", val || "ALL")}
-            w={{ base: "100%", sm: 170 }}
+            w={{ base: "100%", sm: 150 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "name", label: "Name (A-Z)" },
+              { value: "price_asc", label: "Price: Low to High" },
+              { value: "price_desc", label: "Price: High to Low" },
+              { value: "category", label: "Category" },
+              { value: "newest", label: "Newest First" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "name")}
+            w={{ base: "100%", sm: 150 }}
             size="xs"
           />
           {hasActiveFilters && (

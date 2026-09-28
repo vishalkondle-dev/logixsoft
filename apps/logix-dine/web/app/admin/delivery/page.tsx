@@ -46,6 +46,7 @@ function DeliveryContent() {
   const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const statusFilter = getFilter("status", "ALL");
   const restaurantFilter = getFilter("restaurantId", "ALL");
+  const sortBy = getFilter("sortBy", "newest");
 
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +57,7 @@ function DeliveryContent() {
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
       if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const qs = params.toString() ? `?${params.toString()}` : "";
       const res = await fetch(`${API_BASE}/admin/delivery${qs}`, { credentials: "include" });
@@ -68,7 +70,7 @@ function DeliveryContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter, restaurantFilter]);
+  }, [debouncedSearch, statusFilter, restaurantFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -130,7 +132,18 @@ function DeliveryContent() {
             data={DELIVERY_STATUSES}
             value={statusFilter}
             onChange={(val) => setFilter("status", val || "ALL")}
-            w={{ base: "100%", sm: 180 }}
+            w={{ base: "100%", sm: 160 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "newest", label: "Newest Dispatches" },
+              { value: "oldest", label: "Oldest Dispatches" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "newest")}
+            w={{ base: "100%", sm: 150 }}
             size="xs"
           />
           {hasActiveFilters && (

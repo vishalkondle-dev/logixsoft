@@ -39,6 +39,7 @@ function OutletsContent() {
   const searchQuery = getFilter("search", "");
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const statusFilter = getFilter("status", "ALL");
+  const sortBy = getFilter("sortBy", "name");
 
   const [outlets, setOutlets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +75,7 @@ function OutletsContent() {
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
       if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const res = await fetch(`${API_BASE}/admin/outlets?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -85,7 +87,7 @@ function OutletsContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, restaurantFilter, statusFilter]);
+  }, [debouncedSearch, restaurantFilter, statusFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -175,7 +177,13 @@ function OutletsContent() {
         <Button
           color="dinePrimary"
           leftSection={<IconPlus size={16} />}
-          onClick={() => setCreateOpened(true)}
+          onClick={() => {
+            setCreateForm((f) => ({
+              ...f,
+              restaurantId: restaurantFilter !== "ALL" ? restaurantFilter : "",
+            }));
+            setCreateOpened(true);
+          }}
         >
           Add Outlet
         </Button>
@@ -189,7 +197,7 @@ function OutletsContent() {
             leftSection={<IconSearch size={16} />}
             value={searchQuery}
             onChange={(e) => setFilter("search", e.target.value)}
-            w={{ base: "100%", sm: 280 }}
+            w={{ base: "100%", sm: 260 }}
             size="xs"
           />
           <Select
@@ -200,7 +208,7 @@ function OutletsContent() {
             ]}
             value={restaurantFilter}
             onChange={(val) => setFilter("restaurantId", val || "ALL")}
-            w={{ base: "100%", sm: 200 }}
+            w={{ base: "100%", sm: 190 }}
             size="xs"
           />
           <Select
@@ -208,11 +216,25 @@ function OutletsContent() {
             data={[
               { value: "ALL", label: "All Statuses" },
               { value: "ACTIVE", label: "Active" },
-              { value: "INACTIVE", label: "Inactive" },
+              { value: "TRIAL", label: "Trial" },
+              { value: "SUSPENDED", label: "Suspended" },
             ]}
             value={statusFilter}
             onChange={(val) => setFilter("status", val || "ALL")}
-            w={{ base: "100%", sm: 140 }}
+            w={{ base: "100%", sm: 130 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "name", label: "Name (A-Z)" },
+              { value: "restaurant", label: "Restaurant Name" },
+              { value: "recent", label: "Most Recent" },
+              { value: "oldest", label: "Oldest" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "name")}
+            w={{ base: "100%", sm: 150 }}
             size="xs"
           />
           {hasActiveFilters && (

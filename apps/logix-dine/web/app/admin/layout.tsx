@@ -112,12 +112,13 @@ function AdminHeaderStoreScope() {
   } = useAdmin();
 
   const urlRestId = searchParams.get("restaurantId") || "";
-  const currentScope = urlRestId || selectedRestFilter || "ALL";
+  const currentScope = urlRestId || "ALL";
 
   // Keep selectedRestFilter in sync when URL query params change
   useEffect(() => {
-    if (urlRestId && urlRestId !== selectedRestFilter) {
-      setSelectedRestFilter(urlRestId);
+    const target = urlRestId || "ALL";
+    if (target !== selectedRestFilter) {
+      setSelectedRestFilter(target);
     }
   }, [urlRestId, selectedRestFilter, setSelectedRestFilter]);
 
@@ -125,7 +126,8 @@ function AdminHeaderStoreScope() {
     const val = newVal || "ALL";
     setSelectedRestFilter(val);
 
-    const params = new URLSearchParams(searchParams.toString());
+    const currentSearch = typeof window !== "undefined" ? window.location.search : searchParams.toString();
+    const params = new URLSearchParams(currentSearch);
     if (val && val !== "ALL") {
       params.set("restaurantId", val);
       params.delete("outletId"); // Reset outlet filter when changing restaurant

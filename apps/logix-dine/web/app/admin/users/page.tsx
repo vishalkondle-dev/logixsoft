@@ -48,6 +48,7 @@ function UsersContent() {
 
   const searchQuery = getFilter("search", "");
   const roleFilter = getFilter("role", "ALL");
+  const sortBy = getFilter("sortBy", "newest");
 
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +81,7 @@ function UsersContent() {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       if (roleFilter && roleFilter !== "ALL") params.set("role", roleFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const res = await fetch(`${API_BASE}/admin/users?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -91,7 +93,7 @@ function UsersContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, roleFilter]);
+  }, [debouncedSearch, roleFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -197,7 +199,20 @@ function UsersContent() {
             data={ROLE_OPTIONS}
             value={roleFilter}
             onChange={(val) => setFilter("role", val || "ALL")}
-            w={{ base: "100%", sm: 220 }}
+            w={{ base: "100%", sm: 200 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "newest", label: "Newest Joined" },
+              { value: "oldest", label: "Oldest Joined" },
+              { value: "name", label: "Name (A-Z)" },
+              { value: "owned_stores", label: "Stores Owned" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "newest")}
+            w={{ base: "100%", sm: 160 }}
             size="xs"
           />
           {hasActiveFilters && (

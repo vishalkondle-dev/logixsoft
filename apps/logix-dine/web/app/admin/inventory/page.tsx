@@ -43,6 +43,7 @@ function InventoryContent() {
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const outletFilter = getFilter("outletId", "ALL");
   const alertFilter = getFilter("stockAlert", "ALL");
+  const sortBy = getFilter("sortBy", "name");
 
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +82,7 @@ function InventoryContent() {
       if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
       if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
       if (alertFilter && alertFilter !== "ALL") params.set("stockAlert", alertFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const res = await fetch(`${API_BASE}/admin/inventory?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -92,7 +94,7 @@ function InventoryContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, restaurantFilter, outletFilter, alertFilter]);
+  }, [debouncedSearch, restaurantFilter, outletFilter, alertFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -186,7 +188,14 @@ function InventoryContent() {
         <Button
           color="dinePrimary"
           leftSection={<IconPlus size={16} />}
-          onClick={() => setCreateOpened(true)}
+          onClick={() => {
+            setCreateForm((f) => ({
+              ...f,
+              restaurantId: restaurantFilter !== "ALL" ? restaurantFilter : "",
+              outletId: (restaurantFilter !== "ALL" && outletFilter !== "ALL") ? outletFilter : "",
+            }));
+            setCreateOpened(true);
+          }}
         >
           Add Inventory Item
         </Button>
@@ -237,7 +246,20 @@ function InventoryContent() {
             ]}
             value={alertFilter}
             onChange={(val) => setFilter("stockAlert", val || "ALL")}
-            w={{ base: "100%", sm: 170 }}
+            w={{ base: "100%", sm: 160 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "name", label: "Item Name (A-Z)" },
+              { value: "stock_asc", label: "Stock: Low to High" },
+              { value: "stock_desc", label: "Stock: High to Low" },
+              { value: "cost_desc", label: "Unit Cost" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "name")}
+            w={{ base: "100%", sm: 150 }}
             size="xs"
           />
           {hasActiveFilters && (

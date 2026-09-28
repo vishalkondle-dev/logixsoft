@@ -43,6 +43,7 @@ function TablesContent() {
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const outletFilter = getFilter("outletId", "ALL");
   const sectionFilter = getFilter("section", "ALL");
+  const sortBy = getFilter("sortBy", "name");
 
   const [tables, setTables] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +78,7 @@ function TablesContent() {
       if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
       if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
       if (sectionFilter && sectionFilter !== "ALL") params.set("section", sectionFilter);
+      if (sortBy) params.set("sortBy", sortBy);
 
       const res = await fetch(`${API_BASE}/admin/tables?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
@@ -88,7 +90,7 @@ function TablesContent() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, restaurantFilter, outletFilter, sectionFilter]);
+  }, [debouncedSearch, restaurantFilter, outletFilter, sectionFilter, sortBy]);
 
   useEffect(() => {
     loadData();
@@ -173,7 +175,16 @@ function TablesContent() {
         <Button
           color="dinePrimary"
           leftSection={<IconPlus size={16} />}
-          onClick={() => setCreateOpened(true)}
+          onClick={() => {
+            setCreateForm({
+              restaurantId: restaurantFilter !== "ALL" ? restaurantFilter : "",
+              outletId: (restaurantFilter !== "ALL" && outletFilter !== "ALL") ? outletFilter : "",
+              name: "",
+              section: sectionFilter !== "ALL" ? sectionFilter : "Main Floor",
+              capacity: 4,
+            });
+            setCreateOpened(true);
+          }}
         >
           Add Table
         </Button>
@@ -224,10 +235,23 @@ function TablesContent() {
               ]}
               value={sectionFilter}
               onChange={(val) => setFilter("section", val || "ALL")}
-              w={{ base: "100%", sm: 150 }}
+              w={{ base: "100%", sm: 140 }}
               size="xs"
             />
           )}
+          <Select
+            placeholder="Sort By"
+            data={[
+              { value: "name", label: "Table Name (A-Z)" },
+              { value: "capacity_desc", label: "Capacity: High to Low" },
+              { value: "capacity_asc", label: "Capacity: Low to High" },
+              { value: "section", label: "Section" },
+            ]}
+            value={sortBy}
+            onChange={(val) => setFilter("sortBy", val || "name")}
+            w={{ base: "100%", sm: 150 }}
+            size="xs"
+          />
           {hasActiveFilters && (
             <Button
               variant="subtle"

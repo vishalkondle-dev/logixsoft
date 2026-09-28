@@ -41,7 +41,7 @@ function OverviewContent() {
 
   const searchQuery = getFilter("search", "");
   const statusFilter = getFilter("status", "ALL");
-  const restaurantFilter = getFilter("restaurantId", selectedRestFilter);
+  const restaurantFilter = getFilter("restaurantId", "ALL");
 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -582,8 +582,9 @@ async function run() {
 
     // 5. Test cascading dependent outlet select in URL Filter Bar via URL params
     console.log('[Cascading] Testing dependent outlet select in URL Filter Bar via query params...');
-    await page.goto(`${WEB_BASE}/admin/inventory?restaurantId=rest_1zmYr46YCfmlzUBKBDB54I35`, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(1000);
+    await page.goto(`${WEB_BASE}/admin/inventory?restaurantId=rest_1zmYr46YCfmlzUBKBDB54I35`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('text=Inventory & Stock BOM Directory', { timeout: 15000 });
+    await page.waitForTimeout(1500);
 
     const filterCardOutletsInput = page.locator('main .mantine-Card-root input:visible').nth(2);
     const isOutletFilterEnabled = !(await filterCardOutletsInput.isDisabled());

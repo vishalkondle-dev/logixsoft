@@ -77,6 +77,14 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
   const isPortal = pathname === "/portal";
   const isLanding = pathname === "/";
+  const isAdmin = pathname?.startsWith("/admin");
+
+  // On /admin, Superadmin has their own dedicated sidebar, menu, and header.
+  // Bypass staff AppShellLayout completely so no owner or staff navigation paths appear.
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
   const ALL_STAFF_ROLES = ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER", "KITCHEN", "RIDER"];
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
   const isStaffOrOwner = Boolean(

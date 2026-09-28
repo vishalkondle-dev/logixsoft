@@ -1474,4 +1474,737 @@ app.post(
   }
 );
 
+// ─── 7. Orders Explorer & CRUD (Admin) ─────────────────────────────────────────
+
+app.get('/orders', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const status = c.req.query('status');
+    const search = c.req.query('search');
+
+    const [orders, rests, outlets] = await Promise.all([
+      db.select().from(appSchema.saleOrder).orderBy(desc(appSchema.saleOrder.createdAt)).limit(100),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+      db.select({ id: appSchema.restaurantOutlet.id, name: appSchema.restaurantOutlet.name }).from(appSchema.restaurantOutlet),
+    ]);
+
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+    const outletMap = new Map(outlets.map((o: any) => [o.id, o.name]));
+
+    let filtered = orders.map((o: any) => ({
+      ...o,
+      restaurantName: restMap.get(o.restaurantId) || 'Unknown Store',
+      outletName: outletMap.get(o.outletId) || 'Main Branch',
+    }));
+
+    if (restaurantId) filtered = filtered.filter((o: any) => o.restaurantId === restaurantId);
+    if (status && status !== 'ALL') filtered = filtered.filter((o: any) => o.status === status || o.orderStatus === status);
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter((o: any) =>
+        String(o.orderNo).includes(q) ||
+        (o.customerPhone && o.customerPhone.includes(q)) ||
+        (o.restaurantName && o.restaurantName.toLowerCase().includes(q))
+      );
+    }
+
+    return c.json(filtered);
+  } finally {
+    await close();
+  }
+});
+
+app.get('/orders/:id', requireAdmin(), async (c) => {
+  const orderId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db.select().from(appSchema.saleOrder).where(eq(appSchema.saleOrder.id, orderId)).limit(1);
+    if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
+
+    const items = await db.select().from(appSchema.saleOrderItem).where(eq(appSchema.saleOrderItem.orderId, orderId));
+    return c.json({ ...order, items });
+  } finally {
+    await close();
+  }
+});
+
+app.post('/orders/:id/void', requireAdmin(), async (c) => {
+  const orderId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { db, close } = getDb(c);
+  try {
+    const [order] = await db
+      .update(appSchema.saleOrder)
+      .set({ status: 'VOID', orderStatus: 'CANCELLED', note: body.reason ? `[ADMIN VOID: ${body.reason}]` : '[ADMIN VOID]', updatedAt: new Date() })
+      .where(eq(appSchema.saleOrder.id, orderId))
+      .returning();
+    if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
+    return c.json({ success: true, order });
+  } finally {
+    await close();
+  }
+});
+
+// ─── 8. Menu Catalog & Items CRUD (Admin) ─────────────────────────────────────
+
+app.get('/menu/items', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const [items, categories, rests] = await Promise.all([
+      db.select().from(appSchema.menuItem).orderBy(desc(appSchema.menuItem.createdAt)).limit(150),
+      db.select({ id: appSchema.menuCategory.id, name: appSchema.menuCategory.name }).from(appSchema.menuCategory),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+    ]);
+
+    const catMap = new Map(categories.map((cat: any) => [cat.id, cat.name]));
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+
+    let enriched = items.map((it: any) => ({
+      ...it,
+      categoryName: catMap.get(it.categoryId) || 'Uncategorized',
+      restaurantName: restMap.get(it.restaurantId) || 'Unknown Store',
+    }));
+
+    if (restaurantId) enriched = enriched.filter((it: any) => it.restaurantId === restaurantId);
+    return c.json(enriched);
+  } finally {
+    await close();
+  }
+});
+
+app.post('/menu/items', requireAdmin(), async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { restaurantId, categoryId, name, pricePaise, description, available = true } = body;
+  if (!restaurantId || !categoryId || !name || pricePaise === undefined) {
+    return c.json({ error: 'Validation Error', message: 'restaurantId, categoryId, name, pricePaise required' }, 400);
+  }
+  const { db, close } = getDb(c);
+  try {
+    const id = generateId('item');
+    const now = new Date();
+    const [created] = await db
+      .insert(appSchema.menuItem)
+      .values({
+        id,
+        restaurantId,
+        categoryId,
+        name: name.trim(),
+        description: description?.trim() || null,
+        pricePaise: Number(pricePaise),
+        available: Boolean(available),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    return c.json(created, 201);
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/menu/items/:id', requireAdmin(), async (c) => {
+  const itemId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { name, pricePaise, description, available, categoryId } = body;
+  const { db, close } = getDb(c);
+  try {
+    const updates: any = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = name.trim();
+    if (pricePaise !== undefined) updates.pricePaise = Number(pricePaise);
+    if (description !== undefined) updates.description = description ? description.trim() : null;
+    if (available !== undefined) updates.available = Boolean(available);
+    if (categoryId !== undefined) updates.categoryId = categoryId;
+
+    const [updated] = await db
+      .update(appSchema.menuItem)
+      .set(updates)
+      .where(eq(appSchema.menuItem.id, itemId))
+      .returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Item not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/menu/items/:id', requireAdmin(), async (c) => {
+  const itemId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [deleted] = await db.delete(appSchema.menuItem).where(eq(appSchema.menuItem.id, itemId)).returning();
+    if (!deleted) return c.json({ error: 'Not Found', message: 'Item not found' }, 404);
+    return c.json({ success: true, message: 'Item deleted' });
+  } finally {
+    await close();
+  }
+});
+
+app.post('/menu/items/:id/toggle-stock', requireAdmin(), async (c) => {
+  const itemId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [item] = await db.select().from(appSchema.menuItem).where(eq(appSchema.menuItem.id, itemId)).limit(1);
+    if (!item) return c.json({ error: 'Not Found', message: 'Item not found' }, 404);
+
+    const [updated] = await db
+      .update(appSchema.menuItem)
+      .set({ available: !item.available, updatedAt: new Date() })
+      .where(eq(appSchema.menuItem.id, itemId))
+      .returning();
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+app.get('/menu/categories', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const [categories, rests] = await Promise.all([
+      db.select().from(appSchema.menuCategory).orderBy(desc(appSchema.menuCategory.createdAt)),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+    ]);
+
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+    let enriched = categories.map((cat: any) => ({
+      ...cat,
+      restaurantName: restMap.get(cat.restaurantId) || 'Unknown Store',
+    }));
+
+    if (restaurantId) enriched = enriched.filter((cat: any) => cat.restaurantId === restaurantId);
+    return c.json(enriched);
+  } finally {
+    await close();
+  }
+});
+
+app.post('/menu/categories', requireAdmin(), async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { restaurantId, name, description } = body;
+  if (!restaurantId || !name) {
+    return c.json({ error: 'Validation Error', message: 'restaurantId and name required' }, 400);
+  }
+  const { db, close } = getDb(c);
+  try {
+    const id = generateId('cat');
+    const [created] = await db
+      .insert(appSchema.menuCategory)
+      .values({ id, restaurantId, name: name.trim(), description: description?.trim() || null })
+      .returning();
+    return c.json(created, 201);
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/menu/categories/:id', requireAdmin(), async (c) => {
+  const catId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [deleted] = await db.delete(appSchema.menuCategory).where(eq(appSchema.menuCategory.id, catId)).returning();
+    if (!deleted) return c.json({ error: 'Not Found', message: 'Category not found' }, 404);
+    return c.json({ success: true, message: 'Category deleted' });
+  } finally {
+    await close();
+  }
+});
+
+// ─── 9. Dining Tables CRUD (Admin) ───────────────────────────────────────────
+
+app.get('/tables', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const [tables, rests, outlets] = await Promise.all([
+      db.select().from(appSchema.posTable).orderBy(appSchema.posTable.name),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+      db.select({ id: appSchema.restaurantOutlet.id, name: appSchema.restaurantOutlet.name }).from(appSchema.restaurantOutlet),
+    ]);
+
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+    const outletMap = new Map(outlets.map((o: any) => [o.id, o.name]));
+
+    let enriched = tables.map((t: any) => ({
+      ...t,
+      restaurantName: restMap.get(t.restaurantId) || 'Unknown Store',
+      outletName: outletMap.get(t.outletId) || 'Main Branch',
+    }));
+
+    if (restaurantId) enriched = enriched.filter((t: any) => t.restaurantId === restaurantId);
+    return c.json(enriched);
+  } finally {
+    await close();
+  }
+});
+
+app.post('/tables', requireAdmin(), async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { restaurantId, outletId, name, section = 'Main Floor', capacity = 4 } = body;
+  if (!restaurantId || !outletId || !name) {
+    return c.json({ error: 'Validation Error', message: 'restaurantId, outletId, name required' }, 400);
+  }
+  const { db, close } = getDb(c);
+  try {
+    const id = generateId('tbl');
+    const [created] = await db
+      .insert(appSchema.posTable)
+      .values({ id, restaurantId, outletId, name: name.trim(), section: section.trim(), capacity: Number(capacity) })
+      .returning();
+    return c.json(created, 201);
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/tables/:id', requireAdmin(), async (c) => {
+  const tblId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { name, section, capacity, active } = body;
+  const { db, close } = getDb(c);
+  try {
+    const updates: any = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = name.trim();
+    if (section !== undefined) updates.section = section.trim();
+    if (capacity !== undefined) updates.capacity = Number(capacity);
+    if (active !== undefined) updates.active = Boolean(active);
+
+    const [updated] = await db.update(appSchema.posTable).set(updates).where(eq(appSchema.posTable.id, tblId)).returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Table not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/tables/:id', requireAdmin(), async (c) => {
+  const tblId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [deleted] = await db.delete(appSchema.posTable).where(eq(appSchema.posTable.id, tblId)).returning();
+    if (!deleted) return c.json({ error: 'Not Found', message: 'Table not found' }, 404);
+    return c.json({ success: true, message: 'Table deleted' });
+  } finally {
+    await close();
+  }
+});
+
+// ─── 10. Inventory & Stock CRUD (Admin) ───────────────────────────────────────
+
+app.get('/inventory', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const [items, rests, outlets] = await Promise.all([
+      db.select().from(appSchema.inventoryItem).orderBy(appSchema.inventoryItem.name),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+      db.select({ id: appSchema.restaurantOutlet.id, name: appSchema.restaurantOutlet.name }).from(appSchema.restaurantOutlet),
+    ]);
+
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+    const outletMap = new Map(outlets.map((o: any) => [o.id, o.name]));
+
+    let enriched = items.map((it: any) => ({
+      ...it,
+      restaurantName: restMap.get(it.restaurantId) || 'Unknown Store',
+      outletName: outletMap.get(it.outletId) || 'Main Branch',
+    }));
+
+    if (restaurantId) enriched = enriched.filter((it: any) => it.restaurantId === restaurantId);
+    return c.json(enriched);
+  } finally {
+    await close();
+  }
+});
+
+app.post('/inventory', requireAdmin(), async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { restaurantId, outletId, name, sku, category = 'GENERAL', baseUom = 'kg', currentStock = 0, lowStockThreshold = 5, costPerBaseUnitPaise = 0 } = body;
+  if (!restaurantId || !outletId || !name) {
+    return c.json({ error: 'Validation Error', message: 'restaurantId, outletId, name required' }, 400);
+  }
+  const { db, close } = getDb(c);
+  try {
+    const id = generateId('inv');
+    const [created] = await db
+      .insert(appSchema.inventoryItem)
+      .values({
+        id,
+        restaurantId,
+        outletId,
+        name: name.trim(),
+        sku: sku ? sku.trim() : null,
+        category: category.trim(),
+        baseUom: baseUom.trim(),
+        currentStock: Number(currentStock),
+        lowStockThreshold: Number(lowStockThreshold),
+        costPerBaseUnitPaise: Number(costPerBaseUnitPaise),
+      })
+      .returning();
+    return c.json(created, 201);
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/inventory/:id', requireAdmin(), async (c) => {
+  const invId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { name, currentStock, lowStockThreshold, costPerBaseUnitPaise } = body;
+  const { db, close } = getDb(c);
+  try {
+    const updates: any = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = name.trim();
+    if (currentStock !== undefined) updates.currentStock = Number(currentStock);
+    if (lowStockThreshold !== undefined) updates.lowStockThreshold = Number(lowStockThreshold);
+    if (costPerBaseUnitPaise !== undefined) updates.costPerBaseUnitPaise = Number(costPerBaseUnitPaise);
+
+    const [updated] = await db.update(appSchema.inventoryItem).set(updates).where(eq(appSchema.inventoryItem.id, invId)).returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Inventory item not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/inventory/:id', requireAdmin(), async (c) => {
+  const invId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [deleted] = await db.delete(appSchema.inventoryItem).where(eq(appSchema.inventoryItem.id, invId)).returning();
+    if (!deleted) return c.json({ error: 'Not Found', message: 'Inventory item not found' }, 404);
+    return c.json({ success: true, message: 'Item deleted' });
+  } finally {
+    await close();
+  }
+});
+
+// ─── 11. Delivery Fleet & Couriers (Admin) ───────────────────────────────────
+
+app.get('/delivery', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const [deliveries, rests] = await Promise.all([
+      db.select().from(appSchema.deliveryOrder).orderBy(desc(appSchema.deliveryOrder.createdAt)).limit(100),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+    ]);
+
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+    let enriched = deliveries.map((d: any) => ({
+      ...d,
+      restaurantName: restMap.get(d.restaurantId) || 'Unknown Store',
+    }));
+
+    if (restaurantId) enriched = enriched.filter((d: any) => d.restaurantId === restaurantId);
+    return c.json(enriched);
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/delivery/:id/status', requireAdmin(), async (c) => {
+  const delId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { status } = body;
+  const { db, close } = getDb(c);
+  try {
+    const [updated] = await db
+      .update(appSchema.deliveryOrder)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(appSchema.deliveryOrder.id, delId))
+      .returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Delivery not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+// ─── 12. Customers Directory & CRM (Admin) ────────────────────────────────────
+
+app.get('/customers', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const [users, orders] = await Promise.all([
+      db.select().from(appSchema.user),
+      db.select({ customerPhone: appSchema.saleOrder.customerPhone, paidPaise: appSchema.saleOrder.paidPaise, subtotalPaise: appSchema.saleOrder.subtotalPaise }).from(appSchema.saleOrder),
+    ]);
+
+    const statsMap = new Map<string, { count: number; spend: number }>();
+    for (const ord of orders) {
+      if (!ord.customerPhone) continue;
+      const curr = statsMap.get(ord.customerPhone) || { count: 0, spend: 0 };
+      curr.count++;
+      curr.spend += (ord.paidPaise || ord.subtotalPaise || 0) / 100;
+      statsMap.set(ord.customerPhone, curr);
+    }
+
+    const customers = users
+      .filter((u: any) => u.role === 'CUSTOMER')
+      .map((u: any) => {
+        const phone = u.phoneNumber || '';
+        const stats = statsMap.get(phone) || { count: 0, spend: 0 };
+        return {
+          id: u.id,
+          name: u.name || 'Guest User',
+          phoneNumber: u.phoneNumber,
+          email: u.email,
+          ordersCount: stats.count,
+          totalSpend: Math.round(stats.spend * 100) / 100,
+          createdAt: u.createdAt,
+        };
+      });
+
+    return c.json(customers);
+  } finally {
+    await close();
+  }
+});
+
+app.post('/customers', requireAdmin(), async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { name, phoneNumber, email } = body;
+  if (!phoneNumber) return c.json({ error: 'Validation Error', message: 'phoneNumber required' }, 400);
+
+  const cleanPhone = normalizePhone(phoneNumber);
+  const { db, close } = getDb(c);
+  try {
+    const id = generateId('user');
+    const now = new Date();
+    const [created] = await db
+      .insert(appSchema.user)
+      .values({
+        id,
+        name: name?.trim() || `Customer ${cleanPhone.slice(-4)}`,
+        phoneNumber: cleanPhone,
+        email: email?.trim() || null,
+        phoneNumberVerified: true,
+        role: 'CUSTOMER',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    return c.json(created, 201);
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/customers/:id', requireAdmin(), async (c) => {
+  const userId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { name, phoneNumber, email } = body;
+  const { db, close } = getDb(c);
+  try {
+    const updates: any = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = name.trim();
+    if (phoneNumber !== undefined) updates.phoneNumber = normalizePhone(phoneNumber);
+    if (email !== undefined) updates.email = email ? email.trim() : null;
+
+    const [updated] = await db.update(appSchema.user).set(updates).where(eq(appSchema.user.id, userId)).returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Customer not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/customers/:id', requireAdmin(), async (c) => {
+  const userId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [deleted] = await db.delete(appSchema.user).where(eq(appSchema.user.id, userId)).returning();
+    if (!deleted) return c.json({ error: 'Not Found', message: 'Customer not found' }, 404);
+    return c.json({ success: true, message: 'Customer deleted' });
+  } finally {
+    await close();
+  }
+});
+
+// ─── 13. Table Reservations CRUD (Admin) ─────────────────────────────────────
+
+app.get('/reservations', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const [reservations, rests, outlets] = await Promise.all([
+      db.select().from(appSchema.tableReservation).orderBy(desc(appSchema.tableReservation.reservationDate)),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+      db.select({ id: appSchema.restaurantOutlet.id, name: appSchema.restaurantOutlet.name }).from(appSchema.restaurantOutlet),
+    ]);
+
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+    const outletMap = new Map(outlets.map((o: any) => [o.id, o.name]));
+
+    let enriched = reservations.map((res: any) => ({
+      ...res,
+      restaurantName: restMap.get(res.restaurantId) || 'Unknown Store',
+      outletName: outletMap.get(res.outletId) || 'Main Branch',
+    }));
+
+    if (restaurantId) enriched = enriched.filter((r: any) => r.restaurantId === restaurantId);
+    return c.json(enriched);
+  } finally {
+    await close();
+  }
+});
+
+app.post('/reservations', requireAdmin(), async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const { restaurantId, outletId, guestName, guestPhone, partySize = 2, reservationDate, startTime = '19:00', notes } = body;
+  if (!restaurantId || !outletId || !guestName || !guestPhone || !reservationDate) {
+    return c.json({ error: 'Validation Error', message: 'restaurantId, outletId, guestName, guestPhone, reservationDate required' }, 400);
+  }
+  const { db, close } = getDb(c);
+  try {
+    const id = generateId('resv');
+    const [created] = await db
+      .insert(appSchema.tableReservation)
+      .values({
+        id,
+        restaurantId,
+        outletId,
+        guestName: guestName.trim(),
+        guestPhone: normalizePhone(guestPhone),
+        partySize: Number(partySize),
+        reservationDate: reservationDate.trim(),
+        startTime: startTime.trim(),
+        notes: notes?.trim() || null,
+        status: 'CONFIRMED',
+      })
+      .returning();
+    return c.json(created, 201);
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/reservations/:id', requireAdmin(), async (c) => {
+  const resId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { status, guestName, partySize, reservationDate, startTime, notes } = body;
+  const { db, close } = getDb(c);
+  try {
+    const updates: any = { updatedAt: new Date() };
+    if (status !== undefined) updates.status = status;
+    if (guestName !== undefined) updates.guestName = guestName.trim();
+    if (partySize !== undefined) updates.partySize = Number(partySize);
+    if (reservationDate !== undefined) updates.reservationDate = reservationDate.trim();
+    if (startTime !== undefined) updates.startTime = startTime.trim();
+    if (notes !== undefined) updates.notes = notes ? notes.trim() : null;
+
+    const [updated] = await db.update(appSchema.tableReservation).set(updates).where(eq(appSchema.tableReservation.id, resId)).returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Reservation not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/reservations/:id', requireAdmin(), async (c) => {
+  const resId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [deleted] = await db.delete(appSchema.tableReservation).where(eq(appSchema.tableReservation.id, resId)).returning();
+    if (!deleted) return c.json({ error: 'Not Found', message: 'Reservation not found' }, 404);
+    return c.json({ success: true, message: 'Reservation deleted' });
+  } finally {
+    await close();
+  }
+});
+
+// ─── 14. Customer Feedback & Reviews CRUD (Admin) ────────────────────────────
+
+app.get('/feedback', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurantId = c.req.query('restaurantId');
+    const [reviews, rests] = await Promise.all([
+      db.select().from(appSchema.orderFeedback).orderBy(desc(appSchema.orderFeedback.createdAt)),
+      db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
+    ]);
+
+    const restMap = new Map(rests.map((r: any) => [r.id, r.name]));
+    let enriched = reviews.map((rev: any) => ({
+      ...rev,
+      restaurantName: restMap.get(rev.restaurantId) || 'Unknown Store',
+    }));
+
+    if (restaurantId) enriched = enriched.filter((rev: any) => rev.restaurantId === restaurantId);
+    return c.json(enriched);
+  } finally {
+    await close();
+  }
+});
+
+app.post('/feedback/:id/reply', requireAdmin(), async (c) => {
+  const revId = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const { reply } = body;
+  if (!reply) return c.json({ error: 'Validation Error', message: 'reply required' }, 400);
+
+  const { db, close } = getDb(c);
+  try {
+    const [updated] = await db
+      .update(appSchema.orderFeedback)
+      .set({ ownerReply: reply.trim(), ownerRepliedAt: new Date(), updatedAt: new Date() })
+      .where(eq(appSchema.orderFeedback.id, revId))
+      .returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Feedback review not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
+app.delete('/feedback/:id', requireAdmin(), async (c) => {
+  const revId = c.req.param('id');
+  const { db, close } = getDb(c);
+  try {
+    const [deleted] = await db.delete(appSchema.orderFeedback).where(eq(appSchema.orderFeedback.id, revId)).returning();
+    if (!deleted) return c.json({ error: 'Not Found', message: 'Feedback not found' }, 404);
+    return c.json({ success: true, message: 'Feedback deleted' });
+  } finally {
+    await close();
+  }
+});
+
+// ─── 15. Subscriptions & Plans (Admin) ────────────────────────────────────────
+
+app.get('/subscriptions', requireAdmin(), async (c) => {
+  const { db, close } = getDb(c);
+  try {
+    const restaurants = await db.select().from(appSchema.restaurant);
+    const plans = [
+      { id: 'TRIAL', name: 'Free Trial', price: 0, duration: '14 Days' },
+      { id: 'ACTIVE', name: 'Pro SaaS Plan', price: 2999, duration: 'Monthly' },
+      { id: 'SUSPENDED', name: 'Suspended / Overdue', price: 0, duration: 'None' },
+    ];
+    return c.json({ restaurants, plans });
+  } finally {
+    await close();
+  }
+});
+
+app.patch('/subscriptions/:restaurantId', requireAdmin(), async (c) => {
+  const restaurantId = c.req.param('restaurantId');
+  const body = await c.req.json().catch(() => ({}));
+  const { status } = body;
+  const { db, close } = getDb(c);
+  try {
+    const [updated] = await db
+      .update(appSchema.restaurant)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(appSchema.restaurant.id, restaurantId))
+      .returning();
+    if (!updated) return c.json({ error: 'Not Found', message: 'Restaurant not found' }, 404);
+    return c.json(updated);
+  } finally {
+    await close();
+  }
+});
+
 export { app as adminRoutes };

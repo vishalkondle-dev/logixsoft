@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AppShell,
   Group,
@@ -98,10 +98,10 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-function AdminShellContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function AdminHeaderStoreScope() {
   const router = useRouter();
-  const { user, isLoading: authLoading, signOut } = useAuth();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const {
     restaurants,
     selectedRestFilter,
@@ -111,6 +111,86 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
     handleEnterStore,
   } = useAdmin();
 
+  const urlRestId = searchParams.get("restaurantId") || "";
+  const currentScope = urlRestId || selectedRestFilter || "ALL";
+
+  // Keep selectedRestFilter in sync when URL query params change
+  useEffect(() => {
+    if (urlRestId && urlRestId !== selectedRestFilter) {
+      setSelectedRestFilter(urlRestId);
+    }
+  }, [urlRestId, selectedRestFilter, setSelectedRestFilter]);
+
+  const handleScopeChange = (newVal: string | null) => {
+    const val = newVal || "ALL";
+    setSelectedRestFilter(val);
+
+    const params = new URLSearchParams(searchParams.toString());
+    if (val && val !== "ALL") {
+      params.set("restaurantId", val);
+      params.delete("outletId"); // Reset outlet filter when changing restaurant
+    } else {
+      params.delete("restaurantId");
+      params.delete("outletId");
+    }
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
+  const activeStore = (currentScope !== "ALL"
+    ? restaurants.find((r) => r.id === currentScope)
+    : null) || restaurants[0];
+
+  return (
+    <Group gap="xs">
+      <Select
+        size="xs"
+        placeholder="Scope: All Stores"
+        data={[
+          { value: "ALL", label: "🌐 All Platform Stores" },
+          ...restaurants.map((r) => ({ value: r.id, label: `🏪 ${r.name}` })),
+        ]}
+        value={currentScope}
+        onChange={handleScopeChange}
+        w={{ base: 140, sm: 220 }}
+      />
+
+      <Tooltip label="Refresh Global Telemetry">
+        <ActionIcon
+          variant="light"
+          color="dinePrimary"
+          size="md"
+          radius="md"
+          loading={refreshing}
+          onClick={() => fetchGlobalMetadata()}
+        >
+          <IconRefresh size={18} />
+        </ActionIcon>
+      </Tooltip>
+
+      {restaurants.length > 0 && (
+        <Button
+          variant="light"
+          color="indigo"
+          size="xs"
+          leftSection={<IconLogin size={14} />}
+          visibleFrom="sm"
+          onClick={() => handleEnterStore(activeStore)}
+          title={activeStore ? `Impersonate & Enter POS for ${activeStore.name}` : "Enter POS"}
+        >
+          {currentScope !== "ALL" && activeStore
+            ? `Enter ${activeStore.name.length > 16 ? activeStore.name.slice(0, 14) + "…" : activeStore.name} POS`
+            : "Enter POS"}
+        </Button>
+      )}
+    </Group>
+  );
+}
+
+function AdminShellContent({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, isLoading: authLoading, signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -192,43 +272,9 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
 
           {/* Right Header: Global Scope Filter & Profile */}
           <Group gap="xs">
-            <Select
-              size="xs"
-              placeholder="Scope: All Stores"
-              data={[
-                { value: "ALL", label: "🌐 All Platform Stores" },
-                ...restaurants.map((r) => ({ value: r.id, label: `🏪 ${r.name}` })),
-              ]}
-              value={selectedRestFilter}
-              onChange={(v) => setSelectedRestFilter(v || "ALL")}
-              w={{ base: 140, sm: 200 }}
-            />
-
-            <Tooltip label="Refresh Global Telemetry">
-              <ActionIcon
-                variant="light"
-                color="dinePrimary"
-                size="md"
-                radius="md"
-                loading={refreshing}
-                onClick={() => fetchGlobalMetadata()}
-              >
-                <IconRefresh size={18} />
-              </ActionIcon>
-            </Tooltip>
-
-            {restaurants.length > 0 && (
-              <Button
-                variant="light"
-                color="indigo"
-                size="xs"
-                leftSection={<IconLogin size={14} />}
-                visibleFrom="sm"
-                onClick={() => handleEnterStore(restaurants[0])}
-              >
-                Enter POS
-              </Button>
-            )}
+            <Suspense fallback={<Loader size="xs" />}>
+              <AdminHeaderStoreScope />
+            </Suspense>
 
             <Menu position="bottom-end" shadow="md">
               <Menu.Target>

@@ -41,6 +41,7 @@ function OverviewContent() {
 
   const searchQuery = getFilter("search", "");
   const statusFilter = getFilter("status", "ALL");
+  const restaurantFilter = getFilter("restaurantId", selectedRestFilter);
 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,8 @@ function OverviewContent() {
   useEffect(() => {
     async function fetchRecentOrders() {
       try {
-        const res = await fetch(`${API_BASE}/admin/orders?limit=15`, { credentials: "include" });
+        const qs = restaurantFilter && restaurantFilter !== "ALL" ? `&restaurantId=${restaurantFilter}` : "";
+        const res = await fetch(`${API_BASE}/admin/orders?limit=15${qs}`, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           setOrders(Array.isArray(data) ? data : data.orders || []);
@@ -60,7 +62,7 @@ function OverviewContent() {
       }
     }
     fetchRecentOrders();
-  }, [refreshing]);
+  }, [refreshing, restaurantFilter]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -71,10 +73,10 @@ function OverviewContent() {
         o.customerPhone?.toLowerCase().includes(q) ||
         o.restaurantName?.toLowerCase().includes(q);
       const matchesStatus = statusFilter === "ALL" || o.status === statusFilter || o.orderStatus === statusFilter;
-      const matchesRest = selectedRestFilter === "ALL" || o.restaurantId === selectedRestFilter;
+      const matchesRest = restaurantFilter === "ALL" || o.restaurantId === restaurantFilter;
       return matchesSearch && matchesStatus && matchesRest;
     });
-  }, [orders, searchQuery, statusFilter, selectedRestFilter]);
+  }, [orders, searchQuery, statusFilter, restaurantFilter]);
 
   return (
     <Stack gap="lg">

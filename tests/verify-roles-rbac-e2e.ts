@@ -339,7 +339,7 @@ async function run() {
   console.log(`✓ Saved screenshot of POS screen: ${posScreenshotPath}`);
 
   // Navigate to Kitchen
-  await page.goto(`${WEB_BASE}/kitchen`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${WEB_BASE}/kitchen`, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(2000);
   const kitchenTitle = page.locator('text=Kitchen Display').first();
   console.log('✓ Navigated to Kitchen display successfully');

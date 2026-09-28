@@ -90,7 +90,7 @@ const BADGE_COLOR_MAP: Record<string, string> = {
   "Read Only": "gray",
 };
 
-export function RolesManagement() {
+export function RolesManagement({ embedded = false }: { embedded?: boolean } = {}) {
   const { restaurant, isLoading: isRestaurantLoading } = useRestaurant();
   const currentRole = useRestaurantRole();
   const restaurantId = restaurant?.id ?? "";
@@ -426,7 +426,7 @@ export function RolesManagement() {
   }
 
   if (!isOwner) {
-    return (
+    const alertContent = (
       <Paper p="xl" radius="md" withBorder>
         <Alert
           icon={<IconAlertTriangle size={20} />}
@@ -442,9 +442,17 @@ export function RolesManagement() {
         </Alert>
       </Paper>
     );
+
+    if (embedded) return alertContent;
+
+    return (
+      <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+        {alertContent}
+      </Box>
+    );
   }
 
-  return (
+  const content = (
     <Stack gap="lg">
       {/* Header */}
       <Paper p="lg" radius="md" withBorder>
@@ -1077,5 +1085,15 @@ export function RolesManagement() {
         </Stack>
       </Modal>
     </Stack>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+      {content}
+    </Box>
   );
 }

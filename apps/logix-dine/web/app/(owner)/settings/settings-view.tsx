@@ -692,7 +692,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Roles & Permissions tab */}
         {isOwner && (
           <Tabs.Panel value="roles">
-            <RolesManagement />
+            <RolesManagement embedded />
           </Tabs.Panel>
         )}
 

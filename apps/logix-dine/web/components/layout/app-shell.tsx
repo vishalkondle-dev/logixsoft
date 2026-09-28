@@ -15,7 +15,7 @@ import {
   IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
   IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages, IconTruckDelivery,
-  IconStar, IconShieldLock,
+  IconStar, IconShieldLock, IconArrowRight,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -310,6 +310,21 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                 </Button>
               )}
 
+              {(user as any)?.role === "ADMIN" && (
+                <Button
+                  component={Link}
+                  href="/admin"
+                  size="xs"
+                  variant={pathname === "/admin" ? "filled" : "light"}
+                  color="indigo"
+                  radius="xl"
+                  leftSection={<IconShieldLock size={14} />}
+                  style={{ fontWeight: 600 }}
+                >
+                  Admin Portal
+                </Button>
+              )}
+
               {outlets.length > 0 && (
                 <Menu
                   position="bottom-end"
@@ -433,6 +448,17 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         </Text>
                       )}
                     </Menu.Label>
+
+                    {(user as any)?.role === "ADMIN" && (
+                      <Menu.Item
+                        component={Link}
+                        href="/admin"
+                        leftSection={<IconShieldLock size={16} color="#4c6ef5" />}
+                        style={{ fontWeight: 600, color: "#4c6ef5", backgroundColor: "rgba(76, 110, 245, 0.08)" }}
+                      >
+                        Platform Admin Portal
+                      </Menu.Item>
+                    )}
 
                     {isStaffOrOwner && (
                       <Menu.Item
@@ -566,6 +592,40 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       )}
 
       <AppShell.Main>
+        {!isLanding && (user as any)?.role === "ADMIN" && pathname !== "/admin" && (
+          <Box
+            bg="#fff3bf"
+            px="md"
+            py={7}
+            style={{
+              borderBottom: "1px solid #ffe066",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#d9480f",
+            }}
+          >
+            <Group gap="xs" wrap="nowrap">
+              <IconShieldLock size={16} color="#d9480f" />
+              <Text size="xs" fw={700} c="#d9480f">
+                Platform Admin Mode: Viewing store &quot;{restaurant?.name || "Store"}&quot; with full Owner privileges
+              </Text>
+            </Group>
+            <Button
+              component={Link}
+              href="/admin"
+              size="compact-xs"
+              variant="filled"
+              color="orange"
+              radius="xl"
+              rightSection={<IconArrowRight size={12} />}
+            >
+              Return to Admin Portal
+            </Button>
+          </Box>
+        )}
         {children}
         <LoginModal />
       </AppShell.Main>

@@ -525,17 +525,22 @@ export function RolesManagement({ embedded = false }: { embedded?: boolean } = {
                 }}
               >
                 <Group justify="space-between" align="flex-start" mb="xs">
-                  <div style={{ minWidth: 0 }}>
-                    <Group gap="xs" wrap="nowrap">
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <Group gap="xs" wrap="nowrap" align="center">
                       <Text fw={700} size="sm" truncate>
                         {r.name}
                       </Text>
+                      {isSelected && (
+                        <ThemeIcon size={18} radius="xl" color="dinePrimary" variant="filled" style={{ flexShrink: 0 }}>
+                          <IconCheck size={11} />
+                        </ThemeIcon>
+                      )}
                       {r.isSystem ? (
-                        <Badge size="xs" variant="outline" color="gray">
+                        <Badge size="xs" variant="outline" color="gray" style={{ flexShrink: 0 }}>
                           System
                         </Badge>
                       ) : (
-                        <Badge size="xs" variant="filled" color="grape">
+                        <Badge size="xs" variant="filled" color="grape" style={{ flexShrink: 0 }}>
                           Custom
                         </Badge>
                       )}
@@ -544,12 +549,6 @@ export function RolesManagement({ embedded = false }: { embedded?: boolean } = {
                       {r.description || (r.isSystem ? "Standard built-in role" : "Custom outlet role")}
                     </Text>
                   </div>
-
-                  {isSelected && (
-                    <ThemeIcon size={20} radius="xl" color="dinePrimary">
-                      <IconCheck size={12} />
-                    </ThemeIcon>
-                  )}
                 </Group>
 
                 <Divider my="xs" />

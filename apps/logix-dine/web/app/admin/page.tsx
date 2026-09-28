@@ -108,6 +108,11 @@ export default function AdminPage() {
   const [selectedInv, setSelectedInv] = useState<any>(null);
 
   const [createResvOpened, setCreateResvOpened] = useState(false);
+  const [createCatOpened, setCreateCatOpened] = useState(false);
+  const [createCustOpened, setCreateCustOpened] = useState(false);
+  const [editCustOpened, setEditCustOpened] = useState(false);
+  const [selectedCust, setSelectedCust] = useState<any>(null);
+
   const [replyFeedbackOpened, setReplyFeedbackOpened] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
   const [feedbackReplyText, setFeedbackReplyText] = useState("");
@@ -131,6 +136,9 @@ export default function AdminPage() {
   const [createOutletForm, setCreateOutletForm] = useState({
     restaurantId: "", name: "", address: "", phone: "", upiId: "",
   });
+  const [editOutletForm, setEditOutletForm] = useState({
+    name: "", address: "", phone: "", upiId: "",
+  });
   const [createUserForm, setCreateUserForm] = useState({
     phoneNumber: "", name: "", email: "", role: "CUSTOMER",
   });
@@ -140,16 +148,34 @@ export default function AdminPage() {
   const [itemForm, setItemForm] = useState({
     restaurantId: "", categoryId: "", name: "", pricePaise: 25000, description: "", available: true,
   });
+  const [editItemForm, setEditItemForm] = useState({
+    name: "", pricePaise: 25000, description: "", categoryId: "", available: true,
+  });
+  const [catForm, setCatForm] = useState({
+    restaurantId: "", name: "",
+  });
   const [tableForm, setTableForm] = useState({
     restaurantId: "", outletId: "", name: "", section: "Main Floor", capacity: 4,
+  });
+  const [editTableForm, setEditTableForm] = useState({
+    name: "", section: "Main Floor", capacity: 4, active: true,
   });
   const [invForm, setInvForm] = useState({
     restaurantId: "", outletId: "", name: "", sku: "", category: "GENERAL", baseUom: "kg",
     currentStock: 10, lowStockThreshold: 5, costPerBaseUnitPaise: 5000,
   });
+  const [editInvForm, setEditInvForm] = useState({
+    name: "", currentStock: 10, lowStockThreshold: 5, costPerBaseUnitPaise: 5000,
+  });
   const [resvForm, setResvForm] = useState({
     restaurantId: "", outletId: "", guestName: "", guestPhone: "", partySize: 2,
     reservationDate: new Date().toISOString().split("T")[0], startTime: "19:00", notes: "",
+  });
+  const [custForm, setCustForm] = useState({
+    name: "", phoneNumber: "", email: "",
+  });
+  const [editCustForm, setEditCustForm] = useState({
+    name: "", phoneNumber: "", email: "",
   });
 
   // ─── Auth Guard ─────────────────────────────────────────────────────────────
@@ -323,6 +349,25 @@ export default function AdminPage() {
     }
   };
 
+  const handleSaveEditOutlet = async () => {
+    if (!selectedOutlet) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/outlets/${selectedOutlet.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(editOutletForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to update outlet");
+      notifications.show({ title: "Outlet Updated", message: "Changes saved.", color: "teal" });
+      setEditOutletOpened(false);
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // User CRUD
   const handleCreateUser = async () => {
     if (!createUserForm.phoneNumber) {
@@ -444,6 +489,48 @@ export default function AdminPage() {
     }
   };
 
+  const handleSaveEditMenuItem = async () => {
+    if (!selectedItem) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/menu/items/${selectedItem.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(editItemForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to update dish");
+      notifications.show({ title: "Dish Updated", message: "Changes saved.", color: "teal" });
+      setEditItemOpened(false);
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!catForm.restaurantId || !catForm.name.trim()) {
+      notifications.show({ title: "Validation", message: "Select restaurant and enter category name.", color: "orange" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/menu/categories`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(catForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to create category");
+      notifications.show({ title: "Category Created", message: `Category ${catForm.name} added.`, color: "teal" });
+      setCreateCatOpened(false);
+      setCatForm({ restaurantId: "", name: "" });
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Tables CRUD
   const handleCreateTable = async () => {
     if (!tableForm.restaurantId || !tableForm.outletId || !tableForm.name) {
@@ -479,6 +566,25 @@ export default function AdminPage() {
     }
   };
 
+  const handleSaveEditTable = async () => {
+    if (!selectedTable) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/tables/${selectedTable.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(editTableForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to update table");
+      notifications.show({ title: "Table Updated", message: "Changes saved.", color: "teal" });
+      setEditTableOpened(false);
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Inventory CRUD
   const handleCreateInventory = async () => {
     if (!invForm.restaurantId || !invForm.outletId || !invForm.name) {
@@ -511,6 +617,25 @@ export default function AdminPage() {
       fetchAllData(true);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
+  };
+
+  const handleSaveEditInventory = async () => {
+    if (!selectedInv) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/inventory/${selectedInv.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(editInvForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to update stock");
+      notifications.show({ title: "Stock Updated", message: "Inventory adjusted.", color: "teal" });
+      setEditInvOpened(false);
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -590,6 +715,76 @@ export default function AdminPage() {
       const res = await fetch(`${API_BASE}/admin/feedback/${fbId}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Delete failed");
       notifications.show({ title: "Deleted", message: "Review removed.", color: "teal" });
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
+  };
+
+  // Customer CRUD
+  const handleCreateCustomer = async () => {
+    if (!custForm.phoneNumber) {
+      notifications.show({ title: "Validation", message: "Phone number required.", color: "orange" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/customers`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(custForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to create customer");
+      notifications.show({ title: "Customer Added", message: `Provisioned customer ${custForm.phoneNumber}`, color: "teal" });
+      setCreateCustOpened(false);
+      setCustForm({ name: "", phoneNumber: "", email: "" });
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveEditCustomer = async () => {
+    if (!selectedCust) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/customers/${selectedCust.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(editCustForm),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed to update customer");
+      notifications.show({ title: "Customer Updated", message: "Details saved.", color: "teal" });
+      setEditCustOpened(false);
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteCustomer = async (cId: string) => {
+    if (!confirm("Permanently delete this customer record?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/admin/customers/${cId}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Delete failed");
+      notifications.show({ title: "Deleted", message: "Customer removed.", color: "teal" });
+      fetchAllData(true);
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
+  };
+
+  // Delivery Status Update
+  const handleUpdateDeliveryStatus = async (delId: string, status: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/delivery/${delId}/status`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error("Update failed");
+      notifications.show({ title: "Delivery Updated", message: `Status marked as ${status}.`, color: "teal" });
       fetchAllData(true);
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -960,9 +1155,14 @@ export default function AdminPage() {
                 </Button>
               )}
               {activeTab === "menu" && (
-                <Button color="dinePrimary" size="xs" leftSection={<IconPlus size={16} />} onClick={() => setCreateItemOpened(true)}>
-                  Add Menu Item
-                </Button>
+                <Group gap="xs">
+                  <Button variant="default" size="xs" leftSection={<IconPlus size={16} />} onClick={() => setCreateCatOpened(true)}>
+                    Add Category
+                  </Button>
+                  <Button color="dinePrimary" size="xs" leftSection={<IconPlus size={16} />} onClick={() => setCreateItemOpened(true)}>
+                    Add Menu Item
+                  </Button>
+                </Group>
               )}
               {activeTab === "tables" && (
                 <Button color="dinePrimary" size="xs" leftSection={<IconPlus size={16} />} onClick={() => setCreateTableOpened(true)}>
@@ -972,6 +1172,11 @@ export default function AdminPage() {
               {activeTab === "inventory" && (
                 <Button color="dinePrimary" size="xs" leftSection={<IconPlus size={16} />} onClick={() => setCreateInvOpened(true)}>
                   Add Inventory Item
+                </Button>
+              )}
+              {activeTab === "customers" && (
+                <Button color="dinePrimary" size="xs" leftSection={<IconUserPlus size={16} />} onClick={() => setCreateCustOpened(true)}>
+                  Add Customer
                 </Button>
               )}
               {activeTab === "reservations" && (
@@ -1179,7 +1384,28 @@ export default function AdminPage() {
                         <Table.Td><Text size="xs">{o.phone || "—"}</Text></Table.Td>
                         <Table.Td><Text size="xs">{o.upiId || "—"}</Text></Table.Td>
                         <Table.Td style={{ textAlign: "right" }}>
-                          <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDeleteOutlet(o.id)}><IconTrash size={16} /></ActionIcon>
+                          <Group gap="xs" justify="flex-end">
+                            <ActionIcon
+                              variant="subtle"
+                              color="dinePrimary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedOutlet(o);
+                                setEditOutletForm({
+                                  name: o.name,
+                                  address: o.address || "",
+                                  phone: o.phone || "",
+                                  upiId: o.upiId || "",
+                                });
+                                setEditOutletOpened(true);
+                              }}
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                            <ActionIcon color="red" variant="subtle" size="sm" onClick={() => handleDeleteOutlet(o.id)}>
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -1384,7 +1610,29 @@ export default function AdminPage() {
                           />
                         </Table.Td>
                         <Table.Td style={{ textAlign: "right" }}>
-                          <ActionIcon variant="subtle" color="red" size="sm" onClick={() => handleDeleteMenuItem(it.id)}><IconTrash size={16} /></ActionIcon>
+                          <Group gap="xs" justify="flex-end">
+                            <ActionIcon
+                              variant="subtle"
+                              color="dinePrimary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedItem(it);
+                                setEditItemForm({
+                                  name: it.name,
+                                  pricePaise: it.pricePaise,
+                                  description: it.description || "",
+                                  categoryId: it.categoryId,
+                                  available: it.available,
+                                });
+                                setEditItemOpened(true);
+                              }}
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                            <ActionIcon variant="subtle" color="red" size="sm" onClick={() => handleDeleteMenuItem(it.id)}>
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -1416,7 +1664,28 @@ export default function AdminPage() {
                         <Table.Td><Badge size="xs" variant="outline">{t.section}</Badge></Table.Td>
                         <Table.Td><Text size="xs">{t.capacity} Guests</Text></Table.Td>
                         <Table.Td style={{ textAlign: "right" }}>
-                          <ActionIcon variant="subtle" color="red" size="sm" onClick={() => handleDeleteTable(t.id)}><IconTrash size={16} /></ActionIcon>
+                          <Group gap="xs" justify="flex-end">
+                            <ActionIcon
+                              variant="subtle"
+                              color="dinePrimary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedTable(t);
+                                setEditTableForm({
+                                  name: t.name,
+                                  section: t.section || "Main Floor",
+                                  capacity: t.capacity || 4,
+                                  active: t.active ?? true,
+                                });
+                                setEditTableOpened(true);
+                              }}
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                            <ActionIcon variant="subtle" color="red" size="sm" onClick={() => handleDeleteTable(t.id)}>
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -1450,7 +1719,28 @@ export default function AdminPage() {
                         <Table.Td><Text size="xs" fw={700}>{inv.currentStock} {inv.baseUom}</Text></Table.Td>
                         <Table.Td><Text size="xs" c="dimmed">{inv.lowStockThreshold} {inv.baseUom}</Text></Table.Td>
                         <Table.Td style={{ textAlign: "right" }}>
-                          <ActionIcon variant="subtle" color="red" size="sm" onClick={() => handleDeleteInventory(inv.id)}><IconTrash size={16} /></ActionIcon>
+                          <Group gap="xs" justify="flex-end">
+                            <ActionIcon
+                              variant="subtle"
+                              color="dinePrimary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedInv(inv);
+                                setEditInvForm({
+                                  name: inv.name,
+                                  currentStock: inv.currentStock,
+                                  lowStockThreshold: inv.lowStockThreshold,
+                                  costPerBaseUnitPaise: inv.costPerBaseUnitPaise || 0,
+                                });
+                                setEditInvOpened(true);
+                              }}
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                            <ActionIcon variant="subtle" color="red" size="sm" onClick={() => handleDeleteInventory(inv.id)}>
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -1472,11 +1762,12 @@ export default function AdminPage() {
                       <Table.Th>Address</Table.Th>
                       <Table.Th>Status</Table.Th>
                       <Table.Th>Time</Table.Th>
+                      <Table.Th style={{ textAlign: "right" }}>Status Action</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {deliveries.length === 0 ? (
-                      <Table.Tr><Table.Td colSpan={5} style={{ textAlign: "center", padding: 30 }}><Text c="dimmed">No deliveries logged.</Text></Table.Td></Table.Tr>
+                      <Table.Tr><Table.Td colSpan={6} style={{ textAlign: "center", padding: 30 }}><Text c="dimmed">No deliveries logged.</Text></Table.Td></Table.Tr>
                     ) : (
                       deliveries.map((d) => (
                         <Table.Tr key={d.id}>
@@ -1485,6 +1776,22 @@ export default function AdminPage() {
                           <Table.Td><Text size="xs" c="dimmed">{d.addressLine1}, {d.city}</Text></Table.Td>
                           <Table.Td><Badge size="xs" color={d.status === "DELIVERED" ? "green" : "orange"}>{d.status}</Badge></Table.Td>
                           <Table.Td><Text size="xs">{new Date(d.createdAt).toLocaleTimeString()}</Text></Table.Td>
+                          <Table.Td style={{ textAlign: "right" }}>
+                            <Menu position="bottom-end" shadow="md">
+                              <Menu.Target>
+                                <Button size="xs" variant="light" color="indigo" rightSection={<IconDotsVertical size={14} />}>
+                                  Update
+                                </Button>
+                              </Menu.Target>
+                              <Menu.Dropdown>
+                                <Menu.Item onClick={() => handleUpdateDeliveryStatus(d.id, "ASSIGNED")}>Mark Assigned</Menu.Item>
+                                <Menu.Item onClick={() => handleUpdateDeliveryStatus(d.id, "PICKED_UP")}>Mark Picked Up</Menu.Item>
+                                <Menu.Item color="green" onClick={() => handleUpdateDeliveryStatus(d.id, "DELIVERED")}>Mark Delivered</Menu.Item>
+                                <Menu.Divider />
+                                <Menu.Item color="red" onClick={() => handleUpdateDeliveryStatus(d.id, "CANCELLED")}>Cancel Delivery</Menu.Item>
+                              </Menu.Dropdown>
+                            </Menu>
+                          </Table.Td>
                         </Table.Tr>
                       ))
                     )}
@@ -1506,6 +1813,7 @@ export default function AdminPage() {
                       <Table.Th>Orders Placed</Table.Th>
                       <Table.Th>Total Spent</Table.Th>
                       <Table.Th>Joined Date</Table.Th>
+                      <Table.Th style={{ textAlign: "right" }}>Actions</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
@@ -1516,6 +1824,29 @@ export default function AdminPage() {
                         <Table.Td><Badge size="xs" color="indigo">{c.ordersCount} Orders</Badge></Table.Td>
                         <Table.Td><Text size="xs" fw={700}>₹{c.totalSpend?.toLocaleString("en-IN")}</Text></Table.Td>
                         <Table.Td><Text size="xs">{new Date(c.createdAt).toLocaleDateString()}</Text></Table.Td>
+                        <Table.Td style={{ textAlign: "right" }}>
+                          <Group gap="xs" justify="flex-end">
+                            <ActionIcon
+                              variant="subtle"
+                              color="dinePrimary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedCust(c);
+                                setEditCustForm({
+                                  name: c.name || "",
+                                  phoneNumber: c.phoneNumber || "",
+                                  email: c.email || "",
+                                });
+                                setEditCustOpened(true);
+                              }}
+                            >
+                              <IconEdit size={16} />
+                            </ActionIcon>
+                            <ActionIcon variant="subtle" color="red" size="sm" onClick={() => handleDeleteCustomer(c.id)}>
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Group>
+                        </Table.Td>
                       </Table.Tr>
                     ))}
                   </Table.Tbody>
@@ -1719,6 +2050,20 @@ export default function AdminPage() {
         </Stack>
       </Modal>
 
+      {/* Modal: Edit Outlet */}
+      <Modal opened={editOutletOpened} onClose={() => setEditOutletOpened(false)} title={<Text fw={700}>Edit Outlet Details</Text>}>
+        <Stack gap="sm">
+          <TextInput label="Outlet Name" required value={editOutletForm.name} onChange={(e) => setEditOutletForm((f) => ({ ...f, name: e.target.value }))} />
+          <TextInput label="Address" value={editOutletForm.address} onChange={(e) => setEditOutletForm((f) => ({ ...f, address: e.target.value }))} />
+          <TextInput label="Phone" value={editOutletForm.phone} onChange={(e) => setEditOutletForm((f) => ({ ...f, phone: e.target.value }))} />
+          <TextInput label="UPI ID" value={editOutletForm.upiId} onChange={(e) => setEditOutletForm((f) => ({ ...f, upiId: e.target.value }))} />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setEditOutletOpened(false)}>Cancel</Button>
+            <Button color="dinePrimary" loading={submitting} onClick={handleSaveEditOutlet}>Save Changes</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       {/* Modal: Create User */}
       <Modal opened={createUserOpened} onClose={() => setCreateUserOpened(false)} title={<Text fw={700}>Add Platform User</Text>}>
         <Stack gap="sm">
@@ -1762,6 +2107,33 @@ export default function AdminPage() {
         </Stack>
       </Modal>
 
+      {/* Modal: Edit Menu Item */}
+      <Modal opened={editItemOpened} onClose={() => setEditItemOpened(false)} title={<Text fw={700}>Edit Menu Item</Text>}>
+        <Stack gap="sm">
+          <TextInput label="Dish Name" required value={editItemForm.name} onChange={(e) => setEditItemForm((f) => ({ ...f, name: e.target.value }))} />
+          <Select label="Category" placeholder="Select Category" required data={menuCategories.map((c) => ({ value: c.id, label: c.name }))} value={editItemForm.categoryId} onChange={(v) => setEditItemForm((f) => ({ ...f, categoryId: v || "" }))} />
+          <NumberInput label="Price (₹)" min={0} value={editItemForm.pricePaise / 100} onChange={(v) => setEditItemForm((f) => ({ ...f, pricePaise: Math.round(Number(v || 0) * 100) }))} />
+          <TextInput label="Description" value={editItemForm.description} onChange={(e) => setEditItemForm((f) => ({ ...f, description: e.target.value }))} />
+          <Switch label="Item Available in Stock (86 Switch)" checked={editItemForm.available} onChange={(e) => setEditItemForm((f) => ({ ...f, available: e.currentTarget.checked }))} />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setEditItemOpened(false)}>Cancel</Button>
+            <Button color="dinePrimary" loading={submitting} onClick={handleSaveEditMenuItem}>Save Changes</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Modal: Add Category */}
+      <Modal opened={createCatOpened} onClose={() => setCreateCatOpened(false)} title={<Text fw={700}>Add Menu Category</Text>}>
+        <Stack gap="sm">
+          <Select label="Restaurant" placeholder="Select Restaurant" required data={restaurants.map((r) => ({ value: r.id, label: r.name }))} value={catForm.restaurantId} onChange={(v) => setCatForm((f) => ({ ...f, restaurantId: v || "" }))} />
+          <TextInput label="Category Name" placeholder="e.g. Starters / Desserts / Cocktails" required value={catForm.name} onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))} />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setCreateCatOpened(false)}>Cancel</Button>
+            <Button color="dinePrimary" loading={submitting} onClick={handleCreateCategory}>Add Category</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       {/* Modal: Create Dining Table */}
       <Modal opened={createTableOpened} onClose={() => setCreateTableOpened(false)} title={<Text fw={700}>Add Dining Table</Text>}>
         <Stack gap="sm">
@@ -1773,6 +2145,20 @@ export default function AdminPage() {
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setCreateTableOpened(false)}>Cancel</Button>
             <Button color="dinePrimary" loading={submitting} onClick={handleCreateTable}>Add Table</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Modal: Edit Dining Table */}
+      <Modal opened={editTableOpened} onClose={() => setEditTableOpened(false)} title={<Text fw={700}>Edit Dining Table</Text>}>
+        <Stack gap="sm">
+          <TextInput label="Table Name / Number" required value={editTableForm.name} onChange={(e) => setEditTableForm((f) => ({ ...f, name: e.target.value }))} />
+          <TextInput label="Dining Section" value={editTableForm.section} onChange={(e) => setEditTableForm((f) => ({ ...f, section: e.target.value }))} />
+          <NumberInput label="Guest Capacity" min={1} value={editTableForm.capacity} onChange={(v) => setEditTableForm((f) => ({ ...f, capacity: Number(v || 2) }))} />
+          <Switch label="Active / Available" checked={editTableForm.active} onChange={(e) => setEditTableForm((f) => ({ ...f, active: e.currentTarget.checked }))} />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setEditTableOpened(false)}>Cancel</Button>
+            <Button color="dinePrimary" loading={submitting} onClick={handleSaveEditTable}>Save Changes</Button>
           </Group>
         </Stack>
       </Modal>
@@ -1794,6 +2180,22 @@ export default function AdminPage() {
         </Stack>
       </Modal>
 
+      {/* Modal: Edit Inventory Item */}
+      <Modal opened={editInvOpened} onClose={() => setEditInvOpened(false)} title={<Text fw={700}>Edit Inventory Stock</Text>}>
+        <Stack gap="sm">
+          <TextInput label="Item Name" required value={editInvForm.name} onChange={(e) => setEditInvForm((f) => ({ ...f, name: e.target.value }))} />
+          <Group grow>
+            <NumberInput label="Current Stock" min={0} value={editInvForm.currentStock} onChange={(v) => setEditInvForm((f) => ({ ...f, currentStock: Number(v || 0) }))} />
+            <NumberInput label="Low Stock Alert Threshold" min={0} value={editInvForm.lowStockThreshold} onChange={(v) => setEditInvForm((f) => ({ ...f, lowStockThreshold: Number(v || 0) }))} />
+          </Group>
+          <NumberInput label="Cost Per Base Unit (₹)" min={0} value={editInvForm.costPerBaseUnitPaise / 100} onChange={(v) => setEditInvForm((f) => ({ ...f, costPerBaseUnitPaise: Math.round(Number(v || 0) * 100) }))} />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setEditInvOpened(false)}>Cancel</Button>
+            <Button color="dinePrimary" loading={submitting} onClick={handleSaveEditInventory}>Save Changes</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       {/* Modal: Create Reservation */}
       <Modal opened={createResvOpened} onClose={() => setCreateResvOpened(false)} title={<Text fw={700}>Add Guest Reservation</Text>}>
         <Stack gap="sm">
@@ -1809,6 +2211,32 @@ export default function AdminPage() {
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setCreateResvOpened(false)}>Cancel</Button>
             <Button color="dinePrimary" loading={submitting} onClick={handleCreateReservation}>Book Table</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Modal: Add Customer */}
+      <Modal opened={createCustOpened} onClose={() => setCreateCustOpened(false)} title={<Text fw={700}>Add New Customer</Text>}>
+        <Stack gap="sm">
+          <TextInput label="Full Name" placeholder="e.g. Rahul Sharma" value={custForm.name} onChange={(e) => setCustForm((f) => ({ ...f, name: e.target.value }))} />
+          <TextInput label="Phone Number" placeholder="+919876543210" required value={custForm.phoneNumber} onChange={(e) => setCustForm((f) => ({ ...f, phoneNumber: e.target.value }))} />
+          <TextInput label="Email Address" placeholder="rahul@example.com" value={custForm.email} onChange={(e) => setCustForm((f) => ({ ...f, email: e.target.value }))} />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setCreateCustOpened(false)}>Cancel</Button>
+            <Button color="dinePrimary" loading={submitting} onClick={handleCreateCustomer}>Add Customer</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Modal: Edit Customer */}
+      <Modal opened={editCustOpened} onClose={() => setEditCustOpened(false)} title={<Text fw={700}>Edit Customer Profile</Text>}>
+        <Stack gap="sm">
+          <TextInput label="Full Name" required value={editCustForm.name} onChange={(e) => setEditCustForm((f) => ({ ...f, name: e.target.value }))} />
+          <TextInput label="Phone Number" required value={editCustForm.phoneNumber} onChange={(e) => setEditCustForm((f) => ({ ...f, phoneNumber: e.target.value }))} />
+          <TextInput label="Email Address" value={editCustForm.email} onChange={(e) => setEditCustForm((f) => ({ ...f, email: e.target.value }))} />
+          <Group justify="flex-end" mt="md">
+            <Button variant="default" onClick={() => setEditCustOpened(false)}>Cancel</Button>
+            <Button color="dinePrimary" loading={submitting} onClick={handleSaveEditCustomer}>Save Changes</Button>
           </Group>
         </Stack>
       </Modal>

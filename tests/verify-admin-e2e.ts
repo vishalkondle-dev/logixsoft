@@ -83,6 +83,7 @@ async function run() {
     ]);
 
     const page = await adminContext.newPage();
+    page.on('dialog', (dialog) => dialog.accept());
     console.log('[Admin] Navigating to /admin...');
     await page.goto(`${WEB_BASE}/admin`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(3000);
@@ -338,18 +339,56 @@ async function run() {
     console.log('✅ TEST 13 PASSED: Delivery Fleet verified!\n');
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // TEST 14: Customer Directory (CRM)
+    // TEST 14: Customer Directory (CRM) CRUD
     // ─────────────────────────────────────────────────────────────────────────────
-    console.log('--- TEST 14: Customer Directory Module ---');
+    console.log('--- TEST 14: Customer Directory Module CRUD ---');
     await page.locator('nav').getByText('Customer Directory', { exact: true }).first().click();
     await page.waitForTimeout(1500);
 
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     console.log('[CRM] Customer directory table rendered.');
 
+    // Customer CRUD
+    const testCustPhone = '+919988' + Math.floor(100000 + Math.random() * 900000);
+    console.log(`[CRM] Creating test customer (${testCustPhone})...`);
+    await page.locator('button:has-text("Add Customer")').first().click();
+    await page.waitForTimeout(500);
+
+    await page.locator('.mantine-Modal-content input[placeholder*="Rahul Sharma"]').fill('Auto CRM User');
+    await page.locator('.mantine-Modal-content input[placeholder*="+919876543210"]').fill(testCustPhone);
+    await page.locator('.mantine-Modal-content input[placeholder*="rahul@example.com"]').fill('autocrm@example.com');
+    await page.locator('.mantine-Modal-content button:has-text("Add Customer")').click();
+    await page.waitForTimeout(2500);
+
+    await page.waitForSelector(`table tr:has-text("${testCustPhone}")`, { timeout: 10000 });
+    console.log(`[CRM] Customer ${testCustPhone} successfully created and rendered in table.`);
+
+    // Edit Customer
+    console.log(`[CRM] Editing customer ${testCustPhone}...`);
+    const custRow = page.locator('table tr', { hasText: testCustPhone }).first();
+    await custRow.locator('button').first().click();
+    await page.waitForTimeout(500);
+
+    await page.locator('.mantine-Modal-content input').first().fill('Auto CRM User Updated');
+    await page.locator('.mantine-Modal-content button:has-text("Save Changes")').click();
+    await page.waitForTimeout(2500);
+
+    await page.waitForSelector('table tr:has-text("Auto CRM User Updated")', { timeout: 10000 });
+    console.log(`[CRM] Customer update verified.`);
+
+    // Delete Customer
+    console.log(`[CRM] Deleting customer ${testCustPhone}...`);
+    const updatedCustRow = page.locator('table tr', { hasText: testCustPhone }).first();
+    await updatedCustRow.locator('button').last().click();
+    await page.waitForTimeout(2500);
+
+    const custCountAfter = await page.locator(`table tr:has-text("${testCustPhone}")`).count();
+    if (custCountAfter > 0) throw new Error(`Customer ${testCustPhone} was not removed after delete!`);
+    console.log(`[CRM] Customer ${testCustPhone} successfully deleted from platform.`);
+
     const custScreenshot = path.join(ARTIFACT_DIR, 'admin_superadmin_customers.png');
     await page.screenshot({ path: custScreenshot, fullPage: true });
-    console.log('✅ TEST 14 PASSED: Customer Directory verified!\n');
+    console.log('✅ TEST 14 PASSED: Customer Directory CRUD verified!\n');
 
     // ─────────────────────────────────────────────────────────────────────────────
     // TEST 15: Table Reservations

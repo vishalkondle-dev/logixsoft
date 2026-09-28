@@ -326,7 +326,7 @@ async function run() {
 
   // Test Navigation from AppShell Sidebar
   console.log('\n--- Test 7: AppShell Sidebar Navigation to Roles ---');
-  await page.goto(`${WEB_BASE}/pos`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${WEB_BASE}/pos`, { waitUntil: 'commit', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Check top navbar or menu
@@ -339,7 +339,7 @@ async function run() {
   console.log(`✓ Saved screenshot of POS screen: ${posScreenshotPath}`);
 
   // Navigate to Kitchen
-  await page.goto(`${WEB_BASE}/kitchen`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(`${WEB_BASE}/kitchen`, { waitUntil: 'commit', timeout: 30000 });
   await page.waitForTimeout(2000);
   const kitchenTitle = page.locator('text=Kitchen Display').first();
   console.log('✓ Navigated to Kitchen display successfully');
@@ -350,8 +350,8 @@ async function run() {
   console.log(`✓ Saved screenshot of Kitchen screen: ${kitchenScreenshotPath}`);
 
   // Navigate to Waiter
-  await page.goto(`${WEB_BASE}/waiter`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForTimeout(2000);
+  await page.goto(`${WEB_BASE}/waiter`, { waitUntil: 'commit', timeout: 30000 });
+  await page.waitForTimeout(2500);
   const waiterTitle = page.locator('text=Waiter & Floor Assistance').first();
   console.log('✓ Navigated to Waiter dashboard successfully');
 

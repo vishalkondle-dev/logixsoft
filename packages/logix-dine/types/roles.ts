@@ -179,7 +179,6 @@ export const LEGACY_TO_GRANULAR_MAP: Record<string, readonly Permission[]> = {
 export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Permission[]> = {
   OWNER: [
     ...GRANULAR_PERMISSIONS,
-    ...LEGACY_PERMISSIONS,
   ],
   MANAGER: [
     'pos:view', 'pos:order_create', 'pos:discount_apply', 'pos:bill_settle', 'pos:bill_void',
@@ -196,11 +195,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'printing:view', 'printing:test', 'printing:manage',
     'settings:view', 'settings:edit_store',
     'staff:view', 'staff:invite', 'staff:manage',
-    // legacy aliases
-    'restaurant:read', 'outlet:read', 'table:read', 'table:write', 'menu:read', 'menu:write',
-    'order:create', 'order:read', 'order:settle', 'order:void', 'kitchen:read', 'kitchen:write',
-    'waiter:read', 'waiter:write', 'delivery:read', 'delivery:write', 'member:read', 'member:write',
-    'report:read', 'inventory:read', 'inventory:write', 'feedback:read', 'feedback:reply',
   ],
   CASHIER: [
     'pos:view', 'pos:order_create', 'pos:bill_settle', 'pos:table_transfer', 'pos:reprint_bill', 'pos:kiosk_lock',
@@ -208,8 +202,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'reports:view_summary',
     'printing:view', 'printing:test',
     'menu:view',
-    // legacy aliases
-    'order:create', 'order:read', 'order:settle', 'table:read', 'menu:read', 'report:read',
   ],
   CAPTAIN: [
     'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill', 'waiter:settle_bill',
@@ -217,26 +209,18 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'menu:view', 'menu:toggle_stock',
     'pos:view', 'pos:order_create',
     'printing:view', 'printing:test',
-    // legacy aliases
-    'waiter:read', 'waiter:write', 'order:create', 'order:read', 'table:read', 'menu:read',
   ],
   WAITER: [
     'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill',
     'tables:view',
     'menu:view',
-    // legacy aliases
-    'waiter:read', 'waiter:write', 'order:create', 'order:read', 'table:read', 'menu:read',
   ],
   KITCHEN: [
     'kitchen:view', 'kitchen:item_bump', 'kitchen:recall', 'kitchen:station_filter',
     'menu:view', 'menu:toggle_stock',
-    // legacy aliases
-    'kitchen:read', 'kitchen:write', 'order:read', 'menu:read',
   ],
   RIDER: [
     'delivery:view', 'delivery:status_update',
-    // legacy aliases
-    'delivery:read', 'delivery:write',
   ],
 };
 

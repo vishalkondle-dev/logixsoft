@@ -507,7 +507,7 @@ export function RolesManagement({ embedded = false }: { embedded?: boolean } = {
             const isOwnerRole = r.name === "OWNER";
             const permCount = isOwnerRole
               ? allPermissionKeys.length
-              : (r.permissions || []).length;
+              : (r.permissions || []).filter((k: string) => allPermissionKeys.includes(k)).length;
 
             return (
               <Card
@@ -703,7 +703,10 @@ export function RolesManagement({ embedded = false }: { embedded?: boolean } = {
 
                 <Group gap="xs">
                   <Badge size="md" variant="light" color="violet">
-                    {draftPermissions.length} of {allPermissionKeys.length} Granted
+                    {selectedRole?.name === "OWNER"
+                      ? allPermissionKeys.length
+                      : draftPermissions.filter((k) => allPermissionKeys.includes(k)).length}{" "}
+                    of {allPermissionKeys.length} Granted
                   </Badge>
                   <Button
                     variant="subtle"

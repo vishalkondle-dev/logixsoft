@@ -7,6 +7,7 @@ import {
   PERMISSION_MODULES,
   DEFAULT_ROLE_PERMISSIONS,
   SYSTEM_RESTAURANT_ROLES,
+  LEGACY_PERMISSIONS,
   type SystemRestaurantRole,
 } from '@logixsoft/logix-dine/types/roles';
 import type { AuthEnv } from '../lib/auth';
@@ -24,9 +25,23 @@ function getDb(c: any) {
 
 async function ensureDefaultRoles(db: any, restaurantId: string, actorPhone?: string | null) {
   const existing = await db
-    .select({ id: appSchema.restaurantRole.id, name: appSchema.restaurantRole.name })
+    .select()
     .from(appSchema.restaurantRole)
     .where(eq(appSchema.restaurantRole.restaurantId, restaurantId));
+
+  // Cleanse any legacy permission strings from system roles
+  for (const r of existing) {
+    if (r.isSystem && Array.isArray(r.permissions) && r.name !== 'OWNER') {
+      const filtered = r.permissions.filter((p: string) => !LEGACY_PERMISSIONS.includes(p as any));
+      if (filtered.length !== r.permissions.length) {
+        await db
+          .update(appSchema.restaurantRole)
+          .set({ permissions: filtered, updatedAt: new Date() })
+          .where(eq(appSchema.restaurantRole.id, r.id));
+        r.permissions = filtered;
+      }
+    }
+  }
 
   const existingNames = new Set(existing.map((r: any) => r.name.toUpperCase()));
 

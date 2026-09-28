@@ -2505,7 +2505,13 @@ app.get('/subscriptions', requireAdmin(), async (c) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-    return c.json({ restaurants, plans });
+    const mapped = restaurants.map((r) => ({
+      ...r,
+      subscriptionStatus: r.status || 'ACTIVE',
+      planTier: r.status === 'TRIAL' ? 'FREE' : 'PRO',
+    }));
+
+    return c.json({ restaurants: mapped, plans });
   } finally {
     await close();
   }

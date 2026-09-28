@@ -509,7 +509,9 @@ async function run() {
 
     for (const r of dedicatedRoutes) {
       console.log(`[Route Verification] Clicking link to ${r.href}...`);
-      await page.locator(`nav a[href="${r.href}"]`).first().click();
+      const navLink = page.locator(`nav a[href="${r.href}"]`).first();
+      await navLink.scrollIntoViewIfNeeded();
+      await navLink.click();
       await page.waitForURL((url) => url.pathname.includes(r.href), { timeout: 10000 });
       const url = page.url();
       await page.locator('main').getByText(r.text).first().waitFor({ state: 'visible', timeout: 10000 });

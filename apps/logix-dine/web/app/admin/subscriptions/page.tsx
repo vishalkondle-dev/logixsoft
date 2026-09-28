@@ -206,8 +206,8 @@ function SubscriptionsContent() {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Badge size="xs" color={(r.subscriptionStatus || "ACTIVE") === "ACTIVE" ? "green" : "red"}>
-                        {r.subscriptionStatus || "ACTIVE"}
+                      <Badge size="xs" color={(r.status || r.subscriptionStatus || "ACTIVE") === "ACTIVE" ? "green" : "red"}>
+                        {r.status || r.subscriptionStatus || "ACTIVE"}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
@@ -226,7 +226,7 @@ function SubscriptionsContent() {
                         onClick={() => {
                           setSelectedRest(r);
                           setPlanTier(r.planTier || "PRO");
-                          setSubStatus(r.subscriptionStatus || "ACTIVE");
+                          setSubStatus(r.status || r.subscriptionStatus || "ACTIVE");
                           setEditOpened(true);
                         }}
                       >

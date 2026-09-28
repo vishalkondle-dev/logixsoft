@@ -86,11 +86,17 @@ import {
   replyToFeedback,
   submitOrderFeedback,
   getOrderFeedback,
+  getRoles,
+  createRole,
+  updateRole,
+  deleteRole,
+  resetRolePermissions,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 
 export const qk = {
+  roles: (restaurantId: string) => ["roles", restaurantId] as const,
   bootstrap: (restaurantId: string, outletId: string | null) =>
     ["bootstrap", restaurantId, outletId] as const,
   orders: (restaurantId: string, params?: Record<string, any>) =>
@@ -1099,6 +1105,59 @@ export function useOrderFeedback(orderId?: string, enabled = true) {
     staleTime: 30_000,
   });
 }
+
+// ─── Roles & Permissions ──────────────────────────────────────────────────
+
+export function useRoles(restaurantId: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.roles(restaurantId),
+    queryFn: () => getRoles(restaurantId),
+    enabled: !!restaurantId && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useCreateRole(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Parameters<typeof createRole>[1]) => createRole(restaurantId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.roles(restaurantId) });
+    },
+  });
+}
+
+export function useUpdateRole(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Parameters<typeof updateRole>[2] }) =>
+      updateRole(restaurantId, id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.roles(restaurantId) });
+    },
+  });
+}
+
+export function useDeleteRole(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteRole(restaurantId, id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.roles(restaurantId) });
+    },
+  });
+}
+
+export function useResetRole(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => resetRolePermissions(restaurantId, id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.roles(restaurantId) });
+    },
+  });
+}
+
 
 
 

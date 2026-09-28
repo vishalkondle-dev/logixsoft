@@ -104,6 +104,8 @@ app.get(
     responses: {
       200: z.object({
         role: z.string(),
+        roleName: z.string().optional(),
+        permissions: z.array(z.string()).optional(),
         outletIds: z.array(z.string()),
         allOutlets: z.boolean(),
       }),
@@ -114,6 +116,8 @@ app.get(
     const tenant = c.get('tenant');
     return c.json({
       role: tenant.role,
+      roleName: tenant.roleName || tenant.role,
+      permissions: tenant.permissions ?? [],
       outletIds: tenant.outletIds ?? [],
       allOutlets: !!tenant.allOutlets,
     });

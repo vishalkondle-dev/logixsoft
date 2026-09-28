@@ -10,6 +10,7 @@ export const VALID_SETTINGS_TABS = [
   "tax",
   "reports",
   "staff",
+  "roles",
   "printing",
   "dining",
   "qr-menu",

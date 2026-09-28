@@ -55,10 +55,13 @@ function urgency(createdAt: string): { color: string; label: string; minutes: nu
 
 export default function KitchenPage() {
   const { isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
-  const { restaurant, outlets, activeOutlet, setActiveOutlet, isLoading: restLoading, role } = useRestaurant();
+  const { restaurant, outlets, activeOutlet, setActiveOutlet, isLoading: restLoading, role, can } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
   const queryClient = useQueryClient();
+
+  const canView = can("kitchen:view");
+  const canBump = can("kitchen:item_bump");
 
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -216,6 +219,20 @@ export default function KitchenPage() {
           <Title order={2}>Kitchen Display</Title>
           <Text c="dimmed" size="sm">Please sign in to access the kitchen display.</Text>
           <Button size="md" color="dinePrimary" onClick={openLoginModal}>Sign In</Button>
+        </Stack>
+      </Center>
+    );
+  }
+
+  if (!canView) {
+    return (
+      <Center py={100}>
+        <Stack align="center" gap="md" style={{ maxWidth: 450, textAlign: "center" }}>
+          <IconChefHat size={48} color="#af73d7" />
+          <Title order={3}>Access Restricted</Title>
+          <Text c="dimmed" size="sm">
+            Your current role does not have authorization to view the Kitchen Display System (<code>kitchen:view</code>).
+          </Text>
         </Stack>
       </Center>
     );
@@ -635,7 +652,7 @@ export default function KitchenPage() {
                                   </Badge>
 
                                   <Group gap={4} align="center" wrap="nowrap">
-                                    {canNext && nextStatus && (
+                                    {canNext && nextStatus && canBump && (
                                       <Tooltip label={`Advance to ${getStatusVisual(nextStatus).label}`} withArrow>
                                         <ActionIcon
                                           size="sm"
@@ -651,7 +668,7 @@ export default function KitchenPage() {
                                       </Tooltip>
                                     )}
 
-                                    {canClose && (
+                                    {canClose && canBump && (
                                       <Tooltip label="Cancel item" withArrow>
                                         <ActionIcon
                                           size="sm"
@@ -683,6 +700,8 @@ export default function KitchenPage() {
                     variant={allItemsPrepared ? "light" : "filled"}
                     leftSection={<IconCheck size={16} />}
                     loading={marking === order.id}
+                    disabled={!canBump}
+                    title={!canBump ? "Permission required: kitchen:item_bump" : undefined}
                     onClick={() => handleMarkReady(order.id)}
                   >
                     {allItemsPrepared ? "All Items Ready" : "Mark Order Ready"}

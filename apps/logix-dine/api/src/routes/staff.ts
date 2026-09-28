@@ -29,12 +29,16 @@ function normalizePhone(input: string): string {
 
 const InviteStaffSchema = z.object({
   phone: z.string().min(6).max(20),
-  role: z.enum(RESTAURANT_ROLES.filter((r) => r !== 'OWNER') as [string, ...string[]]),
+  role: z.string().min(1).refine((r) => r.toUpperCase() !== 'OWNER', {
+    message: 'Cannot invite a member with role OWNER. Ownership transfer is managed separately.',
+  }),
   outletIds: z.array(z.string()).min(1, 'At least one outlet must be assigned'),
 });
 
 const UpdateStaffSchema = z.object({
-  role: z.enum(RESTAURANT_ROLES.filter((r) => r !== 'OWNER') as [string, ...string[]]).optional(),
+  role: z.string().min(1).refine((r) => r.toUpperCase() !== 'OWNER', {
+    message: 'Cannot change a member role to OWNER.',
+  }).optional(),
   outletIds: z.array(z.string()).optional(),
 });
 
@@ -63,8 +67,21 @@ async function memberWithOutlets(db: any, restaurantId: string, memberId?: strin
     byMember.set(row.memberId, list);
   }
 
+  let roleNameMap = new Map<string, string>();
+  try {
+    const roles = await db
+      .select({ id: appSchema.restaurantRole.id, name: appSchema.restaurantRole.name })
+      .from(appSchema.restaurantRole)
+      .where(eq(appSchema.restaurantRole.restaurantId, restaurantId));
+    for (const r of roles) {
+      roleNameMap.set(r.id, r.name);
+      roleNameMap.set(r.name, r.name);
+    }
+  } catch {}
+
   return members.map((m: any) => ({
     ...toRestaurantMember(m),
+    roleName: roleNameMap.get(m.role) || m.role,
     outletIds: byMember.get(m.id) ?? [],
   }));
 }

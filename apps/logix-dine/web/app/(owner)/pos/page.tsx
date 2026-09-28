@@ -207,6 +207,11 @@ function CartPanel({
   deliveryExpanded,
   setDeliveryExpanded,
 }: CartPanelProps) {
+  const { can } = useRestaurant();
+  const canOrderCreate = can("pos:order_create");
+  const canSettle = can("pos:bill_settle");
+  const canDiscount = can("pos:discount_apply");
+
   const [localDeliveryExpanded, setLocalDeliveryExpanded] = useState(false);
   const isDeliveryExpanded = deliveryExpanded !== undefined ? deliveryExpanded : localDeliveryExpanded;
   const toggleDeliveryExpanded = () => {
@@ -682,6 +687,8 @@ function CartPanel({
                   leftSection={<IconPlus size={11} />}
                   onClick={() => onOpenAdjustmentModal()}
                   aria-label="Add tax or discount"
+                  disabled={!canDiscount}
+                  title={!canDiscount ? "Permission required: pos:discount_apply" : undefined}
                 >
                   Add
                 </Button>
@@ -753,7 +760,8 @@ function CartPanel({
                   onClick={handleSend}
                   loading={sending}
                   style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, flex: 1 }}
-                  disabled={cartItems.length === 0 || isBlockedByConflict || isMinDeliveryBlocked}
+                  disabled={cartItems.length === 0 || isBlockedByConflict || isMinDeliveryBlocked || !canOrderCreate}
+                  title={!canOrderCreate ? "Permission required: pos:order_create" : undefined}
                   leftSection={activeTableOrder ? <IconPlus size={16} /> : <IconShoppingCart size={16} />}
                 >
                   {activeTableOrder ? `Send Round ${nextRound} to Kitchen` : "Send"}
@@ -782,7 +790,8 @@ function CartPanel({
                     <Menu.Item
                       leftSection={<IconCash size={16} />}
                       onClick={() => setSettleModal(true)}
-                      disabled={isBlockedByConflict}
+                      disabled={isBlockedByConflict || !canSettle}
+                      title={!canSettle ? "Permission required: pos:bill_settle" : undefined}
                     >
                       {activeTableOrder ? `Settle & Send Round ${nextRound}` : "Settle & Send"}
                     </Menu.Item>
@@ -798,10 +807,11 @@ function CartPanel({
 }
 
 export default function POSPage() {
-  const { restaurant, activeOutlet } = useRestaurant();
+  const { restaurant, activeOutlet, can } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
   const queryClient = useQueryClient();
+  const canView = can("pos:view");
 
   // Server data via React Query — same cache keys as MenuManagement → zero refetch on page switch
   const { data: categories = [], isLoading: catsLoading } = useCategories(restaurantId, outletId);
@@ -1732,6 +1742,20 @@ export default function POSPage() {
   };
 
   if (loading) return <Center py={100}><Loader size="lg" color="dinePrimary" /></Center>;
+
+  if (!canView) {
+    return (
+      <Center py={100}>
+        <Stack align="center" gap="md" style={{ maxWidth: 450, textAlign: "center" }}>
+          <IconShoppingCart size={48} color="#af73d7" />
+          <Title order={3}>Access Restricted</Title>
+          <Text c="dimmed" size="sm">
+            Your current role does not have authorization to view the POS Billing Register (<code>pos:view</code>).
+          </Text>
+        </Stack>
+      </Center>
+    );
+  }
   if (!categories.length && !loading) {
     return (
       <Center py={100}>

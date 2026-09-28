@@ -6,30 +6,109 @@ export const PLATFORM_ROLES = ['ADMIN', 'OWNER', 'CUSTOMER'] as const;
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
 
 /**
- * Restaurant-level roles — stored in restaurantMember.role.
- * Controls what a member can do within a specific restaurant.
- *
- * Outlet scope (see memberOutletAccess table):
- *   OWNER   → all outlets (no access rows needed)
- *   MANAGER → assigned outlets only, full operational access
- *   WAITER  → assigned outlets only, order:create + order:settle
- *   KITCHEN → assigned outlets only, order:read only (KDS)
+ * Built-in System Roles for Restaurants.
  */
-export const RESTAURANT_ROLES = [
+export const SYSTEM_RESTAURANT_ROLES = [
   'OWNER',
   'MANAGER',
+  'CASHIER',
+  'CAPTAIN',
   'WAITER',
   'KITCHEN',
+  'RIDER',
+] as const;
+export type SystemRestaurantRole = (typeof SYSTEM_RESTAURANT_ROLES)[number];
+
+export const RESTAURANT_ROLES = [
+  ...SYSTEM_RESTAURANT_ROLES,
   'CUSTOM_ROLE',
 ] as const;
 export type RestaurantRole = (typeof RESTAURANT_ROLES)[number];
 
 /**
- * All permission strings used across API guards.
- * Routes check permissions — NOT roles — so adding a new role
- * only requires updating ROLE_PERMISSIONS, not the routes.
+ * Granular Sub-Feature Permissions Catalog.
  */
-export const PERMISSIONS = [
+export const GRANULAR_PERMISSIONS = [
+  // 1. POS Counter & Billing
+  'pos:view',
+  'pos:order_create',
+  'pos:discount_apply',
+  'pos:bill_settle',
+  'pos:bill_void',
+  'pos:table_transfer',
+  'pos:reprint_bill',
+  'pos:kiosk_lock',
+
+  // 2. Table Floor Management
+  'tables:view',
+  'tables:status_change',
+  'tables:layout_edit',
+
+  // 3. Kitchen Display System (KDS)
+  'kitchen:view',
+  'kitchen:item_bump',
+  'kitchen:recall',
+  'kitchen:station_filter',
+
+  // 4. Waiter Mobility
+  'waiter:view',
+  'waiter:punch_order',
+  'waiter:attend_call',
+  'waiter:request_bill',
+  'waiter:settle_bill',
+
+  // 5. Menu Catalog
+  'menu:view',
+  'menu:toggle_stock',
+  'menu:create_edit',
+  'menu:delete',
+
+  // 6. Inventory & Recipes
+  'inventory:view',
+  'inventory:adjust_stock',
+  'inventory:manage_recipes',
+
+  // 7. Delivery & Riders
+  'delivery:view',
+  'delivery:assign_rider',
+  'delivery:status_update',
+  'delivery:manage_riders',
+
+  // 8. Online Aggregators
+  'aggregators:view',
+  'aggregators:toggle_store',
+  'aggregators:manage_config',
+
+  // 9. Customer Feedback & Reviews
+  'feedback:view',
+  'feedback:reply',
+
+  // 10. Reports & Analytics
+  'reports:view_summary',
+  'reports:view_analytics',
+  'reports:export',
+
+  // 11. Hardware & Printing
+  'printing:view',
+  'printing:test',
+  'printing:manage',
+
+  // 12. Store & Outlet Settings
+  'settings:view',
+  'settings:edit_store',
+  'settings:manage_outlets',
+
+  // 13. Staff, Roles & Permissions
+  'staff:view',
+  'staff:invite',
+  'staff:manage',
+  'roles:manage',
+] as const;
+
+/**
+ * Legacy Permission Strings (kept for complete backward compatibility)
+ */
+export const LEGACY_PERMISSIONS = [
   'restaurant:read',
   'restaurant:write',
   'outlet:read',
@@ -56,69 +135,328 @@ export const PERMISSIONS = [
   'feedback:read',
   'feedback:reply',
 ] as const;
+
+export const PERMISSIONS = [
+  ...GRANULAR_PERMISSIONS,
+  ...LEGACY_PERMISSIONS,
+] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 /**
- * Maps each restaurant role to the permissions it grants.
- * This is the single place to update when adding/changing roles.
+ * Mapping between legacy permission keys and their modern granular counterparts.
  */
-export const ROLE_PERMISSIONS: Record<RestaurantRole, readonly Permission[]> = {
+export const LEGACY_TO_GRANULAR_MAP: Record<string, readonly Permission[]> = {
+  'restaurant:read': ['settings:view'],
+  'restaurant:write': ['settings:edit_store'],
+  'outlet:read': ['settings:view'],
+  'outlet:write': ['settings:manage_outlets'],
+  'table:read': ['tables:view'],
+  'table:write': ['tables:layout_edit', 'tables:status_change'],
+  'menu:read': ['menu:view'],
+  'menu:write': ['menu:create_edit', 'menu:toggle_stock', 'menu:delete'],
+  'order:create': ['pos:order_create', 'waiter:punch_order'],
+  'order:read': ['pos:view', 'waiter:view', 'kitchen:view'],
+  'order:settle': ['pos:bill_settle', 'waiter:settle_bill'],
+  'order:void': ['pos:bill_void'],
+  'kitchen:read': ['kitchen:view', 'kitchen:station_filter'],
+  'kitchen:write': ['kitchen:item_bump', 'kitchen:recall'],
+  'waiter:read': ['waiter:view'],
+  'waiter:write': ['waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill', 'waiter:settle_bill'],
+  'delivery:read': ['delivery:view'],
+  'delivery:write': ['delivery:assign_rider', 'delivery:status_update', 'delivery:manage_riders'],
+  'member:read': ['staff:view'],
+  'member:write': ['staff:invite', 'staff:manage'],
+  'report:read': ['reports:view_summary', 'reports:view_analytics', 'reports:export'],
+  'inventory:read': ['inventory:view'],
+  'inventory:write': ['inventory:adjust_stock', 'inventory:manage_recipes'],
+  'feedback:read': ['feedback:view'],
+  'feedback:reply': ['feedback:reply'],
+};
+
+/**
+ * Default Granular Permissions for System Roles
+ */
+export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Permission[]> = {
   OWNER: [
-    'restaurant:read', 'restaurant:write',
-    'outlet:read', 'outlet:write',
-    'table:read', 'table:write',
-    'menu:read', 'menu:write',
-    'order:create', 'order:read', 'order:settle', 'order:void',
-    'kitchen:read', 'kitchen:write',
-    'waiter:read', 'waiter:write',
-    'delivery:read', 'delivery:write',
-    'member:read', 'member:write',
-    'report:read',
-    'inventory:read', 'inventory:write',
-    'feedback:read', 'feedback:reply',
+    ...GRANULAR_PERMISSIONS,
+    ...LEGACY_PERMISSIONS,
   ],
   MANAGER: [
-    'restaurant:read',
-    'outlet:read', 'outlet:write',
-    'table:read', 'table:write',
-    'menu:read', 'menu:write',
-    'order:create', 'order:read', 'order:settle', 'order:void',
-    'kitchen:read', 'kitchen:write',
-    'waiter:read', 'waiter:write',
-    'delivery:read', 'delivery:write',
-    'member:read',
-    'report:read',
-    'inventory:read', 'inventory:write',
-    'feedback:read', 'feedback:reply',
+    'pos:view', 'pos:order_create', 'pos:discount_apply', 'pos:bill_settle', 'pos:bill_void',
+    'pos:table_transfer', 'pos:reprint_bill', 'pos:kiosk_lock',
+    'tables:view', 'tables:status_change', 'tables:layout_edit',
+    'kitchen:view', 'kitchen:item_bump', 'kitchen:recall', 'kitchen:station_filter',
+    'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill', 'waiter:settle_bill',
+    'menu:view', 'menu:toggle_stock', 'menu:create_edit', 'menu:delete',
+    'inventory:view', 'inventory:adjust_stock', 'inventory:manage_recipes',
+    'delivery:view', 'delivery:assign_rider', 'delivery:status_update', 'delivery:manage_riders',
+    'aggregators:view', 'aggregators:toggle_store',
+    'feedback:view', 'feedback:reply',
+    'reports:view_summary', 'reports:view_analytics', 'reports:export',
+    'printing:view', 'printing:test', 'printing:manage',
+    'settings:view', 'settings:edit_store',
+    'staff:view', 'staff:invite', 'staff:manage',
+    // legacy aliases
+    'restaurant:read', 'outlet:read', 'table:read', 'table:write', 'menu:read', 'menu:write',
+    'order:create', 'order:read', 'order:settle', 'order:void', 'kitchen:read', 'kitchen:write',
+    'waiter:read', 'waiter:write', 'delivery:read', 'delivery:write', 'member:read', 'member:write',
+    'report:read', 'inventory:read', 'inventory:write', 'feedback:read', 'feedback:reply',
+  ],
+  CASHIER: [
+    'pos:view', 'pos:order_create', 'pos:bill_settle', 'pos:table_transfer', 'pos:reprint_bill', 'pos:kiosk_lock',
+    'tables:view', 'tables:status_change',
+    'reports:view_summary',
+    'printing:view', 'printing:test',
+    'menu:view',
+    // legacy aliases
+    'order:create', 'order:read', 'order:settle', 'table:read', 'menu:read', 'report:read',
+  ],
+  CAPTAIN: [
+    'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill', 'waiter:settle_bill',
+    'tables:view', 'tables:status_change',
+    'menu:view', 'menu:toggle_stock',
+    'pos:view', 'pos:order_create',
+    'printing:view', 'printing:test',
+    // legacy aliases
+    'waiter:read', 'waiter:write', 'order:create', 'order:read', 'table:read', 'menu:read',
   ],
   WAITER: [
-    'restaurant:read',
-    'outlet:read',
-    'table:read',
-    'menu:read',
-    'order:create', 'order:read', 'order:settle',
-    'kitchen:read',
-    'waiter:read', 'waiter:write',
-    'delivery:read', 'delivery:write',
+    'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill',
+    'tables:view',
+    'menu:view',
+    // legacy aliases
+    'waiter:read', 'waiter:write', 'order:create', 'order:read', 'table:read', 'menu:read',
   ],
   KITCHEN: [
-    'restaurant:read',
-    'outlet:read',
-    'menu:read',
-    'order:read',
-    'kitchen:read', 'kitchen:write',
+    'kitchen:view', 'kitchen:item_bump', 'kitchen:recall', 'kitchen:station_filter',
+    'menu:view', 'menu:toggle_stock',
+    // legacy aliases
+    'kitchen:read', 'kitchen:write', 'order:read', 'menu:read',
   ],
-  CUSTOM_ROLE: [],
-} as const;
+  RIDER: [
+    'delivery:view', 'delivery:status_update',
+    // legacy aliases
+    'delivery:read', 'delivery:write',
+  ],
+};
 
-/** Check if a role has a given permission. */
-export function hasPermission(role: RestaurantRole, permission: Permission): boolean {
-  return (ROLE_PERMISSIONS[role] as readonly string[]).includes(permission);
+export const ROLE_PERMISSIONS: Record<RestaurantRole, readonly Permission[]> = {
+  ...DEFAULT_ROLE_PERMISSIONS,
+  CUSTOM_ROLE: [],
+};
+
+/**
+ * Metadata definition for a single granular permission.
+ */
+export interface PermissionMeta {
+  key: Permission;
+  label: string;
+  description: string;
+  badge?: 'High Risk' | 'Financial' | 'Operational' | 'Read Only';
+}
+
+/**
+ * Permission Modules for the Matrix UI.
+ */
+export interface PermissionModule {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+  permissions: PermissionMeta[];
+}
+
+export const PERMISSION_MODULES: PermissionModule[] = [
+  {
+    id: 'pos',
+    label: 'POS Counter & Billing',
+    icon: 'IconShoppingCart',
+    description: 'Order punching, cash register, discounts, voids, and counter payments',
+    permissions: [
+      { key: 'pos:view', label: 'Access POS Register', description: 'Open and use the main counter billing screen', badge: 'Operational' },
+      { key: 'pos:order_create', label: 'Create & Punch Orders', description: 'Select items, configure variants, add notes, and fire orders', badge: 'Operational' },
+      { key: 'pos:discount_apply', label: 'Apply Custom Discounts', description: 'Apply manual flat or percentage discounts to tickets', badge: 'Financial' },
+      { key: 'pos:bill_settle', label: 'Settle Bills & Payments', description: 'Accept Cash, Card, UPI, and split payments', badge: 'Financial' },
+      { key: 'pos:bill_void', label: 'Void / Cancel Bills', description: 'Cancel active orders or reverse settled bills', badge: 'High Risk' },
+      { key: 'pos:table_transfer', label: 'Move & Split Tables', description: 'Transfer items between tables or merge guest checks', badge: 'Operational' },
+      { key: 'pos:reprint_bill', label: 'Reprint Customer Bills', description: 'Trigger thermal printer duplicate receipts', badge: 'Operational' },
+      { key: 'pos:kiosk_lock', label: 'Cashier Kiosk Mode (F11)', description: 'Toggle full-screen locked kiosk mode', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'tables',
+    label: 'Table Floor Management',
+    icon: 'IconTableAlias',
+    description: 'Visual dining layout, table assignments, and section mapping',
+    permissions: [
+      { key: 'tables:view', label: 'View Floor Plan', description: 'View floor map, live occupancy, and elapsed table times', badge: 'Read Only' },
+      { key: 'tables:status_change', label: 'Change Table Occupancy', description: 'Mark tables as Available, Occupied, or Billed', badge: 'Operational' },
+      { key: 'tables:layout_edit', label: 'Design & Edit Tables', description: 'Add, move, resize, or delete tables and dining sections', badge: 'High Risk' },
+    ],
+  },
+  {
+    id: 'kitchen',
+    label: 'Kitchen Display System (KDS)',
+    icon: 'IconToolsKitchen2',
+    description: 'Kitchen bump screens, station routing, and ticket prep timers',
+    permissions: [
+      { key: 'kitchen:view', label: 'View KDS Bump Screen', description: 'Monitor incoming kitchen tickets, items, and preparation timers', badge: 'Read Only' },
+      { key: 'kitchen:item_bump', label: 'Bump & Advance Orders', description: 'Mark dishes as Preparing, Ready, or Served', badge: 'Operational' },
+      { key: 'kitchen:recall', label: 'Recall Bumped Orders', description: 'Re-open previously completed tickets back to the kitchen queue', badge: 'Operational' },
+      { key: 'kitchen:station_filter', label: 'Switch Kitchen Stations', description: 'Filter tickets by kitchen line (Bar, Tandoor, Main Line)', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'waiter',
+    label: 'Waiter Staff Mobility',
+    icon: 'IconBellRinging',
+    description: 'Tableside mobile order taking, guest water/cutlery alerts',
+    permissions: [
+      { key: 'waiter:view', label: 'View Waiter Floor', description: 'View assigned dining tables, active courses, and guest calls', badge: 'Read Only' },
+      { key: 'waiter:punch_order', label: 'Tableside Order Taking', description: 'Punch new courses and send instant KOTs to kitchen', badge: 'Operational' },
+      { key: 'waiter:attend_call', label: 'Attend Waiter Calls', description: 'Acknowledge and resolve guest assistance bells', badge: 'Operational' },
+      { key: 'waiter:request_bill', label: 'Request Pre-Bill', description: 'Print dining check and deliver to guest tables', badge: 'Operational' },
+      { key: 'waiter:settle_bill', label: 'Settle Payment at Table', description: 'Collect tableside cash or UPI settlements', badge: 'Financial' },
+    ],
+  },
+  {
+    id: 'menu',
+    label: 'Menu Catalog & Pricing',
+    icon: 'IconBook',
+    description: 'Dishes, variants, addons, categories, and 86 stock status',
+    permissions: [
+      { key: 'menu:view', label: 'View Menu Catalog', description: 'Browse categories, recipes, prices, and addons', badge: 'Read Only' },
+      { key: 'menu:toggle_stock', label: 'Toggle 86 / Out of Stock', description: 'Mark dishes in-stock or sold-out during service rush', badge: 'Operational' },
+      { key: 'menu:create_edit', label: 'Create & Edit Dishes', description: 'Add new items, adjust prices, edit descriptions and photos', badge: 'High Risk' },
+      { key: 'menu:delete', label: 'Delete Menu Items', description: 'Permanently remove dishes or entire menu categories', badge: 'High Risk' },
+    ],
+  },
+  {
+    id: 'inventory',
+    label: 'Inventory & Recipe BOM',
+    icon: 'IconPackages',
+    description: 'Raw ingredients, stock write-offs, and recipe deductions',
+    permissions: [
+      { key: 'inventory:view', label: 'View Stock Balances', description: 'Check ingredient levels, units of measure, and thresholds', badge: 'Read Only' },
+      { key: 'inventory:adjust_stock', label: 'Adjust Stock / Waste', description: 'Log incoming stock, wastage write-offs, and transfers', badge: 'Financial' },
+      { key: 'inventory:manage_recipes', label: 'Edit Recipe BOMs', description: 'Link raw ingredient formulas to menu items for auto-deduction', badge: 'High Risk' },
+    ],
+  },
+  {
+    id: 'delivery',
+    label: 'Delivery & In-House Riders',
+    icon: 'IconMotorbike',
+    description: 'Takeaway dispatch, rider queue, and delivery tracking',
+    permissions: [
+      { key: 'delivery:view', label: 'View Delivery Orders', description: 'View active dispatch queue, customer addresses, and statuses', badge: 'Read Only' },
+      { key: 'delivery:assign_rider', label: 'Assign Delivery Riders', description: 'Dispatch orders to specific in-house delivery staff', badge: 'Operational' },
+      { key: 'delivery:status_update', label: 'Update Delivery State', description: 'Mark orders as Dispatched, Delivered, or Returned', badge: 'Operational' },
+      { key: 'delivery:manage_riders', label: 'Manage Rider Accounts', description: 'Add or modify in-house courier personnel accounts', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'aggregators',
+    label: 'Online Aggregators (Relay)',
+    icon: 'IconTruckDelivery',
+    description: 'Swiggy, Zomato, Magicpin, and ONDC omnichannel gateway',
+    permissions: [
+      { key: 'aggregators:view', label: 'View Online Orders', description: 'View Swiggy, Zomato, and ONDC order logs and status', badge: 'Read Only' },
+      { key: 'aggregators:toggle_store', label: 'Pause / Resume Store', description: 'Temporarily pause Swiggy/Zomato receiving during rushes', badge: 'Operational' },
+      { key: 'aggregators:manage_config', label: 'Aggregator Credentials', description: 'Configure API keys, webhooks, and channel price markups', badge: 'High Risk' },
+    ],
+  },
+  {
+    id: 'feedback',
+    label: 'Reviews & Customer Feedback',
+    icon: 'IconStar',
+    description: 'In-app guest reviews, dish ratings, and management responses',
+    permissions: [
+      { key: 'feedback:view', label: 'View Reviews & Ratings', description: 'Browse customer star ratings, comments, and dining feedback', badge: 'Read Only' },
+      { key: 'feedback:reply', label: 'Reply to Reviews', description: 'Publish official management replies to customer reviews', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'reports',
+    label: 'Reports & Analytics',
+    icon: 'IconChartBar',
+    description: 'Daily cashier close, sales trends, and tax audit data',
+    permissions: [
+      { key: 'reports:view_summary', label: 'View Cashier Register', description: 'View daily cash drawer total, shift close, and tender split', badge: 'Financial' },
+      { key: 'reports:view_analytics', label: 'View Analytics Trends', description: 'View revenue graphs, rush heatmaps, and item popularity', badge: 'Read Only' },
+      { key: 'reports:export', label: 'Export Tax Audits & CSV', description: 'Download GST invoices, sales summaries, and Excel audit logs', badge: 'Financial' },
+    ],
+  },
+  {
+    id: 'printing',
+    label: 'Thermal Printers & Hardware',
+    icon: 'IconPrinter',
+    description: 'USB, LAN, Serial receipt printers, baud rates, and cash drawers',
+    permissions: [
+      { key: 'printing:view', label: 'View Thermal Printers', description: 'Inspect printer station bindings and connection status', badge: 'Read Only' },
+      { key: 'printing:test', label: 'Run Printer Diagnostics', description: 'Trigger sample test prints, cutter tests, and drawer kicks', badge: 'Operational' },
+      { key: 'printing:manage', label: 'Configure Printers', description: 'Add, update, or remove receipt printer hardware connections', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'Store & Outlet Settings',
+    icon: 'IconBuildingStore',
+    description: 'Restaurant profile, business hours, and multi-outlet management',
+    permissions: [
+      { key: 'settings:view', label: 'View Store Settings', description: 'Inspect store profile, GSTIN, and business operating hours', badge: 'Read Only' },
+      { key: 'settings:edit_store', label: 'Edit Store Details', description: 'Modify restaurant branding, address, phone, and currencies', badge: 'High Risk' },
+      { key: 'settings:manage_outlets', label: 'Manage Outlets', description: 'Add new restaurant outlets or edit existing locations', badge: 'High Risk' },
+    ],
+  },
+  {
+    id: 'roles',
+    label: 'Staff, Roles & Permissions',
+    icon: 'IconUsers',
+    description: 'Staff invites, role assignments, and granular security matrix',
+    permissions: [
+      { key: 'staff:view', label: 'View Team Roster', description: 'View staff members list and assigned roles', badge: 'Read Only' },
+      { key: 'staff:invite', label: 'Invite Staff Members', description: 'Send WhatsApp OTP invites to new cashiers, cooks, waiters', badge: 'Operational' },
+      { key: 'staff:manage', label: 'Manage Staff Accounts', description: 'Reassign member roles, change outlet scopes, or remove staff', badge: 'High Risk' },
+      { key: 'roles:manage', label: 'Manage Roles & Matrix', description: 'Create custom roles, edit permissions matrix (Owner Only)', badge: 'High Risk' },
+    ],
+  },
+];
+
+/**
+ * Checks if a given list of user permissions satisfies the required permission.
+ * Automatically checks legacy-to-granular equivalents so existing checks work.
+ */
+export function hasPermission(
+  userPermissions: readonly string[] | undefined | null,
+  requiredPermission: Permission
+): boolean {
+  if (!userPermissions || !Array.isArray(userPermissions)) return false;
+  // Direct match
+  if (userPermissions.includes(requiredPermission)) return true;
+  // Wildcard match for OWNER or superadmin
+  if (userPermissions.includes('*')) return true;
+
+  // Check if user has legacy equivalent
+  for (const [legacy, granulars] of Object.entries(LEGACY_TO_GRANULAR_MAP)) {
+    if (userPermissions.includes(legacy)) {
+      if ((granulars as readonly string[]).includes(requiredPermission)) return true;
+    }
+  }
+
+  // Check if requiredPermission is legacy and user has any granular equivalent
+  const granularEquivalents = LEGACY_TO_GRANULAR_MAP[requiredPermission];
+  if (granularEquivalents) {
+    for (const g of granularEquivalents) {
+      if (userPermissions.includes(g)) return true;
+    }
+  }
+
+  return false;
 }
 
 /** Roles that always have access to every outlet (no memberOutletAccess rows needed). */
-export const ALL_OUTLET_ROLES: readonly RestaurantRole[] = ['OWNER'];
+export const ALL_OUTLET_ROLES: readonly string[] = ['OWNER'];
 
-export function isAllOutletRole(role: RestaurantRole): boolean {
-  return (ALL_OUTLET_ROLES as readonly string[]).includes(role);
+export function isAllOutletRole(role: string): boolean {
+  return ALL_OUTLET_ROLES.includes(role);
 }

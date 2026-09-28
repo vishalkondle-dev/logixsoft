@@ -65,10 +65,14 @@ function formatElapsed(createdAt: string): { text: string; color: string } {
 }
 
 export default function WaiterPage() {
-  const { restaurant, activeOutlet, outlets, setActiveOutlet } = useRestaurant();
+  const { restaurant, activeOutlet, outlets, setActiveOutlet, can } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
   const queryClient = useQueryClient();
+
+  const canView = can("waiter:view");
+  const canAttendCall = can("waiter:attend_call");
+  const canPunchOrder = can("waiter:punch_order");
 
   const [activeTab, setActiveTab] = useState<string>("active");
   const [serviceFilter, setServiceFilter] = useState<string>("ALL");
@@ -289,6 +293,20 @@ export default function WaiterPage() {
     }
   };
 
+  if (!canView) {
+    return (
+      <Center py={100}>
+        <Stack align="center" gap="md" style={{ maxWidth: 450, textAlign: "center" }}>
+          <IconBellRinging size={48} color="#af73d7" />
+          <Title order={3}>Access Restricted</Title>
+          <Text c="dimmed" size="sm">
+            Your current role does not have authorization to view the Waiter Dashboard (<code>waiter:view</code>).
+          </Text>
+        </Stack>
+      </Center>
+    );
+  }
+
   return (
     <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
       <Stack gap="lg">
@@ -353,14 +371,16 @@ export default function WaiterPage() {
             </ActionIcon>
           </Tooltip>
 
-          <Button
-            color="dinePrimary"
-            leftSection={<IconPlus size={16} />}
-            radius="md"
-            onClick={() => setNewModalOpen(true)}
-          >
-            New Request
-          </Button>
+          {canPunchOrder && (
+            <Button
+              color="dinePrimary"
+              leftSection={<IconPlus size={16} />}
+              radius="md"
+              onClick={() => setNewModalOpen(true)}
+            >
+              New Request
+            </Button>
+          )}
         </Group>
       </Group>
 
@@ -597,6 +617,8 @@ export default function WaiterPage() {
                       color="teal"
                       leftSection={<IconCheck size={16} />}
                       loading={servingItemId === item.id}
+                      disabled={!canAttendCall}
+                      title={!canAttendCall ? "Permission required: waiter:attend_call" : undefined}
                       onClick={() => handleServeItem(orderId, item.id, item.nameSnapshot, tableNo)}
                     >
                       {buttonLabel}
@@ -743,6 +765,7 @@ export default function WaiterPage() {
                             color="blue"
                             size="sm"
                             leftSection={<IconClock size={14} />}
+                            disabled={!canAttendCall || completingId === req.id}
                             loading={completingId === req.id}
                             onClick={() => handleMarkStatus(req.id, "IN_PROGRESS")}
                           >
@@ -753,6 +776,7 @@ export default function WaiterPage() {
                             size="sm"
                             style={{ flex: 1 }}
                             leftSection={<IconCheck size={16} />}
+                            disabled={!canAttendCall || completingId === req.id}
                             loading={completingId === req.id}
                             onClick={() => handleMarkStatus(req.id, "COMPLETED")}
                           >
@@ -768,7 +792,7 @@ export default function WaiterPage() {
                             color="gray"
                             size="sm"
                             onClick={() => handleMarkStatus(req.id, "PENDING")}
-                            disabled={completingId === req.id}
+                            disabled={!canAttendCall || completingId === req.id}
                           >
                             Revert
                           </Button>
@@ -777,6 +801,7 @@ export default function WaiterPage() {
                             size="sm"
                             style={{ flex: 1 }}
                             leftSection={<IconCheck size={16} />}
+                            disabled={!canAttendCall || completingId === req.id}
                             loading={completingId === req.id}
                             onClick={() => handleMarkStatus(req.id, "COMPLETED")}
                           >
@@ -792,7 +817,7 @@ export default function WaiterPage() {
                           size="sm"
                           fullWidth
                           onClick={() => handleMarkStatus(req.id, "PENDING")}
-                          disabled={completingId === req.id}
+                          disabled={!canAttendCall || completingId === req.id}
                         >
                           Re-open Request
                         </Button>

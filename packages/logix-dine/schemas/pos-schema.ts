@@ -732,10 +732,36 @@ export const orderItemFeedback = pgTable(
   ],
 );
 
+// ─── Restaurant Custom Role & Permissions ─────────────────────────────────────
+
+export const restaurantRole = pgTable(
+  'restaurantRole',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    isSystem: boolean('isSystem').notNull().default(false),
+    permissions: jsonb('permissions').$type<string[]>().notNull().default([]),
+    allOutlets: boolean('allOutlets').notNull().default(false),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+    updatedBy: text('updatedBy'),
+  },
+  (t) => [
+    unique('restaurantRole_restaurantId_name_uniq').on(t.restaurantId, t.name),
+    index('restaurantRole_restaurantId_idx').on(t.restaurantId),
+  ],
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
   restaurant,
+  restaurantRole,
   restaurantMember,
   memberOutletAccess,
   restaurantOutlet,

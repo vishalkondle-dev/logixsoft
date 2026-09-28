@@ -52,7 +52,7 @@ export default function HomePage() {
 
   const outletQuery = activeOutlet?.id ? `?outletId=${activeOutlet.id}` : "";
   const primaryDashboardHref =
-    role === "WAITER"
+    role === "WAITER" || role === "CAPTAIN"
       ? `/waiter${outletQuery}`
       : role === "KITCHEN"
       ? `/kitchen${outletQuery}`

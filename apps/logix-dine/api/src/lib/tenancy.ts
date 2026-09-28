@@ -1,9 +1,9 @@
 import type { Context, MiddlewareHandler } from 'hono';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, inArray } from 'drizzle-orm';
 import { createDbWithClient } from '../db';
 import { appSchema } from '../db';
 import {
-  ROLE_PERMISSIONS, isAllOutletRole,
+  ROLE_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, hasPermission, isAllOutletRole,
   type Permission, type RestaurantRole,
 } from '@logixsoft/logix-dine/types/roles';
 import type { AuthEnv } from './auth';
@@ -44,27 +44,80 @@ function dbFromEnv(c: Context) {
  */
 export async function buildSessionPayload(
   c: Context,
+  userOverride?: any,
 ): Promise<SessionPayload | null> {
-  const { auth, close: closeAuth } = createAuth(c.env);
-  let authUser: any = null;
-  try {
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    authUser = session?.user ?? null;
-  } finally {
-    await closeAuth();
+  let authUser: any = userOverride ?? null;
+  if (!authUser) {
+    const { auth, close: closeAuth } = createAuth(c.env);
+    try {
+      const session = await auth.api.getSession({ headers: c.req.raw.headers });
+      authUser = session?.user ?? null;
+    } finally {
+      await closeAuth();
+    }
   }
   if (!authUser) return null;
 
   const { db, close } = dbFromEnv(c);
   try {
+    const phone = authUser.phoneNumber ?? null;
+    const memberConditions = [eq(appSchema.restaurantMember.userId, authUser.id)];
+    if (phone) {
+      memberConditions.push(eq(appSchema.restaurantMember.phone, phone));
+    }
     const members = await db
       .select()
       .from(appSchema.restaurantMember)
-      .where(eq(appSchema.restaurantMember.userId, authUser.id));
+      .where(or(...memberConditions));
+
+    // Auto-link any pending member rows to this authUser
+    for (const m of members) {
+      if (!m.userId) {
+        await db
+          .update(appSchema.restaurantMember)
+          .set({ userId: authUser.id, inviteStatus: 'ACCEPTED', updatedAt: new Date() })
+          .where(eq(appSchema.restaurantMember.id, m.id))
+          .catch(() => {});
+      }
+    }
+
+    // Batch fetch custom roles for all restaurants the user belongs to
+    const restaurantIds = Array.from(new Set(members.map((m: any) => m.restaurantId as string)));
+    const roleDefinitionsMap = new Map<string, { permissions: string[]; allOutlets: boolean; name: string }>();
+    if (restaurantIds.length > 0) {
+      try {
+        const roles = await db
+          .select()
+          .from(appSchema.restaurantRole)
+          .where(inArray(appSchema.restaurantRole.restaurantId, restaurantIds));
+        for (const r of roles) {
+          const perms = Array.isArray(r.permissions) ? (r.permissions as string[]) : [];
+          roleDefinitionsMap.set(`${r.restaurantId}:${r.id}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
+          roleDefinitionsMap.set(`${r.restaurantId}:${r.name}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
+        }
+      } catch (err) {
+        console.warn('[buildSessionPayload] error querying restaurantRole:', err);
+      }
+    }
 
     const memberships: MembershipEntry[] = await Promise.all(
       members.map(async (m: any) => {
-        const allOutlets = isAllOutletRole(m.role as RestaurantRole);
+        const customRole = roleDefinitionsMap.get(`${m.restaurantId}:${m.role}`);
+        const isOwner = m.role === 'OWNER';
+        const allOutlets = isOwner || Boolean(customRole?.allOutlets) || isAllOutletRole(m.role as RestaurantRole);
+
+        // Resolve permissions:
+        let permissions: string[] = [];
+        if (isOwner) {
+          permissions = ['*'];
+        } else if (customRole) {
+          permissions = customRole.permissions;
+        } else if (DEFAULT_ROLE_PERMISSIONS[m.role as keyof typeof DEFAULT_ROLE_PERMISSIONS]) {
+          permissions = [...DEFAULT_ROLE_PERMISSIONS[m.role as keyof typeof DEFAULT_ROLE_PERMISSIONS]];
+        } else {
+          permissions = (ROLE_PERMISSIONS[m.role as keyof typeof ROLE_PERMISSIONS] as string[]) || [];
+        }
+
         let outletIds: string[] = [];
         if (allOutlets) {
           // For OWNER / ALL_OUTLET_ROLES: Fetch all active outlets of their restaurant
@@ -74,7 +127,7 @@ export async function buildSessionPayload(
             .where(eq(appSchema.restaurantOutlet.restaurantId, m.restaurantId));
           outletIds = rows.map((r: any) => r.id);
         } else {
-          // For MANAGER / WAITER / KITCHEN: Fetch explicitly assigned outlets
+          // For MANAGER / WAITER / KITCHEN / custom: Fetch explicitly assigned outlets
           const rows = await db
             .select({ outletId: appSchema.memberOutletAccess.outletId })
             .from(appSchema.memberOutletAccess)
@@ -85,6 +138,8 @@ export async function buildSessionPayload(
           restaurantId: m.restaurantId,
           memberId: m.id,
           role: m.role,
+          roleName: customRole?.name || m.role,
+          permissions,
           outletIds,
           allOutlets,
         };
@@ -153,9 +208,9 @@ export async function resolveSessionPayload(c: Context): Promise<{ payload: Sess
  * Stores the complete session payload in KV so every subsequent request
  * is a single KV read with zero DB queries in the hot path.
  */
-export async function storeSessionPayload(c: Context, token: string): Promise<void> {
+export async function storeSessionPayload(c: Context, token: string, userObj?: any): Promise<void> {
   try {
-    const payload = await buildSessionPayload(c);
+    const payload = await buildSessionPayload(c, userObj);
     if (payload) await setSessionPayload(kv(c), token, payload);
   } catch (err) {
     console.warn('[storeSessionPayload] failed:', err);
@@ -214,6 +269,73 @@ export function requireAuth(): MiddlewareHandler {
   };
 }
 
+// ─── requireMembership ────────────────────────────────────────────────────────
+
+export function requireMembership(): MiddlewareHandler {
+  return async (c, next) => {
+    const { payload } = await resolveSessionPayload(c);
+    if (!payload) {
+      return c.json({ error: 'Unauthorized', message: 'Authentication required' }, 401);
+    }
+
+    const { user, memberships } = payload;
+    c.set('sessionUser', user);
+    c.set('actorPhone', user.phoneNumber ?? null);
+    c.set('memberships', memberships);
+
+    const headerOutletId = c.req.header('X-Outlet-Id') || null;
+
+    // Platform ADMIN bypasses everything
+    if (user.role === 'ADMIN') {
+      const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      c.set('tenant', {
+        restaurantId,
+        role: 'OWNER',
+        roleName: 'OWNER',
+        member: null,
+        outletId: headerOutletId,
+        outletIds: headerOutletId ? [headerOutletId] : [],
+        allOutlets: true,
+      });
+      return next();
+    }
+
+    const restaurantId = c.req.header('X-Restaurant-Id');
+    if (!restaurantId) {
+      return c.json({ error: 'Bad Request', message: 'X-Restaurant-Id header required' }, 400);
+    }
+
+    const membership = memberships.find((m) => m.restaurantId === restaurantId);
+    if (!membership) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this restaurant' }, 403);
+    }
+
+    // Strict Outlet scope check
+    if (headerOutletId && !membership.allOutlets) {
+      if (!membership.outletIds.includes(headerOutletId)) {
+        return c.json({
+          error: 'Forbidden',
+          message: `You do not have access to outlet '${headerOutletId}'`,
+        }, 403);
+      }
+    }
+
+    const userPerms = membership.permissions || ROLE_PERMISSIONS[membership.role as keyof typeof ROLE_PERMISSIONS] || [];
+
+    c.set('tenant', {
+      restaurantId,
+      role: membership.role,
+      roleName: membership.roleName || membership.role,
+      permissions: userPerms,
+      member: { id: membership.memberId, restaurantId, role: membership.role, userId: user.id },
+      outletId: headerOutletId,
+      outletIds: membership.outletIds,
+      allOutlets: membership.allOutlets,
+    });
+    await next();
+  };
+}
+
 // ─── requirePermission ────────────────────────────────────────────────────────
 
 export function requirePermission(permission: Permission): MiddlewareHandler {
@@ -255,10 +377,14 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this restaurant' }, 403);
     }
 
-    // Permission check — in-memory
-    const rolePerms = ROLE_PERMISSIONS[membership.role as keyof typeof ROLE_PERMISSIONS] ?? [];
-    if (!(rolePerms as readonly string[]).includes(permission)) {
-      return c.json({ error: 'Forbidden', message: `Permission '${permission}' required` }, 403);
+    // Permission check — pure in-memory (ZERO DB, ZERO KV)
+    const userPerms = membership.permissions || ROLE_PERMISSIONS[membership.role as keyof typeof ROLE_PERMISSIONS] || [];
+    if (!hasPermission(userPerms, permission)) {
+      return c.json({
+        error: 'Forbidden',
+        message: `Permission '${permission}' required`,
+        requiredPermission: permission,
+      }, 403);
     }
 
     // Strict Outlet scope check for EVERY role (including OWNER)
@@ -274,6 +400,8 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
     c.set('tenant', {
       restaurantId,
       role: membership.role,
+      roleName: membership.roleName || membership.role,
+      permissions: userPerms,
       member: { id: membership.memberId, restaurantId, role: membership.role, userId: user.id },
       outletId: headerOutletId,
       outletIds: membership.outletIds,
@@ -324,8 +452,8 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
       return c.json({ error: 'Forbidden', message: 'You do not have access to this restaurant' }, 403);
     }
 
-    // Role check — in-memory
-    if (!rolesArray.includes(membership.role)) {
+    // Role check — in-memory (OWNER always authorized)
+    if (membership.role !== 'OWNER' && !rolesArray.includes(membership.role)) {
       return c.json({
         error: 'Forbidden',
         message: `Role '${membership.role}' not authorized. Required: ${rolesArray.join(', ')}`,
@@ -345,6 +473,8 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
     c.set('tenant', {
       restaurantId,
       role: membership.role,
+      roleName: membership.roleName || membership.role,
+      permissions: membership.permissions || [],
       member: { id: membership.memberId, restaurantId, role: membership.role, userId: user.id },
       outletId: headerOutletId,
       outletIds: membership.outletIds,

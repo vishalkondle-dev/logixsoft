@@ -378,7 +378,7 @@ export const updateRestaurant = (restaurantId: string, body: any) =>
   apiFetch<any>(`/restaurants/${restaurantId}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
 
 export const getMyRole = (restaurantId: string) =>
-  apiFetch<{ role: string; outletIds: string[]; allOutlets: boolean }>("/restaurants/my-role", restaurantId);
+  apiFetch<{ role: string; roleName?: string; permissions?: string[]; outletIds: string[]; allOutlets: boolean }>("/restaurants/my-role", restaurantId);
 
 export const getOutlets = (restaurantId: string) =>
   apiFetch<any[]>("/outlets", restaurantId);
@@ -394,6 +394,59 @@ export const deleteOutlet = (restaurantId: string, outletId: string) =>
 
 export const setDefaultOutlet = (restaurantId: string, outletId: string) =>
   apiFetch<any>(`/outlets/${outletId}/set-default`, restaurantId, { method: "PATCH" });
+
+// ─── Roles & Permissions ──────────────────────────────────────────────────
+
+export interface RoleItem {
+  id: string;
+  restaurantId: string;
+  name: string;
+  description?: string | null;
+  isSystem: boolean;
+  permissions: string[];
+  allOutlets: boolean;
+  memberCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PermissionModuleInfo {
+  module: string;
+  name: string;
+  description: string;
+  permissions: {
+    key: string;
+    label: string;
+    description: string;
+    badge?: string;
+  }[];
+}
+
+export interface RolesListResponse {
+  roles: RoleItem[];
+  modules: PermissionModuleInfo[];
+}
+
+export const getRoles = (restaurantId: string) =>
+  apiFetch<RolesListResponse>("/roles", restaurantId);
+
+export const createRole = async (restaurantId: string, body: { name: string; description?: string; permissions: string[]; allOutlets?: boolean }) => {
+  const res = await apiFetch<any>("/roles", restaurantId, { method: "POST", body: JSON.stringify(body) });
+  return (res?.role || res) as RoleItem;
+};
+
+export const updateRole = async (restaurantId: string, id: string, body: { name?: string; description?: string; permissions?: string[]; allOutlets?: boolean }) => {
+  const res = await apiFetch<any>(`/roles/${id}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
+  return (res?.role || res) as RoleItem;
+};
+
+export const deleteRole = (restaurantId: string, id: string) =>
+  apiFetch<{ success: boolean; message: string }>(`/roles/${id}`, restaurantId, { method: "DELETE" });
+
+export const resetRolePermissions = async (restaurantId: string, id: string) => {
+  const res = await apiFetch<any>(`/roles/${id}/reset`, restaurantId, { method: "POST" });
+  return (res?.role || res) as RoleItem;
+};
 
 // ─── Staff ───────────────────────────────────────────────────────────────────
 

@@ -45,6 +45,7 @@ import { deliveryRoutes } from './routes/delivery';
 import { reservationRoutes } from './routes/reservations';
 import { inventoryRoutes } from './routes/inventory';
 import feedbackRoutes from './routes/feedback';
+import { rolesRouter } from './routes/roles';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -368,7 +369,7 @@ const handleVerifyOtp = async (c: any) => {
         .join('; ')
     );
     if (sessionToken) {
-      await storeSessionPayload(c, sessionToken).catch((err) =>
+      await storeSessionPayload(c, sessionToken, freshUser).catch((err) =>
         console.warn('[verify-otp] storeSessionPayload failed:', err)
       );
     }
@@ -594,6 +595,9 @@ app.route('/api/inventory', inventoryRoutes);
 
 app.route('/feedback', feedbackRoutes);
 app.route('/api/feedback', feedbackRoutes);
+
+app.route('/roles', rolesRouter);
+app.route('/api/roles', rolesRouter);
 
 
 

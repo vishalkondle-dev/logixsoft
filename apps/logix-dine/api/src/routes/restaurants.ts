@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { eq } from 'drizzle-orm';
 import * as z from 'zod';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission, requireAuth } from '../lib/tenancy';
+import { requirePermission, requireAuth, requireMembership } from '../lib/tenancy';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import { RestaurantSchema, UpdateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
@@ -32,7 +32,7 @@ app.get(
       404: ErrorResponseSchema,
     },
   }),
-  requirePermission('restaurant:read'),
+  requireMembership(),
   async (c) => {
   const { restaurantId } = c.get('tenant');
   const { db, close } = getDb(c);
@@ -104,16 +104,20 @@ app.get(
     responses: {
       200: z.object({
         role: z.string(),
+        roleName: z.string().optional(),
+        permissions: z.array(z.string()).optional(),
         outletIds: z.array(z.string()),
         allOutlets: z.boolean(),
       }),
     },
   }),
-  requirePermission('restaurant:read'),
+  requireMembership(),
   async (c) => {
     const tenant = c.get('tenant');
     return c.json({
       role: tenant.role,
+      roleName: tenant.roleName || tenant.role,
+      permissions: tenant.permissions ?? [],
       outletIds: tenant.outletIds ?? [],
       allOutlets: !!tenant.allOutlets,
     });

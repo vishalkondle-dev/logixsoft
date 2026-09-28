@@ -15,7 +15,7 @@ import {
   IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
   IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages, IconTruckDelivery,
-  IconStar,
+  IconStar, IconShieldLock,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -23,12 +23,12 @@ import { LoginModal } from "@/components/auth/login-modal";
 
 // Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
 const STAFF_NAV_ITEMS = [
-  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "WAITER", "KITCHEN"] },
-  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "WAITER"] },
-  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "WAITER"] },
+  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view" },
+  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view" },
+  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view" },
+  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view" },
+  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view" },
+  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view" },
 ];
 
 // Settings sidebar items (clean flat list without descriptions or category groupings)
@@ -40,6 +40,7 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias },
   { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock },
   { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, ownerOnly: true },
+  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, ownerOnly: true },
   { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar },
   { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar },
   { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax },
@@ -72,12 +73,15 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [currentTab, setCurrentTab] = React.useState<string>("active");
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
-  const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
+  const { restaurant, outlets, activeOutlet, setActiveOutlet, role, can, roleName } = useRestaurant();
 
   const isPortal = pathname === "/portal";
   const isLanding = pathname === "/";
+  const ALL_STAFF_ROLES = ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER", "KITCHEN", "RIDER"];
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
-  const isStaffOrOwner = Boolean(effectiveRole && ["OWNER", "MANAGER", "WAITER", "KITCHEN"].includes(effectiveRole));
+  const isStaffOrOwner = Boolean(
+    effectiveRole && (ALL_STAFF_ROLES.includes(effectiveRole) || effectiveRole !== "CUSTOMER")
+  );
   const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
   const isCustomer = isAuthenticated && !isStaffOrOwner;
 
@@ -111,7 +115,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const visibleNav = isPortal
     ? []
     : isStaffOrOwner
-    ? STAFF_NAV_ITEMS.filter((n) => !n.roles || (effectiveRole && n.roles.includes(effectiveRole)))
+    ? STAFF_NAV_ITEMS.filter((n) => {
+        if (effectiveRole && n.roles?.includes(effectiveRole)) return true;
+        if (n.permission && can(n.permission)) return true;
+        return false;
+      })
     : isCustomer
     ? [{ label: "My Orders", href: "/portal", icon: IconReceipt }]
     : [];
@@ -119,20 +127,32 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const staffHomeHref = React.useMemo(() => {
     const oId = activeOutlet?.id;
     const q = oId ? `?outletId=${oId}` : "";
+    if (can("pos:view")) return `/pos${q}`;
+    if (can("waiter:view")) return `/waiter${q}`;
+    if (can("kitchen:view")) return `/kitchen${q}`;
+    if (can("delivery:view")) return `/rider${q}`;
+    if (can("tables:view")) return `/tables${q}`;
     if (effectiveRole === "WAITER") return `/waiter${q}`;
+    if (effectiveRole === "CAPTAIN") return `/waiter${q}`;
     if (effectiveRole === "KITCHEN") return `/kitchen${q}`;
     if (effectiveRole === "RIDER") return `/rider${q}`;
+    if (effectiveRole === "CASHIER") return `/pos${q}`;
     return `/pos${q}`;
-  }, [effectiveRole, activeOutlet]);
+  }, [effectiveRole, activeOutlet, can]);
 
   const staffRoleLabel = React.useMemo(() => {
+    if (roleName && !["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER", "KITCHEN", "RIDER"].includes(roleName)) {
+      return roleName;
+    }
     if (effectiveRole === "WAITER") return "Waiter Floor";
+    if (effectiveRole === "CAPTAIN") return "Captain Floor";
     if (effectiveRole === "KITCHEN") return "Kitchen KDS";
     if (effectiveRole === "RIDER") return "Rider Deliveries";
+    if (effectiveRole === "CASHIER") return "Cashier Counter";
     if (effectiveRole === "MANAGER") return "Manager Dashboard";
     if (effectiveRole === "OWNER") return "POS Billing";
-    return "Staff Dashboard";
-  }, [effectiveRole]);
+    return roleName || "Staff Dashboard";
+  }, [effectiveRole, roleName]);
 
 
   return (
@@ -279,7 +299,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   color="dinePrimary"
                   radius="xl"
                   leftSection={
-                    effectiveRole === "WAITER" ? <IconBellRinging size={14} /> :
+                    effectiveRole === "WAITER" || effectiveRole === "CAPTAIN" ? <IconBellRinging size={14} /> :
                     effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={14} /> :
                     effectiveRole === "RIDER" ? <IconMotorbike size={14} /> :
                     <IconShoppingCart size={14} />
@@ -419,7 +439,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         component={Link}
                         href={staffHomeHref}
                         leftSection={
-                          effectiveRole === "WAITER" ? <IconBellRinging size={16} color="#af73d7" /> :
+                          effectiveRole === "WAITER" || effectiveRole === "CAPTAIN" ? <IconBellRinging size={16} color="#af73d7" /> :
                           effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={16} color="#af73d7" /> :
                           effectiveRole === "RIDER" ? <IconMotorbike size={16} color="#af73d7" /> :
                           <IconShoppingCart size={16} color="#af73d7" />

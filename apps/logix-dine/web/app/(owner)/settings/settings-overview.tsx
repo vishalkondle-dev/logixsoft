@@ -39,6 +39,7 @@ import {
   IconChartBar,
   IconPackages,
   IconStar,
+  IconShieldLock,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 
@@ -149,6 +150,16 @@ export function SettingsOverview() {
           href: isOwner ? "/settings/staff" : undefined,
           isAvailable: isOwner,
           badge: isOwner ? undefined : "Owner only",
+        },
+        {
+          id: "roles-permissions",
+          title: "Roles & Permissions",
+          description: "Granular access control matrix, custom team roles & sub-feature privileges",
+          icon: IconShieldLock,
+          color: "violet",
+          href: isOwner ? "/settings/roles" : undefined,
+          isAvailable: isOwner,
+          badge: isOwner ? "Matrix RBAC" : "Owner only",
         },
         {
           id: "kitchen-locations",

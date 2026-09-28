@@ -32,6 +32,8 @@ function updateUrlOutletId(outletId: string | null) {
   window.history.replaceState(window.history.state, "", url.toString());
 }
 
+import { hasPermission, type Permission } from "@logixsoft/logix-dine/types/roles";
+
 interface RestaurantContextType {
   restaurant: JsonRestaurantRow | null;
   outlets: JsonRestaurantOutletRow[];
@@ -39,8 +41,11 @@ interface RestaurantContextType {
   myRestaurants: JsonRestaurantRow[];
   isLoading: boolean;
   role: string | null;
+  roleName: string | null;
+  permissions: string[];
   allOutlets: boolean;
   myOutletIds: string[];
+  can: (permission: string) => boolean;
   setActiveRestaurant: (restaurantId: string) => void;
   setActiveOutlet: (outletId: string) => void;
   refresh: () => Promise<void>;
@@ -68,6 +73,8 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true); // start true until first fetch resolves
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [roleName, setRoleName] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [allOutlets, setAllOutlets] = useState<boolean>(true);
   const [myOutletIds, setMyOutletIds] = useState<string[]>([]);
 
@@ -92,6 +99,8 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       }
       if (roleInfo) {
         setRole(roleInfo.role);
+        setRoleName(roleInfo.roleName || roleInfo.role);
+        setPermissions(roleInfo.permissions || []);
         setAllOutlets(roleInfo.allOutlets);
         setMyOutletIds(roleInfo.outletIds);
       }
@@ -165,6 +174,8 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       setOutlets([]);
       setMyRestaurants([]);
       setRole(null);
+      setRoleName(null);
+      setPermissions([]);
       setIsLoading(false); // auth settled, no session — done
       return;
     }
@@ -201,6 +212,15 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
     setActiveOutletState(outlet);
   }, [outlets]);
 
+  const can = useCallback(
+    (permission: string): boolean => {
+      if (!role) return false;
+      if (role === "OWNER" || (user as any)?.role === "ADMIN") return true;
+      return hasPermission(permissions, permission as Permission);
+    },
+    [role, permissions, user]
+  );
+
   return (
     <RestaurantContext.Provider value={{
       restaurant,
@@ -209,8 +229,11 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       myRestaurants,
       isLoading,
       role,
+      roleName,
+      permissions,
       allOutlets,
       myOutletIds,
+      can,
       setActiveRestaurant,
       setActiveOutlet,
       refresh,
@@ -232,4 +255,25 @@ export function useRestaurantRole(): string | null {
   const { user } = useAuth();
   if ((user as any)?.role === "ADMIN") return "ADMIN";
   return role;
+}
+
+/**
+ * Checks if the active user has a specific permission or set of permissions.
+ * Zero overhead - evaluated against in-memory session permissions.
+ */
+export function usePermission(
+  permission: string | string[],
+  mode: "all" | "any" = "all"
+): boolean {
+  const { can, role } = useRestaurant();
+  const { user } = useAuth();
+
+  if (role === "OWNER" || (user as any)?.role === "ADMIN") return true;
+
+  if (Array.isArray(permission)) {
+    return mode === "all"
+      ? permission.every((p) => can(p))
+      : permission.some((p) => can(p));
+  }
+  return can(permission);
 }

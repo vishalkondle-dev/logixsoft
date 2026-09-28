@@ -38,6 +38,11 @@ function MenuItemCard({
   onToggle,
   onDelete,
 }: MenuItemCardProps) {
+  const { can } = useRestaurant();
+  const canToggleStock = can("menu:toggle_stock");
+  const canCreateEdit = can("menu:create_edit");
+  const canDelete = can("menu:delete");
+
   const uploadImageMutation = useUploadItemImage(restaurantId, outletId);
   const cardFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -197,36 +202,43 @@ function MenuItemCard({
             <Switch
               size="xs"
               checked={item.available}
+              disabled={!canToggleStock}
               onChange={() => onToggle(item)}
-              title={item.available ? "Available in POS" : "Hidden in POS"}
+              title={!canToggleStock ? "Permission required: menu:toggle_stock" : (item.available ? "Available in POS" : "Hidden in POS")}
             />
-            <ActionIcon
-              size="sm"
-              variant="subtle"
-              color="gray"
-              onClick={() => cardFileInputRef.current?.click()}
-              title="Upload / Change Photo"
-            >
-              <IconCamera size={15} />
-            </ActionIcon>
-            <ActionIcon
-              component={Link}
-              href={`/settings/menu/${item.id}`}
-              size="sm"
-              variant="light"
-              title="Edit item details"
-            >
-              <IconEdit size={14} />
-            </ActionIcon>
-            <ActionIcon
-              size="sm"
-              variant="light"
-              color="red"
-              onClick={() => onDelete(item)}
-              title="Delete item"
-            >
-              <IconTrash size={14} />
-            </ActionIcon>
+            {canCreateEdit && (
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                color="gray"
+                onClick={() => cardFileInputRef.current?.click()}
+                title="Upload / Change Photo"
+              >
+                <IconCamera size={15} />
+              </ActionIcon>
+            )}
+            {canCreateEdit && (
+              <ActionIcon
+                component={Link}
+                href={`/settings/menu/${item.id}`}
+                size="sm"
+                variant="light"
+                title="Edit item details"
+              >
+                <IconEdit size={14} />
+              </ActionIcon>
+            )}
+            {canDelete && (
+              <ActionIcon
+                size="sm"
+                variant="light"
+                color="red"
+                onClick={() => onDelete(item)}
+                title="Delete item"
+              >
+                <IconTrash size={14} />
+              </ActionIcon>
+            )}
           </Group>
         </Group>
       </Stack>
@@ -235,10 +247,15 @@ function MenuItemCard({
 }
 
 export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
-  const { restaurant, activeOutlet } = useRestaurant();
+  const { restaurant, activeOutlet, can } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
   const queryClient = useQueryClient();
+
+  const canView = can("menu:view");
+  const canCreateEdit = can("menu:create_edit");
+  const canDelete = can("menu:delete");
+  const canToggleStock = can("menu:toggle_stock");
 
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
 
@@ -404,6 +421,17 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
 
   if (!restaurant) return null;
 
+  if (!canView) {
+    return (
+      <Paper p="xl" radius="md" withBorder>
+        <Text fw={700} c="red" mb="xs">Access Restricted</Text>
+        <Text size="sm" c="dimmed">
+          Your current role does not have authorization to view the Menu Catalog (<code>menu:view</code>).
+        </Text>
+      </Paper>
+    );
+  }
+
   const content = (
     <>
       {!embedded && <Title order={2} mb="md">Menu Catalog</Title>}
@@ -417,17 +445,19 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           <Text size="sm" c="dimmed">
             No menu categories yet. Create one to get started.
           </Text>
-          <Button
-            size="xs"
-            variant="light"
-            color="dinePrimary"
-            mt="md"
-            leftSection={<IconPlus size={14} />}
-            onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-            disabled={!outletId}
-          >
-            Create Category
-          </Button>
+          {canCreateEdit && (
+            <Button
+              size="xs"
+              variant="light"
+              color="dinePrimary"
+              mt="md"
+              leftSection={<IconPlus size={14} />}
+              onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+              disabled={!outletId}
+            >
+              Create Category
+            </Button>
+          )}
         </Paper>
       ) : (() => {
         // Active category always first
@@ -461,15 +491,17 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.5px" }}>
                   Categories
                 </Text>
-                <ActionIcon
-                  size="xs"
-                  variant="light"
-                  color="dinePrimary"
-                  onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-                  title="Add Category"
-                >
-                  <IconPlus size={12} />
-                </ActionIcon>
+                {canCreateEdit && (
+                  <ActionIcon
+                    size="xs"
+                    variant="light"
+                    color="dinePrimary"
+                    onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+                    title="Add Category"
+                  >
+                    <IconPlus size={12} />
+                  </ActionIcon>
+                )}
               </Group>
 
               <Stack gap={2}>
@@ -512,24 +544,26 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                   );
                 })}
 
-                <Box
-                  onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "7px 10px",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    color: "var(--mantine-color-dinePrimary-6)",
-                    marginTop: 4,
-                    opacity: outletId ? 1 : 0.4,
-                    pointerEvents: outletId ? "auto" : "none",
-                  }}
-                >
-                  <IconPlus size={13} />
-                  <Text size="sm">New Category</Text>
-                </Box>
+                {canCreateEdit && (
+                  <Box
+                    onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "7px 10px",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      color: "var(--mantine-color-dinePrimary-6)",
+                      marginTop: 4,
+                      opacity: outletId ? 1 : 0.4,
+                      pointerEvents: outletId ? "auto" : "none",
+                    }}
+                  >
+                    <IconPlus size={13} />
+                    <Text size="sm">New Category</Text>
+                  </Box>
+                )}
               </Stack>
             </Box>
 
@@ -586,24 +620,26 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                         </Box>
                       );
                     })}
-                    <Box
-                      onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
-                      style={{
-                        flexShrink: 0,
-                        padding: "6px 14px",
-                        borderRadius: 20,
-                        cursor: "pointer",
-                        border: "1.5px dashed var(--mantine-color-gray-3)",
-                        color: "var(--mantine-color-dinePrimary-6)",
-                        fontSize: 13,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <IconPlus size={13} /> Category
-                    </Box>
+                    {canCreateEdit && (
+                      <Box
+                        onClick={() => { setCatForm({ name: "", description: "" }); setCatModal({ open: true, editing: null }); }}
+                        style={{
+                          flexShrink: 0,
+                          padding: "6px 14px",
+                          borderRadius: 20,
+                          cursor: "pointer",
+                          border: "1.5px dashed var(--mantine-color-gray-3)",
+                          color: "var(--mantine-color-dinePrimary-6)",
+                          fontSize: 13,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <IconPlus size={13} /> Category
+                      </Box>
+                    )}
                   </Box>
                 </ScrollArea>
               </Box>
@@ -651,45 +687,51 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
                             color="dinePrimary"
                             title={activeCat.active ? "Hide category" : "Show category"}
                           />
-                          <ActionIcon
-                            size="sm"
-                            variant="subtle"
-                            color="dinePrimary"
-                            onClick={() => { setCatForm({ name: activeCat.name, description: activeCat.description ?? "" }); setCatModal({ open: true, editing: activeCat }); }}
-                            title="Edit category"
-                          >
-                            <IconEdit size={14} />
-                          </ActionIcon>
-                          <ActionIcon
-                            size="sm"
-                            variant="subtle"
-                            color="red"
-                            onClick={() => handleDeleteCat(activeCat)}
-                            title="Delete category"
-                          >
-                            <IconTrash size={14} />
-                          </ActionIcon>
-                          <ActionIcon
-                            size="sm"
-                            variant="filled"
-                            color="dinePrimary"
-                            onClick={() => {
-                              setItemForm({
-                                categoryId: activeCat.id,
-                                name: "",
-                                description: "",
-                                imageUrl: "",
-                                pricePaise: 0,
-                                variants: [],
-                                addons: [],
-                              });
-                              setItemImageFile(null);
-                              setItemModal({ open: true, editing: null });
-                            }}
-                            title="Add dish"
-                          >
-                            <IconPlus size={14} />
-                          </ActionIcon>
+                          {canCreateEdit && (
+                            <ActionIcon
+                              size="sm"
+                              variant="subtle"
+                              color="dinePrimary"
+                              onClick={() => { setCatForm({ name: activeCat.name, description: activeCat.description ?? "" }); setCatModal({ open: true, editing: activeCat }); }}
+                              title="Edit category"
+                            >
+                              <IconEdit size={14} />
+                            </ActionIcon>
+                          )}
+                          {canDelete && (
+                            <ActionIcon
+                              size="sm"
+                              variant="subtle"
+                              color="red"
+                              onClick={() => handleDeleteCat(activeCat)}
+                              title="Delete category"
+                            >
+                              <IconTrash size={14} />
+                            </ActionIcon>
+                          )}
+                          {canCreateEdit && (
+                            <ActionIcon
+                              size="sm"
+                              variant="filled"
+                              color="dinePrimary"
+                              onClick={() => {
+                                setItemForm({
+                                  categoryId: activeCat.id,
+                                  name: "",
+                                  description: "",
+                                  imageUrl: "",
+                                  pricePaise: 0,
+                                  variants: [],
+                                  addons: [],
+                                });
+                                setItemImageFile(null);
+                                setItemModal({ open: true, editing: null });
+                              }}
+                              title="Add dish"
+                            >
+                              <IconPlus size={14} />
+                            </ActionIcon>
+                          )}
                         </Group>
                       </Group>
                     </Box>

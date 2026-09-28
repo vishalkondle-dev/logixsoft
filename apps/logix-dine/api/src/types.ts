@@ -8,6 +8,8 @@ declare module 'hono' {
     tenant: {
       restaurantId: string;
       role: string;
+      roleName?: string;
+      permissions?: string[];
       member: Record<string, unknown> | null;
       outletId: string | null;
       outletIds: string[];

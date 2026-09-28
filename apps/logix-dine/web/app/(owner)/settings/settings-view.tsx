@@ -17,7 +17,7 @@ import {
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
-  useStaff, useTables,
+  useStaff, useTables, useRoles,
   useInviteStaff, useUpdateStaff, useRemoveStaff,
   useCreateTable, useUpdateTable, useToggleTable, useDeleteTable,
   useCreateOutlet, useUpdateOutlet, useDeleteOutlet, useSetDefaultOutlet,
@@ -29,6 +29,7 @@ import {
 import { PrinterButton } from "@/components/print/printer-button";
 import { MenuManagement } from "../menu/menu-management";
 import { StoreHoursManagement } from "./store-hours-management";
+import { RolesManagement } from "./roles-management";
 
 const ReportsManagement = dynamic(
   () => import("../reports/reports-management").then((m) => m.ReportsManagement),
@@ -63,8 +64,11 @@ import { FeedbackManagement } from "./feedback-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
+  { value: "CASHIER", label: "Cashier — POS counter & billing" },
+  { value: "CAPTAIN", label: "Captain — Floor orders & calls" },
   { value: "WAITER", label: "Waiter — take & settle orders" },
   { value: "KITCHEN", label: "Kitchen — view KDS only" },
+  { value: "RIDER", label: "Rider — delivery orders" },
 ];
 
 export const VALID_SETTINGS_TABS = [
@@ -76,6 +80,7 @@ export const VALID_SETTINGS_TABS = [
   "tax",
   "reports",
   "staff",
+  "roles",
   "printing",
   "dining",
   "qr-menu",
@@ -94,6 +99,19 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const { restaurant, outlets: ctxOutlets, activeOutlet, refresh, role } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const isOwner = role === "OWNER";
+
+  const { data: rolesData } = useRoles(restaurantId, !!restaurantId && isOwner);
+  const staffRoleOptions = React.useMemo(() => {
+    if (rolesData?.roles && rolesData.roles.length > 0) {
+      return rolesData.roles
+        .filter((r) => r.name !== "OWNER")
+        .map((r) => ({
+          value: r.name,
+          label: `${r.name}${r.description ? ` — ${r.description}` : ""}`,
+        }));
+    }
+    return STAFF_ROLES;
+  }, [rolesData]);
 
   const getTabFromPath = (path: string | null) => {
     if (!path) return currentTab || "restaurant";
@@ -421,6 +439,10 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       title: "Staff & Team",
       subtitle: "Manage team members, roles, and outlet access",
     },
+    roles: {
+      title: "Roles & Permissions Matrix",
+      subtitle: "Configure granular sub-feature privileges, team roles, and outlet authorization policies",
+    },
     printing: {
       title: "Thermal Printers",
       subtitle: "Configure Bluetooth & network thermal printers for bills & KOTs",
@@ -637,7 +659,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                             label="Role"
                             value={m.role}
                             onChange={(v) => v && handleRoleChange(m, v)}
-                            data={STAFF_ROLES.map((r) => ({ value: r.value, label: r.value }))}
+                            data={
+                              staffRoleOptions.some((opt) => opt.value === m.role)
+                                ? staffRoleOptions
+                                : [{ value: m.role, label: m.role }, ...staffRoleOptions]
+                            }
                             allowDeselect={false}
                           />
                         </Grid.Col>
@@ -660,6 +686,13 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                 </Stack>
               )}
             </Stack>
+          </Tabs.Panel>
+        )}
+
+        {/* Roles & Permissions tab */}
+        {isOwner && (
+          <Tabs.Panel value="roles">
+            <RolesManagement embedded />
           </Tabs.Panel>
         )}
 
@@ -750,7 +783,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             required
             value={inviteForm.role}
             onChange={(v) => v && setInviteForm((f) => ({ ...f, role: v }))}
-            data={STAFF_ROLES}
+            data={staffRoleOptions}
           />
           <MultiSelect
             label="Outlet Access"

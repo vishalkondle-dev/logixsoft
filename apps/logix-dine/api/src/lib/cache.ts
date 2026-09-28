@@ -28,6 +28,8 @@ export interface MembershipEntry {
   restaurantId: string;
   memberId: string;
   role: string;
+  roleName?: string;
+  permissions: string[];
   outletIds: string[];     // empty = OWNER (all outlets)
   allOutlets: boolean;
 }

@@ -23,12 +23,12 @@ import { LoginModal } from "@/components/auth/login-modal";
 
 // Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
 const STAFF_NAV_ITEMS = [
-  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"] },
-  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"] },
-  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"] },
-  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"] },
-  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"] },
-  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"] },
+  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view" },
+  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view" },
+  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view" },
+  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view" },
+  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view" },
+  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view" },
 ];
 
 // Settings sidebar items (clean flat list without descriptions or category groupings)
@@ -73,7 +73,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [currentTab, setCurrentTab] = React.useState<string>("active");
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
-  const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
+  const { restaurant, outlets, activeOutlet, setActiveOutlet, role, can, roleName } = useRestaurant();
 
   const isPortal = pathname === "/portal";
   const isLanding = pathname === "/";
@@ -115,7 +115,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const visibleNav = isPortal
     ? []
     : isStaffOrOwner
-    ? STAFF_NAV_ITEMS.filter((n) => !n.roles || (effectiveRole && n.roles.includes(effectiveRole)))
+    ? STAFF_NAV_ITEMS.filter((n) => {
+        if (effectiveRole && n.roles?.includes(effectiveRole)) return true;
+        if (n.permission && can(n.permission)) return true;
+        return false;
+      })
     : isCustomer
     ? [{ label: "My Orders", href: "/portal", icon: IconReceipt }]
     : [];
@@ -123,15 +127,23 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const staffHomeHref = React.useMemo(() => {
     const oId = activeOutlet?.id;
     const q = oId ? `?outletId=${oId}` : "";
+    if (can("pos:view")) return `/pos${q}`;
+    if (can("waiter:view")) return `/waiter${q}`;
+    if (can("kitchen:view")) return `/kitchen${q}`;
+    if (can("delivery:view")) return `/rider${q}`;
+    if (can("tables:view")) return `/tables${q}`;
     if (effectiveRole === "WAITER") return `/waiter${q}`;
     if (effectiveRole === "CAPTAIN") return `/waiter${q}`;
     if (effectiveRole === "KITCHEN") return `/kitchen${q}`;
     if (effectiveRole === "RIDER") return `/rider${q}`;
     if (effectiveRole === "CASHIER") return `/pos${q}`;
     return `/pos${q}`;
-  }, [effectiveRole, activeOutlet]);
+  }, [effectiveRole, activeOutlet, can]);
 
   const staffRoleLabel = React.useMemo(() => {
+    if (roleName && !["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER", "KITCHEN", "RIDER"].includes(roleName)) {
+      return roleName;
+    }
     if (effectiveRole === "WAITER") return "Waiter Floor";
     if (effectiveRole === "CAPTAIN") return "Captain Floor";
     if (effectiveRole === "KITCHEN") return "Kitchen KDS";
@@ -139,8 +151,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     if (effectiveRole === "CASHIER") return "Cashier Counter";
     if (effectiveRole === "MANAGER") return "Manager Dashboard";
     if (effectiveRole === "OWNER") return "POS Billing";
-    return "Staff Dashboard";
-  }, [effectiveRole]);
+    return roleName || "Staff Dashboard";
+  }, [effectiveRole, roleName]);
 
 
   return (

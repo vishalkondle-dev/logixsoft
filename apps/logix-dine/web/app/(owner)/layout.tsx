@@ -7,8 +7,15 @@ import { IconLock, IconBrandWhatsapp } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 
-function getRoleHomePath(role: string | null, outletId?: string | null): string {
+function getRoleHomePath(role: string | null, outletId?: string | null, can?: (perm: string) => boolean): string {
   const q = outletId ? `?outletId=${outletId}` : "";
+  if (can) {
+    if (can("pos:view")) return `/pos${q}`;
+    if (can("waiter:view")) return `/waiter${q}`;
+    if (can("kitchen:view")) return `/kitchen${q}`;
+    if (can("delivery:view")) return `/rider${q}`;
+    if (can("tables:view")) return `/tables${q}`;
+  }
   switch (role) {
     case "KITCHEN":
       return `/kitchen${q}`;
@@ -24,7 +31,7 @@ function getRoleHomePath(role: string | null, outletId?: string | null): string 
   }
 }
 
-function isPathAllowedForRole(role: string | null, pathname: string): boolean {
+function isPathAllowedForRole(role: string | null, pathname: string, can?: (perm: string) => boolean): boolean {
   if (!role || role === "OWNER" || role === "MANAGER") return true;
 
   // Settings are never allowed for staff roles below MANAGER
@@ -57,13 +64,28 @@ function isPathAllowedForRole(role: string | null, pathname: string): boolean {
         pathname.startsWith("/orders")
       );
     default:
+      // Custom role dynamic permission verification
+      if (can) {
+        if (pathname.startsWith("/kitchen") && can("kitchen:view")) return true;
+        if (pathname.startsWith("/rider") && can("delivery:view")) return true;
+        if (pathname.startsWith("/pos") && can("pos:view")) return true;
+        if (pathname.startsWith("/waiter") && can("waiter:view")) return true;
+        if (pathname.startsWith("/tables") && can("tables:view")) return true;
+        if (
+          pathname.startsWith("/orders") &&
+          (can("pos:view") || can("waiter:view") || can("kitchen:view") || can("delivery:view"))
+        ) {
+          return true;
+        }
+        return false;
+      }
       return true;
   }
 }
 
 export default function OwnerLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
-  const { restaurant, myRestaurants, activeOutlet, isLoading: restLoading, role } = useRestaurant();
+  const { restaurant, myRestaurants, activeOutlet, isLoading: restLoading, role, can } = useRestaurant();
   const router = useRouter();
   const pathname = usePathname();
   const redirected = useRef(false);
@@ -87,12 +109,12 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
       return;
     }
     // Enforce role-based allowed routes for all staff roles
-    if (restaurant && role && !isPathAllowedForRole(role, pathname) && !redirected.current) {
+    if (restaurant && role && !isPathAllowedForRole(role, pathname, can) && !redirected.current) {
       redirected.current = true;
-      router.replace(getRoleHomePath(role, activeOutlet?.id));
+      router.replace(getRoleHomePath(role, activeOutlet?.id, can));
       return;
     }
-  }, [authLoading, restLoading, isAuthenticated, restaurant, myRestaurants, activeOutlet, role, pathname, router]);
+  }, [authLoading, restLoading, isAuthenticated, restaurant, myRestaurants, activeOutlet, role, pathname, router, can]);
 
   // Still loading either auth or restaurant context
   if (authLoading || (isAuthenticated && restLoading)) {
@@ -124,7 +146,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
   }
 
   // Authenticated but no restaurant yet, or restricted role being redirected — show loader
-  const isRestrictedRole = Boolean(role && !isPathAllowedForRole(role, pathname));
+  const isRestrictedRole = Boolean(role && !isPathAllowedForRole(role, pathname, can));
   if (!restaurant || isRestrictedRole) {
     return (
       <Center py={100}>

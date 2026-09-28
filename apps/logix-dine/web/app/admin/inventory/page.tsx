@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -17,6 +17,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconPackages,
@@ -29,14 +30,16 @@ import {
 } from "@tabler/icons-react";
 import { useAdmin } from "../admin-context";
 import { useUrlFilters } from "../use-url-filters";
+import { DependentOutletSelect } from "../dependent-outlet-select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 
 function InventoryContent() {
-  const { restaurants, outlets } = useAdmin();
+  const { restaurants } = useAdmin();
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const outletFilter = getFilter("outletId", "ALL");
   const alertFilter = getFilter("stockAlert", "ALL");
@@ -69,9 +72,17 @@ function InventoryContent() {
     costPerBaseUnitPaise: 5000,
   });
 
-  const loadData = async () => {
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/inventory`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
+      if (alertFilter && alertFilter !== "ALL") params.set("stockAlert", alertFilter);
+
+      const res = await fetch(`${API_BASE}/admin/inventory?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setInventory(Array.isArray(d) ? d : d.inventory || []);
@@ -81,11 +92,11 @@ function InventoryContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, restaurantFilter, outletFilter, alertFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreate = async () => {
     if (!createForm.restaurantId || !createForm.outletId || !createForm.name) {
@@ -159,28 +170,7 @@ function InventoryContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return inventory.filter((inv) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        inv.name?.toLowerCase().includes(q) ||
-        inv.sku?.toLowerCase().includes(q) ||
-        inv.restaurantName?.toLowerCase().includes(q) ||
-        inv.outletName?.toLowerCase().includes(q);
-
-      const matchesRest = restaurantFilter === "ALL" || inv.restaurantId === restaurantFilter;
-      const matchesOutlet = outletFilter === "ALL" || inv.outletId === outletFilter;
-
-      const isLowStock = Number(inv.currentStock || 0) <= Number(inv.lowStockThreshold || 0);
-      const matchesAlert =
-        alertFilter === "ALL" ||
-        (alertFilter === "LOW_STOCK" && isLowStock) ||
-        (alertFilter === "IN_STOCK" && !isLowStock);
-
-      return matchesSearch && matchesRest && matchesOutlet && matchesAlert;
-    });
-  }, [inventory, searchQuery, restaurantFilter, outletFilter, alertFilter]);
+  const filtered = inventory;
 
   return (
     <Stack gap="lg">
@@ -227,18 +217,14 @@ function InventoryContent() {
             w={{ base: "100%", sm: 190 }}
             size="xs"
           />
-          <Select
-            placeholder="Filter by Outlet"
-            data={[
-              { value: "ALL", label: "All Outlets" },
-              ...outlets
-                .filter((o) => restaurantFilter === "ALL" || o.restaurantId === restaurantFilter)
-                .map((o) => ({ value: o.id, label: o.name })),
-            ]}
+          <DependentOutletSelect
+            restaurantId={restaurantFilter}
             value={outletFilter}
-            onChange={(val) => setFilter("outletId", val || "ALL")}
-            w={{ base: "100%", sm: 160 }}
+            onChange={(val) => setFilter("outletId", val)}
+            isFilter
+            filterAllLabel="All Outlets"
             size="xs"
+            w={{ base: "100%", sm: 170 }}
           />
           <Select
             placeholder="Stock Status"
@@ -397,17 +383,17 @@ function InventoryContent() {
             required
             data={restaurants.map((r) => ({ value: r.id, label: r.name }))}
             value={createForm.restaurantId}
-            onChange={(v) => setCreateForm((f) => ({ ...f, restaurantId: v || "" }))}
+            onChange={(v) => {
+              setCreateForm((f) => ({ ...f, restaurantId: v || "", outletId: "" }));
+            }}
           />
-          <Select
+          <DependentOutletSelect
             label="Outlet"
             placeholder="Select Outlet"
             required
-            data={outlets
-              .filter((o) => !createForm.restaurantId || o.restaurantId === createForm.restaurantId)
-              .map((o) => ({ value: o.id, label: o.name }))}
+            restaurantId={createForm.restaurantId}
             value={createForm.outletId}
-            onChange={(v) => setCreateForm((f) => ({ ...f, outletId: v || "" }))}
+            onChange={(v) => setCreateForm((f) => ({ ...f, outletId: v }))}
           />
           <TextInput
             label="Item Name"

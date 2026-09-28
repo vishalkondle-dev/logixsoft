@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -17,6 +17,7 @@ import {
   Loader,
   Divider,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconReceipt,
@@ -27,6 +28,7 @@ import {
 } from "@tabler/icons-react";
 import { useAdmin } from "../admin-context";
 import { useUrlFilters } from "../use-url-filters";
+import { DependentOutletSelect } from "../dependent-outlet-select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 
@@ -53,7 +55,9 @@ function OrdersContent() {
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const restaurantFilter = getFilter("restaurantId", "ALL");
+  const outletFilter = getFilter("outletId", "ALL");
   const statusFilter = getFilter("status", "ALL");
   const typeFilter = getFilter("orderType", "ALL");
 
@@ -67,9 +71,18 @@ function OrdersContent() {
   const [voidOrderOpened, setVoidOrderOpened] = useState(false);
   const [voidReason, setVoidReason] = useState("");
 
-  const loadData = async () => {
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/orders?limit=100`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
+      if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+      if (typeFilter && typeFilter !== "ALL") params.set("orderType", typeFilter);
+
+      const res = await fetch(`${API_BASE}/admin/orders?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setOrders(Array.isArray(d) ? d : d.orders || []);
@@ -79,11 +92,11 @@ function OrdersContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, restaurantFilter, outletFilter, statusFilter, typeFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleVoidOrder = async () => {
     if (!selectedOrder) return;
@@ -107,24 +120,7 @@ function OrdersContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return orders.filter((o) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        String(o.orderNo || "").includes(q) ||
-        o.customerPhone?.toLowerCase().includes(q) ||
-        o.restaurantName?.toLowerCase().includes(q) ||
-        o.id?.toLowerCase().includes(q);
-
-      const matchesRest = restaurantFilter === "ALL" || o.restaurantId === restaurantFilter;
-      const matchesStatus =
-        statusFilter === "ALL" || o.status === statusFilter || o.orderStatus === statusFilter;
-      const matchesType = typeFilter === "ALL" || o.orderType === typeFilter;
-
-      return matchesSearch && matchesRest && matchesStatus && matchesType;
-    });
-  }, [orders, searchQuery, restaurantFilter, statusFilter, typeFilter]);
+  const filtered = orders;
 
   return (
     <Stack gap="lg">
@@ -157,16 +153,28 @@ function OrdersContent() {
               ...restaurants.map((r) => ({ value: r.id, label: r.name })),
             ]}
             value={restaurantFilter}
-            onChange={(val) => setFilter("restaurantId", val || "ALL")}
-            w={{ base: "100%", sm: 200 }}
+            onChange={(val) => {
+              setFilter("restaurantId", val || "ALL");
+              setFilter("outletId", "ALL");
+            }}
+            w={{ base: "100%", sm: 190 }}
             size="xs"
+          />
+          <DependentOutletSelect
+            restaurantId={restaurantFilter}
+            value={outletFilter}
+            onChange={(val) => setFilter("outletId", val)}
+            isFilter
+            filterAllLabel="All Outlets"
+            size="xs"
+            w={{ base: "100%", sm: 160 }}
           />
           <Select
             placeholder="Status"
             data={ORDER_STATUSES}
             value={statusFilter}
             onChange={(val) => setFilter("status", val || "ALL")}
-            w={{ base: "100%", sm: 150 }}
+            w={{ base: "100%", sm: 140 }}
             size="xs"
           />
           <Select
@@ -174,7 +182,7 @@ function OrdersContent() {
             data={ORDER_TYPES}
             value={typeFilter}
             onChange={(val) => setFilter("orderType", val || "ALL")}
-            w={{ base: "100%", sm: 140 }}
+            w={{ base: "100%", sm: 130 }}
             size="xs"
           />
           {hasActiveFilters && (

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
   Stack,
   Group,
@@ -70,9 +71,17 @@ function UsersContent() {
     role: "CUSTOMER",
   });
 
-  const loadData = async () => {
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
+
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/users`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (roleFilter && roleFilter !== "ALL") params.set("role", roleFilter);
+
+      const res = await fetch(`${API_BASE}/admin/users?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setUsers(Array.isArray(d) ? d : d.users || []);
@@ -82,11 +91,11 @@ function UsersContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, roleFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreate = async () => {
     if (!createForm.phoneNumber) {
@@ -150,20 +159,7 @@ function UsersContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return users.filter((u) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        u.name?.toLowerCase().includes(q) ||
-        u.phoneNumber?.includes(q) ||
-        u.email?.toLowerCase().includes(q) ||
-        u.role?.toLowerCase().includes(q);
-
-      const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
-      return matchesSearch && matchesRole;
-    });
-  }, [users, searchQuery, roleFilter]);
+  const filtered = users;
 
   return (
     <Stack gap="lg">

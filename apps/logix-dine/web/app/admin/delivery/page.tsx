@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -16,6 +16,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconMotorbike,
@@ -23,6 +24,7 @@ import {
   IconDotsVertical,
   IconX,
 } from "@tabler/icons-react";
+import { useAdmin } from "../admin-context";
 import { useUrlFilters } from "../use-url-filters";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
@@ -37,17 +39,26 @@ const DELIVERY_STATUSES = [
 ];
 
 function DeliveryContent() {
+  const { restaurants } = useAdmin();
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const statusFilter = getFilter("status", "ALL");
+  const restaurantFilter = getFilter("restaurantId", "ALL");
 
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/delivery`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await fetch(`${API_BASE}/admin/delivery${qs}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setDeliveries(Array.isArray(d) ? d : d.deliveries || []);
@@ -57,11 +68,11 @@ function DeliveryContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, statusFilter, restaurantFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleUpdateStatus = async (delId: string, status: string) => {
     try {
@@ -79,20 +90,8 @@ function DeliveryContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return deliveries.filter((d) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        d.id?.toLowerCase().includes(q) ||
-        d.addressLine1?.toLowerCase().includes(q) ||
-        d.city?.toLowerCase().includes(q) ||
-        String(d.orderNo || "").includes(q);
-
-      const matchesStatus = statusFilter === "ALL" || d.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [deliveries, searchQuery, statusFilter]);
+  // Server-side filtered
+  const filtered = deliveries;
 
   return (
     <Stack gap="lg">
@@ -115,7 +114,15 @@ function DeliveryContent() {
             leftSection={<IconSearch size={16} />}
             value={searchQuery}
             onChange={(e) => setFilter("search", e.target.value)}
-            w={{ base: "100%", sm: 300 }}
+            w={{ base: "100%", sm: 280 }}
+            size="xs"
+          />
+          <Select
+            placeholder="Restaurant"
+            data={[{ value: "ALL", label: "All Restaurants" }, ...restaurants.map((r) => ({ value: r.id, label: r.name }))]}
+            value={restaurantFilter}
+            onChange={(val) => setFilter("restaurantId", val || "ALL")}
+            w={{ base: "100%", sm: 200 }}
             size="xs"
           />
           <Select
@@ -123,7 +130,7 @@ function DeliveryContent() {
             data={DELIVERY_STATUSES}
             value={statusFilter}
             onChange={(val) => setFilter("status", val || "ALL")}
-            w={{ base: "100%", sm: 200 }}
+            w={{ base: "100%", sm: 180 }}
             size="xs"
           />
           {hasActiveFilters && (

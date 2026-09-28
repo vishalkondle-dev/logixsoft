@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
   Stack,
   Group,
@@ -73,9 +74,18 @@ function RestaurantsContent() {
     ownerPhone: "",
   });
 
-  const loadData = async () => {
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
+
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/restaurants`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+      if (sortBy) params.set("sortBy", sortBy);
+
+      const res = await fetch(`${API_BASE}/admin/restaurants?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setRestaurants(Array.isArray(d) ? d : d.restaurants || []);
@@ -85,11 +95,11 @@ function RestaurantsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, statusFilter, sortBy]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreate = async () => {
     if (!createForm.name || !createForm.ownerPhone) {
@@ -169,28 +179,7 @@ function RestaurantsContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    let list = restaurants.filter((r) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        r.name?.toLowerCase().includes(q) ||
-        r.ownerPhone?.includes(q) ||
-        r.id?.includes(q) ||
-        r.slug?.toLowerCase().includes(q);
-      const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-
-    if (sortBy === "name") {
-      list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    } else if (sortBy === "outlets") {
-      list.sort((a, b) => (b.outletsCount || 0) - (a.outletsCount || 0));
-    } else {
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }
-    return list;
-  }, [restaurants, searchQuery, statusFilter, sortBy]);
+  const filtered = restaurants;
 
   return (
     <Stack gap="lg">

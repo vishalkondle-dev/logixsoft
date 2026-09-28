@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -16,6 +16,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconUserCheck,
@@ -33,6 +34,7 @@ function CustomersContent() {
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const minOrdersFilter = getFilter("minOrders", "ALL");
   const sortBy = getFilter("sortBy", "spend");
 
@@ -57,9 +59,15 @@ function CustomersContent() {
     email: "",
   });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/customers`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (minOrdersFilter && minOrdersFilter !== "ALL") params.set("minOrders", minOrdersFilter);
+      if (sortBy) params.set("sortBy", sortBy);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await fetch(`${API_BASE}/admin/customers${qs}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setCustomers(Array.isArray(d) ? d : d.customers || []);
@@ -69,11 +77,11 @@ function CustomersContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, minOrdersFilter, sortBy]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreate = async () => {
     if (!createForm.phoneNumber) {
@@ -137,36 +145,8 @@ function CustomersContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    let list = customers.filter((c) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        c.name?.toLowerCase().includes(q) ||
-        c.phoneNumber?.includes(q) ||
-        c.email?.toLowerCase().includes(q);
-
-      const count = Number(c.ordersCount || 0);
-      let matchesMinOrders = true;
-      if (minOrdersFilter === "repeat") matchesMinOrders = count > 1;
-      else if (minOrdersFilter === "first") matchesMinOrders = count === 1;
-      else if (minOrdersFilter === "zero") matchesMinOrders = count === 0;
-
-      return matchesSearch && matchesMinOrders;
-    });
-
-    if (sortBy === "spend") {
-      list.sort((a, b) => Number(b.totalSpend || 0) - Number(a.totalSpend || 0));
-    } else if (sortBy === "orders") {
-      list.sort((a, b) => Number(b.ordersCount || 0) - Number(a.ordersCount || 0));
-    } else if (sortBy === "name") {
-      list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    } else {
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }
-
-    return list;
-  }, [customers, searchQuery, minOrdersFilter, sortBy]);
+  // Server-side filtered and sorted
+  const filtered = customers;
 
   return (
     <Stack gap="lg">

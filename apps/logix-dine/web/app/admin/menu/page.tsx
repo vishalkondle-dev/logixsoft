@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -18,6 +18,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconBook,
@@ -38,6 +39,7 @@ function MenuContent() {
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const categoryFilter = getFilter("categoryId", "ALL");
   const stockFilter = getFilter("stockStatus", "ALL");
@@ -74,10 +76,20 @@ function MenuContent() {
     name: "",
   });
 
-  const loadData = async () => {
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (categoryFilter && categoryFilter !== "ALL") params.set("categoryId", categoryFilter);
+      if (stockFilter && stockFilter !== "ALL") {
+        params.set("stockStatus", stockFilter === "AVAILABLE" ? "IN_STOCK" : "OUT_OF_STOCK");
+      }
+
       const [itemsRes, catsRes] = await Promise.all([
-        fetch(`${API_BASE}/admin/menu/items`, { credentials: "include" }),
+        fetch(`${API_BASE}/admin/menu/items?${params.toString()}`, { credentials: "include" }),
         fetch(`${API_BASE}/admin/menu/categories`, { credentials: "include" }),
       ]);
       if (itemsRes.ok) {
@@ -93,11 +105,11 @@ function MenuContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, restaurantFilter, categoryFilter, stockFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreateItem = async () => {
     if (!itemForm.restaurantId || !itemForm.name) {
@@ -205,26 +217,8 @@ function MenuContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return menuItems.filter((i) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        i.name?.toLowerCase().includes(q) ||
-        i.description?.toLowerCase().includes(q) ||
-        i.categoryName?.toLowerCase().includes(q) ||
-        i.restaurantName?.toLowerCase().includes(q);
-
-      const matchesRest = restaurantFilter === "ALL" || i.restaurantId === restaurantFilter;
-      const matchesCat = categoryFilter === "ALL" || i.categoryId === categoryFilter;
-      const matchesStock =
-        stockFilter === "ALL" ||
-        (stockFilter === "AVAILABLE" && i.isAvailable !== false) ||
-        (stockFilter === "OUT_OF_STOCK" && i.isAvailable === false);
-
-      return matchesSearch && matchesRest && matchesCat && matchesStock;
-    });
-  }, [menuItems, searchQuery, restaurantFilter, categoryFilter, stockFilter]);
+  // Server-side filtered and sorted
+  const filtered = menuItems;
 
   return (
     <Stack gap="lg">
@@ -434,13 +428,14 @@ function MenuContent() {
             required
             data={restaurants.map((r) => ({ value: r.id, label: r.name }))}
             value={itemForm.restaurantId}
-            onChange={(v) => setItemForm((f) => ({ ...f, restaurantId: v || "" }))}
+            onChange={(v) => setItemForm((f) => ({ ...f, restaurantId: v || "", categoryId: "" }))}
           />
           <Select
             label="Category"
-            placeholder="Select Category"
+            placeholder={itemForm.restaurantId ? "Select Category" : "Select Restaurant first..."}
+            disabled={!itemForm.restaurantId}
             data={categories
-              .filter((c) => !itemForm.restaurantId || c.restaurantId === itemForm.restaurantId)
+              .filter((c) => c.restaurantId === itemForm.restaurantId)
               .map((c) => ({ value: c.id, label: c.name }))}
             value={itemForm.categoryId}
             onChange={(v) => setItemForm((f) => ({ ...f, categoryId: v || "" }))}

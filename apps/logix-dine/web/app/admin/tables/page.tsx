@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -18,6 +18,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconTableAlias,
@@ -29,14 +30,16 @@ import {
 } from "@tabler/icons-react";
 import { useAdmin } from "../admin-context";
 import { useUrlFilters } from "../use-url-filters";
+import { DependentOutletSelect } from "../dependent-outlet-select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 
 function TablesContent() {
-  const { restaurants, outlets } = useAdmin();
+  const { restaurants } = useAdmin();
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const outletFilter = getFilter("outletId", "ALL");
   const sectionFilter = getFilter("section", "ALL");
@@ -65,9 +68,17 @@ function TablesContent() {
     active: true,
   });
 
-  const loadData = async () => {
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/tables`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
+      if (sectionFilter && sectionFilter !== "ALL") params.set("section", sectionFilter);
+
+      const res = await fetch(`${API_BASE}/admin/tables?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setTables(Array.isArray(d) ? d : d.tables || []);
@@ -77,11 +88,11 @@ function TablesContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, restaurantFilter, outletFilter, sectionFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreate = async () => {
     if (!createForm.restaurantId || !createForm.outletId || !createForm.name) {
@@ -145,32 +156,8 @@ function TablesContent() {
     }
   };
 
-  // Distinct sections for filter
-  const distinctSections = useMemo(() => {
-    const s = new Set<string>();
-    tables.forEach((t) => {
-      if (t.section) s.add(t.section);
-    });
-    return Array.from(s);
-  }, [tables]);
-
-  const filtered = useMemo(() => {
-    return tables.filter((t) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        t.name?.toLowerCase().includes(q) ||
-        t.section?.toLowerCase().includes(q) ||
-        t.restaurantName?.toLowerCase().includes(q) ||
-        t.outletName?.toLowerCase().includes(q);
-
-      const matchesRest = restaurantFilter === "ALL" || t.restaurantId === restaurantFilter;
-      const matchesOutlet = outletFilter === "ALL" || t.outletId === outletFilter;
-      const matchesSection = sectionFilter === "ALL" || t.section === sectionFilter;
-
-      return matchesSearch && matchesRest && matchesOutlet && matchesSection;
-    });
-  }, [tables, searchQuery, restaurantFilter, outletFilter, sectionFilter]);
+  const distinctSections = Array.from(new Set(tables.map((t) => t.section).filter(Boolean)));
+  const filtered = tables;
 
   return (
     <Stack gap="lg">
@@ -217,18 +204,14 @@ function TablesContent() {
             w={{ base: "100%", sm: 190 }}
             size="xs"
           />
-          <Select
-            placeholder="Filter by Outlet"
-            data={[
-              { value: "ALL", label: "All Outlets" },
-              ...outlets
-                .filter((o) => restaurantFilter === "ALL" || o.restaurantId === restaurantFilter)
-                .map((o) => ({ value: o.id, label: o.name })),
-            ]}
+          <DependentOutletSelect
+            restaurantId={restaurantFilter}
             value={outletFilter}
-            onChange={(val) => setFilter("outletId", val || "ALL")}
-            w={{ base: "100%", sm: 160 }}
+            onChange={(val) => setFilter("outletId", val)}
+            isFilter
+            filterAllLabel="All Outlets"
             size="xs"
+            w={{ base: "100%", sm: 170 }}
           />
           {distinctSections.length > 0 && (
             <Select
@@ -366,17 +349,17 @@ function TablesContent() {
             required
             data={restaurants.map((r) => ({ value: r.id, label: r.name }))}
             value={createForm.restaurantId}
-            onChange={(v) => setCreateForm((f) => ({ ...f, restaurantId: v || "" }))}
+            onChange={(v) => {
+              setCreateForm((f) => ({ ...f, restaurantId: v || "", outletId: "" }));
+            }}
           />
-          <Select
+          <DependentOutletSelect
             label="Outlet Branch"
             placeholder="Select Outlet"
             required
-            data={outlets
-              .filter((o) => !createForm.restaurantId || o.restaurantId === createForm.restaurantId)
-              .map((o) => ({ value: o.id, label: o.name }))}
+            restaurantId={createForm.restaurantId}
             value={createForm.outletId}
-            onChange={(v) => setCreateForm((f) => ({ ...f, outletId: v || "" }))}
+            onChange={(v) => setCreateForm((f) => ({ ...f, outletId: v }))}
           />
           <TextInput
             label="Table Name / Number"

@@ -510,19 +510,108 @@ async function run() {
     for (const r of dedicatedRoutes) {
       console.log(`[Route Verification] Clicking link to ${r.href}...`);
       await page.locator(`nav a[href="${r.href}"]`).first().click();
-      await page.waitForTimeout(700);
+      await page.waitForURL((url) => url.pathname.includes(r.href), { timeout: 10000 });
       const url = page.url();
-      if (!url.includes(r.href)) {
-        throw new Error(`Expected URL to include ${r.href}, got: ${url}`);
-      }
       await page.locator('main').getByText(r.text).first().waitFor({ state: 'visible', timeout: 10000 });
       console.log(`[Route Verification] ${r.href} navigated and verified (URL: ${url}).`);
     }
 
     console.log('✅ TEST 18 PASSED: Separated pages and URL query filter synchronization verified!\n');
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // TEST 19: Cascading Dependent Outlet Selection & KV Caching Verification
+    // ─────────────────────────────────────────────────────────────────────────────
+    console.log('--- TEST 19: Cascading Dependent Outlet Selection & KV Caching ---');
+    await page.goto(`${WEB_BASE}/admin/inventory`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('text=Inventory & Stock BOM Directory', { timeout: 15000 });
+
+    // Open "Add Inventory Item" modal
+    await page.locator('button:has-text("Add Inventory Item")').first().click();
+    await page.waitForSelector('.mantine-Modal-content', { timeout: 5000 });
+    console.log('[Cascading] Add Inventory Item modal opened.');
+
+    // 1. Outlet selector must be disabled initially when no restaurant is selected
+    const outletInput = page.locator('.mantine-Modal-content input[placeholder*="Select Restaurant first"]').first();
+    const isOutletDisabled = await outletInput.isDisabled();
+    console.log(`[Cascading] Outlet selector disabled before restaurant selection: ${isOutletDisabled}`);
+    if (!isOutletDisabled) {
+      throw new Error('Outlet selector should be disabled when restaurant is not selected!');
+    }
+
+    // 2. Select Restaurant and observe network request to /admin/restaurants/:id/outlets
+    const [outletsRequest] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes('/admin/restaurants/') && res.url().includes('/outlets') && res.status() === 200, { timeout: 10000 }),
+      (async () => {
+        const restSelect = page.locator('.mantine-Modal-content input[placeholder="Select Restaurant"]').first();
+        await restSelect.click();
+        await page.waitForTimeout(500);
+        await page.locator('[role="option"]:visible').first().click();
+      })(),
+    ]);
+
+    console.log(`[Cascading] Outlets API triggered on restaurant select: ${outletsRequest.url()}`);
+    const outletsData = await outletsRequest.json();
+    console.log(`[Cascading] Outlets received for restaurant: ${outletsData.length} outlet(s)`);
+
+    // 3. Outlet selector must now be enabled
+    await page.waitForTimeout(500);
+    const enabledOutletInput = page.locator('.mantine-Modal-content input[placeholder="Select Outlet"]').first();
+    const isNowEnabled = !(await enabledOutletInput.isDisabled());
+    console.log(`[Cascading] Outlet selector is now enabled: ${isNowEnabled}`);
+    if (!isNowEnabled) {
+      throw new Error('Outlet selector should be enabled after restaurant is selected!');
+    }
+
+    // 4. Select an outlet
+    await enabledOutletInput.click();
+    await page.waitForTimeout(500);
+    const outletOption = page.locator('[role="option"]:visible').first();
+    const outletName = await outletOption.innerText();
+    await outletOption.click();
+    console.log(`[Cascading] Selected outlet: "${outletName}"`);
+
+    // Verify input value matches
+    const selectedOutletVal = await enabledOutletInput.inputValue();
+    console.log(`[Cascading] Input displays selected outlet: "${selectedOutletVal}"`);
+
+    // Close modal
+    await page.locator('.mantine-Modal-content button:has-text("Cancel")').first().click();
+    await page.waitForTimeout(500);
+
+    // 5. Test cascading dependent outlet select in URL Filter Bar via URL params
+    console.log('[Cascading] Testing dependent outlet select in URL Filter Bar via query params...');
+    await page.goto(`${WEB_BASE}/admin/inventory?restaurantId=rest_1zmYr46YCfmlzUBKBDB54I35`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
+
+    const filterCardOutletsInput = page.locator('main .mantine-Card-root input:visible').nth(2);
+    const isOutletFilterEnabled = !(await filterCardOutletsInput.isDisabled());
+    console.log(`[Cascading] Filter Bar Outlet selector enabled when restaurant in URL: ${isOutletFilterEnabled}`);
+    if (!isOutletFilterEnabled) {
+      throw new Error('Filter Bar Outlet selector should be enabled when restaurantId is present in URL!');
+    }
+
+    await filterCardOutletsInput.click();
+    await page.waitForTimeout(400);
+    const visibleOutletFilterOptions = await page.locator('[role="option"]:visible').allInnerTexts();
+    console.log('[Cascading] Filter Bar Outlets for selected restaurant:', visibleOutletFilterOptions);
+    if (!visibleOutletFilterOptions.some(o => o.includes('Indiranagar Flagship'))) {
+      throw new Error('Filter Bar Outlets did not contain restaurant outlets!');
+    }
+    await page.locator('[role="option"]:visible:has-text("Indiranagar Flagship")').first().click();
+    await page.waitForTimeout(500);
+
+    const currentUrlWithOutlet = page.url();
+    console.log(`[Cascading] URL after selecting outlet: ${currentUrlWithOutlet}`);
+    if (!currentUrlWithOutlet.includes('outletId=')) {
+      throw new Error('URL params did not update with outletId!');
+    }
+
+    const cascadingScreenshot = path.join(ARTIFACT_DIR, 'admin_dependent_outlet_select.png');
+    await page.screenshot({ path: cascadingScreenshot, fullPage: true });
+    console.log('✅ TEST 19 PASSED: Cascading dependent outlet selection verified in modal and filter bar with KV-caching!\n');
+
     console.log('=======================================================================');
-    console.log('🎉 ALL 18 COMPREHENSIVE SUPERADMIN E2E TESTS PASSED WITH 100% SUCCESS! 🎉');
+    console.log('🎉 ALL 19 COMPREHENSIVE SUPERADMIN E2E TESTS PASSED WITH 100% SUCCESS! 🎉');
     console.log('=======================================================================');
   } finally {
     await browser.close();

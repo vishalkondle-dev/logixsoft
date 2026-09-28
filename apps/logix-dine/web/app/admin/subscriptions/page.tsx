@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -16,6 +16,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconCreditCard,
@@ -39,6 +40,7 @@ function SubscriptionsContent() {
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const tierFilter = getFilter("tier", "ALL");
   const statusFilter = getFilter("status", "ALL");
 
@@ -52,9 +54,15 @@ function SubscriptionsContent() {
   const [planTier, setPlanTier] = useState("PRO");
   const [subStatus, setSubStatus] = useState("ACTIVE");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/restaurants`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (tierFilter && tierFilter !== "ALL") params.set("tier", tierFilter);
+      if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await fetch(`${API_BASE}/admin/subscriptions${qs}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setRestaurants(Array.isArray(d) ? d : d.restaurants || []);
@@ -64,11 +72,11 @@ function SubscriptionsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, tierFilter, statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleUpdateSubscription = async () => {
     if (!selectedRest) return;
@@ -91,15 +99,8 @@ function SubscriptionsContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return restaurants.filter((r) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch = !q || r.name?.toLowerCase().includes(q) || r.id?.includes(q);
-      const matchesTier = tierFilter === "ALL" || (r.planTier || "PRO") === tierFilter;
-      const matchesStatus = statusFilter === "ALL" || (r.subscriptionStatus || "ACTIVE") === statusFilter;
-      return matchesSearch && matchesTier && matchesStatus;
-    });
-  }, [restaurants, searchQuery, tierFilter, statusFilter]);
+  // Server-side filtered and sorted
+  const filtered = restaurants;
 
   return (
     <Stack gap="lg">

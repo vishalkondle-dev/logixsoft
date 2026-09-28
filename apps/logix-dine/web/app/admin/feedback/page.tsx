@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -17,6 +17,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconStar,
@@ -44,6 +45,7 @@ function FeedbackContent() {
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const restaurantFilter = getFilter("restaurantId", "ALL");
   const ratingFilter = getFilter("rating", "ALL");
   const repliedFilter = getFilter("replied", "ALL");
@@ -57,9 +59,16 @@ function FeedbackContent() {
   const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
   const [replyText, setReplyText] = useState("");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/feedback`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (ratingFilter && ratingFilter !== "ALL") params.set("rating", ratingFilter);
+      if (repliedFilter && repliedFilter !== "ALL") params.set("replied", repliedFilter);
+
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const res = await fetch(`${API_BASE}/admin/feedback${qs}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setFeedback(Array.isArray(d) ? d : d.feedback || []);
@@ -69,11 +78,11 @@ function FeedbackContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, restaurantFilter, ratingFilter, repliedFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleReply = async () => {
     if (!selectedFeedback || !replyText.trim()) return;
@@ -112,26 +121,8 @@ function FeedbackContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return feedback.filter((fb) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        fb.customerPhone?.toLowerCase().includes(q) ||
-        fb.comment?.toLowerCase().includes(q) ||
-        fb.restaurantName?.toLowerCase().includes(q) ||
-        fb.reply?.toLowerCase().includes(q);
-
-      const matchesRest = restaurantFilter === "ALL" || fb.restaurantId === restaurantFilter;
-      const matchesRating = ratingFilter === "ALL" || String(fb.rating) === ratingFilter;
-      const matchesReplied =
-        repliedFilter === "ALL" ||
-        (repliedFilter === "replied" && Boolean(fb.reply)) ||
-        (repliedFilter === "pending" && !fb.reply);
-
-      return matchesSearch && matchesRest && matchesRating && matchesReplied;
-    });
-  }, [feedback, searchQuery, restaurantFilter, ratingFilter, repliedFilter]);
+  // Server-side filtered
+  const filtered = feedback;
 
   return (
     <Stack gap="lg">

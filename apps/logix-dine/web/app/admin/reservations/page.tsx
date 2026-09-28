@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -17,6 +17,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconCalendarEvent,
@@ -29,6 +30,7 @@ import {
 } from "@tabler/icons-react";
 import { useAdmin } from "../admin-context";
 import { useUrlFilters } from "../use-url-filters";
+import { DependentOutletSelect } from "../dependent-outlet-select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 
@@ -40,11 +42,13 @@ const RESV_STATUSES = [
 ];
 
 function ReservationsContent() {
-  const { restaurants, outlets } = useAdmin();
+  const { restaurants } = useAdmin();
   const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
   const restaurantFilter = getFilter("restaurantId", "ALL");
+  const outletFilter = getFilter("outletId", "ALL");
   const statusFilter = getFilter("status", "ALL");
 
   const [reservations, setReservations] = useState<any[]>([]);
@@ -66,9 +70,17 @@ function ReservationsContent() {
     notes: "",
   });
 
-  const loadData = async () => {
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/reservations`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (outletFilter && outletFilter !== "ALL") params.set("outletId", outletFilter);
+      if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+
+      const res = await fetch(`${API_BASE}/admin/reservations?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setReservations(Array.isArray(d) ? d : d.reservations || []);
@@ -78,11 +90,11 @@ function ReservationsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, restaurantFilter, outletFilter, statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreate = async () => {
     if (!createForm.restaurantId || !createForm.outletId || !createForm.guestName || !createForm.guestPhone) {
@@ -150,21 +162,7 @@ function ReservationsContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return reservations.filter((r) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        r.guestName?.toLowerCase().includes(q) ||
-        r.guestPhone?.includes(q) ||
-        r.restaurantName?.toLowerCase().includes(q);
-
-      const matchesRest = restaurantFilter === "ALL" || r.restaurantId === restaurantFilter;
-      const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
-
-      return matchesSearch && matchesRest && matchesStatus;
-    });
-  }, [reservations, searchQuery, restaurantFilter, statusFilter]);
+  const filtered = reservations;
 
   return (
     <Stack gap="lg">
@@ -204,9 +202,21 @@ function ReservationsContent() {
               ...restaurants.map((r) => ({ value: r.id, label: r.name })),
             ]}
             value={restaurantFilter}
-            onChange={(val) => setFilter("restaurantId", val || "ALL")}
-            w={{ base: "100%", sm: 200 }}
+            onChange={(val) => {
+              setFilter("restaurantId", val || "ALL");
+              setFilter("outletId", "ALL");
+            }}
+            w={{ base: "100%", sm: 190 }}
             size="xs"
+          />
+          <DependentOutletSelect
+            restaurantId={restaurantFilter}
+            value={outletFilter}
+            onChange={(val) => setFilter("outletId", val)}
+            isFilter
+            filterAllLabel="All Outlets"
+            size="xs"
+            w={{ base: "100%", sm: 170 }}
           />
           <Select
             placeholder="Reservation Status"
@@ -356,17 +366,17 @@ function ReservationsContent() {
             required
             data={restaurants.map((r) => ({ value: r.id, label: r.name }))}
             value={createForm.restaurantId}
-            onChange={(v) => setCreateForm((f) => ({ ...f, restaurantId: v || "" }))}
+            onChange={(v) => {
+              setCreateForm((f) => ({ ...f, restaurantId: v || "", outletId: "" }));
+            }}
           />
-          <Select
+          <DependentOutletSelect
             label="Outlet"
             placeholder="Select Outlet"
             required
-            data={outlets
-              .filter((o) => !createForm.restaurantId || o.restaurantId === createForm.restaurantId)
-              .map((o) => ({ value: o.id, label: o.name }))}
+            restaurantId={createForm.restaurantId}
             value={createForm.outletId}
-            onChange={(v) => setCreateForm((f) => ({ ...f, outletId: v || "" }))}
+            onChange={(v) => setCreateForm((f) => ({ ...f, outletId: v }))}
           />
           <TextInput
             label="Guest Name"

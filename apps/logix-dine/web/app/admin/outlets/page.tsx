@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import {
   Stack,
   Group,
@@ -16,6 +16,7 @@ import {
   Center,
   Loader,
 } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconBuildingStore,
@@ -27,6 +28,7 @@ import {
 } from "@tabler/icons-react";
 import { useAdmin } from "../admin-context";
 import { useUrlFilters } from "../use-url-filters";
+import { invalidateClientOutletCache } from "../dependent-outlet-select";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 
@@ -62,9 +64,18 @@ function OutletsContent() {
     upiId: "",
   });
 
-  const loadData = async () => {
+  const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
+
+  // Server-side filtering
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/outlets`, { credentials: "include" });
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (restaurantFilter && restaurantFilter !== "ALL") params.set("restaurantId", restaurantFilter);
+      if (statusFilter && statusFilter !== "ALL") params.set("status", statusFilter);
+
+      const res = await fetch(`${API_BASE}/admin/outlets?${params.toString()}`, { credentials: "include" });
       if (res.ok) {
         const d = await res.json();
         setOutlets(Array.isArray(d) ? d : d.outlets || []);
@@ -74,11 +85,11 @@ function OutletsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, restaurantFilter, statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleCreate = async () => {
     if (!createForm.restaurantId || !createForm.name) {
@@ -96,6 +107,7 @@ function OutletsContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create outlet");
       notifications.show({ title: "Outlet Added", message: `Provisioned ${createForm.name}`, color: "teal" });
+      invalidateClientOutletCache(createForm.restaurantId);
       setCreateOpened(false);
       setCreateForm({ restaurantId: "", name: "", address: "", phone: "", upiId: "" });
       loadData();
@@ -119,6 +131,7 @@ function OutletsContent() {
       });
       if (!res.ok) throw new Error("Failed to update outlet");
       notifications.show({ title: "Outlet Updated", message: "Changes saved.", color: "teal" });
+      invalidateClientOutletCache(selectedOutlet.restaurantId);
       setEditOpened(false);
       loadData();
       fetchGlobalMetadata();
@@ -138,6 +151,7 @@ function OutletsContent() {
       });
       if (!res.ok) throw new Error("Failed to delete outlet");
       notifications.show({ title: "Outlet Deleted", message: "Outlet record removed.", color: "teal" });
+      invalidateClientOutletCache();
       loadData();
       fetchGlobalMetadata();
     } catch (err: any) {
@@ -145,26 +159,7 @@ function OutletsContent() {
     }
   };
 
-  const filtered = useMemo(() => {
-    return outlets.filter((o) => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        o.name?.toLowerCase().includes(q) ||
-        o.address?.toLowerCase().includes(q) ||
-        o.phone?.includes(q) ||
-        o.upiId?.toLowerCase().includes(q) ||
-        o.restaurantName?.toLowerCase().includes(q);
-
-      const matchesRest = restaurantFilter === "ALL" || o.restaurantId === restaurantFilter;
-      const matchesStatus =
-        statusFilter === "ALL" ||
-        (statusFilter === "ACTIVE" && o.isActive !== false) ||
-        (statusFilter === "INACTIVE" && o.isActive === false);
-
-      return matchesSearch && matchesRest && matchesStatus;
-    });
-  }, [outlets, searchQuery, restaurantFilter, statusFilter]);
+  const filtered = outlets;
 
   return (
     <Stack gap="lg">

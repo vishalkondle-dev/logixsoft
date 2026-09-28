@@ -8,7 +8,7 @@ import { RestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant, toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
-import { invalidateRestaurant } from '../lib/cache';
+import { invalidateRestaurant, cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../lib/cache';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -156,6 +156,10 @@ app.get(
   }),
   requireAdmin(),
   async (c) => {
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const status = c.req.query('status');
+    const sortBy = c.req.query('sortBy') || 'name_asc';
+
     const { db, close } = getDb(c);
     try {
       const [restaurants, users, outlets, orders] = await Promise.all([
@@ -200,7 +204,7 @@ app.get(
         ordersStatsMap.set(ord.restaurantId, current);
       }
 
-      const enriched = restaurants.map((r) => {
+      let enriched = restaurants.map((r) => {
         const owner = usersMap.get(r.ownerUserId);
         const stats = ordersStatsMap.get(r.id) || { count: 0, gmv: 0 };
         return {
@@ -219,6 +223,34 @@ app.get(
           createdAt: r.createdAt,
           updatedAt: r.updatedAt,
         };
+      });
+
+      // Server-side filtering
+      if (status && status !== 'ALL') {
+        enriched = enriched.filter((r) => r.status === status);
+      }
+      if (search) {
+        enriched = enriched.filter(
+          (r) =>
+            (r.name && r.name.toLowerCase().includes(search)) ||
+            (r.address && r.address.toLowerCase().includes(search)) ||
+            (r.phone && r.phone.toLowerCase().includes(search)) ||
+            (r.ownerName && r.ownerName.toLowerCase().includes(search)) ||
+            (r.ownerPhone && r.ownerPhone.toLowerCase().includes(search))
+        );
+      }
+
+      // Server-side sorting
+      enriched.sort((a, b) => {
+        if (sortBy === 'name_asc' || sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+        if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+        if (sortBy === 'gmv_desc' || sortBy === 'gmv') return (b.totalGmv || 0) - (a.totalGmv || 0);
+        if (sortBy === 'gmv_asc') return (a.totalGmv || 0) - (b.totalGmv || 0);
+        if (sortBy === 'outlets_desc' || sortBy === 'outlets') return (b.outletsCount || 0) - (a.outletsCount || 0);
+        if (sortBy === 'orders_desc' || sortBy === 'orders') return (b.ordersCount || 0) - (a.ordersCount || 0);
+        if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return (a.name || '').localeCompare(b.name || '');
       });
 
       return c.json(enriched);
@@ -627,6 +659,11 @@ app.get(
   }),
   requireAdmin(),
   async (c) => {
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const restaurantId = c.req.query('restaurantId');
+    const status = c.req.query('status');
+    const sortBy = c.req.query('sortBy') || 'name';
+
     const { db, close } = getDb(c);
     try {
       const [outlets, restaurants] = await Promise.all([
@@ -639,13 +676,41 @@ app.get(
         restMap.set(r.id, { name: r.name, status: r.status });
       }
 
-      const enriched = outlets.map((o) => {
+      let enriched = outlets.map((o) => {
         const r = restMap.get(o.restaurantId);
         return {
           ...toOutlet(o),
           restaurantName: r?.name || 'Unknown',
           restaurantStatus: r?.status || 'UNKNOWN',
         };
+      });
+
+      // Server-side filtering
+      if (restaurantId && restaurantId !== 'ALL') {
+        enriched = enriched.filter((o) => o.restaurantId === restaurantId);
+      }
+      if (status && status !== 'ALL') {
+        enriched = enriched.filter((o) => o.restaurantStatus === status);
+      }
+      if (search) {
+        enriched = enriched.filter(
+          (o) =>
+            (o.name && o.name.toLowerCase().includes(search)) ||
+            (o.address && o.address.toLowerCase().includes(search)) ||
+            (o.phone && o.phone.toLowerCase().includes(search)) ||
+            (o.upiId && o.upiId.toLowerCase().includes(search)) ||
+            (o.restaurantName && o.restaurantName.toLowerCase().includes(search))
+        );
+      }
+
+      // Server-side sorting
+      enriched.sort((a, b) => {
+        if (sortBy === 'name' || sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+        if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+        if (sortBy === 'restaurant') return (a.restaurantName || '').localeCompare(b.restaurantName || '');
+        if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return (a.name || '').localeCompare(b.name || '');
       });
 
       return c.json(enriched);
@@ -655,7 +720,7 @@ app.get(
   }
 );
 
-// GET /admin/restaurants/:id/outlets — outlets for a specific restaurant
+// GET /admin/restaurants/:id/outlets — outlets for a specific restaurant (with KV caching)
 app.get(
   '/restaurants/:id/outlets',
   apiDoc({
@@ -670,13 +735,22 @@ app.get(
   requireAdmin(),
   async (c) => {
     const restaurantId = c.req.param('id');
+    const kv = getKv(c);
+    if (kv) {
+      const cached = await cacheGet<any[]>(kv, CacheKey.outlets(restaurantId));
+      if (cached) return c.json(cached);
+    }
     const { db, close } = getDb(c);
     try {
       const outlets = await db
         .select()
         .from(appSchema.restaurantOutlet)
         .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
-      return c.json(outlets.map(toOutlet));
+      const res = outlets.map(toOutlet);
+      if (kv) {
+        await cacheSet(kv, CacheKey.outlets(restaurantId), res, TTL.outlets || 300);
+      }
+      return c.json(res);
     } finally {
       await close();
     }
@@ -898,6 +972,10 @@ app.get(
   }),
   requireAdmin(),
   async (c) => {
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const role = c.req.query('role');
+    const sortBy = c.req.query('sortBy') || 'newest';
+
     const { db, close } = getDb(c);
     try {
       const [users, members, restaurants] = await Promise.all([
@@ -935,13 +1013,36 @@ app.get(
         membershipsByUser.set(key, list);
       }
 
-      const enriched = users.map((u) => {
+      let enriched = users.map((u) => {
         const mems = membershipsByUser.get(u.id) || (u.phoneNumber ? membershipsByUser.get(u.phoneNumber) : []) || [];
         return {
           ...u,
           memberships: mems,
           ownedCount: ownedCountMap.get(u.id) || 0,
         };
+      });
+
+      // Server-side filtering
+      if (role && role !== 'ALL') {
+        enriched = enriched.filter((u) => u.role === role);
+      }
+      if (search) {
+        enriched = enriched.filter(
+          (u) =>
+            (u.name && u.name.toLowerCase().includes(search)) ||
+            (u.phoneNumber && u.phoneNumber.toLowerCase().includes(search)) ||
+            (u.email && u.email.toLowerCase().includes(search)) ||
+            (u.role && u.role.toLowerCase().includes(search))
+        );
+      }
+
+      // Server-side sorting
+      enriched.sort((a, b) => {
+        if (sortBy === 'name' || sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+        if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+        if (sortBy === 'role') return (a.role || '').localeCompare(b.role || '');
+        if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
 
       return c.json(enriched);
@@ -1480,11 +1581,14 @@ app.get('/orders', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
+    const outletId = c.req.query('outletId');
     const status = c.req.query('status');
-    const search = c.req.query('search');
+    const orderType = c.req.query('orderType');
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const sortBy = c.req.query('sortBy') || 'newest';
 
     const [orders, rests, outlets] = await Promise.all([
-      db.select().from(appSchema.saleOrder).orderBy(desc(appSchema.saleOrder.createdAt)).limit(100),
+      db.select().from(appSchema.saleOrder).orderBy(desc(appSchema.saleOrder.createdAt)).limit(200),
       db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
       db.select({ id: appSchema.restaurantOutlet.id, name: appSchema.restaurantOutlet.name }).from(appSchema.restaurantOutlet),
     ]);
@@ -1498,16 +1602,27 @@ app.get('/orders', requireAdmin(), async (c) => {
       outletName: outletMap.get(o.outletId) || 'Main Branch',
     }));
 
-    if (restaurantId) filtered = filtered.filter((o: any) => o.restaurantId === restaurantId);
+    if (restaurantId && restaurantId !== 'ALL') filtered = filtered.filter((o: any) => o.restaurantId === restaurantId);
+    if (outletId && outletId !== 'ALL') filtered = filtered.filter((o: any) => o.outletId === outletId);
     if (status && status !== 'ALL') filtered = filtered.filter((o: any) => o.status === status || o.orderStatus === status);
+    if (orderType && orderType !== 'ALL') filtered = filtered.filter((o: any) => o.orderType === orderType);
     if (search) {
-      const q = search.toLowerCase();
       filtered = filtered.filter((o: any) =>
-        String(o.orderNo).includes(q) ||
-        (o.customerPhone && o.customerPhone.includes(q)) ||
-        (o.restaurantName && o.restaurantName.toLowerCase().includes(q))
+        String(o.orderNo).includes(search) ||
+        (o.customerPhone && o.customerPhone.toLowerCase().includes(search)) ||
+        (o.customerName && o.customerName.toLowerCase().includes(search)) ||
+        (o.restaurantName && o.restaurantName.toLowerCase().includes(search)) ||
+        (o.outletName && o.outletName.toLowerCase().includes(search))
       );
     }
+
+    filtered.sort((a: any, b: any) => {
+      if (sortBy === 'total' || sortBy === 'total_desc') return (b.paidPaise || b.subtotalPaise || 0) - (a.paidPaise || a.subtotalPaise || 0);
+      if (sortBy === 'total_asc') return (a.paidPaise || a.subtotalPaise || 0) - (b.paidPaise || b.subtotalPaise || 0);
+      if (sortBy === 'orderNo') return String(b.orderNo).localeCompare(String(a.orderNo));
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
     return c.json(filtered);
   } finally {
@@ -1552,8 +1667,13 @@ app.get('/menu/items', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
+    const categoryId = c.req.query('categoryId');
+    const stockStatus = c.req.query('stockStatus');
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const sortBy = c.req.query('sortBy') || 'name';
+
     const [items, categories, rests] = await Promise.all([
-      db.select().from(appSchema.menuItem).orderBy(desc(appSchema.menuItem.createdAt)).limit(150),
+      db.select().from(appSchema.menuItem).orderBy(desc(appSchema.menuItem.createdAt)).limit(300),
       db.select({ id: appSchema.menuCategory.id, name: appSchema.menuCategory.name }).from(appSchema.menuCategory),
       db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
     ]);
@@ -1567,7 +1687,31 @@ app.get('/menu/items', requireAdmin(), async (c) => {
       restaurantName: restMap.get(it.restaurantId) || 'Unknown Store',
     }));
 
-    if (restaurantId) enriched = enriched.filter((it: any) => it.restaurantId === restaurantId);
+    if (restaurantId && restaurantId !== 'ALL') enriched = enriched.filter((it: any) => it.restaurantId === restaurantId);
+    if (categoryId && categoryId !== 'ALL') enriched = enriched.filter((it: any) => it.categoryId === categoryId);
+    if (stockStatus && stockStatus !== 'ALL') {
+      if (stockStatus === 'IN_STOCK') enriched = enriched.filter((it: any) => it.available === true);
+      if (stockStatus === 'OUT_OF_STOCK') enriched = enriched.filter((it: any) => it.available === false);
+    }
+    if (search) {
+      enriched = enriched.filter((it: any) =>
+        (it.name && it.name.toLowerCase().includes(search)) ||
+        (it.description && it.description.toLowerCase().includes(search)) ||
+        (it.categoryName && it.categoryName.toLowerCase().includes(search)) ||
+        (it.restaurantName && it.restaurantName.toLowerCase().includes(search))
+      );
+    }
+
+    enriched.sort((a: any, b: any) => {
+      if (sortBy === 'name' || sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+      if (sortBy === 'price_asc') return (a.pricePaise || 0) - (b.pricePaise || 0);
+      if (sortBy === 'price_desc' || sortBy === 'price') return (b.pricePaise || 0) - (a.pricePaise || 0);
+      if (sortBy === 'category') return (a.categoryName || '').localeCompare(b.categoryName || '');
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     return c.json(enriched);
   } finally {
     await close();
@@ -1718,6 +1862,11 @@ app.get('/tables', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
+    const outletId = c.req.query('outletId');
+    const section = c.req.query('section');
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const sortBy = c.req.query('sortBy') || 'name';
+
     const [tables, rests, outlets] = await Promise.all([
       db.select().from(appSchema.posTable).orderBy(appSchema.posTable.name),
       db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
@@ -1733,7 +1882,27 @@ app.get('/tables', requireAdmin(), async (c) => {
       outletName: outletMap.get(t.outletId) || 'Main Branch',
     }));
 
-    if (restaurantId) enriched = enriched.filter((t: any) => t.restaurantId === restaurantId);
+    if (restaurantId && restaurantId !== 'ALL') enriched = enriched.filter((t: any) => t.restaurantId === restaurantId);
+    if (outletId && outletId !== 'ALL') enriched = enriched.filter((t: any) => t.outletId === outletId);
+    if (section && section !== 'ALL') enriched = enriched.filter((t: any) => t.section === section);
+    if (search) {
+      enriched = enriched.filter((t: any) =>
+        (t.name && t.name.toLowerCase().includes(search)) ||
+        (t.section && t.section.toLowerCase().includes(search)) ||
+        (t.restaurantName && t.restaurantName.toLowerCase().includes(search)) ||
+        (t.outletName && t.outletName.toLowerCase().includes(search))
+      );
+    }
+
+    enriched.sort((a: any, b: any) => {
+      if (sortBy === 'name' || sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+      if (sortBy === 'capacity_desc' || sortBy === 'capacity') return (b.capacity || 0) - (a.capacity || 0);
+      if (sortBy === 'capacity_asc') return (a.capacity || 0) - (b.capacity || 0);
+      if (sortBy === 'section') return (a.section || '').localeCompare(b.section || '');
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
     return c.json(enriched);
   } finally {
     await close();
@@ -1797,6 +1966,11 @@ app.get('/inventory', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
+    const outletId = c.req.query('outletId');
+    const stockAlert = c.req.query('stockAlert');
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const sortBy = c.req.query('sortBy') || 'name';
+
     const [items, rests, outlets] = await Promise.all([
       db.select().from(appSchema.inventoryItem).orderBy(appSchema.inventoryItem.name),
       db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
@@ -1812,7 +1986,34 @@ app.get('/inventory', requireAdmin(), async (c) => {
       outletName: outletMap.get(it.outletId) || 'Main Branch',
     }));
 
-    if (restaurantId) enriched = enriched.filter((it: any) => it.restaurantId === restaurantId);
+    if (restaurantId && restaurantId !== 'ALL') enriched = enriched.filter((it: any) => it.restaurantId === restaurantId);
+    if (outletId && outletId !== 'ALL') enriched = enriched.filter((it: any) => it.outletId === outletId);
+    if (stockAlert && stockAlert !== 'ALL') {
+      if (stockAlert === 'LOW_STOCK') {
+        enriched = enriched.filter((it: any) => Number(it.currentStock || 0) <= Number(it.lowStockThreshold || 0));
+      } else if (stockAlert === 'IN_STOCK') {
+        enriched = enriched.filter((it: any) => Number(it.currentStock || 0) > Number(it.lowStockThreshold || 0));
+      }
+    }
+    if (search) {
+      enriched = enriched.filter((it: any) =>
+        (it.name && it.name.toLowerCase().includes(search)) ||
+        (it.sku && it.sku.toLowerCase().includes(search)) ||
+        (it.category && it.category.toLowerCase().includes(search)) ||
+        (it.restaurantName && it.restaurantName.toLowerCase().includes(search)) ||
+        (it.outletName && it.outletName.toLowerCase().includes(search))
+      );
+    }
+
+    enriched.sort((a: any, b: any) => {
+      if (sortBy === 'name' || sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+      if (sortBy === 'stock_asc') return (a.currentStock || 0) - (b.currentStock || 0);
+      if (sortBy === 'stock_desc' || sortBy === 'stock') return (b.currentStock || 0) - (a.currentStock || 0);
+      if (sortBy === 'cost_desc') return (b.costPerBaseUnitPaise || 0) - (a.costPerBaseUnitPaise || 0);
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
     return c.json(enriched);
   } finally {
     await close();
@@ -1887,6 +2088,10 @@ app.get('/delivery', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
+    const status = c.req.query('status');
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const sortBy = c.req.query('sortBy') || 'newest';
+
     const [deliveries, rests] = await Promise.all([
       db.select().from(appSchema.deliveryOrder).orderBy(desc(appSchema.deliveryOrder.createdAt)).limit(100),
       db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
@@ -1898,7 +2103,22 @@ app.get('/delivery', requireAdmin(), async (c) => {
       restaurantName: restMap.get(d.restaurantId) || 'Unknown Store',
     }));
 
-    if (restaurantId) enriched = enriched.filter((d: any) => d.restaurantId === restaurantId);
+    if (restaurantId && restaurantId !== 'ALL') enriched = enriched.filter((d: any) => d.restaurantId === restaurantId);
+    if (status && status !== 'ALL') enriched = enriched.filter((d: any) => d.status === status);
+    if (search) {
+      enriched = enriched.filter((d: any) =>
+        (d.id && d.id.toLowerCase().includes(search)) ||
+        (d.courierName && d.courierName.toLowerCase().includes(search)) ||
+        (d.courierPhone && d.courierPhone.toLowerCase().includes(search)) ||
+        (d.restaurantName && d.restaurantName.toLowerCase().includes(search))
+      );
+    }
+
+    enriched.sort((a: any, b: any) => {
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     return c.json(enriched);
   } finally {
     await close();
@@ -1928,6 +2148,10 @@ app.patch('/delivery/:id/status', requireAdmin(), async (c) => {
 app.get('/customers', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const minOrders = c.req.query('minOrders');
+    const sortBy = c.req.query('sortBy') || 'orders_desc';
+
     const [users, orders] = await Promise.all([
       db.select().from(appSchema.user),
       db.select({ customerPhone: appSchema.saleOrder.customerPhone, paidPaise: appSchema.saleOrder.paidPaise, subtotalPaise: appSchema.saleOrder.subtotalPaise }).from(appSchema.saleOrder),
@@ -1942,7 +2166,7 @@ app.get('/customers', requireAdmin(), async (c) => {
       statsMap.set(ord.customerPhone, curr);
     }
 
-    const customers = users
+    let customers = users
       .filter((u: any) => u.role === 'CUSTOMER')
       .map((u: any) => {
         const phone = u.phoneNumber || '';
@@ -1957,6 +2181,28 @@ app.get('/customers', requireAdmin(), async (c) => {
           createdAt: u.createdAt,
         };
       });
+
+    if (minOrders && minOrders !== 'ALL' && minOrders !== '0') {
+      const min = Number(minOrders);
+      if (!isNaN(min)) customers = customers.filter((c: any) => c.ordersCount >= min);
+    }
+    if (search) {
+      customers = customers.filter((c: any) =>
+        (c.name && c.name.toLowerCase().includes(search)) ||
+        (c.phoneNumber && c.phoneNumber.toLowerCase().includes(search)) ||
+        (c.email && c.email.toLowerCase().includes(search))
+      );
+    }
+
+    customers.sort((a: any, b: any) => {
+      if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '');
+      if (sortBy === 'orders_desc' || sortBy === 'orders') return (b.ordersCount || 0) - (a.ordersCount || 0);
+      if (sortBy === 'spend_desc' || sortBy === 'spend') return (b.totalSpend || 0) - (a.totalSpend || 0);
+      if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return (b.ordersCount || 0) - (a.ordersCount || 0);
+    });
 
     return c.json(customers);
   } finally {
@@ -2030,6 +2276,11 @@ app.get('/reservations', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
+    const outletId = c.req.query('outletId');
+    const status = c.req.query('status');
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const sortBy = c.req.query('sortBy') || 'newest';
+
     const [reservations, rests, outlets] = await Promise.all([
       db.select().from(appSchema.tableReservation).orderBy(desc(appSchema.tableReservation.reservationDate)),
       db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
@@ -2045,7 +2296,26 @@ app.get('/reservations', requireAdmin(), async (c) => {
       outletName: outletMap.get(res.outletId) || 'Main Branch',
     }));
 
-    if (restaurantId) enriched = enriched.filter((r: any) => r.restaurantId === restaurantId);
+    if (restaurantId && restaurantId !== 'ALL') enriched = enriched.filter((r: any) => r.restaurantId === restaurantId);
+    if (outletId && outletId !== 'ALL') enriched = enriched.filter((r: any) => r.outletId === outletId);
+    if (status && status !== 'ALL') enriched = enriched.filter((r: any) => r.status === status);
+    if (search) {
+      enriched = enriched.filter((r: any) =>
+        (r.guestName && r.guestName.toLowerCase().includes(search)) ||
+        (r.guestPhone && r.guestPhone.toLowerCase().includes(search)) ||
+        (r.notes && r.notes.toLowerCase().includes(search)) ||
+        (r.restaurantName && r.restaurantName.toLowerCase().includes(search)) ||
+        (r.outletName && r.outletName.toLowerCase().includes(search))
+      );
+    }
+
+    enriched.sort((a: any, b: any) => {
+      if (sortBy === 'guestName') return (a.guestName || '').localeCompare(b.guestName || '');
+      if (sortBy === 'partySize') return (b.partySize || 0) - (a.partySize || 0);
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     return c.json(enriched);
   } finally {
     await close();
@@ -2122,6 +2392,11 @@ app.get('/feedback', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
+    const rating = c.req.query('rating');
+    const replied = c.req.query('replied');
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const sortBy = c.req.query('sortBy') || 'newest';
+
     const [reviews, rests] = await Promise.all([
       db.select().from(appSchema.orderFeedback).orderBy(desc(appSchema.orderFeedback.createdAt)),
       db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name }).from(appSchema.restaurant),
@@ -2133,7 +2408,27 @@ app.get('/feedback', requireAdmin(), async (c) => {
       restaurantName: restMap.get(rev.restaurantId) || 'Unknown Store',
     }));
 
-    if (restaurantId) enriched = enriched.filter((rev: any) => rev.restaurantId === restaurantId);
+    if (restaurantId && restaurantId !== 'ALL') enriched = enriched.filter((rev: any) => rev.restaurantId === restaurantId);
+    if (rating && rating !== 'ALL') enriched = enriched.filter((rev: any) => String(rev.rating) === String(rating));
+    if (replied && replied !== 'ALL') {
+      if (replied === 'YES') enriched = enriched.filter((rev: any) => Boolean(rev.ownerReply));
+      if (replied === 'NO') enriched = enriched.filter((rev: any) => !rev.ownerReply);
+    }
+    if (search) {
+      enriched = enriched.filter((rev: any) =>
+        (rev.comment && rev.comment.toLowerCase().includes(search)) ||
+        (rev.customerPhone && rev.customerPhone.toLowerCase().includes(search)) ||
+        (rev.restaurantName && rev.restaurantName.toLowerCase().includes(search))
+      );
+    }
+
+    enriched.sort((a: any, b: any) => {
+      if (sortBy === 'rating_desc' || sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+      if (sortBy === 'rating_asc') return (a.rating || 0) - (b.rating || 0);
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     return c.json(enriched);
   } finally {
     await close();
@@ -2177,12 +2472,39 @@ app.delete('/feedback/:id', requireAdmin(), async (c) => {
 app.get('/subscriptions', requireAdmin(), async (c) => {
   const { db, close } = getDb(c);
   try {
-    const restaurants = await db.select().from(appSchema.restaurant);
+    const search = c.req.query('search')?.toLowerCase()?.trim();
+    const tier = c.req.query('tier');
+    const status = c.req.query('status');
+    const sortBy = c.req.query('sortBy') || 'name';
+
+    let restaurants = await db.select().from(appSchema.restaurant);
     const plans = [
       { id: 'TRIAL', name: 'Free Trial', price: 0, duration: '14 Days' },
       { id: 'ACTIVE', name: 'Pro SaaS Plan', price: 2999, duration: 'Monthly' },
       { id: 'SUSPENDED', name: 'Suspended / Overdue', price: 0, duration: 'None' },
     ];
+
+    if (tier && tier !== 'ALL') {
+      restaurants = restaurants.filter((r) => r.status === tier);
+    }
+    if (status && status !== 'ALL') {
+      restaurants = restaurants.filter((r) => r.status === status);
+    }
+    if (search) {
+      restaurants = restaurants.filter((r) =>
+        (r.name && r.name.toLowerCase().includes(search)) ||
+        (r.phone && r.phone.toLowerCase().includes(search)) ||
+        (r.address && r.address.toLowerCase().includes(search))
+      );
+    }
+
+    restaurants.sort((a, b) => {
+      if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
+      if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     return c.json({ restaurants, plans });
   } finally {
     await close();

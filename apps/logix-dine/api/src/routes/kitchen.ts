@@ -52,17 +52,25 @@ app.get(
         sql`${appSchema.saleOrder.orderStatus} NOT IN ('SERVED', 'CANCELLED')`,
       );
 
-      const where = outletId
-        ? and(
-            eq(appSchema.saleOrder.restaurantId, restaurantId),
-            eq(appSchema.saleOrder.outletId, outletId),
-            activeCondition,
-          )
-        : and(
-            eq(appSchema.saleOrder.restaurantId, restaurantId),
-            inArray(appSchema.saleOrder.outletId, tenant.outletIds || []),
-            activeCondition,
-          );
+      let where;
+      if (outletId) {
+        where = and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          eq(appSchema.saleOrder.outletId, outletId),
+          activeCondition,
+        );
+      } else if (!tenant.allOutlets && tenant.role !== 'OWNER' && tenant.role !== 'ADMIN') {
+        where = and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          inArray(appSchema.saleOrder.outletId, tenant.outletIds || []),
+          activeCondition,
+        );
+      } else {
+        where = and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          activeCondition,
+        );
+      }
 
       const orders = await db
         .select()

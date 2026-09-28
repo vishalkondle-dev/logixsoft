@@ -61,7 +61,7 @@ async function handleListTables(c: any) {
     }
     if (outletId) {
       conditions.push(eq(appSchema.posTable.outletId, outletId));
-    } else if (tenant.role !== 'ADMIN') {
+    } else if (!tenant.allOutlets && tenant.role !== 'OWNER' && tenant.role !== 'ADMIN') {
       conditions.push(inArray(appSchema.posTable.outletId, tenant.outletIds || ['__none__']));
     }
     const tables = await db.select().from(appSchema.posTable).where(and(...conditions));

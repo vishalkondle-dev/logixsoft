@@ -39,7 +39,7 @@ app.get(
   const { db, close } = getDb(c);
   try {
     const conditions = [eq(appSchema.restaurantOutlet.restaurantId, restaurantId)];
-    if (tenant.role !== 'ADMIN') {
+    if (!tenant.allOutlets && tenant.role !== 'OWNER' && tenant.role !== 'ADMIN') {
       conditions.push(inArray(appSchema.restaurantOutlet.id, tenant.outletIds || ['__none__']));
     }
     const outlets = await db

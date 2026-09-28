@@ -119,7 +119,7 @@ app.get(
       ];
       if (filterOutletId) {
         orderConditions.push(eq(appSchema.saleOrder.outletId, filterOutletId));
-      } else if (tenant.role !== 'ADMIN') {
+      } else if (!tenant.allOutlets && tenant.role !== 'OWNER' && tenant.role !== 'ADMIN') {
         orderConditions.push(inArray(appSchema.saleOrder.outletId, tenant.outletIds || ['__none__']));
       }
 

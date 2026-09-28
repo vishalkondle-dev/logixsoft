@@ -51,7 +51,7 @@ app.get(
 
       if (outletId) {
         conditions.push(eq(appSchema.tableReservation.outletId, outletId));
-      } else if (tenant.role !== 'ADMIN') {
+      } else if (!tenant.allOutlets && tenant.role !== 'OWNER' && tenant.role !== 'ADMIN') {
         conditions.push(inArray(appSchema.tableReservation.outletId, tenant.outletIds || ['__none__']));
       }
 

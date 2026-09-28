@@ -227,7 +227,7 @@ export function assertOutletAccess(
   outletId: string | null | undefined,
 ): boolean {
   if (!outletId) return false;
-  if (tenant?.role === 'ADMIN') return true;
+  if (tenant?.role === 'ADMIN' || tenant?.allOutlets || tenant?.role === 'OWNER') return true;
   const allowed = tenant?.outletIds;
   if (!Array.isArray(allowed)) return false;
   return allowed.includes(outletId);
@@ -288,13 +288,15 @@ export function requireMembership(): MiddlewareHandler {
     // Platform ADMIN bypasses everything
     if (user.role === 'ADMIN') {
       const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      const existingMembership = memberships.find((m) => m.restaurantId === restaurantId);
       c.set('tenant', {
         restaurantId,
-        role: 'OWNER',
-        roleName: 'OWNER',
-        member: null,
+        role: existingMembership?.role || 'OWNER',
+        roleName: existingMembership?.roleName || 'OWNER',
+        permissions: existingMembership?.permissions || ['*'],
+        member: existingMembership ? { id: existingMembership.memberId, restaurantId, role: existingMembership.role, userId: user.id } : null,
         outletId: headerOutletId,
-        outletIds: headerOutletId ? [headerOutletId] : [],
+        outletIds: existingMembership?.outletIds?.length ? existingMembership.outletIds : (headerOutletId ? [headerOutletId] : []),
         allOutlets: true,
       });
       return next();
@@ -355,12 +357,15 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
     // Platform ADMIN bypasses everything
     if (user.role === 'ADMIN') {
       const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      const existingMembership = memberships.find((m) => m.restaurantId === restaurantId);
       c.set('tenant', {
         restaurantId,
-        role: 'OWNER',
-        member: null,
+        role: existingMembership?.role || 'OWNER',
+        roleName: existingMembership?.roleName || 'OWNER',
+        permissions: existingMembership?.permissions || ['*'],
+        member: existingMembership ? { id: existingMembership.memberId, restaurantId, role: existingMembership.role, userId: user.id } : null,
         outletId: headerOutletId,
-        outletIds: headerOutletId ? [headerOutletId] : [],
+        outletIds: existingMembership?.outletIds?.length ? existingMembership.outletIds : (headerOutletId ? [headerOutletId] : []),
         allOutlets: true,
       });
       return next();

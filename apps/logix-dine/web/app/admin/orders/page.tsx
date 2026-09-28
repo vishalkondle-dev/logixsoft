@@ -52,7 +52,7 @@ const ORDER_TYPES = [
 
 function OrdersContent() {
   const { restaurants } = useAdmin();
-  const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
+  const { getFilter, setFilter, setFilters, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
   const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
@@ -154,8 +154,10 @@ function OrdersContent() {
             ]}
             value={restaurantFilter}
             onChange={(val) => {
-              setFilter("restaurantId", val || "ALL");
-              setFilter("outletId", "ALL");
+              setFilters({
+                restaurantId: val || "ALL",
+                outletId: "ALL",
+              });
             }}
             w={{ base: "100%", sm: 190 }}
             size="xs"

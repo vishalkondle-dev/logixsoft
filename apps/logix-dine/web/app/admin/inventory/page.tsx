@@ -36,7 +36,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.
 
 function InventoryContent() {
   const { restaurants } = useAdmin();
-  const { getFilter, setFilter, clearFilters, hasActiveFilters } = useUrlFilters();
+  const { getFilter, setFilter, setFilters, clearFilters, hasActiveFilters } = useUrlFilters();
 
   const searchQuery = getFilter("search", "");
   const [debouncedSearch] = useDebouncedValue(searchQuery, 300);
@@ -211,8 +211,10 @@ function InventoryContent() {
             ]}
             value={restaurantFilter}
             onChange={(val) => {
-              setFilter("restaurantId", val || "ALL");
-              setFilter("outletId", "ALL");
+              setFilters({
+                restaurantId: val || "ALL",
+                outletId: "ALL",
+              });
             }}
             w={{ base: "100%", sm: 190 }}
             size="xs"

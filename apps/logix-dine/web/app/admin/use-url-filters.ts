@@ -15,23 +15,10 @@ export function useUrlFilters() {
     [searchParams]
   );
 
-  const setFilter = useCallback(
-    (key: string, value: string | null | undefined) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value !== undefined && value !== null && value.trim() !== "" && value !== "ALL") {
-        params.set(key, value.trim());
-      } else {
-        params.delete(key);
-      }
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [router, pathname, searchParams]
-  );
-
   const setFilters = useCallback(
     (updates: Record<string, string | null | undefined>) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const currentSearch = typeof window !== "undefined" ? window.location.search : searchParams.toString();
+      const params = new URLSearchParams(currentSearch);
       for (const [key, value] of Object.entries(updates)) {
         if (value !== undefined && value !== null && value.trim() !== "" && value !== "ALL") {
           params.set(key, value.trim());
@@ -43,6 +30,13 @@ export function useUrlFilters() {
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
     [router, pathname, searchParams]
+  );
+
+  const setFilter = useCallback(
+    (key: string, value: string | null | undefined) => {
+      setFilters({ [key]: value });
+    },
+    [setFilters]
   );
 
   const clearFilters = useCallback(() => {

@@ -15,8 +15,7 @@ export const restaurant = pgTable(
     currency: text('currency').notNull().default('INR'),
     status: text('status').notNull().default('TRIAL'), // ACTIVE | TRIAL
     ownerUserId: text('ownerUserId')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'), // phone number of acting user

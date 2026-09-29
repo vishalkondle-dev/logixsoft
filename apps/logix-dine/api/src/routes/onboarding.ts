@@ -47,6 +47,13 @@ app.post(
 
   const { db, close } = getDb(c);
   try {
+    if (user?.role === 'ADMIN') {
+      return c.json({
+        error: 'Forbidden',
+        message: 'Platform superadmin cannot own a restaurant. Admin must have only the ADMIN role. Create stores via the Admin Portal.',
+      }, 403);
+    }
+
     // Check not already an owner
     const [existing] = await db
       .select({ id: appSchema.restaurant.id })

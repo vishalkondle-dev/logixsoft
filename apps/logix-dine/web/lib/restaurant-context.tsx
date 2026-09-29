@@ -183,6 +183,18 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       setIsLoading(false); // auth settled, no session — done
       return;
     }
+
+    // Platform ADMIN has strictly only the ADMIN role and has 0 restaurant memberships
+    if ((user as any).role === "ADMIN") {
+      setRestaurant(null);
+      setOutlets([]);
+      setMyRestaurants([]);
+      setRole(null);
+      setRoleName(null);
+      setPermissions([]);
+      setIsLoading(false);
+      return;
+    }
     // Fetch the list of restaurants the user is a member of (owner or staff)
     fetch(`${API_BASE}/restaurants`, {
       credentials: "include",

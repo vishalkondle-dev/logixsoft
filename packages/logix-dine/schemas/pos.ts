@@ -38,7 +38,7 @@ export const RestaurantSchema = z.object({
   phone: z.string().nullable(),
   currency: z.string(),
   status: z.string(),
-  ownerUserId: z.string(),
+  ownerUserId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),

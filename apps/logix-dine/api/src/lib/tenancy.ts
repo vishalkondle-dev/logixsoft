@@ -58,6 +58,21 @@ export async function buildSessionPayload(
   }
   if (!authUser) return null;
 
+  // Platform ADMIN has strictly only the ADMIN role and is decoupled from any restaurant
+  if (authUser.role === 'ADMIN') {
+    return {
+      user: {
+        id: authUser.id,
+        name: authUser.name ?? null,
+        email: authUser.email ?? null,
+        phoneNumber: (authUser as any).phoneNumber ?? null,
+        role: 'ADMIN',
+        phoneNumberVerified: (authUser as any).phoneNumberVerified ?? false,
+      },
+      memberships: [],
+    };
+  }
+
   const { db, close } = dbFromEnv(c);
   try {
     const phone = authUser.phoneNumber ?? null;

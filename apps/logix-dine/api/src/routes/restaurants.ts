@@ -66,8 +66,8 @@ app.get(
   const { db, close } = getDb(c);
   try {
     if (user?.role === 'ADMIN') {
-      const allRests = await db.select().from(appSchema.restaurant);
-      return c.json(allRests.map(toRestaurant));
+      // Platform superadmin has strictly only the ADMIN role and is not a member of any restaurant
+      return c.json([]);
     }
 
     const phone = user?.phoneNumber ?? null;

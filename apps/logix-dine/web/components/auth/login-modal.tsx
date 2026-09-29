@@ -146,7 +146,7 @@ export function LoginModal() {
       if (nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")) {
         destination = nextParam;
       } else if (res.user?.role === "ADMIN") {
-        destination = "/admin/overview";
+        destination = "/admin/system";
       } else {
         try {
           const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";

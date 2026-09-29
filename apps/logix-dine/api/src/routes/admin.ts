@@ -307,6 +307,13 @@ app.post(
         .where(eq(appSchema.user.phoneNumber, cleanOwnerPhone))
         .limit(1);
 
+      if (ownerUser?.role === 'ADMIN' || cleanOwnerPhone === sessionUser?.phoneNumber) {
+        return c.json({
+          error: 'BadRequest',
+          message: 'Platform superadmin cannot be assigned as restaurant owner. Admin ID must not be linked to any restaurant.',
+        }, 400);
+      }
+
       const now = new Date();
 
       if (!ownerUser) {
@@ -1411,6 +1418,14 @@ app.post(
         .from(appSchema.user)
         .where(eq(appSchema.user.phoneNumber, cleanPhone))
         .limit(1);
+
+      const sessionUser = c.get('sessionUser') as any;
+      if (user?.role === 'ADMIN' || cleanPhone === sessionUser?.phoneNumber) {
+        return c.json({
+          error: 'BadRequest',
+          message: 'Cannot assign platform superadmin to a restaurant. Admin must have only the ADMIN role.',
+        }, 400);
+      }
 
       const now = new Date();
       const createdRows = [];

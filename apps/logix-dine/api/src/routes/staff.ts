@@ -154,10 +154,17 @@ async function handleAddStaff(c: any) {
 
     // Check if user account already exists in user table
     const [existingUser] = await db
-      .select({ id: appSchema.user.id, name: appSchema.user.name })
+      .select({ id: appSchema.user.id, name: appSchema.user.name, role: appSchema.user.role })
       .from(appSchema.user)
       .where(eq(appSchema.user.phoneNumber, phone))
       .limit(1);
+
+    if (existingUser?.role === 'ADMIN') {
+      return c.json({
+        error: 'Forbidden',
+        message: 'Cannot assign restaurant roles to platform superadmin. Admin accounts cannot be linked to any restaurant.',
+      }, 400);
+    }
 
     const displayName = name?.trim() || existingUser?.name || null;
     const now = new Date();

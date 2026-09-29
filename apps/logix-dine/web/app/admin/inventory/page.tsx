@@ -286,7 +286,8 @@ function InventoryContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={750}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Ingredient / Item</Table.Th>
@@ -391,6 +392,7 @@ function InventoryContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -399,6 +401,8 @@ function InventoryContent() {
         opened={createOpened}
         onClose={() => setCreateOpened(false)}
         title={<Text fw={700}>Add Inventory Item</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <Select
@@ -471,6 +475,8 @@ function InventoryContent() {
         opened={editOpened}
         onClose={() => setEditOpened(false)}
         title={<Text fw={700}>Edit Inventory Stock</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput

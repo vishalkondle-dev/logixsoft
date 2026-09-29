@@ -264,7 +264,8 @@ function RestaurantsContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Store Name</Table.Th>
@@ -369,6 +370,7 @@ function RestaurantsContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -377,6 +379,8 @@ function RestaurantsContent() {
         opened={createOpened}
         onClose={() => setCreateOpened(false)}
         title={<Text fw={700}>Add New Restaurant Store</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput
@@ -432,6 +436,8 @@ function RestaurantsContent() {
         opened={editOpened}
         onClose={() => setEditOpened(false)}
         title={<Text fw={700}>Edit Restaurant Details</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput
@@ -479,6 +485,8 @@ function RestaurantsContent() {
       <Modal
         opened={deleteOpened}
         onClose={() => setDeleteOpened(false)}
+        centered
+        size="md"
         title={
           <Text fw={700} c="red">
             Confirm Store Deletion

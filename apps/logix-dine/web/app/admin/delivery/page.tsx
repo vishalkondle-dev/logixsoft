@@ -170,7 +170,8 @@ function DeliveryContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Delivery ID</Table.Th>
@@ -260,6 +261,7 @@ function DeliveryContent() {
               )}
             </Table.Tbody>
           </Table>
+        </Table.ScrollContainer>
         )}
       </Card>
     </Stack>

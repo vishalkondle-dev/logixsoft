@@ -276,7 +276,8 @@ function TablesContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Table / Identifier</Table.Th>
@@ -359,6 +360,7 @@ function TablesContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -367,6 +369,8 @@ function TablesContent() {
         opened={createOpened}
         onClose={() => setCreateOpened(false)}
         title={<Text fw={700}>Add Dining Table</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <Select
@@ -422,6 +426,8 @@ function TablesContent() {
         opened={editOpened}
         onClose={() => setEditOpened(false)}
         title={<Text fw={700}>Edit Dining Table</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput

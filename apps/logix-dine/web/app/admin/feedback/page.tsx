@@ -218,7 +218,8 @@ function FeedbackContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Customer</Table.Th>
@@ -306,6 +307,7 @@ function FeedbackContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -314,6 +316,8 @@ function FeedbackContent() {
         opened={replyOpened}
         onClose={() => setReplyOpened(false)}
         title={<Text fw={700}>Reply to Customer Review</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <Text size="sm">

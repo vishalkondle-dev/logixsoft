@@ -157,8 +157,8 @@ function SystemContent() {
       </SimpleGrid>
 
       {/* Superadmin SQL Runner */}
-      <Card withBorder padding="lg" radius="md">
-        <Group justify="space-between" mb="sm">
+      <Card withBorder padding="md" radius="md">
+        <Group justify="space-between" mb="sm" wrap="wrap" gap="xs">
           <div>
             <Text fw={700} size="md">
               Live SQL Query Runner
@@ -221,6 +221,8 @@ function SystemContent() {
       <Modal
         opened={purgeModalOpened}
         onClose={() => setPurgeModalOpened(false)}
+        centered
+        size="md"
         title={
           <Text fw={700} c="red">
             Purge Orders Confirmation

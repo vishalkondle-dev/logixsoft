@@ -229,7 +229,8 @@ function CustomersContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Customer Profile</Table.Th>
@@ -316,6 +317,7 @@ function CustomersContent() {
               )}
             </Table.Tbody>
           </Table>
+        </Table.ScrollContainer>
         )}
       </Card>
 
@@ -324,6 +326,8 @@ function CustomersContent() {
         opened={createOpened}
         onClose={() => setCreateOpened(false)}
         title={<Text fw={700}>Add New Customer</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput
@@ -361,6 +365,8 @@ function CustomersContent() {
         opened={editOpened}
         onClose={() => setEditOpened(false)}
         title={<Text fw={700}>Edit Customer Profile</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput

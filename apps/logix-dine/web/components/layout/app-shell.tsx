@@ -319,18 +319,33 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               )}
 
               {(user as any)?.role === "ADMIN" && (
-                <Button
-                  component={Link}
-                  href="/admin"
-                  size="xs"
-                  variant={pathname === "/admin" ? "filled" : "light"}
-                  color="indigo"
-                  radius="xl"
-                  leftSection={<IconShieldLock size={14} />}
-                  style={{ fontWeight: 600 }}
-                >
-                  Admin Portal
-                </Button>
+                <>
+                  <Button
+                    component={Link}
+                    href="/admin"
+                    size="xs"
+                    variant={pathname === "/admin" ? "filled" : "light"}
+                    color="indigo"
+                    radius="xl"
+                    leftSection={<IconShieldLock size={14} />}
+                    style={{ fontWeight: 600 }}
+                    visibleFrom="sm"
+                  >
+                    Admin Portal
+                  </Button>
+                  <ActionIcon
+                    component={Link}
+                    href="/admin"
+                    size="sm"
+                    variant="light"
+                    color="indigo"
+                    radius="xl"
+                    hiddenFrom="sm"
+                    title="Admin Portal"
+                  >
+                    <IconShieldLock size={14} />
+                  </ActionIcon>
+                </>
               )}
 
               {outlets.length > 0 && (
@@ -349,14 +364,14 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
-                        padding: "4px 10px 4px 6px",
+                        gap: 6,
+                        padding: "4px 8px 4px 6px",
                         borderRadius: "9999px",
                         backgroundColor: "rgba(175, 115, 215, 0.08)",
                         border: "1px solid rgba(175, 115, 215, 0.35)",
                         cursor: outlets.length > 1 ? "pointer" : "default",
                         transition: "all 0.15s ease",
-                        maxWidth: 200,
+                        maxWidth: 180,
                       }}
                       onMouseEnter={(e) => {
                         if (outlets.length > 1) {
@@ -373,8 +388,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     >
                       <Box
                         style={{
-                          width: 22,
-                          height: 22,
+                          width: 20,
+                          height: 20,
                           borderRadius: "50%",
                           backgroundColor: "rgba(175, 115, 215, 0.2)",
                           display: "flex",
@@ -389,12 +404,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         size="xs"
                         fw={600}
                         lineClamp={1}
-                        style={{ maxWidth: 110, lineHeight: 1.2 }}
+                        style={{ maxWidth: 80, lineHeight: 1.2 }}
                       >
                         {activeOutlet?.name || outlets[0]?.name || "Select Outlet"}
                       </Text>
                       {outlets.length > 1 && (
-                        <IconChevronDown size={13} color="#af73d7" style={{ flexShrink: 0 }} />
+                        <IconChevronDown size={12} color="#af73d7" style={{ flexShrink: 0 }} />
                       )}
                     </UnstyledButton>
                   </Menu.Target>
@@ -603,22 +618,21 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         {!isLanding && (user as any)?.role === "ADMIN" && pathname !== "/admin" && (
           <Box
             bg="#fff3bf"
-            px="md"
-            py={7}
+            px={{ base: "xs", sm: "md" }}
+            py={6}
             style={{
               borderBottom: "1px solid #ffe066",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#d9480f",
+              gap: 8,
+              flexWrap: "wrap",
             }}
           >
-            <Group gap="xs" wrap="nowrap">
-              <IconShieldLock size={16} color="#d9480f" />
-              <Text size="xs" fw={700} c="#d9480f">
-                Platform Admin Mode: Viewing store &quot;{restaurant?.name || "Store"}&quot; with full Owner privileges
+            <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+              <IconShieldLock size={16} color="#d9480f" style={{ flexShrink: 0 }} />
+              <Text size="xs" fw={700} c="#d9480f" lineClamp={1}>
+                Admin Mode: {restaurant?.name || "Store"}
               </Text>
             </Group>
             <Button
@@ -629,8 +643,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               color="orange"
               radius="xl"
               rightSection={<IconArrowRight size={12} />}
+              style={{ flexShrink: 0 }}
             >
-              Return to Admin Portal
+              Admin Portal
             </Button>
           </Box>
         )}

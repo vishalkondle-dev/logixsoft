@@ -274,7 +274,8 @@ function ReservationsContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Guest</Table.Th>
@@ -374,6 +375,7 @@ function ReservationsContent() {
               )}
             </Table.Tbody>
           </Table>
+        </Table.ScrollContainer>
         )}
       </Card>
 
@@ -382,6 +384,8 @@ function ReservationsContent() {
         opened={createOpened}
         onClose={() => setCreateOpened(false)}
         title={<Text fw={700}>Add Guest Reservation</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <Select

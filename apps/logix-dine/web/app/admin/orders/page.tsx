@@ -226,7 +226,8 @@ function OrdersContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={750}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Order #</Table.Th>
@@ -325,6 +326,7 @@ function OrdersContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -332,6 +334,8 @@ function OrdersContent() {
       <Modal
         opened={viewOrderOpened}
         onClose={() => setViewOrderOpened(false)}
+        centered
+        size="md"
         title={
           <Text fw={700}>
             Order #{selectedOrder?.orderNo} Breakdown
@@ -395,6 +399,8 @@ function OrdersContent() {
       <Modal
         opened={voidOrderOpened}
         onClose={() => setVoidOrderOpened(false)}
+        centered
+        size="md"
         title={
           <Text fw={700} c="red">
             Void Order #{selectedOrder?.orderNo}

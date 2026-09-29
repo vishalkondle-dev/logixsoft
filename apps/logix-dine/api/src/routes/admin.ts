@@ -1578,7 +1578,28 @@ app.post(
 
 // ─── 7. Orders Explorer & CRUD (Admin) ─────────────────────────────────────────
 
-app.get('/orders', requireAdmin(), async (c) => {
+app.get(
+  '/orders',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List All Orders across Platform (Admin)',
+    description: 'Returns all orders across restaurants with customer details, amounts, and filters.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+      outletId: z.string().optional(),
+      status: z.string().optional(),
+      orderType: z.string().optional(),
+      search: z.string().optional(),
+      sortBy: z.string().optional(),
+      limit: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -1647,7 +1668,21 @@ app.get('/orders', requireAdmin(), async (c) => {
   }
 });
 
-app.get('/orders/:id', requireAdmin(), async (c) => {
+app.get(
+  '/orders/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Get Order by ID with Items (Admin)',
+    description: 'Returns full order details including line items for superadmin inspection.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const orderId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -1661,7 +1696,22 @@ app.get('/orders/:id', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/orders/:id/void', requireAdmin(), async (c) => {
+app.post(
+  '/orders/:id/void',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Void Order (Admin)',
+    description: 'Marks an order as VOID and CANCELLED across the platform with an optional reason.',
+    params: z.object({ id: z.string() }),
+    body: z.object({ reason: z.string().optional() }),
+    responses: {
+      200: z.object({ success: z.boolean(), order: z.any() }),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const orderId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { db, close } = getDb(c);
@@ -1680,7 +1730,26 @@ app.post('/orders/:id/void', requireAdmin(), async (c) => {
 
 // ─── 8. Menu Catalog & Items CRUD (Admin) ─────────────────────────────────────
 
-app.get('/menu/items', requireAdmin(), async (c) => {
+app.get(
+  '/menu/items',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List All Menu Items (Admin)',
+    description: 'Returns menu items across all stores with category and store metadata, filtering, and search.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+      categoryId: z.string().optional(),
+      stockStatus: z.string().optional(),
+      search: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -1745,7 +1814,28 @@ app.get('/menu/items', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/menu/items', requireAdmin(), async (c) => {
+app.post(
+  '/menu/items',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Create Menu Item (Admin)',
+    description: 'Creates a new menu catalog item for a specific restaurant.',
+    body: z.object({
+      restaurantId: z.string(),
+      categoryId: z.string(),
+      name: z.string(),
+      pricePaise: z.number(),
+      description: z.string().optional(),
+      available: z.boolean().optional(),
+    }),
+    responses: {
+      201: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { restaurantId, categoryId, name, pricePaise, description, available = true } = body;
   if (!restaurantId || !categoryId || !name || pricePaise === undefined) {
@@ -1775,7 +1865,28 @@ app.post('/menu/items', requireAdmin(), async (c) => {
   }
 });
 
-app.patch('/menu/items/:id', requireAdmin(), async (c) => {
+app.patch(
+  '/menu/items/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Update Menu Item (Admin)',
+    description: 'Updates menu item details such as name, price, description, category, or availability.',
+    params: z.object({ id: z.string() }),
+    body: z.object({
+      name: z.string().optional(),
+      pricePaise: z.number().optional(),
+      description: z.string().optional().nullable(),
+      available: z.boolean().optional(),
+      categoryId: z.string().optional(),
+    }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const itemId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { name, pricePaise, description, available, categoryId } = body;
@@ -1800,7 +1911,21 @@ app.patch('/menu/items/:id', requireAdmin(), async (c) => {
   }
 });
 
-app.delete('/menu/items/:id', requireAdmin(), async (c) => {
+app.delete(
+  '/menu/items/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Delete Menu Item (Admin)',
+    description: 'Permanently removes a menu item from the catalog.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const itemId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -1812,7 +1937,21 @@ app.delete('/menu/items/:id', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/menu/items/:id/toggle-stock', requireAdmin(), async (c) => {
+app.post(
+  '/menu/items/:id/toggle-stock',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Toggle Menu Item Stock Availability (Admin)',
+    description: 'Toggles the in-stock / out-of-stock availability status of a menu item.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const itemId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -1830,7 +1969,22 @@ app.post('/menu/items/:id/toggle-stock', requireAdmin(), async (c) => {
   }
 });
 
-app.get('/menu/categories', requireAdmin(), async (c) => {
+app.get(
+  '/menu/categories',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Menu Categories (Admin)',
+    description: 'Returns menu categories across all restaurants with store names.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -1852,7 +2006,25 @@ app.get('/menu/categories', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/menu/categories', requireAdmin(), async (c) => {
+app.post(
+  '/menu/categories',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Create Menu Category (Admin)',
+    description: 'Creates a new menu category for a restaurant.',
+    body: z.object({
+      restaurantId: z.string(),
+      name: z.string(),
+      description: z.string().optional(),
+    }),
+    responses: {
+      201: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { restaurantId, name, description } = body;
   if (!restaurantId || !name) {
@@ -1871,7 +2043,21 @@ app.post('/menu/categories', requireAdmin(), async (c) => {
   }
 });
 
-app.delete('/menu/categories/:id', requireAdmin(), async (c) => {
+app.delete(
+  '/menu/categories/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Delete Menu Category (Admin)',
+    description: 'Permanently removes a menu category.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const catId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -1885,7 +2071,26 @@ app.delete('/menu/categories/:id', requireAdmin(), async (c) => {
 
 // ─── 9. Dining Tables CRUD (Admin) ───────────────────────────────────────────
 
-app.get('/tables', requireAdmin(), async (c) => {
+app.get(
+  '/tables',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Dining Tables (Admin)',
+    description: 'Returns dining tables across all restaurants and outlets with filtering and search.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+      outletId: z.string().optional(),
+      section: z.string().optional(),
+      search: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -1948,7 +2153,27 @@ app.get('/tables', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/tables', requireAdmin(), async (c) => {
+app.post(
+  '/tables',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Create Dining Table (Admin)',
+    description: 'Creates a dining table associated with a restaurant and outlet.',
+    body: z.object({
+      restaurantId: z.string(),
+      outletId: z.string(),
+      name: z.string(),
+      section: z.string().optional(),
+      capacity: z.number().optional(),
+    }),
+    responses: {
+      201: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { restaurantId, outletId, name, section = 'Main Floor', capacity = 4 } = body;
   if (!restaurantId || !outletId || !name) {
@@ -1967,7 +2192,27 @@ app.post('/tables', requireAdmin(), async (c) => {
   }
 });
 
-app.patch('/tables/:id', requireAdmin(), async (c) => {
+app.patch(
+  '/tables/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Update Dining Table (Admin)',
+    description: 'Updates table details including name, section, seating capacity, or active status.',
+    params: z.object({ id: z.string() }),
+    body: z.object({
+      name: z.string().optional(),
+      section: z.string().optional(),
+      capacity: z.number().optional(),
+      active: z.boolean().optional(),
+    }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const tblId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { name, section, capacity, active } = body;
@@ -1987,7 +2232,21 @@ app.patch('/tables/:id', requireAdmin(), async (c) => {
   }
 });
 
-app.delete('/tables/:id', requireAdmin(), async (c) => {
+app.delete(
+  '/tables/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Delete Dining Table (Admin)',
+    description: 'Permanently removes a dining table.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const tblId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -2001,7 +2260,26 @@ app.delete('/tables/:id', requireAdmin(), async (c) => {
 
 // ─── 10. Inventory & Stock CRUD (Admin) ───────────────────────────────────────
 
-app.get('/inventory', requireAdmin(), async (c) => {
+app.get(
+  '/inventory',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Inventory Items (Admin)',
+    description: 'Returns inventory stock across all stores with low-stock alerts, filtering, and search.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+      outletId: z.string().optional(),
+      stockAlert: z.string().optional(),
+      search: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -2069,7 +2347,31 @@ app.get('/inventory', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/inventory', requireAdmin(), async (c) => {
+app.post(
+  '/inventory',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Create Inventory Item (Admin)',
+    description: 'Creates a new raw ingredient or tracked inventory SKU item.',
+    body: z.object({
+      restaurantId: z.string(),
+      outletId: z.string(),
+      name: z.string(),
+      sku: z.string().optional(),
+      category: z.string().optional(),
+      baseUom: z.string().optional(),
+      currentStock: z.number().optional(),
+      lowStockThreshold: z.number().optional(),
+      costPerBaseUnitPaise: z.number().optional(),
+    }),
+    responses: {
+      201: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { restaurantId, outletId, name, sku, category = 'GENERAL', baseUom = 'kg', currentStock = 0, lowStockThreshold = 5, costPerBaseUnitPaise = 0 } = body;
   if (!restaurantId || !outletId || !name) {
@@ -2099,7 +2401,27 @@ app.post('/inventory', requireAdmin(), async (c) => {
   }
 });
 
-app.patch('/inventory/:id', requireAdmin(), async (c) => {
+app.patch(
+  '/inventory/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Update Inventory Item (Admin)',
+    description: 'Updates inventory item name, stock level, low stock threshold, or unit cost.',
+    params: z.object({ id: z.string() }),
+    body: z.object({
+      name: z.string().optional(),
+      currentStock: z.number().optional(),
+      lowStockThreshold: z.number().optional(),
+      costPerBaseUnitPaise: z.number().optional(),
+    }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const invId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { name, currentStock, lowStockThreshold, costPerBaseUnitPaise } = body;
@@ -2119,7 +2441,21 @@ app.patch('/inventory/:id', requireAdmin(), async (c) => {
   }
 });
 
-app.delete('/inventory/:id', requireAdmin(), async (c) => {
+app.delete(
+  '/inventory/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Delete Inventory Item (Admin)',
+    description: 'Permanently removes an inventory item.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const invId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -2133,7 +2469,25 @@ app.delete('/inventory/:id', requireAdmin(), async (c) => {
 
 // ─── 11. Delivery Fleet & Couriers (Admin) ───────────────────────────────────
 
-app.get('/delivery', requireAdmin(), async (c) => {
+app.get(
+  '/delivery',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Delivery Orders & Fleet (Admin)',
+    description: 'Returns delivery orders and courier assignments across all stores.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+      status: z.string().optional(),
+      search: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -2184,7 +2538,22 @@ app.get('/delivery', requireAdmin(), async (c) => {
   }
 });
 
-app.patch('/delivery/:id/status', requireAdmin(), async (c) => {
+app.patch(
+  '/delivery/:id/status',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Update Delivery Order Status (Admin)',
+    description: 'Updates delivery order status (ASSIGNED, PICKED_UP, DELIVERED, CANCELLED).',
+    params: z.object({ id: z.string() }),
+    body: z.object({ status: z.string() }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const delId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { status } = body;
@@ -2204,7 +2573,24 @@ app.patch('/delivery/:id/status', requireAdmin(), async (c) => {
 
 // ─── 12. Customers Directory & CRM (Admin) ────────────────────────────────────
 
-app.get('/customers', requireAdmin(), async (c) => {
+app.get(
+  '/customers',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Customers Directory with Aggregated Stats (Admin)',
+    description: 'Returns customer profiles across platform enriched with total orders count and lifetime GMV spend.',
+    query: z.object({
+      search: z.string().optional(),
+      minOrders: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const search = c.req.query('search')?.toLowerCase()?.trim();
@@ -2277,7 +2663,25 @@ app.get('/customers', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/customers', requireAdmin(), async (c) => {
+app.post(
+  '/customers',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Create Customer Account (Admin)',
+    description: 'Manually creates a new customer user profile.',
+    body: z.object({
+      name: z.string().optional(),
+      phoneNumber: z.string(),
+      email: z.string().optional(),
+    }),
+    responses: {
+      201: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { name, phoneNumber, email } = body;
   if (!phoneNumber) return c.json({ error: 'Validation Error', message: 'phoneNumber required' }, 400);
@@ -2306,7 +2710,26 @@ app.post('/customers', requireAdmin(), async (c) => {
   }
 });
 
-app.patch('/customers/:id', requireAdmin(), async (c) => {
+app.patch(
+  '/customers/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Update Customer Account (Admin)',
+    description: 'Updates customer details such as name, phone number, or email.',
+    params: z.object({ id: z.string() }),
+    body: z.object({
+      name: z.string().optional(),
+      phoneNumber: z.string().optional(),
+      email: z.string().optional(),
+    }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const userId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { name, phoneNumber, email } = body;
@@ -2325,7 +2748,21 @@ app.patch('/customers/:id', requireAdmin(), async (c) => {
   }
 });
 
-app.delete('/customers/:id', requireAdmin(), async (c) => {
+app.delete(
+  '/customers/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Delete Customer Account (Admin)',
+    description: 'Deletes a customer user profile.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const userId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -2339,7 +2776,26 @@ app.delete('/customers/:id', requireAdmin(), async (c) => {
 
 // ─── 13. Table Reservations CRUD (Admin) ─────────────────────────────────────
 
-app.get('/reservations', requireAdmin(), async (c) => {
+app.get(
+  '/reservations',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Table Reservations (Admin)',
+    description: 'Returns table reservations across all restaurants and outlets with status filtering and search.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+      outletId: z.string().optional(),
+      status: z.string().optional(),
+      search: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -2401,7 +2857,30 @@ app.get('/reservations', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/reservations', requireAdmin(), async (c) => {
+app.post(
+  '/reservations',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Create Table Reservation (Admin)',
+    description: 'Creates a table reservation for a guest.',
+    body: z.object({
+      restaurantId: z.string(),
+      outletId: z.string(),
+      guestName: z.string(),
+      guestPhone: z.string(),
+      partySize: z.number().optional(),
+      reservationDate: z.string(),
+      startTime: z.string().optional(),
+      notes: z.string().optional(),
+    }),
+    responses: {
+      201: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const { restaurantId, outletId, guestName, guestPhone, partySize = 2, reservationDate, startTime = '19:00', notes } = body;
   if (!restaurantId || !outletId || !guestName || !guestPhone || !reservationDate) {
@@ -2431,7 +2910,29 @@ app.post('/reservations', requireAdmin(), async (c) => {
   }
 });
 
-app.patch('/reservations/:id', requireAdmin(), async (c) => {
+app.patch(
+  '/reservations/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Update Table Reservation (Admin)',
+    description: 'Updates reservation details or status (CONFIRMED, SEATED, CANCELLED, NO_SHOW).',
+    params: z.object({ id: z.string() }),
+    body: z.object({
+      status: z.string().optional(),
+      guestName: z.string().optional(),
+      partySize: z.number().optional(),
+      reservationDate: z.string().optional(),
+      startTime: z.string().optional(),
+      notes: z.string().optional(),
+    }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const resId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { status, guestName, partySize, reservationDate, startTime, notes } = body;
@@ -2453,7 +2954,21 @@ app.patch('/reservations/:id', requireAdmin(), async (c) => {
   }
 });
 
-app.delete('/reservations/:id', requireAdmin(), async (c) => {
+app.delete(
+  '/reservations/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Delete Table Reservation (Admin)',
+    description: 'Permanently removes a table reservation.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const resId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -2467,7 +2982,26 @@ app.delete('/reservations/:id', requireAdmin(), async (c) => {
 
 // ─── 14. Customer Feedback & Reviews CRUD (Admin) ────────────────────────────
 
-app.get('/feedback', requireAdmin(), async (c) => {
+app.get(
+  '/feedback',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Customer Feedback & Reviews (Admin)',
+    description: 'Returns customer ratings, reviews, and store replies across all restaurants.',
+    query: z.object({
+      restaurantId: z.string().optional(),
+      rating: z.string().optional(),
+      replied: z.string().optional(),
+      search: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.array(z.any()),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const restaurantId = c.req.query('restaurantId');
@@ -2526,7 +3060,23 @@ app.get('/feedback', requireAdmin(), async (c) => {
   }
 });
 
-app.post('/feedback/:id/reply', requireAdmin(), async (c) => {
+app.post(
+  '/feedback/:id/reply',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Reply to Customer Feedback (Admin)',
+    description: 'Adds an official response to a customer review.',
+    params: z.object({ id: z.string() }),
+    body: z.object({ reply: z.string() }),
+    responses: {
+      200: z.any(),
+      400: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const revId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
   const { reply } = body;
@@ -2546,7 +3096,21 @@ app.post('/feedback/:id/reply', requireAdmin(), async (c) => {
   }
 });
 
-app.delete('/feedback/:id', requireAdmin(), async (c) => {
+app.delete(
+  '/feedback/:id',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Delete Customer Feedback (Admin)',
+    description: 'Permanently removes a feedback review.',
+    params: z.object({ id: z.string() }),
+    responses: {
+      200: SuccessResponseSchema,
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const revId = c.req.param('id');
   const { db, close } = getDb(c);
   try {
@@ -2560,7 +3124,28 @@ app.delete('/feedback/:id', requireAdmin(), async (c) => {
 
 // ─── 15. Subscriptions & Plans (Admin) ────────────────────────────────────────
 
-app.get('/subscriptions', requireAdmin(), async (c) => {
+app.get(
+  '/subscriptions',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'List Subscriptions and Plans (Admin)',
+    description: 'Returns subscription status of all restaurants alongside SaaS tier configurations.',
+    query: z.object({
+      search: z.string().optional(),
+      tier: z.string().optional(),
+      status: z.string().optional(),
+      sortBy: z.string().optional(),
+    }),
+    responses: {
+      200: z.object({
+        restaurants: z.array(z.any()),
+        plans: z.array(z.any()),
+      }),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const { db, close } = getDb(c);
   try {
     const search = c.req.query('search')?.toLowerCase()?.trim();
@@ -2612,7 +3197,22 @@ app.get('/subscriptions', requireAdmin(), async (c) => {
   }
 });
 
-app.patch('/subscriptions/:restaurantId', requireAdmin(), async (c) => {
+app.patch(
+  '/subscriptions/:restaurantId',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Update Restaurant Subscription Status (Admin)',
+    description: 'Updates the SaaS subscription status of a restaurant (ACTIVE, TRIAL, SUSPENDED).',
+    params: z.object({ restaurantId: z.string() }),
+    body: z.object({ status: z.string() }),
+    responses: {
+      200: z.any(),
+      404: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
   const restaurantId = c.req.param('restaurantId');
   const body = await c.req.json().catch(() => ({}));
   const { status } = body;

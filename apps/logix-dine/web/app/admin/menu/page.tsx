@@ -359,7 +359,8 @@ function MenuContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Dish Name</Table.Th>
@@ -452,6 +453,7 @@ function MenuContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -460,6 +462,8 @@ function MenuContent() {
         opened={createItemOpened}
         onClose={() => setCreateItemOpened(false)}
         title={<Text fw={700}>Add Menu Item to Catalog</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <Select
@@ -515,6 +519,8 @@ function MenuContent() {
         opened={editItemOpened}
         onClose={() => setEditItemOpened(false)}
         title={<Text fw={700}>Edit Menu Item</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput
@@ -562,6 +568,8 @@ function MenuContent() {
         opened={createCatOpened}
         onClose={() => setCreateCatOpened(false)}
         title={<Text fw={700}>Add Menu Category</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <Select

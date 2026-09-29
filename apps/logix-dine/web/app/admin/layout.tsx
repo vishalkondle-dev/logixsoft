@@ -154,7 +154,7 @@ function AdminHeaderStoreScope() {
         ]}
         value={currentScope}
         onChange={handleScopeChange}
-        w={{ base: 140, sm: 220 }}
+        w={{ base: 110, sm: 220 }}
       />
 
       <Tooltip label="Refresh Global Telemetry">
@@ -230,8 +230,8 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
     >
       {/* ─── Dedicated Superadmin Header (ZERO owner/staff paths) ──────────── */}
       <AppShell.Header withBorder>
-        <Group justify="space-between" h="100%" px="md">
-          <Group gap="sm">
+        <Group justify="space-between" h="100%" px={{ base: "xs", sm: "md" }} wrap="nowrap">
+          <Group gap="sm" wrap="nowrap">
             <Burger
               opened={sidebarOpen}
               onClick={() => setSidebarOpen((o) => !o)}
@@ -245,7 +245,7 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
               size="sm"
             />
             <Link href="/admin/overview" style={{ textDecoration: "none", color: "inherit" }}>
-              <Group gap="xs" style={{ cursor: "pointer" }}>
+              <Group gap="xs" style={{ cursor: "pointer" }} wrap="nowrap">
                 <Box
                   p={6}
                   style={{
@@ -256,15 +256,15 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
                   <IconShieldLock size={20} color="white" />
                 </Box>
                 <Box>
-                  <Group gap={6} align="center">
-                    <Text fw={800} size="md" style={{ letterSpacing: "-0.5px" }}>
+                  <Group gap={6} align="center" wrap="nowrap">
+                    <Text fw={800} size="md" style={{ letterSpacing: "-0.5px" }} lineClamp={1}>
                       Logix <span style={{ color: "#7950f2" }}>Superadmin</span>
                     </Text>
-                    <Badge color="violet" variant="filled" size="xs">
+                    <Badge color="violet" variant="filled" size="xs" visibleFrom="xs">
                       PLATFORM
                     </Badge>
                   </Group>
-                  <Text size="10px" c="dimmed">
+                  <Text size="10px" c="dimmed" visibleFrom="sm">
                     Global Multi-Tenant Control Plane
                   </Text>
                 </Box>

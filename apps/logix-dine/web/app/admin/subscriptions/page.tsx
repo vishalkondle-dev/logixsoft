@@ -186,7 +186,8 @@ function SubscriptionsContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Restaurant Tenant</Table.Th>
@@ -253,6 +254,7 @@ function SubscriptionsContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -261,6 +263,8 @@ function SubscriptionsContent() {
         opened={editOpened}
         onClose={() => setEditOpened(false)}
         title={<Text fw={700}>Modify Plan & Subscription</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <Text size="sm">

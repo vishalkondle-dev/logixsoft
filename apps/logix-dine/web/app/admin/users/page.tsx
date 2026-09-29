@@ -239,7 +239,8 @@ function UsersContent() {
             <Loader color="dinePrimary" />
           </Center>
         ) : (
-          <Table striped highlightOnHover>
+          <Table.ScrollContainer minWidth={700}>
+            <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>User Name</Table.Th>
@@ -330,6 +331,7 @@ function UsersContent() {
               )}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         )}
       </Card>
 
@@ -338,6 +340,8 @@ function UsersContent() {
         opened={createOpened}
         onClose={() => setCreateOpened(false)}
         title={<Text fw={700}>Add Platform User</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput
@@ -381,6 +385,8 @@ function UsersContent() {
         opened={editOpened}
         onClose={() => setEditOpened(false)}
         title={<Text fw={700}>Edit User Profile & Role</Text>}
+        centered
+        size="md"
       >
         <Stack gap="sm">
           <TextInput

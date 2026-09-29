@@ -1,5 +1,5 @@
 import type { Context, MiddlewareHandler } from 'hono';
-import { eq, and, or, inArray } from 'drizzle-orm';
+import { eq, and, or, inArray, isNull } from 'drizzle-orm';
 import { createDbWithClient } from '../db';
 import { appSchema } from '../db';
 import {
@@ -61,28 +61,36 @@ export async function buildSessionPayload(
   const { db, close } = dbFromEnv(c);
   try {
     const phone = authUser.phoneNumber ?? null;
-    const memberConditions = [eq(appSchema.restaurantMember.userId, authUser.id)];
+    const staffConditions = [eq(appSchema.outletStaff.userId, authUser.id)];
     if (phone) {
-      memberConditions.push(eq(appSchema.restaurantMember.phone, phone));
+      staffConditions.push(eq(appSchema.outletStaff.phone, phone));
     }
-    const members = await db
+    const staffRows = await db
       .select()
-      .from(appSchema.restaurantMember)
-      .where(or(...memberConditions));
+      .from(appSchema.outletStaff)
+      .where(and(or(...staffConditions), eq(appSchema.outletStaff.status, 'ACTIVE')));
 
-    // Auto-link any pending member rows to this authUser
-    for (const m of members) {
-      if (!m.userId) {
+    // Auto-link any staff rows matching phone to this authUser
+    for (const s of staffRows) {
+      if (!s.userId) {
         await db
-          .update(appSchema.restaurantMember)
-          .set({ userId: authUser.id, inviteStatus: 'ACCEPTED', updatedAt: new Date() })
-          .where(eq(appSchema.restaurantMember.id, m.id))
+          .update(appSchema.outletStaff)
+          .set({ userId: authUser.id, name: s.name || authUser.name, updatedAt: new Date() })
+          .where(eq(appSchema.outletStaff.id, s.id))
           .catch(() => {});
       }
     }
 
+    // Group staff rows by restaurantId
+    const restaurantIds = Array.from(new Set(staffRows.map((s: any) => s.restaurantId as string)));
+    const staffByRestaurant = new Map<string, any[]>();
+    for (const s of staffRows) {
+      const list = staffByRestaurant.get(s.restaurantId) ?? [];
+      list.push(s);
+      staffByRestaurant.set(s.restaurantId, list);
+    }
+
     // Batch fetch custom roles for all restaurants the user belongs to
-    const restaurantIds = Array.from(new Set(members.map((m: any) => m.restaurantId as string)));
     const roleDefinitionsMap = new Map<string, { permissions: string[]; allOutlets: boolean; name: string }>();
     if (restaurantIds.length > 0) {
       try {
@@ -94,6 +102,7 @@ export async function buildSessionPayload(
           const perms = Array.isArray(r.permissions) ? (r.permissions as string[]) : [];
           roleDefinitionsMap.set(`${r.restaurantId}:${r.id}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
           roleDefinitionsMap.set(`${r.restaurantId}:${r.name}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
+          roleDefinitionsMap.set(`${r.restaurantId}:${r.name.toUpperCase()}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
         }
       } catch (err) {
         console.warn('[buildSessionPayload] error querying restaurantRole:', err);
@@ -101,10 +110,16 @@ export async function buildSessionPayload(
     }
 
     const memberships: MembershipEntry[] = await Promise.all(
-      members.map(async (m: any) => {
-        const customRole = roleDefinitionsMap.get(`${m.restaurantId}:${m.role}`);
-        const isOwner = m.role === 'OWNER';
-        const allOutlets = isOwner || Boolean(customRole?.allOutlets) || isAllOutletRole(m.role as RestaurantRole);
+      restaurantIds.map(async (restId) => {
+        const rowsForRest = staffByRestaurant.get(restId)!;
+        const primaryRow = rowsForRest[0];
+        const rawRole = (primaryRow.role || '').trim();
+        const roleUpper = rawRole.toUpperCase();
+        const customRole = roleDefinitionsMap.get(`${restId}:${rawRole}`) ||
+                           roleDefinitionsMap.get(`${restId}:${roleUpper}`);
+        const isOwner = roleUpper === 'OWNER';
+        const hasNullOutlet = rowsForRest.some((r) => r.outletId === null);
+        const allOutlets = isOwner || hasNullOutlet || Boolean(customRole?.allOutlets) || isAllOutletRole(rawRole);
 
         // Resolve permissions:
         let permissions: string[] = [];
@@ -112,33 +127,30 @@ export async function buildSessionPayload(
           permissions = ['*'];
         } else if (customRole) {
           permissions = customRole.permissions;
-        } else if (DEFAULT_ROLE_PERMISSIONS[m.role as keyof typeof DEFAULT_ROLE_PERMISSIONS]) {
-          permissions = [...DEFAULT_ROLE_PERMISSIONS[m.role as keyof typeof DEFAULT_ROLE_PERMISSIONS]];
+        } else if (DEFAULT_ROLE_PERMISSIONS[roleUpper as keyof typeof DEFAULT_ROLE_PERMISSIONS]) {
+          permissions = [...DEFAULT_ROLE_PERMISSIONS[roleUpper as keyof typeof DEFAULT_ROLE_PERMISSIONS]];
         } else {
-          permissions = (ROLE_PERMISSIONS[m.role as keyof typeof ROLE_PERMISSIONS] as string[]) || [];
+          permissions = (ROLE_PERMISSIONS[roleUpper as keyof typeof ROLE_PERMISSIONS] as string[]) || [];
         }
 
         let outletIds: string[] = [];
         if (allOutlets) {
           // For OWNER / ALL_OUTLET_ROLES: Fetch all active outlets of their restaurant
-          const rows = await db
+          const outletRows = await db
             .select({ id: appSchema.restaurantOutlet.id })
             .from(appSchema.restaurantOutlet)
-            .where(eq(appSchema.restaurantOutlet.restaurantId, m.restaurantId));
-          outletIds = rows.map((r: any) => r.id);
+            .where(eq(appSchema.restaurantOutlet.restaurantId, restId));
+          outletIds = outletRows.map((r: any) => r.id);
         } else {
-          // For MANAGER / WAITER / KITCHEN / custom: Fetch explicitly assigned outlets
-          const rows = await db
-            .select({ outletId: appSchema.memberOutletAccess.outletId })
-            .from(appSchema.memberOutletAccess)
-            .where(eq(appSchema.memberOutletAccess.memberId, m.id));
-          outletIds = rows.map((r: any) => r.outletId);
+          // Explicitly assigned outlets from outletStaff rows
+          outletIds = Array.from(new Set(rowsForRest.map((r: any) => r.outletId).filter(Boolean)));
         }
+
         return {
-          restaurantId: m.restaurantId,
-          memberId: m.id,
-          role: m.role,
-          roleName: customRole?.name || m.role,
+          restaurantId: restId,
+          memberId: primaryRow.id,
+          role: primaryRow.role,
+          roleName: customRole?.name || primaryRow.role,
           permissions,
           outletIds,
           allOutlets,
@@ -243,11 +255,11 @@ export async function hasOutletAccess(
 ): Promise<boolean> {
   if (isAllOutletRole(role as RestaurantRole)) return true;
   const [row] = await db
-    .select({ id: appSchema.memberOutletAccess.id })
-    .from(appSchema.memberOutletAccess)
+    .select({ id: appSchema.outletStaff.id })
+    .from(appSchema.outletStaff)
     .where(and(
-      eq(appSchema.memberOutletAccess.memberId, memberId),
-      eq(appSchema.memberOutletAccess.outletId, outletId),
+      eq(appSchema.outletStaff.id, memberId),
+      or(eq(appSchema.outletStaff.outletId, outletId), isNull(appSchema.outletStaff.outletId)),
     ))
     .limit(1);
   return !!row;
@@ -313,7 +325,7 @@ export function requireMembership(): MiddlewareHandler {
     }
 
     // Strict Outlet scope check
-    if (headerOutletId && !membership.allOutlets) {
+    if (headerOutletId && !membership.allOutlets && membership.role?.toUpperCase() !== 'OWNER') {
       if (!membership.outletIds.includes(headerOutletId)) {
         return c.json({
           error: 'Forbidden',
@@ -392,8 +404,8 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
       }, 403);
     }
 
-    // Strict Outlet scope check for EVERY role (including OWNER)
-    if (headerOutletId) {
+    // Strict Outlet scope check (bypassed if role has allOutlets access or is OWNER)
+    if (headerOutletId && !membership.allOutlets && membership.role?.toUpperCase() !== 'OWNER') {
       if (!membership.outletIds.includes(headerOutletId)) {
         return c.json({
           error: 'Forbidden',
@@ -436,12 +448,15 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
     // Platform ADMIN bypasses everything
     if (user.role === 'ADMIN') {
       const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      const existingMembership = memberships.find((m) => m.restaurantId === restaurantId);
       c.set('tenant', {
         restaurantId,
-        role: 'OWNER',
-        member: null,
+        role: existingMembership?.role || 'OWNER',
+        roleName: existingMembership?.roleName || 'OWNER',
+        permissions: existingMembership?.permissions || ['*'],
+        member: existingMembership ? { id: existingMembership.memberId, restaurantId, role: existingMembership.role, userId: user.id } : null,
         outletId: headerOutletId,
-        outletIds: headerOutletId ? [headerOutletId] : [],
+        outletIds: existingMembership?.outletIds?.length ? existingMembership.outletIds : (headerOutletId ? [headerOutletId] : []),
         allOutlets: true,
       });
       return next();
@@ -465,8 +480,8 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
       }, 403);
     }
 
-    // Strict Outlet scope check
-    if (headerOutletId) {
+    // Strict Outlet scope check (bypassed if role has allOutlets access or is OWNER)
+    if (headerOutletId && !membership.allOutlets && membership.role?.toUpperCase() !== 'OWNER') {
       if (!membership.outletIds.includes(headerOutletId)) {
         return c.json({
           error: 'Forbidden',

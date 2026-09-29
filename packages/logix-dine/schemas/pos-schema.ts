@@ -25,61 +25,40 @@ export const restaurant = pgTable(
   (t) => [index('restaurant_ownerUserId_idx').on(t.ownerUserId)],
 );
 
-// ─── Restaurant Member (permission-based access) ──────────────────────────────
-// userId is nullable: a member can exist as a PENDING invite (by phone only)
-// before the invitee has ever logged in. On first OTP login with a matching
-// phone, userId is filled in and inviteStatus flips to ACCEPTED.
+// ─── Outlet Staff (Direct Staff Provisioning) ──────────────────────────────────
+// Staff are added directly to an outlet (or brand-wide with outletId=null for Owner).
+// No invite status / acceptance needed: staff status is immediately 'ACTIVE'.
+// On OTP login matching phone, userId is automatically linked.
 
-export const restaurantMember = pgTable(
-  'restaurantMember',
+export const outletStaff = pgTable(
+  'outletStaff',
   {
     id: text('id').primaryKey(),
     restaurantId: text('restaurantId')
       .notNull()
       .references(() => restaurant.id, { onDelete: 'cascade' }),
-    userId: text('userId').references(() => user.id, { onDelete: 'set null' }), // nullable until invite accepted
-    phone: text('phone').notNull(), // E.164 — used to match invite to user on login
+    outletId: text('outletId').references(() => restaurantOutlet.id, { onDelete: 'cascade' }), // null = brand-wide / all outlets (e.g. OWNER)
+    userId: text('userId').references(() => user.id, { onDelete: 'set null' }), // auto-linked on login
+    phone: text('phone').notNull(), // E.164 phone
+    name: text('name'), // Display name (e.g. "Ramesh", "Suresh")
     role: text('role').notNull(), // RestaurantRole
-    inviteStatus: text('inviteStatus').notNull().default('ACCEPTED'), // PENDING | ACCEPTED
+    status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'INACTIVE'
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
     updatedBy: text('updatedBy'),
   },
   (t) => [
-    index('restaurantMember_restaurantId_idx').on(t.restaurantId),
-    index('restaurantMember_userId_idx').on(t.userId),
-    index('restaurantMember_phone_idx').on(t.phone),
-    // NOTE: uniqueness of (restaurantId, phone) enforced in application logic —
-    // drizzle v0.x doesn't cleanly support partial/conditional unique indexes,
-    // and userId is nullable so a DB-level unique(restaurantId, userId) would
-    // still allow duplicate PENDING rows. Guarded in the invite handler instead.
+    index('outletStaff_restaurantId_idx').on(t.restaurantId),
+    index('outletStaff_outletId_idx').on(t.outletId),
+    index('outletStaff_userId_idx').on(t.userId),
+    index('outletStaff_phone_idx').on(t.phone),
   ],
 );
 
-// ─── Member ↔ Outlet access (junction table) ─────────────────────────────────
-// OWNER has zero rows here — meaning "all outlets", checked in tenancy.ts.
-// MANAGER / WAITER / KITCHEN need at least one row per outlet they can access.
+// Backward-compatible alias for existing imports during refactor
+export const restaurantMember = outletStaff;
 
-export const memberOutletAccess = pgTable(
-  'memberOutletAccess',
-  {
-    id: text('id').primaryKey(),
-    memberId: text('memberId')
-      .notNull()
-      .references(() => restaurantMember.id, { onDelete: 'cascade' }),
-    outletId: text('outletId')
-      .notNull()
-      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('createdAt').notNull().defaultNow(),
-    createdBy: text('createdBy'),
-  },
-  (t) => [
-    unique('memberOutletAccess_memberId_outletId_uniq').on(t.memberId, t.outletId),
-    index('memberOutletAccess_memberId_idx').on(t.memberId),
-    index('memberOutletAccess_outletId_idx').on(t.outletId),
-  ],
-);
 
 // ─── Restaurant Outlet ────────────────────────────────────────────────────────
 
@@ -762,8 +741,8 @@ export const restaurantRole = pgTable(
 export const posSchema = {
   restaurant,
   restaurantRole,
+  outletStaff,
   restaurantMember,
-  memberOutletAccess,
   restaurantOutlet,
   posTable,
   menuCategory,

@@ -1,8 +1,8 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import {
   restaurant,
+  outletStaff,
   restaurantMember,
-  memberOutletAccess,
   restaurantOutlet,
   posTable,
   menuCategory,
@@ -90,18 +90,20 @@ export type JsonRestaurantRow = Omit<RestaurantRow, 'createdAt' | 'updatedAt'> &
   updatedAt: string;
 };
 
-export type RestaurantMemberRow = InferSelectModel<typeof restaurantMember>;
-export type NewRestaurantMemberRow = InferInsertModel<typeof restaurantMember>;
-export type JsonRestaurantMemberRow = Omit<RestaurantMemberRow, 'createdAt' | 'updatedAt'> & {
+export type OutletStaffRow = InferSelectModel<typeof outletStaff>;
+export type NewOutletStaffRow = InferInsertModel<typeof outletStaff>;
+export type JsonOutletStaffRow = Omit<OutletStaffRow, 'createdAt' | 'updatedAt'> & {
   createdAt: string;
   updatedAt: string;
 };
 
-export type MemberOutletAccessRow = InferSelectModel<typeof memberOutletAccess>;
-export type NewMemberOutletAccessRow = InferInsertModel<typeof memberOutletAccess>;
-export type JsonMemberOutletAccessRow = Omit<MemberOutletAccessRow, 'createdAt'> & {
-  createdAt: string;
-};
+// Aliases for backward compatibility during refactor
+export type RestaurantMemberRow = OutletStaffRow;
+export type NewRestaurantMemberRow = NewOutletStaffRow;
+export type JsonRestaurantMemberRow = JsonOutletStaffRow;
+export type MemberOutletAccessRow = any;
+export type NewMemberOutletAccessRow = any;
+export type JsonMemberOutletAccessRow = any;
 
 export type RestaurantOutletRow = InferSelectModel<typeof restaurantOutlet>;
 export type NewRestaurantOutletRow = InferInsertModel<typeof restaurantOutlet>;

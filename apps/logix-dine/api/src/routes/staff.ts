@@ -3,9 +3,6 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
-import { RESTAURANT_ROLES } from '@logixsoft/logix-dine/types/roles';
-import { RestaurantMemberSchema } from '@logixsoft/logix-dine/schemas/pos';
-import { toRestaurantMember } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
 import { cacheGet, cacheSet, invalidateStaff, CacheKey, TTL } from '../lib/cache';
@@ -27,45 +24,56 @@ function normalizePhone(input: string): string {
   return cleaned.startsWith('+') ? cleaned : `+${digits}`;
 }
 
-const InviteStaffSchema = z.object({
+const AddStaffSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100).optional(),
   phone: z.string().min(6).max(20),
   role: z.string().min(1).refine((r) => r.toUpperCase() !== 'OWNER', {
-    message: 'Cannot invite a member with role OWNER. Ownership transfer is managed separately.',
+    message: 'Cannot assign role OWNER to staff. Ownership is managed separately.',
   }),
   outletIds: z.array(z.string()).min(1, 'At least one outlet must be assigned'),
 });
 
 const UpdateStaffSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
   role: z.string().min(1).refine((r) => r.toUpperCase() !== 'OWNER', {
-    message: 'Cannot change a member role to OWNER.',
+    message: 'Cannot change staff role to OWNER.',
   }).optional(),
   outletIds: z.array(z.string()).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 });
 
-export const RestaurantMemberWithOutletsSchema = RestaurantMemberSchema.extend({
+export const StaffResponseSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  userId: z.string().nullable(),
+  phone: z.string(),
+  name: z.string().nullable(),
+  role: z.string(),
+  roleName: z.string().optional(),
+  status: z.string(),
   outletIds: z.array(z.string()),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
-async function memberWithOutlets(db: any, restaurantId: string, memberId?: string) {
-  const whereClause = memberId
-    ? and(eq(appSchema.restaurantMember.restaurantId, restaurantId), eq(appSchema.restaurantMember.id, memberId))
-    : eq(appSchema.restaurantMember.restaurantId, restaurantId);
-
-  const members = await db.select().from(appSchema.restaurantMember).where(whereClause);
-  const memberIds = members.map((m: any) => m.id);
-  if (!memberIds.length) return [];
-
-  const accessRows = await db
-    .select()
-    .from(appSchema.memberOutletAccess)
-    .where(inArray(appSchema.memberOutletAccess.memberId, memberIds));
-  const byMember = new Map<string, string[]>();
-  for (const row of accessRows) {
-    if (!memberIds.includes(row.memberId)) continue;
-    const list = byMember.get(row.memberId) ?? [];
-    list.push(row.outletId);
-    byMember.set(row.memberId, list);
+async function getStaffList(db: any, restaurantId: string, staffId?: string) {
+  let targetPhone: string | null = null;
+  if (staffId) {
+    const [target] = await db
+      .select({ phone: appSchema.outletStaff.phone })
+      .from(appSchema.outletStaff)
+      .where(and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.id, staffId)))
+      .limit(1);
+    if (!target) return [];
+    targetPhone = target.phone;
   }
+
+  const whereClause = targetPhone
+    ? and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.phone, targetPhone))
+    : eq(appSchema.outletStaff.restaurantId, restaurantId);
+
+  const rows = await db.select().from(appSchema.outletStaff).where(whereClause);
+  if (!rows.length) return [];
 
   let roleNameMap = new Map<string, string>();
   try {
@@ -79,83 +87,60 @@ async function memberWithOutlets(db: any, restaurantId: string, memberId?: strin
     }
   } catch {}
 
-  return members.map((m: any) => ({
-    ...toRestaurantMember(m),
-    roleName: roleNameMap.get(m.role) || m.role,
-    outletIds: byMember.get(m.id) ?? [],
-  }));
+  const byPhone = new Map<string, any>();
+  for (const row of rows) {
+    if (row.role === 'OWNER') continue;
+    const existing = byPhone.get(row.phone);
+    if (!existing) {
+      byPhone.set(row.phone, {
+        id: row.id,
+        restaurantId: row.restaurantId,
+        userId: row.userId ?? null,
+        phone: row.phone,
+        name: row.name ?? null,
+        role: row.role,
+        roleName: roleNameMap.get(row.role) || row.role,
+        status: row.status,
+        outletIds: row.outletId ? [row.outletId] : [],
+        createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+        updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
+      });
+    } else {
+      if (row.outletId && !existing.outletIds.includes(row.outletId)) {
+        existing.outletIds.push(row.outletId);
+      }
+      if (!existing.name && row.name) existing.name = row.name;
+    }
+  }
+
+  return Array.from(byPhone.values());
 }
 
-// GET /staff — list all members (with outlet access) for the current restaurant
-app.get(
-  '/',
-  apiDoc({
-    tags: ['Staff'],
-    summary: 'List Staff Members',
-    description: 'Lists all staff members and their assigned outlet IDs for the current restaurant.',
-    responses: {
-      200: z.array(RestaurantMemberWithOutletsSchema),
-    },
-  }),
-  requirePermission('member:read'),
-  async (c) => {
-  const { restaurantId } = c.get('tenant');
-
-  const cached = await cacheGet<any[]>(kv(c), CacheKey.staff(restaurantId));
-  if (cached) return c.json(cached);
-
-  const { db, close } = getDb(c);
-  try {
-    const result = await memberWithOutlets(db, restaurantId);
-    const filtered = result.filter((m: any) => m.role !== 'OWNER');
-    await cacheSet(kv(c), CacheKey.staff(restaurantId), filtered, TTL.staff);
-    return c.json(filtered);
-  } finally {
-    await close();
-  }
-});
-
-// POST /staff/invite — create a PENDING member row + outlet access, notify by WhatsApp
-app.post(
-  '/invite',
-  apiDoc({
-    tags: ['Staff'],
-    summary: 'Invite Staff Member',
-    description: 'Invites a new staff member by phone with specific role and outlet access.',
-    body: InviteStaffSchema,
-    responses: {
-      201: RestaurantMemberWithOutletsSchema,
-      400: ErrorResponseSchema,
-      409: ErrorResponseSchema,
-    },
-  }),
-  requirePermission('member:write'),
-  async (c) => {
+// Handler for adding staff
+async function handleAddStaff(c: any) {
   const tenant = c.get('tenant');
   const { restaurantId } = tenant;
   const actorPhone = c.get('actorPhone');
   const body = await c.req.json().catch(() => ({}));
-  const parsed = InviteStaffSchema.safeParse(body);
+  const parsed = AddStaffSchema.safeParse(body);
   if (!parsed.success) {
     return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
   }
-  const { role, outletIds } = parsed.data;
+  const { role, outletIds, name } = parsed.data;
   const phone = normalizePhone(parsed.data.phone);
 
   const { db, close } = getDb(c);
   try {
-    // Guard uniqueness in application logic (see schema note): one member
-    // row per (restaurantId, phone), regardless of invite status.
     const [existing] = await db
-      .select({ id: appSchema.restaurantMember.id })
-      .from(appSchema.restaurantMember)
-      .where(and(eq(appSchema.restaurantMember.restaurantId, restaurantId), eq(appSchema.restaurantMember.phone, phone)))
+      .select({ id: appSchema.outletStaff.id })
+      .from(appSchema.outletStaff)
+      .where(and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.phone, phone)))
       .limit(1);
     if (existing) {
-      return c.json({ error: 'Conflict', message: 'This phone number is already a staff member' }, 409);
+      return c.json({ error: 'Conflict', message: 'A staff member with this phone number already exists' }, 409);
     }
 
-    // Validate outlets belong to this restaurant and the caller has permission to assign them
+    // Validate outlets belong to this restaurant and caller has access
     const outlets = await db
       .select({ id: appSchema.restaurantOutlet.id })
       .from(appSchema.restaurantOutlet)
@@ -167,43 +152,39 @@ app.post(
       }
     }
 
-    // Check if a user already exists for this phone (they may log in before or after invite)
+    // Check if user account already exists in user table
     const [existingUser] = await db
-      .select({ id: appSchema.user.id })
+      .select({ id: appSchema.user.id, name: appSchema.user.name })
       .from(appSchema.user)
       .where(eq(appSchema.user.phoneNumber, phone))
       .limit(1);
 
-    const memberId = generateId('member');
+    const displayName = name?.trim() || existingUser?.name || null;
     const now = new Date();
+    let primaryId = '';
 
     await db.transaction(async (tx: any) => {
-      await tx.insert(appSchema.restaurantMember).values({
-        id: memberId,
-        restaurantId,
-        userId: existingUser?.id ?? null,
-        phone,
-        role,
-        inviteStatus: existingUser ? 'ACCEPTED' : 'PENDING',
-        createdAt: now,
-        updatedAt: now,
-        createdBy: actorPhone,
-        updatedBy: actorPhone,
-      });
-
       for (const outletId of outletIds) {
-        await tx.insert(appSchema.memberOutletAccess).values({
-          id: generateId('moa'),
-          memberId,
+        const id = generateId('staff');
+        if (!primaryId) primaryId = id;
+        await tx.insert(appSchema.outletStaff).values({
+          id,
+          restaurantId,
           outletId,
+          userId: existingUser?.id ?? null,
+          phone,
+          name: displayName,
+          role,
+          status: 'ACTIVE',
           createdAt: now,
+          updatedAt: now,
           createdBy: actorPhone,
+          updatedBy: actorPhone,
         });
       }
     });
 
-    // Best-effort WhatsApp notification — never block the invite on send failure.
-    // Genuine user-triggered send (owner clicked Invite), not a test/debug ping.
+    // Best-effort informational WhatsApp message
     try {
       const { sendWhatsAppText } = await import('@logixsoft/wa');
       const digitsOnly = phone.replace(/\D/g, '');
@@ -213,33 +194,98 @@ app.post(
         .where(eq(appSchema.restaurant.id, restaurantId));
       await sendWhatsAppText(
         digitsOnly,
-        `You've been invited to join ${rest?.name ?? 'a restaurant'} on Logix Dine as ${role}. Open dine.logixsoft.in and sign in with this number to get started.`,
+        `Hi ${displayName || 'there'}, you have been added as ${role} at ${rest?.name ?? 'our restaurant'}. Sign in with this mobile number at dine.logixsoft.in to access the system.`,
         undefined,
         { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
       ).catch(() => {});
     } catch (err) {
-      console.warn('[staff/invite] WhatsApp notification skipped:', err);
+      console.warn('[staff/add] WhatsApp notification skipped:', err);
     }
 
-    const [created] = await memberWithOutlets(db, restaurantId, memberId);
+    const [created] = await getStaffList(db, restaurantId, primaryId);
     await invalidateStaff(kv(c), restaurantId);
     return c.json(created, 201);
   } finally {
     await close();
   }
-});
+}
 
-// PUT /staff/:id — update role and/or outlet assignments
+// GET /staff — list all staff for the current restaurant
+app.get(
+  '/',
+  apiDoc({
+    tags: ['Staff'],
+    summary: 'List Staff Members',
+    description: 'Lists all staff members and their assigned outlet IDs for the current restaurant.',
+    responses: {
+      200: z.array(StaffResponseSchema),
+    },
+  }),
+  requirePermission('member:read'),
+  async (c) => {
+    const { restaurantId } = c.get('tenant');
+
+    const cached = await cacheGet<any[]>(kv(c), CacheKey.staff(restaurantId));
+    if (cached) return c.json(cached);
+
+    const { db, close } = getDb(c);
+    try {
+      const result = await getStaffList(db, restaurantId);
+      await cacheSet(kv(c), CacheKey.staff(restaurantId), result, TTL.staff);
+      return c.json(result);
+    } finally {
+      await close();
+    }
+  }
+);
+
+// POST /staff — add a staff member directly (immediate active status)
+app.post(
+  '/',
+  apiDoc({
+    tags: ['Staff'],
+    summary: 'Add Staff Member',
+    description: 'Adds a new staff member with assigned role and outlet access directly.',
+    body: AddStaffSchema,
+    responses: {
+      201: StaffResponseSchema,
+      400: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('member:write'),
+  handleAddStaff
+);
+
+// POST /staff/invite — backwards compatibility endpoint pointing to handleAddStaff
+app.post(
+  '/invite',
+  apiDoc({
+    tags: ['Staff'],
+    summary: 'Add/Invite Staff Member',
+    description: 'Adds a new staff member directly (backward compatible route).',
+    body: AddStaffSchema,
+    responses: {
+      201: StaffResponseSchema,
+      400: ErrorResponseSchema,
+      409: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('member:write'),
+  handleAddStaff
+);
+
+// PUT /staff/:id — update name, role, outlets, or status
 app.put(
   '/:id',
   apiDoc({
     tags: ['Staff'],
     summary: 'Update Staff Member',
-    description: 'Updates role and/or assigned outlet IDs for a staff member.',
+    description: 'Updates name, role, assigned outlet IDs, or active status for a staff member.',
     params: z.object({ id: z.string() }),
     body: UpdateStaffSchema,
     responses: {
-      200: RestaurantMemberWithOutletsSchema,
+      200: StaffResponseSchema,
       400: ErrorResponseSchema,
       403: ErrorResponseSchema,
       404: ErrorResponseSchema,
@@ -247,71 +293,108 @@ app.put(
   }),
   requirePermission('member:write'),
   async (c) => {
-  const tenant = c.get('tenant');
-  const { restaurantId } = tenant;
-  const actorPhone = c.get('actorPhone');
-  const memberId = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = UpdateStaffSchema.safeParse(body);
-  if (!parsed.success) {
-    return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
-  }
-
-  const { db, close } = getDb(c);
-  try {
-    const [existing] = await db
-      .select()
-      .from(appSchema.restaurantMember)
-      .where(and(eq(appSchema.restaurantMember.id, memberId), eq(appSchema.restaurantMember.restaurantId, restaurantId)));
-    if (!existing) return c.json({ error: 'Not Found' }, 404);
-    if (existing.role === 'OWNER') return c.json({ error: 'Forbidden', message: 'Cannot modify the owner' }, 403);
-
-    if (parsed.data.outletIds) {
-      for (const oid of parsed.data.outletIds) {
-        if (!assertOutletAccess(tenant, oid)) {
-          return c.json({ error: 'Forbidden', message: `You do not have permission to assign outlet '${oid}'` }, 403);
-        }
-      }
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const actorPhone = c.get('actorPhone');
+    const staffId = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = UpdateStaffSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
     }
 
-    const now = new Date();
-    await db.transaction(async (tx: any) => {
-      if (parsed.data.role) {
-        await tx
-          .update(appSchema.restaurantMember)
-          .set({ role: parsed.data.role, updatedAt: now, updatedBy: actorPhone })
-          .where(eq(appSchema.restaurantMember.id, memberId));
-      }
+    const { db, close } = getDb(c);
+    try {
+      const [existing] = await db
+        .select()
+        .from(appSchema.outletStaff)
+        .where(and(eq(appSchema.outletStaff.id, staffId), eq(appSchema.outletStaff.restaurantId, restaurantId)))
+        .limit(1);
+      if (!existing) return c.json({ error: 'Not Found', message: 'Staff member not found' }, 404);
+      if (existing.role === 'OWNER') return c.json({ error: 'Forbidden', message: 'Cannot modify the owner' }, 403);
+
+      const targetPhone = existing.phone;
 
       if (parsed.data.outletIds) {
-        await tx.delete(appSchema.memberOutletAccess).where(eq(appSchema.memberOutletAccess.memberId, memberId));
-        for (const outletId of parsed.data.outletIds) {
-          await tx.insert(appSchema.memberOutletAccess).values({
-            id: generateId('moa'),
-            memberId,
-            outletId,
-            createdAt: now,
-            createdBy: actorPhone,
-          });
+        for (const oid of parsed.data.outletIds) {
+          if (!assertOutletAccess(tenant, oid)) {
+            return c.json({ error: 'Forbidden', message: `You do not have permission to assign outlet '${oid}'` }, 403);
+          }
         }
       }
-    });
 
-    const [updated] = await memberWithOutlets(db, restaurantId, memberId);
-    await invalidateStaff(kv(c), restaurantId);
-    return c.json(updated);
-  } finally {
-    await close();
+      const now = new Date();
+      await db.transaction(async (tx: any) => {
+        const updateFields: any = { updatedAt: now, updatedBy: actorPhone };
+        if (parsed.data.name !== undefined) updateFields.name = parsed.data.name.trim();
+        if (parsed.data.role) updateFields.role = parsed.data.role;
+        if (parsed.data.status) updateFields.status = parsed.data.status;
+
+        // Apply field updates
+        await tx
+          .update(appSchema.outletStaff)
+          .set(updateFields)
+          .where(and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.phone, targetPhone)));
+
+        // If outletIds is supplied, synchronize outlet assignments
+        if (parsed.data.outletIds && parsed.data.outletIds.length > 0) {
+          const newOutletIds = parsed.data.outletIds;
+          const currentRows = await tx
+            .select()
+            .from(appSchema.outletStaff)
+            .where(and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.phone, targetPhone)));
+
+          const currentOutletIds = currentRows.map((r: any) => r.outletId).filter(Boolean);
+          const toAdd = newOutletIds.filter((oid: string) => !currentOutletIds.includes(oid));
+          const toRemove = currentOutletIds.filter((oid: string) => !newOutletIds.includes(oid));
+
+          if (toRemove.length > 0) {
+            await tx
+              .delete(appSchema.outletStaff)
+              .where(
+                and(
+                  eq(appSchema.outletStaff.restaurantId, restaurantId),
+                  eq(appSchema.outletStaff.phone, targetPhone),
+                  inArray(appSchema.outletStaff.outletId, toRemove)
+                )
+              );
+          }
+
+          for (const oid of toAdd) {
+            await tx.insert(appSchema.outletStaff).values({
+              id: generateId('staff'),
+              restaurantId,
+              outletId: oid,
+              userId: existing.userId,
+              phone: targetPhone,
+              name: updateFields.name ?? existing.name,
+              role: updateFields.role ?? existing.role,
+              status: updateFields.status ?? existing.status,
+              createdAt: now,
+              updatedAt: now,
+              createdBy: actorPhone,
+              updatedBy: actorPhone,
+            });
+          }
+        }
+      });
+
+      const [updated] = await getStaffList(db, restaurantId, staffId);
+      await invalidateStaff(kv(c), restaurantId);
+      return c.json(updated);
+    } finally {
+      await close();
+    }
   }
-});
+);
 
-// DELETE /staff/:id — remove a member (cascades to memberOutletAccess)
+// DELETE /staff/:id — remove a staff member
 app.delete(
   '/:id',
   apiDoc({
     tags: ['Staff'],
     summary: 'Remove Staff Member',
-    description: 'Removes a staff member and their outlet access.',
+    description: 'Removes a staff member and their outlet assignments.',
     params: z.object({ id: z.string() }),
     responses: {
       200: SuccessResponseSchema,
@@ -321,24 +404,29 @@ app.delete(
   }),
   requirePermission('member:write'),
   async (c) => {
-  const { restaurantId } = c.get('tenant');
-  const memberId = c.req.param('id');
+    const { restaurantId } = c.get('tenant');
+    const staffId = c.req.param('id');
 
-  const { db, close } = getDb(c);
-  try {
-    const [existing] = await db
-      .select({ id: appSchema.restaurantMember.id, role: appSchema.restaurantMember.role })
-      .from(appSchema.restaurantMember)
-      .where(and(eq(appSchema.restaurantMember.id, memberId), eq(appSchema.restaurantMember.restaurantId, restaurantId)));
-    if (!existing) return c.json({ error: 'Not Found' }, 404);
-    if (existing.role === 'OWNER') return c.json({ error: 'Forbidden', message: 'Cannot remove the owner' }, 403);
+    const { db, close } = getDb(c);
+    try {
+      const [existing] = await db
+        .select({ id: appSchema.outletStaff.id, role: appSchema.outletStaff.role, phone: appSchema.outletStaff.phone })
+        .from(appSchema.outletStaff)
+        .where(and(eq(appSchema.outletStaff.id, staffId), eq(appSchema.outletStaff.restaurantId, restaurantId)))
+        .limit(1);
+      if (!existing) return c.json({ error: 'Not Found', message: 'Staff member not found' }, 404);
+      if (existing.role === 'OWNER') return c.json({ error: 'Forbidden', message: 'Cannot remove the owner' }, 403);
 
-    await db.delete(appSchema.restaurantMember).where(eq(appSchema.restaurantMember.id, memberId));
-    await invalidateStaff(kv(c), restaurantId);
-    return c.json({ success: true });
-  } finally {
-    await close();
+      await db
+        .delete(appSchema.outletStaff)
+        .where(and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.phone, existing.phone)));
+
+      await invalidateStaff(kv(c), restaurantId);
+      return c.json({ success: true, message: 'Staff member removed' });
+    } finally {
+      await close();
+    }
   }
-});
+);
 
 export { app as staffRoutes };

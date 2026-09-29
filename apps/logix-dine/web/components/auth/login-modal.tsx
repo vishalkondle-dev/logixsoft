@@ -147,10 +147,45 @@ export function LoginModal() {
         destination = nextParam;
       } else if (res.user?.role === "ADMIN") {
         destination = "/admin/overview";
+      } else {
+        try {
+          const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
+          const restRes = await fetch(`${API_BASE}/restaurants`, { credentials: "include" });
+          if (restRes.ok) {
+            const rests = await restRes.json();
+            if (rests && rests.length > 0) {
+              const firstRest = rests[0];
+              const roleRes = await fetch(`${API_BASE}/restaurants/my-role`, {
+                credentials: "include",
+                headers: { "X-Restaurant-Id": firstRest.id },
+              });
+              if (roleRes.ok) {
+                const roleInfo = await roleRes.json();
+                const outletQuery = roleInfo.outletIds?.[0] ? `?outletId=${roleInfo.outletIds[0]}` : "";
+                const r = (roleInfo.role || "").toUpperCase();
+                if (r === "WAITER" || r === "CAPTAIN") {
+                  destination = `/waiter${outletQuery}`;
+                } else if (r === "KITCHEN") {
+                  destination = `/kitchen${outletQuery}`;
+                } else if (r === "RIDER") {
+                  destination = `/rider${outletQuery}`;
+                } else {
+                  destination = `/pos${outletQuery}`;
+                }
+              } else {
+                destination = "/pos";
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("[login-modal] post-login destination lookup error:", e);
+        }
       }
 
       if (destination) {
         window.location.href = destination;
+      } else if (typeof window !== "undefined" && window.location.pathname === "/") {
+        window.location.href = "/portal";
       }
     } catch (err: any) {
       setErrorMessage(err?.message || "Invalid or expired verification code");

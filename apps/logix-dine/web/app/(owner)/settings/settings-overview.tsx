@@ -42,6 +42,7 @@ import {
   IconShieldLock,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useAuth } from "@/lib/auth-context";
 
 interface SettingItem {
   id: string;
@@ -60,8 +61,11 @@ interface SettingCategory {
 }
 
 export function SettingsOverview() {
-  const { restaurant, activeOutlet, role } = useRestaurant();
-  const isOwner = role === "OWNER";
+  const { restaurant, activeOutlet, role, can } = useRestaurant();
+  const { user } = useAuth();
+  const isOwner = role === "OWNER" || (user as any)?.role === "ADMIN";
+  const canViewStaff = isOwner || can("staff:view");
+  const canManageRoles = isOwner || can("roles:manage");
 
   const settingsGroups: SettingCategory[] = [
     {
@@ -147,9 +151,9 @@ export function SettingsOverview() {
           description: "Manage team members, roles, and outlet access",
           icon: IconUsers,
           color: "indigo",
-          href: isOwner ? "/settings/staff" : undefined,
-          isAvailable: isOwner,
-          badge: isOwner ? undefined : "Owner only",
+          href: canViewStaff ? "/settings/staff" : undefined,
+          isAvailable: canViewStaff,
+          badge: canViewStaff ? undefined : "Restricted",
         },
         {
           id: "roles-permissions",
@@ -157,9 +161,9 @@ export function SettingsOverview() {
           description: "Granular access control matrix, custom team roles & sub-feature privileges",
           icon: IconShieldLock,
           color: "violet",
-          href: isOwner ? "/settings/roles" : undefined,
-          isAvailable: isOwner,
-          badge: isOwner ? "Matrix RBAC" : "Owner only",
+          href: canManageRoles ? "/settings/roles" : undefined,
+          isAvailable: canManageRoles,
+          badge: canManageRoles ? "Matrix RBAC" : "Restricted",
         },
         {
           id: "kitchen-locations",

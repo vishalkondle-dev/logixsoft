@@ -59,6 +59,15 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const handleEnterStore = async (rest: any) => {
     try {
+      if (!rest?.id) {
+        notifications.show({
+          title: "Select Store",
+          message: "Please select a specific restaurant store to enter POS.",
+          color: "orange",
+        });
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/admin/impersonate/${rest.id}`, {
         method: "POST",
         credentials: "include",
@@ -68,6 +77,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json().catch(() => null);
         outletId = data?.outletId;
+      } else {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.message || "Failed to switch store scope");
       }
 
       if (!outletId) {
@@ -89,7 +101,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
       notifications.show({
         title: "Store Scope Activated",
-        message: `Entering POS for ${rest.name}...`,
+        message: `Entering POS for ${rest.name || "selected store"}...`,
         color: "teal",
       });
 

@@ -3,6 +3,7 @@ import { Expect } from '../types/utils';
 import { AssertSame } from '../types/utils';
 import type {
   JsonRestaurantRow,
+  JsonOutletStaffRow,
   JsonRestaurantMemberRow,
   JsonMemberOutletAccessRow,
   JsonRestaurantOutletRow,
@@ -45,20 +46,24 @@ export const RestaurantSchema = z.object({
 });
 type _RestaurantAssert = Expect<AssertSame<z.infer<typeof RestaurantSchema>, JsonRestaurantRow>>;
 
-export const RestaurantMemberSchema = z.object({
+export const OutletStaffSchema = z.object({
   id: z.string(),
   restaurantId: z.string(),
+  outletId: z.string().nullable(),
   userId: z.string().nullable(),
   phone: z.string(),
+  name: z.string().nullable(),
   role: z.string(),
-  inviteStatus: z.string(),
+  status: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),
   updatedBy: z.string().nullable(),
 });
-type _MemberAssert = Expect<AssertSame<z.infer<typeof RestaurantMemberSchema>, JsonRestaurantMemberRow>>;
+type _OutletStaffAssert = Expect<AssertSame<z.infer<typeof OutletStaffSchema>, JsonOutletStaffRow>>;
 
+// Aliases for backward compatibility during refactor
+export const RestaurantMemberSchema = OutletStaffSchema;
 export const MemberOutletAccessSchema = z.object({
   id: z.string(),
   memberId: z.string(),
@@ -66,7 +71,6 @@ export const MemberOutletAccessSchema = z.object({
   createdAt: z.string(),
   createdBy: z.string().nullable(),
 });
-type _MemberOutletAccessAssert = Expect<AssertSame<z.infer<typeof MemberOutletAccessSchema>, JsonMemberOutletAccessRow>>;
 
 export const RestaurantOutletSchema = z.object({
   id: z.string(),

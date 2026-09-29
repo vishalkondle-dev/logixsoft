@@ -39,8 +39,8 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "inventory", label: "Inventory & Recipes", href: "/settings/inventory", icon: IconPackages },
   { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias },
   { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock },
-  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, ownerOnly: true },
-  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, ownerOnly: true },
+  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, permission: "staff:view" },
+  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, permission: "roles:manage" },
   { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar },
   { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar },
   { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax },
@@ -629,9 +629,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         >
           <ScrollArea style={{ height: "100%" }} scrollbarSize={4} type="hover">
             <Stack gap={2}>
-              {SETTINGS_SIDEBAR_ITEMS.filter(
-                (item) => !item.ownerOnly || effectiveRole === "OWNER"
-              ).map((item, index) => {
+              {SETTINGS_SIDEBAR_ITEMS.filter((item) => {
+                if (effectiveRole === "OWNER" || (user as any)?.role === "ADMIN") return true;
+                if ((item as any).ownerOnly) return false;
+                if ((item as any).permission) return can((item as any).permission);
+                return true;
+              }).map((item, index) => {
                 const Icon = item.icon;
                 const isActive = activeSettingId === item.id;
                 return (

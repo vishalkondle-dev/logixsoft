@@ -20,6 +20,7 @@ function getUrlOutletId(): string | null {
 
 function updateUrlOutletId(outletId: string | null) {
   if (typeof window === "undefined") return;
+  if (window.location.pathname.startsWith("/admin")) return;
   const url = new URL(window.location.href);
   if (outletId) {
     if (url.searchParams.get("outletId") === outletId && !url.searchParams.has("outlet")) return;
@@ -129,7 +130,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
         setActiveOutletState(chosen);
         if (chosen) {
           setCookie(OUTLET_COOKIE, chosen.id);
-          if (typeof window !== "undefined" && window.location.pathname !== "/") {
+          if (typeof window !== "undefined" && window.location.pathname !== "/" && !window.location.pathname.startsWith("/admin")) {
             updateUrlOutletId(chosen.id);
           }
         }
@@ -144,7 +145,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (activeOutlet && pathname && pathname !== "/" && pathname !== "/onboarding") {
+    if (activeOutlet && pathname && pathname !== "/" && pathname !== "/onboarding" && !pathname.startsWith("/admin")) {
       updateUrlOutletId(activeOutlet.id);
     }
   }, [pathname, activeOutlet]);

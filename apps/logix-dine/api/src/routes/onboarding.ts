@@ -9,6 +9,7 @@ import { CreateRestaurantSchema, RestaurantSchema, RestaurantOutletSchema } from
 import { toRestaurant, toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
+import { ensureDefaultRoles } from './roles';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -90,13 +91,15 @@ app.post(
         updatedBy: actorPhone,
       });
 
-      await tx.insert(appSchema.restaurantMember).values({
+      await tx.insert(appSchema.outletStaff).values({
         id: memberId,
         restaurantId,
+        outletId: null, // brand-wide
         userId: user.id,
         phone: actorPhone ?? '',
+        name: user.name,
         role: 'OWNER',
-        inviteStatus: 'ACCEPTED',
+        status: 'ACTIVE',
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,
@@ -110,6 +113,9 @@ app.post(
           .where(eq(appSchema.user.id, user.id));
       }
     });
+
+    // Seed default system roles for the new restaurant
+    await ensureDefaultRoles(db, restaurantId, actorPhone || 'system');
 
     const [newRestaurant] = await db
       .select()

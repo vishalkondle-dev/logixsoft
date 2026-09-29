@@ -453,14 +453,23 @@ export const resetRolePermissions = async (restaurantId: string, id: string) => 
 export const listStaff = (restaurantId: string) =>
   apiFetch<any[]>("/staff", restaurantId);
 
-export const inviteStaff = (restaurantId: string, body: { phone: string; role: string; outletIds: string[] }) =>
-  apiFetch<any>("/staff/invite", restaurantId, { method: "POST", body: JSON.stringify(body) });
+export const addStaff = (
+  restaurantId: string,
+  body: { name?: string; phone: string; role: string; outletIds: string[] }
+) =>
+  apiFetch<any>("/staff", restaurantId, { method: "POST", body: JSON.stringify(body) });
 
-export const updateStaff = (restaurantId: string, memberId: string, body: { role?: string; outletIds?: string[] }) =>
-  apiFetch<any>(`/staff/${memberId}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
+export const inviteStaff = addStaff;
 
-export const removeStaff = (restaurantId: string, memberId: string) =>
-  apiFetch<any>(`/staff/${memberId}`, restaurantId, { method: "DELETE" });
+export const updateStaff = (
+  restaurantId: string,
+  staffId: string,
+  body: { name?: string; role?: string; outletIds?: string[]; status?: "ACTIVE" | "INACTIVE" }
+) =>
+  apiFetch<any>(`/staff/${staffId}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
+
+export const removeStaff = (restaurantId: string, staffId: string) =>
+  apiFetch<any>(`/staff/${staffId}`, restaurantId, { method: "DELETE" });
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 

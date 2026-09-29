@@ -9,6 +9,7 @@ import { toRestaurant, toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 import { invalidateRestaurant, cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../lib/cache';
+import { ensureDefaultRoles } from './roles';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -365,19 +366,24 @@ app.post(
           updatedBy: actorPhone,
         });
 
-        await tx.insert(appSchema.restaurantMember).values({
+        await tx.insert(appSchema.outletStaff).values({
           id: memberId,
           restaurantId,
+          outletId: null, // brand-wide
           userId: ownerUser.id,
           phone: cleanOwnerPhone,
+          name: ownerUser.name,
           role: 'OWNER',
-          inviteStatus: 'ACCEPTED',
+          status: 'ACTIVE',
           createdAt: now,
           updatedAt: now,
           createdBy: actorPhone,
           updatedBy: actorPhone,
         });
       });
+
+      // Seed default system roles for the newly created restaurant
+      await ensureDefaultRoles(db, restaurantId, actorPhone);
 
       const [created] = await db
         .select()
@@ -475,7 +481,7 @@ app.get(
 
       const [outlets, members, users, orders] = await Promise.all([
         db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId)),
-        db.select().from(appSchema.restaurantMember).where(eq(appSchema.restaurantMember.restaurantId, restaurantId)),
+        db.select().from(appSchema.outletStaff).where(eq(appSchema.outletStaff.restaurantId, restaurantId)),
         db.select({ id: appSchema.user.id, name: appSchema.user.name, phoneNumber: appSchema.user.phoneNumber }).from(appSchema.user),
         db
           .select({
@@ -498,10 +504,11 @@ app.get(
         return {
           id: m.id,
           userId: m.userId,
+          outletId: m.outletId,
           phone: m.phone,
           role: m.role,
-          name: u?.name || null,
-          inviteStatus: m.inviteStatus,
+          name: m.name || u?.name || null,
+          status: m.status,
           createdAt: m.createdAt,
         };
       });
@@ -602,26 +609,28 @@ app.patch(
 
         updates.ownerUserId = ownerUser.id;
 
-        // Ensure owner has an OWNER membership row
+        // Ensure owner has an OWNER staff row
         const [existingMember] = await db
           .select()
-          .from(appSchema.restaurantMember)
+          .from(appSchema.outletStaff)
           .where(
             and(
-              eq(appSchema.restaurantMember.restaurantId, restaurantId),
-              eq(appSchema.restaurantMember.phone, cleanOwnerPhone)
+              eq(appSchema.outletStaff.restaurantId, restaurantId),
+              eq(appSchema.outletStaff.phone, cleanOwnerPhone)
             )
           )
           .limit(1);
 
         if (!existingMember) {
-          await db.insert(appSchema.restaurantMember).values({
-            id: generateId('member'),
+          await db.insert(appSchema.outletStaff).values({
+            id: generateId('staff'),
             restaurantId,
+            outletId: null, // brand-wide
             userId: ownerUser.id,
             phone: cleanOwnerPhone,
+            name: ownerUser.name,
             role: 'OWNER',
-            inviteStatus: 'ACCEPTED',
+            status: 'ACTIVE',
           });
         }
       }
@@ -1037,7 +1046,7 @@ app.get(
           })
           .from(appSchema.user)
           .orderBy(desc(appSchema.user.createdAt)),
-        db.select().from(appSchema.restaurantMember),
+        db.select().from(appSchema.outletStaff),
         db.select({ id: appSchema.restaurant.id, name: appSchema.restaurant.name, ownerUserId: appSchema.restaurant.ownerUserId }).from(appSchema.restaurant),
       ]);
 
@@ -1200,11 +1209,11 @@ app.get(
       const [memberships, ownedRestaurants] = await Promise.all([
         db
           .select()
-          .from(appSchema.restaurantMember)
+          .from(appSchema.outletStaff)
           .where(
             user.phoneNumber
-              ? or(eq(appSchema.restaurantMember.userId, userId), eq(appSchema.restaurantMember.phone, user.phoneNumber))
-              : eq(appSchema.restaurantMember.userId, userId)
+              ? or(eq(appSchema.outletStaff.userId, userId), eq(appSchema.outletStaff.phone, user.phoneNumber))
+              : eq(appSchema.outletStaff.userId, userId)
           ),
         db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.ownerUserId, userId)),
       ]);
@@ -1403,37 +1412,30 @@ app.post(
         .where(eq(appSchema.user.phoneNumber, cleanPhone))
         .limit(1);
 
-      const memberId = generateId('member');
       const now = new Date();
-
-      const [member] = await db
-        .insert(appSchema.restaurantMember)
-        .values({
-          id: memberId,
-          restaurantId,
-          userId: user?.id || null,
-          phone: cleanPhone,
-          role,
-          inviteStatus: user ? 'ACCEPTED' : 'PENDING',
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      if (outletIds.length > 0) {
-        for (const outId of outletIds) {
-          await db
-            .insert(appSchema.memberOutletAccess)
-            .values({
-              id: generateId('moa'),
-              memberId,
-              outletId: outId,
-            })
-            .catch(() => {});
-        }
+      const createdRows = [];
+      const assignedOutlets = outletIds.length > 0 ? outletIds : [null];
+      for (const outId of assignedOutlets) {
+        const id = generateId('staff');
+        const [member] = await db
+          .insert(appSchema.outletStaff)
+          .values({
+            id,
+            restaurantId,
+            outletId: outId,
+            userId: user?.id || null,
+            phone: cleanPhone,
+            name: user?.name || null,
+            role,
+            status: 'ACTIVE',
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+        createdRows.push(member);
       }
 
-      return c.json(member, 201);
+      return c.json(createdRows[0], 201);
     } finally {
       await close();
     }
@@ -1458,11 +1460,11 @@ app.delete(
     const { db, close } = getDb(c);
     try {
       await db
-        .delete(appSchema.restaurantMember)
+        .delete(appSchema.outletStaff)
         .where(
           and(
-            eq(appSchema.restaurantMember.id, memberId),
-            eq(appSchema.restaurantMember.restaurantId, restaurantId)
+            eq(appSchema.outletStaff.id, memberId),
+            eq(appSchema.outletStaff.restaurantId, restaurantId)
           )
         );
       return c.json({ success: true, message: 'Member removed' });

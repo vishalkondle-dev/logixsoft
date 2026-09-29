@@ -1,5 +1,6 @@
 import type {
   RestaurantRow,
+  OutletStaffRow,
   RestaurantMemberRow,
   MemberOutletAccessRow,
   RestaurantOutletRow,
@@ -9,6 +10,7 @@ import type {
   SaleOrderRow,
   SaleOrderItemRow,
   JsonRestaurantRow,
+  JsonOutletStaffRow,
   JsonRestaurantMemberRow,
   JsonMemberOutletAccessRow,
   JsonRestaurantOutletRow,
@@ -53,6 +55,14 @@ export function toRestaurant(r: RestaurantRow): JsonRestaurantRow {
     ...r,
     createdAt: toIsoRequired(r.createdAt),
     updatedAt: toIsoRequired(r.updatedAt),
+  };
+}
+
+export function toOutletStaff(s: OutletStaffRow): JsonOutletStaffRow {
+  return {
+    ...s,
+    createdAt: toIsoRequired(s.createdAt),
+    updatedAt: toIsoRequired(s.updatedAt),
   };
 }
 

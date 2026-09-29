@@ -10,7 +10,7 @@ import { trimTrailingSlash } from 'hono/trailing-slash';
 import { createOpenApiDocument, openApi } from 'hono-zod-openapi';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { HealthResponseSchema } from '@logixsoft/logix-dine/schemas/health';
 import {
   SendOtpRequestSchema,
@@ -25,7 +25,7 @@ import { rateLimiter } from './lib/rate-limit';
 import { toAuthSession, toAuthUser } from '@logixsoft/logix-dine/mappers/auth';
 import { createDbWithClient } from './db';
 import { user, verification } from '@logixsoft/logix-dine/schemas/auth-schema';
-import { restaurantMember } from '@logixsoft/logix-dine/schemas/pos-schema';
+import { outletStaff } from '@logixsoft/logix-dine/schemas/pos-schema';
 import { appSchema } from './db';
 import './types'; // Hono ContextVariableMap declarations
 import { onboardingRoutes } from './routes/onboarding';
@@ -324,10 +324,8 @@ const handleVerifyOtp = async (c: any) => {
       .where(eq(user.phoneNumber, normalizedPhone))
       .limit(1);
 
-    // Auto-accept any pending staff invites for this phone number.
-    // An owner can invite a phone that has never logged in before; the
-    // member row sits with userId=null, inviteStatus='PENDING' until the
-    // invitee's first successful OTP login, which is exactly now.
+    // Auto-link staff records for this phone number.
+    // When staff are added by phone before logging in, their userId is linked on first OTP login.
     if (freshUser) {
       const posDb = createDbWithClient({
         connectionString: (c.env?.HYPERDRIVE?.connectionString) || c.env?.DATABASE_URL || '',
@@ -336,11 +334,11 @@ const handleVerifyOtp = async (c: any) => {
       });
       try {
         await posDb.db
-          .update(restaurantMember)
-          .set({ userId: freshUser.id, inviteStatus: 'ACCEPTED', updatedAt: new Date(), updatedBy: normalizedPhone })
-          .where(and(eq(restaurantMember.phone, normalizedPhone), eq(restaurantMember.inviteStatus, 'PENDING')));
+          .update(outletStaff)
+          .set({ userId: freshUser.id, updatedAt: new Date(), updatedBy: normalizedPhone })
+          .where(and(eq(outletStaff.phone, normalizedPhone), isNull(outletStaff.userId)));
       } catch (err) {
-        console.warn('[verify-otp] Could not auto-accept pending invites:', err);
+        console.warn('[verify-otp] Could not auto-link staff:', err);
       } finally {
         await posDb.close();
       }

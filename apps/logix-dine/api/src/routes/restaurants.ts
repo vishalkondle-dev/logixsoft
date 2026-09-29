@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import * as z from 'zod';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, requireAuth, requireMembership } from '../lib/tenancy';
@@ -70,12 +70,17 @@ app.get(
       return c.json(allRests.map(toRestaurant));
     }
 
-    const members = await db
-      .select({ restaurantId: appSchema.restaurantMember.restaurantId })
-      .from(appSchema.restaurantMember)
-      .where(eq(appSchema.restaurantMember.userId, user.id));
+    const phone = user?.phoneNumber ?? null;
+    const staffConditions = [eq(appSchema.outletStaff.userId, user.id)];
+    if (phone) {
+      staffConditions.push(eq(appSchema.outletStaff.phone, phone));
+    }
+    const staffRows = await db
+      .select({ restaurantId: appSchema.outletStaff.restaurantId })
+      .from(appSchema.outletStaff)
+      .where(and(or(...staffConditions), eq(appSchema.outletStaff.status, 'ACTIVE')));
 
-    const restaurantIds = members.map((m: any) => m.restaurantId);
+    const restaurantIds = Array.from(new Set(staffRows.map((m: any) => m.restaurantId)));
     if (!restaurantIds.length) return c.json([]);
 
     // Fetch every restaurant this user has a membership row for — NOT just

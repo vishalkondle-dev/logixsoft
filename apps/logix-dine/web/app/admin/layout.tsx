@@ -177,7 +177,10 @@ function AdminHeaderStoreScope() {
           size="xs"
           leftSection={<IconLogin size={14} />}
           visibleFrom="sm"
-          onClick={() => handleEnterStore(activeStore)}
+          onClick={() => {
+            const storeToEnter = activeStore || restaurants[0];
+            if (storeToEnter) handleEnterStore(storeToEnter);
+          }}
           title={activeStore ? `Impersonate & Enter POS for ${activeStore.name}` : "Enter POS"}
         >
           {currentScope !== "ALL" && activeStore

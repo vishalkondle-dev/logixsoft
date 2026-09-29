@@ -103,10 +103,12 @@ app.post(
         updatedBy: actorPhone,
       });
 
-      await tx
-        .update(appSchema.user)
-        .set({ role: 'OWNER', updatedAt: now })
-        .where(eq(appSchema.user.id, user.id));
+      if (user.role !== 'ADMIN') {
+        await tx
+          .update(appSchema.user)
+          .set({ role: 'OWNER', updatedAt: now })
+          .where(eq(appSchema.user.id, user.id));
+      }
     });
 
     const [newRestaurant] = await db

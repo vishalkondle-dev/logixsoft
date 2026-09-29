@@ -400,6 +400,53 @@ app.post(
   }
 );
 
+// POST /admin/impersonate/:restaurantId — switch scope and enter restaurant POS
+app.post(
+  '/impersonate/:restaurantId',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Switch Store Scope / Impersonate Restaurant POS',
+    description: 'Allows Superadmin to switch scope and enter any restaurant POS.',
+    params: z.object({ restaurantId: z.string() }),
+    responses: {
+      200: z.object({
+        success: z.boolean(),
+        restaurant: RestaurantSchema,
+        outletId: z.string().optional(),
+      }),
+      404: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
+    const restaurantId = c.req.param('restaurantId');
+    const { db, close } = getDb(c);
+    try {
+      const [rest] = await db
+        .select()
+        .from(appSchema.restaurant)
+        .where(eq(appSchema.restaurant.id, restaurantId))
+        .limit(1);
+
+      if (!rest) return c.json({ error: 'Restaurant not found' }, 404);
+
+      const outlets = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
+      const defaultOutlet = outlets.find((o) => o.isDefault) || outlets[0];
+
+      return c.json({
+        success: true,
+        restaurant: toRestaurant(rest),
+        outletId: defaultOutlet?.id,
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
 // GET /admin/restaurants/:id — single restaurant detailed inspection
 app.get(
   '/restaurants/:id',

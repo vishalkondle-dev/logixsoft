@@ -73,7 +73,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [currentTab, setCurrentTab] = React.useState<string>("active");
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
-  const { restaurant, outlets, activeOutlet, setActiveOutlet, role, can, roleName } = useRestaurant();
+  const { restaurant, outlets, activeOutlet, setActiveOutlet, myRestaurants, setActiveRestaurant, role, can, roleName } = useRestaurant();
 
   const isPortal = pathname === "/portal";
   const isLanding = pathname === "/";
@@ -481,6 +481,33 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       >
                         Platform Admin Portal
                       </Menu.Item>
+                    )}
+
+                    {myRestaurants && myRestaurants.length > 1 && (
+                      <>
+                        <Menu.Divider />
+                        <Menu.Label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" }}>
+                          Switch Restaurant ({myRestaurants.length})
+                        </Menu.Label>
+                        {myRestaurants.map((r) => {
+                          const isCurrent = r.id === restaurant?.id;
+                          return (
+                            <Menu.Item
+                              key={r.id}
+                              onClick={() => setActiveRestaurant(r.id)}
+                              leftSection={<IconBuildingStore size={15} color={isCurrent ? "#af73d7" : "#868e96"} />}
+                              rightSection={isCurrent ? <IconCheck size={14} color="#af73d7" /> : null}
+                              style={{
+                                fontWeight: isCurrent ? 700 : 500,
+                                backgroundColor: isCurrent ? "rgba(175, 115, 215, 0.12)" : "transparent",
+                                color: isCurrent ? "#af73d7" : "inherit",
+                              }}
+                            >
+                              {r.name}
+                            </Menu.Item>
+                          );
+                        })}
+                      </>
                     )}
 
                     {isStaffOrOwner && (

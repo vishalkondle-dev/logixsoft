@@ -65,6 +65,11 @@ app.get(
   const user = c.get('sessionUser') as any;
   const { db, close } = getDb(c);
   try {
+    if (user?.role === 'ADMIN') {
+      const allRests = await db.select().from(appSchema.restaurant);
+      return c.json(allRests.map(toRestaurant));
+    }
+
     const members = await db
       .select({ restaurantId: appSchema.restaurantMember.restaurantId })
       .from(appSchema.restaurantMember)

@@ -63,13 +63,44 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         credentials: "include",
       });
+
+      let outletId: string | undefined;
       if (res.ok) {
-        window.location.href = "/pos";
-      } else {
-        notifications.show({ title: "Error", message: "Failed to switch store scope", color: "red" });
+        const data = await res.json().catch(() => null);
+        outletId = data?.outletId;
       }
+
+      if (!outletId) {
+        const storeOutlets = outlets.filter((o) => o.restaurantId === rest.id);
+        const def = storeOutlets.find((o) => o.isDefault) || storeOutlets[0];
+        outletId = def?.id;
+      }
+
+      const isSubdomain = typeof window !== "undefined" && window.location.hostname.includes("logixsoft.in");
+      const domainAttr = isSubdomain ? ";domain=.logixsoft.in" : "";
+
+      document.cookie = `dine.restaurantId=${encodeURIComponent(rest.id)};path=/${domainAttr};max-age=31536000;SameSite=Lax`;
+      document.cookie = `dine.restaurantId=${encodeURIComponent(rest.id)};path=/;max-age=31536000;SameSite=Lax`;
+
+      if (outletId) {
+        document.cookie = `dine.outletId=${encodeURIComponent(outletId)};path=/${domainAttr};max-age=31536000;SameSite=Lax`;
+        document.cookie = `dine.outletId=${encodeURIComponent(outletId)};path=/;max-age=31536000;SameSite=Lax`;
+      }
+
+      notifications.show({
+        title: "Store Scope Activated",
+        message: `Entering POS for ${rest.name}...`,
+        color: "teal",
+      });
+
+      const targetUrl = outletId ? `/pos?outletId=${outletId}` : `/pos`;
+      window.location.href = targetUrl;
     } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
+      notifications.show({
+        title: "Error",
+        message: err.message || "Failed to switch store scope",
+        color: "red",
+      });
     }
   };
 

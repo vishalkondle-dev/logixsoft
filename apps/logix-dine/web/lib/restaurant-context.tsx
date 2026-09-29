@@ -61,6 +61,9 @@ function getCookie(name: string): string | null {
 
 function setCookie(name: string, value: string, days = 365) {
   const expires = new Date(Date.now() + days * 86400000).toUTCString();
+  const isSubdomain = typeof window !== "undefined" && window.location.hostname.includes("logixsoft.in");
+  const domainAttr = isSubdomain ? ";domain=.logixsoft.in" : "";
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/${domainAttr};SameSite=Lax`;
   document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Lax`;
 }
 
@@ -193,8 +196,13 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
         // Pick active from cookie or first
         const savedId = getCookie(RESTAURANT_COOKIE);
         const toLoad = rests.find((r) => r.id === savedId) ?? rests[0];
-        setActiveRestaurantId(toLoad.id);
-        fetchData(toLoad.id);
+        if (toLoad) {
+          setActiveRestaurantId(toLoad.id);
+          fetchData(toLoad.id);
+        } else if (savedId) {
+          setActiveRestaurantId(savedId);
+          fetchData(savedId);
+        }
       })
       .catch(() => {});
   }, [isAuthenticated, user, authLoading, fetchData]);

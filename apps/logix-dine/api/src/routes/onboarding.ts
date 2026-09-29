@@ -87,11 +87,16 @@ app.post(
         updatedBy: actorPhone,
       });
 
+      const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
       await tx.insert(appSchema.restaurantOutlet).values({
         id: outletId,
         restaurantId,
         name: outletName ?? 'Main',
         isDefault: true,
+        status: 'TRIAL',
+        planTier: 'PRO',
+        billingCycle: 'MONTHLY',
+        trialEndsAt,
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,

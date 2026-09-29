@@ -84,6 +84,8 @@ export function toMemberOutletAccess(a: MemberOutletAccessRow): JsonMemberOutlet
 export function toOutlet(o: RestaurantOutletRow): JsonRestaurantOutletRow {
   return {
     ...o,
+    trialEndsAt: toIso(o.trialEndsAt),
+    subscriptionExpiresAt: toIso(o.subscriptionExpiresAt),
     createdAt: toIsoRequired(o.createdAt),
     updatedAt: toIsoRequired(o.updatedAt),
   };

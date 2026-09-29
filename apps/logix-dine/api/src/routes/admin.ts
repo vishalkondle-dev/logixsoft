@@ -3268,31 +3268,60 @@ app.get(
     const status = c.req.query('status');
     const sortBy = c.req.query('sortBy') || 'name';
 
-    let restaurants = await db.select().from(appSchema.restaurant);
+    const [allOutlets, allRestaurants] = await Promise.all([
+      db.select().from(appSchema.restaurantOutlet),
+      db.select().from(appSchema.restaurant),
+    ]);
+
+    const restMap = new Map<string, any>();
+    for (const r of allRestaurants) {
+      restMap.set(r.id, r);
+    }
+
     const plans = [
-      { id: 'TRIAL', name: 'Free Trial', price: 0, duration: '14 Days' },
-      { id: 'ACTIVE', name: 'Pro SaaS Plan', price: 2999, duration: 'Monthly' },
-      { id: 'SUSPENDED', name: 'Suspended / Overdue', price: 0, duration: 'None' },
+      { id: 'FREE', name: 'Free Trial (14 Days)', price: 0, duration: '14 Days' },
+      { id: 'BASIC', name: 'Starter Plan', price: 999, duration: 'Monthly' },
+      { id: 'PRO', name: 'Pro SaaS Plan', price: 1499, duration: 'Monthly' },
+      { id: 'ENTERPRISE', name: 'Enterprise Plan', price: 2999, duration: 'Monthly' },
     ];
 
+    let items = allOutlets.map((o: any) => {
+      const rest = restMap.get(o.restaurantId);
+      return {
+        id: o.id,
+        outletId: o.id,
+        name: o.name,
+        restaurantId: o.restaurantId,
+        restaurantName: rest?.name || 'Unknown Restaurant',
+        address: o.address || rest?.address || null,
+        phone: o.phone || rest?.phone || null,
+        status: o.status || 'ACTIVE',
+        subscriptionStatus: o.status || 'ACTIVE',
+        planTier: o.planTier || 'PRO',
+        billingCycle: o.billingCycle || 'MONTHLY',
+        trialEndsAt: o.trialEndsAt,
+        subscriptionExpiresAt: o.subscriptionExpiresAt,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
+      };
+    });
+
     if (tier && tier !== 'ALL') {
-      restaurants = restaurants.filter((r) => {
-        const pTier = r.status === 'TRIAL' ? 'FREE' : 'PRO';
-        return pTier === tier || r.status === tier;
-      });
+      items = items.filter((r: any) => r.planTier === tier);
     }
     if (status && status !== 'ALL') {
-      restaurants = restaurants.filter((r) => r.status === status || (status === 'EXPIRED' && r.status === 'SUSPENDED'));
+      items = items.filter((r: any) => r.status === status || (status === 'EXPIRED' && r.status === 'SUSPENDED'));
     }
     if (search) {
-      restaurants = restaurants.filter((r) =>
+      items = items.filter((r: any) =>
         (r.name && r.name.toLowerCase().includes(search)) ||
+        (r.restaurantName && r.restaurantName.toLowerCase().includes(search)) ||
         (r.phone && r.phone.toLowerCase().includes(search)) ||
         (r.address && r.address.toLowerCase().includes(search))
       );
     }
 
-    restaurants.sort((a, b) => {
+    items.sort((a: any, b: any) => {
       if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
       if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
       if (sortBy === 'newest' || sortBy === 'recent') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -3300,26 +3329,24 @@ app.get(
       return (a.name || '').localeCompare(b.name || '');
     });
 
-    const mapped = restaurants.map((r) => ({
-      ...r,
-      subscriptionStatus: r.status || 'ACTIVE',
-      planTier: r.status === 'TRIAL' ? 'FREE' : 'PRO',
-    }));
-
-    return c.json({ restaurants: mapped, plans });
+    return c.json({ restaurants: items, outlets: items, plans });
   } finally {
     await close();
   }
 });
 
 app.patch(
-  '/subscriptions/:restaurantId',
+  '/subscriptions/:id',
   apiDoc({
     tags: ['Admin'],
-    summary: 'Update Restaurant Subscription Status (Admin)',
-    description: 'Updates the SaaS subscription status of a restaurant (ACTIVE, TRIAL, SUSPENDED).',
-    params: z.object({ restaurantId: z.string() }),
-    body: z.object({ status: z.string() }),
+    summary: 'Update Outlet Subscription Status (Admin)',
+    description: 'Updates the SaaS subscription status of an outlet (ACTIVE, TRIAL, SUSPENDED, EXPIRED) or plan tier.',
+    params: z.object({ id: z.string() }),
+    body: z.object({
+      status: z.string().optional(),
+      planTier: z.string().optional(),
+      billingCycle: z.string().optional(),
+    }),
     responses: {
       200: z.any(),
       404: ErrorResponseSchema,
@@ -3328,18 +3355,42 @@ app.patch(
   }),
   requireAdmin(),
   async (c) => {
-  const restaurantId = c.req.param('restaurantId');
+  const targetId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
-  const { status } = body;
+  const { status, planTier, billingCycle } = body;
   const { db, close } = getDb(c);
   try {
-    const [updated] = await db
-      .update(appSchema.restaurant)
-      .set({ status, updatedAt: new Date() })
-      .where(eq(appSchema.restaurant.id, restaurantId))
+    const updates: any = { updatedAt: new Date() };
+    if (status) updates.status = status;
+    if (planTier) updates.planTier = planTier;
+    if (billingCycle) updates.billingCycle = billingCycle;
+
+    // Try updating outlet first
+    const [updatedOutlet] = await db
+      .update(appSchema.restaurantOutlet)
+      .set(updates)
+      .where(eq(appSchema.restaurantOutlet.id, targetId))
       .returning();
-    if (!updated) return c.json({ error: 'Not Found', message: 'Restaurant not found' }, 404);
-    return c.json(updated);
+
+    if (updatedOutlet) {
+      if (c.env?.CACHE) {
+        await invalidateRestaurant(c.env.CACHE, updatedOutlet.restaurantId);
+      }
+      return c.json(updatedOutlet);
+    }
+
+    // Fallback: try updating restaurant
+    const [updatedRest] = await db
+      .update(appSchema.restaurant)
+      .set({ status: status || 'ACTIVE', updatedAt: new Date() })
+      .where(eq(appSchema.restaurant.id, targetId))
+      .returning();
+
+    if (!updatedRest) return c.json({ error: 'Not Found', message: 'Target outlet or restaurant not found' }, 404);
+    if (c.env?.CACHE) {
+      await invalidateRestaurant(c.env.CACHE, updatedRest.id);
+    }
+    return c.json(updatedRest);
   } finally {
     await close();
   }

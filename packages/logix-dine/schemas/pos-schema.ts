@@ -79,6 +79,11 @@ export const restaurantOutlet = pgTable(
     qrMenuSettings: jsonb('qrMenuSettings'),
     whatsappSettings: jsonb('whatsappSettings'),
     inventorySettings: jsonb('inventorySettings'),
+    status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'TRIAL' | 'SUSPENDED' | 'EXPIRED'
+    planTier: text('planTier').notNull().default('PRO'), // 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE'
+    billingCycle: text('billingCycle').notNull().default('MONTHLY'), // 'MONTHLY' | 'ANNUAL'
+    trialEndsAt: timestamp('trialEndsAt'),
+    subscriptionExpiresAt: timestamp('subscriptionExpiresAt'),
     isDefault: boolean('isDefault').notNull().default(false),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),

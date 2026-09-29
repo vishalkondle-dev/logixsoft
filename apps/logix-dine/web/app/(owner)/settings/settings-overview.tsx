@@ -224,6 +224,16 @@ export function SettingsOverview() {
           href: "/settings/dining",
           isAvailable: true,
         },
+        {
+          id: "billing",
+          title: "Subscription & Billing",
+          description: "Manage branch plan tiers, active outlet licenses, renewals, and invoice receipts",
+          icon: IconCreditCard,
+          color: "blue",
+          href: isOwner ? "/settings/billing" : undefined,
+          isAvailable: isOwner,
+          badge: isOwner ? "Outlet Plans" : "Restricted",
+        },
       ],
     },
     {

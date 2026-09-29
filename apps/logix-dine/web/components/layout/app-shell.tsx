@@ -51,6 +51,7 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp },
   { id: "reservations", label: "Table Reservations", href: "/settings/reservations", icon: IconCalendarEvent },
   { id: "riders", label: "Delivery & Riders", href: "/settings/riders", icon: IconMotorbike },
+  { id: "billing", label: "Subscription & Billing", href: "/settings/billing", icon: IconCreditCard, ownerOnly: true },
 ];
 
 // Customer portal navigation items (Active Order, Past Orders, My Profile)

@@ -19,6 +19,7 @@ export const VALID_SETTINGS_TABS = [
   "riders",
   "aggregators",
   "feedback",
+  "billing",
 ] as const;
 
 export function generateStaticParams() {
@@ -33,6 +34,9 @@ export default async function SettingsTabPage({
   const { tab } = await params;
   if (tab === "outlets") {
     redirect("/settings/restaurant");
+  }
+  if (tab === "subscription" || tab === "subscriptions") {
+    redirect("/settings/billing");
   }
   if (tab === "payment-types" || tab === "payments") {
     redirect("/settings");

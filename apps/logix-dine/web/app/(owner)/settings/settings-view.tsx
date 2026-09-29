@@ -62,6 +62,7 @@ import { ReservationsManagement } from "./reservations-management";
 import { RidersManagement } from "./riders-management";
 import { AggregatorsManagement } from "./aggregators-management";
 import { FeedbackManagement } from "./feedback-management";
+import { BillingManagement } from "./billing-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -90,6 +91,7 @@ export const VALID_SETTINGS_TABS = [
   "riders",
   "aggregators",
   "feedback",
+  "billing",
 ] as const;
 
 export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
@@ -410,16 +412,50 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const inviteSaving = staffSaving;
 
   const OutletCard = ({ outlet }: { outlet: any }) => (
-    <Paper key={outlet.id} p="md" radius="md">
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <div style={{ minWidth: 0 }}>
-          <Group gap="xs" wrap="nowrap">
+    <Paper key={outlet.id} p="md" radius="md" withBorder>
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Group gap="xs" wrap="wrap" mb={4}>
             <Text fw={600} truncate>{outlet.name}</Text>
             {outlet.isDefault && <Badge size="xs" color="dinePrimary">Default</Badge>}
+            {outlet.planTier && (
+              <Badge
+                size="xs"
+                variant="light"
+                color={
+                  outlet.planTier === "ENTERPRISE"
+                    ? "grape"
+                    : outlet.planTier === "PRO"
+                    ? "indigo"
+                    : outlet.planTier === "BASIC"
+                    ? "blue"
+                    : "gray"
+                }
+              >
+                {outlet.planTier} Plan
+              </Badge>
+            )}
+            {outlet.status === "TRIAL" && (
+              <Badge size="xs" color="orange" variant="filled">
+                14-Day Trial
+              </Badge>
+            )}
+            {outlet.status === "EXPIRED" && (
+              <Badge size="xs" color="red" variant="filled">
+                Expired
+              </Badge>
+            )}
           </Group>
           {outlet.address && <Text size="xs" c="dimmed" truncate>{outlet.address}</Text>}
           {outlet.phone && <Text size="xs" c="dimmed">{outlet.phone}</Text>}
           {outlet.upiId && <Text size="xs" c="teal" fw={500} truncate>UPI: {outlet.upiId}</Text>}
+          <Group gap="xs" mt={8}>
+            <Link href="/settings/billing" style={{ textDecoration: "none" }}>
+              <Text size="xs" c="dinePrimary" fw={600} style={{ cursor: "pointer" }}>
+                Manage Subscription &amp; Plan &rarr;
+              </Text>
+            </Link>
+          </Group>
         </div>
         <Group gap="xs" wrap="nowrap">
           {!outlet.isDefault && (
@@ -510,6 +546,10 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     feedback: {
       title: "Customer Reviews & Ratings",
       subtitle: "Authentic customer feedback, rating metrics, dish ratings & official responses",
+    },
+    billing: {
+      title: "Subscription & Billing",
+      subtitle: "Manage SaaS plan tiers, outlet licenses, renewals, and invoice history",
     },
   };
 
@@ -789,6 +829,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         {/* Feedback tab */}
         <Tabs.Panel value="feedback">
           <FeedbackManagement />
+        </Tabs.Panel>
+
+        {/* Subscription & Billing tab */}
+        <Tabs.Panel value="billing">
+          <BillingManagement />
         </Tabs.Panel>
       </Tabs>
 

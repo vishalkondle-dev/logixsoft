@@ -395,6 +395,60 @@ export const deleteOutlet = (restaurantId: string, outletId: string) =>
 export const setDefaultOutlet = (restaurantId: string, outletId: string) =>
   apiFetch<any>(`/outlets/${outletId}/set-default`, restaurantId, { method: "PATCH" });
 
+export const getBillingData = (restaurantId: string) =>
+  apiFetch<{
+    restaurant: { id: string; name: string };
+    outlets: Array<{
+      id: string;
+      restaurantId: string;
+      name: string;
+      address?: string | null;
+      phone?: string | null;
+      upiId?: string | null;
+      status: string;
+      planTier: string;
+      planName: string;
+      billingCycle: string;
+      trialEndsAt?: string | null;
+      subscriptionExpiresAt?: string | null;
+      trialDaysRemaining?: number | null;
+      monthlyPrice: number;
+      annualPrice: number;
+      isDefault: boolean;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    plans: Array<{
+      id: string;
+      name: string;
+      monthlyPrice: number;
+      annualPrice: number;
+      popular?: boolean;
+      features: string[];
+    }>;
+    invoices: Array<{
+      id: string;
+      date: string;
+      outletName: string;
+      planName: string;
+      billingCycle: string;
+      amount: number;
+      tax: number;
+      total: number;
+      status: string;
+    }>;
+  }>("/outlets/billing", restaurantId);
+
+export const updateOutletSubscription = (
+  restaurantId: string,
+  outletId: string,
+  body: { planTier: string; billingCycle?: string; status?: string }
+) =>
+  apiFetch<any>(`/outlets/${outletId}/subscription`, restaurantId, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+
 // ─── Roles & Permissions ──────────────────────────────────────────────────
 
 export interface RoleItem {

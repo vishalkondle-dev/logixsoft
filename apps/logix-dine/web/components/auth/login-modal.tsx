@@ -52,6 +52,12 @@ export function LoginModal() {
   // Reset state on modal close
   const handleClose = () => {
     closeLoginModal();
+    if (typeof window !== "undefined" && window.location.search.includes("login=true")) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("login");
+      const qs = params.toString();
+      window.history.replaceState({}, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+    }
     setTimeout(() => {
       setStep(1);
       setPhoneNumber("");
@@ -131,6 +137,21 @@ export function LoginModal() {
         color: "dinePrimary",
         icon: <IconCheck size={18} />,
       });
+
+      // Post-login destination handling
+      const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const nextParam = params?.get("next");
+
+      let destination: string | null = null;
+      if (nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")) {
+        destination = nextParam;
+      } else if (res.user?.role === "ADMIN") {
+        destination = "/admin/overview";
+      }
+
+      if (destination) {
+        window.location.href = destination;
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || "Invalid or expired verification code");
     } finally {

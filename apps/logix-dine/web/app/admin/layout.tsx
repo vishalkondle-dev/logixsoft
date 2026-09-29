@@ -199,11 +199,14 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
   // Security guard: Ensure only platform ADMIN can access /admin
   useEffect(() => {
     if (!authLoading) {
-      if (!user || user.role !== "ADMIN") {
-        router.replace("/");
+      if (!user) {
+        const nextUrl = `/?login=true&next=${encodeURIComponent(pathname)}`;
+        router.replace(nextUrl);
+      } else if (user.role !== "ADMIN") {
+        router.replace("/pos");
       }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, pathname]);
 
   if (authLoading || !user || user.role !== "ADMIN") {
     return (

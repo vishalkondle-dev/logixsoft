@@ -60,12 +60,55 @@ const CUSTOMER_NAV_ITEMS = [
   { label: "My Profile", href: "/portal?tab=profile", icon: IconUser },
 ];
 
-function SearchParamsWatcher({ onTabChange }: { onTabChange: (tab: string) => void }) {
+function SearchParamsWatcher({
+  onTabChange,
+  openLoginModal,
+  isAuthenticated,
+  authLoading,
+  user,
+}: {
+  onTabChange: (tab: string) => void;
+  openLoginModal: () => void;
+  isAuthenticated: boolean;
+  authLoading: boolean;
+  user: any;
+}) {
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") || "active";
+  const redirectedRef = React.useRef(false);
+
   React.useEffect(() => {
     onTabChange(tab);
   }, [tab, onTabChange]);
+
+  React.useEffect(() => {
+    if (authLoading) return;
+
+    const loginParam = searchParams.get("login");
+    const nextParam = searchParams.get("next");
+
+    if (isAuthenticated && user) {
+      if (nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")) {
+        const currentPath = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
+        if (currentPath !== nextParam && !redirectedRef.current) {
+          redirectedRef.current = true;
+          window.location.href = nextParam;
+        }
+      } else if (loginParam === "true") {
+        if (user.role === "ADMIN" && typeof window !== "undefined" && window.location.pathname === "/") {
+          if (!redirectedRef.current) {
+            redirectedRef.current = true;
+            window.location.href = "/admin/overview";
+          }
+        } else if (typeof window !== "undefined") {
+          window.history.replaceState({}, "", window.location.pathname);
+        }
+      }
+    } else if (!isAuthenticated && loginParam === "true") {
+      openLoginModal();
+    }
+  }, [searchParams, authLoading, isAuthenticated, user, openLoginModal]);
+
   return null;
 }
 
@@ -178,7 +221,13 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       padding={0}
     >
       <React.Suspense fallback={null}>
-        <SearchParamsWatcher onTabChange={setCurrentTab} />
+        <SearchParamsWatcher
+          onTabChange={setCurrentTab}
+          openLoginModal={openLoginModal}
+          isAuthenticated={isAuthenticated}
+          authLoading={authLoading}
+          user={user}
+        />
       </React.Suspense>
       {!isLanding && (
         <AppShell.Header withBorder={false}>
@@ -642,7 +691,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       )}
 
       <AppShell.Main>
-        {!isLanding && (user as any)?.role === "ADMIN" && pathname !== "/admin" && (
+        {!isLanding && (user as any)?.role === "ADMIN" && !pathname?.startsWith("/admin") && (
           <Box
             bg="#fff3bf"
             px={{ base: "xs", sm: "md" }}
@@ -659,12 +708,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
             <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
               <IconShieldLock size={16} color="#d9480f" style={{ flexShrink: 0 }} />
               <Text size="xs" fw={700} c="#d9480f" lineClamp={1}>
-                Admin Mode: {restaurant?.name || "Store"}
+                Admin Mode: {restaurant?.name || "Platform Superadmin"}
               </Text>
             </Group>
             <Button
               component={Link}
-              href="/admin"
+              href="/admin/overview"
               size="compact-xs"
               variant="filled"
               color="orange"

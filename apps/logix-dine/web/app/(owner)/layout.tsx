@@ -92,7 +92,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     redirected.current = false;
-  }, [pathname]);
+  }, [pathname, role, restaurant]);
 
   useEffect(() => {
     // Only redirect after BOTH auth and restaurant have fully loaded

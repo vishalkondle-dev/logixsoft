@@ -3,12 +3,12 @@ import { eq, sql, desc, inArray, and, or } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requireAdmin } from '../lib/tenancy';
+import { requireAdmin, invalidateStaffSessions } from '../lib/tenancy';
 import { RestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant, toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
-import { invalidateRestaurant, cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../lib/cache';
+import { invalidateRestaurant, invalidateStaff, cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../lib/cache';
 import { ensureDefaultRoles } from './roles';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
@@ -206,7 +206,7 @@ app.get(
       }
 
       let enriched = restaurants.map((r) => {
-        const owner = usersMap.get(r.ownerUserId);
+        const owner = r.ownerUserId ? usersMap.get(r.ownerUserId) : undefined;
         const stats = ordersStatsMap.get(r.id) || { count: 0, gmv: 0 };
         return {
           id: r.id,
@@ -512,7 +512,7 @@ app.get(
         usersMap.set(u.id, { name: u.name, phoneNumber: u.phoneNumber });
       }
 
-      const owner = usersMap.get(rest.ownerUserId);
+      const owner = rest.ownerUserId ? usersMap.get(rest.ownerUserId) : undefined;
       const membersWithNames = members.map((m) => {
         const u = m.userId ? usersMap.get(m.userId) : null;
         return {
@@ -1084,7 +1084,9 @@ app.get(
       const ownedCountMap = new Map<string, number>();
       for (const r of restaurants) {
         restMap.set(r.id, r.name);
-        ownedCountMap.set(r.ownerUserId, (ownedCountMap.get(r.ownerUserId) || 0) + 1);
+        if (r.ownerUserId) {
+          ownedCountMap.set(r.ownerUserId, (ownedCountMap.get(r.ownerUserId) || 0) + 1);
+        }
       }
 
       const membershipsByUser = new Map<string, Array<{ restaurantId: string; restaurantName: string; role: string }>>();
@@ -1480,6 +1482,11 @@ app.post(
         createdRows.push(member);
       }
 
+      if (c.env?.CACHE) {
+        await invalidateStaff(c.env.CACHE, restaurantId);
+        await invalidateStaffSessions(db, c.env.CACHE, [{ phone: cleanPhone, userId: user?.id }]);
+      }
+
       return c.json(createdRows[0], 201);
     } finally {
       await close();
@@ -1504,6 +1511,12 @@ app.delete(
     const { id: restaurantId, memberId } = c.req.param();
     const { db, close } = getDb(c);
     try {
+      const [existingMember] = await db
+        .select({ phone: appSchema.outletStaff.phone, userId: appSchema.outletStaff.userId })
+        .from(appSchema.outletStaff)
+        .where(and(eq(appSchema.outletStaff.id, memberId), eq(appSchema.outletStaff.restaurantId, restaurantId)))
+        .limit(1);
+
       await db
         .delete(appSchema.outletStaff)
         .where(
@@ -1512,6 +1525,14 @@ app.delete(
             eq(appSchema.outletStaff.restaurantId, restaurantId)
           )
         );
+
+      if (c.env?.CACHE) {
+        await invalidateStaff(c.env.CACHE, restaurantId);
+        if (existingMember) {
+          await invalidateStaffSessions(db, c.env.CACHE, [existingMember]);
+        }
+      }
+
       return c.json({ success: true, message: 'Member removed' });
     } finally {
       await close();

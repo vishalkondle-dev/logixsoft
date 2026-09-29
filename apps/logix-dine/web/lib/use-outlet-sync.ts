@@ -179,6 +179,17 @@ export function useOutletSync(
             queryClient.invalidateQueries({ queryKey: ["posBootstrap", restaurantId] });
           }
 
+          if (
+            msg.type === "STAFF_ROLE_UPDATED" ||
+            msg.type === "STAFF_UPDATED"
+          ) {
+            queryClient.invalidateQueries({ queryKey: ["staff", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["myRole", restaurantId] });
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("dine:role-updated", { detail: msg.data }));
+            }
+          }
+
           if (msg.type === "WAITER_CALL") {
             const d = (msg.data || {}) as any;
             notifications.show({

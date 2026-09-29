@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, inArray } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requireAuth, requirePermission, resolveSessionPayload } from '../lib/tenancy';
+import { requireAuth, requirePermission, resolveSessionPayload, invalidateStaffSessions } from '../lib/tenancy';
+import { invalidateStaff } from '../lib/cache';
+import { broadcastToOutlet } from '../lib/sync';
 import {
   PERMISSION_MODULES,
   DEFAULT_ROLE_PERMISSIONS,
@@ -390,6 +392,42 @@ app.put(
         .set(updates)
         .where(eq(appSchema.restaurantRole.id, roleId))
         .returning();
+
+      // Invalidate sessions of all staff who hold this role so new permissions apply immediately
+      const staffRows = await db
+        .select({ phone: appSchema.outletStaff.phone, userId: appSchema.outletStaff.userId })
+        .from(appSchema.outletStaff)
+        .where(and(
+          eq(appSchema.outletStaff.restaurantId, restaurantId),
+          or(
+            eq(appSchema.outletStaff.role, existing.name),
+            eq(appSchema.outletStaff.role, existing.id)
+          )
+        ));
+
+      if (c.env?.CACHE) {
+        await invalidateStaff(c.env.CACHE, restaurantId);
+        await invalidateStaffSessions(db, c.env.CACHE, staffRows);
+      }
+
+      try {
+        const outlets = await db
+          .select({ id: appSchema.restaurantOutlet.id })
+          .from(appSchema.restaurantOutlet)
+          .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
+        const event = {
+          topic: 'ALL' as const,
+          type: 'STAFF_ROLE_UPDATED',
+          restaurantId,
+          data: { roleId, roleName: existing.name },
+          timestamp: Date.now(),
+        };
+        for (const out of outlets) {
+          await broadcastToOutlet(c.env as any, out.id, event);
+        }
+      } catch (err) {
+        console.warn('[roles:update] failed to broadcast role update:', err);
+      }
 
       return c.json({ role: updated, ...updated });
     } finally {

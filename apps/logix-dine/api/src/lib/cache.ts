@@ -50,7 +50,10 @@ export interface SessionPayload {
 
 export const CacheKey = {
   // ─── Tenancy / auth lookups
-  session:      (token: string) => `s:${token.slice(-40)}`,
+  session:      (token: string) => {
+    const raw = token.includes('.') && !isJwtToken(token) ? token.split('.')[0] : token;
+    return `s:${raw.slice(-40)}`;
+  },
 
   // ─── Per-outlet order sequence counter (scoped per day)
   outletSeq:    (outletId: string, dateStr?: string) => dateStr ? `seq:${outletId}:${dateStr}` : `seq:${outletId}`,
@@ -141,29 +144,47 @@ export function extractSessionToken(cookieOrHeader?: string | null, authHeader?:
   // 1. Check Authorization Bearer header
   if (authHeader) {
     const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-    if (bearerMatch) return bearerMatch[1].trim();
+    if (bearerMatch) {
+      const raw = bearerMatch[1].trim();
+      if (isJwtToken(raw)) return raw;
+      if (raw.includes('.') && !isJwtToken(raw)) return raw.split('.')[0];
+      return raw;
+    }
   }
 
   if (!cookieOrHeader) return null;
 
   // If passed an Authorization string directly
   if (cookieOrHeader.startsWith('Bearer ')) {
-    return cookieOrHeader.slice(7).trim();
+    const raw = cookieOrHeader.slice(7).trim();
+    if (isJwtToken(raw)) return raw;
+    if (raw.includes('.') && !isJwtToken(raw)) return raw.split('.')[0];
+    return raw;
   }
 
   // 2. Check cookies: logix-dine.session_token, better-auth.session_token (with optional __Secure-)
   const cookieMatch = cookieOrHeader.match(/(?:__Secure-|)(?:logix-dine\.|better-auth\.|)session_token=([^;]+)/);
   if (cookieMatch) {
+    let raw = '';
     try {
-      return decodeURIComponent(cookieMatch[1].trim());
+      raw = decodeURIComponent(cookieMatch[1].trim());
     } catch {
-      return cookieMatch[1].trim();
+      raw = cookieMatch[1].trim();
     }
+    // If it's a signed cookie `${token}.${signature}`, strip the signature!
+    if (raw.includes('.') && !isJwtToken(raw)) {
+      return raw.split('.')[0];
+    }
+    return raw;
   }
 
   // 3. If raw string is passed and looks like token
   if (!cookieOrHeader.includes(';') && !cookieOrHeader.includes('=')) {
-    return cookieOrHeader.trim();
+    const raw = cookieOrHeader.trim();
+    if (raw.includes('.') && !isJwtToken(raw)) {
+      return raw.split('.')[0];
+    }
+    return raw;
   }
 
   return null;

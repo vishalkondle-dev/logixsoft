@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { eq, and, inArray, or } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission, assertOutletAccess } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess, invalidateStaffSessions } from '../lib/tenancy';
+import { broadcastToOutlet } from '../lib/sync';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
 import { cacheGet, cacheSet, invalidateStaff, CacheKey, TTL } from '../lib/cache';
@@ -22,6 +23,37 @@ function normalizePhone(input: string): string {
   const digits = cleaned.replace(/\D/g, '');
   if (digits.length === 10) return `+91${digits}`;
   return cleaned.startsWith('+') ? cleaned : `+${digits}`;
+}
+
+async function notifyStaffRoleUpdated(
+  c: any,
+  db: any,
+  restaurantId: string,
+  data: { phone: string; userId?: string | null; role?: string | null; status?: string | null }
+) {
+  try {
+    const outlets = await db
+      .select({ id: appSchema.restaurantOutlet.id })
+      .from(appSchema.restaurantOutlet)
+      .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
+
+    const event = {
+      topic: 'ALL' as const,
+      type: 'STAFF_ROLE_UPDATED',
+      data: {
+        restaurantId,
+        ...data,
+      },
+    };
+
+    const promises: Promise<any>[] = [];
+    for (const out of outlets) {
+      promises.push(broadcastToOutlet(c.env, out.id, event, data.phone));
+    }
+    await Promise.all(promises);
+  } catch (err) {
+    console.warn('[notifyStaffRoleUpdated] failed:', err);
+  }
 }
 
 const AddStaffSchema = z.object({
@@ -216,6 +248,8 @@ async function handleAddStaff(c: any) {
 
     const [created] = await getStaffList(db, restaurantId, primaryId);
     await invalidateStaff(kv(c), restaurantId);
+    await invalidateStaffSessions(db, kv(c), [{ phone, userId: existingUser?.id ?? null }]);
+    await notifyStaffRoleUpdated(c, db, restaurantId, { phone, userId: existingUser?.id ?? null, role, status: 'ACTIVE' });
     return c.json(created, 201);
   } finally {
     await close();
@@ -336,12 +370,12 @@ app.put(
       }
 
       const now = new Date();
-      await db.transaction(async (tx: any) => {
-        const updateFields: any = { updatedAt: now, updatedBy: actorPhone };
-        if (parsed.data.name !== undefined) updateFields.name = parsed.data.name.trim();
-        if (parsed.data.role) updateFields.role = parsed.data.role;
-        if (parsed.data.status) updateFields.status = parsed.data.status;
+      const updateFields: any = { updatedAt: now, updatedBy: actorPhone };
+      if (parsed.data.name !== undefined) updateFields.name = parsed.data.name.trim();
+      if (parsed.data.role) updateFields.role = parsed.data.role;
+      if (parsed.data.status) updateFields.status = parsed.data.status;
 
+      await db.transaction(async (tx: any) => {
         // Apply field updates
         await tx
           .update(appSchema.outletStaff)
@@ -393,6 +427,13 @@ app.put(
 
       const [updated] = await getStaffList(db, restaurantId, staffId);
       await invalidateStaff(kv(c), restaurantId);
+      await invalidateStaffSessions(db, kv(c), [{ phone: targetPhone, userId: existing.userId }]);
+      await notifyStaffRoleUpdated(c, db, restaurantId, {
+        phone: targetPhone,
+        userId: existing.userId,
+        role: updateFields.role ?? existing.role,
+        status: updateFields.status ?? existing.status,
+      });
       return c.json(updated);
     } finally {
       await close();
@@ -422,7 +463,7 @@ app.delete(
     const { db, close } = getDb(c);
     try {
       const [existing] = await db
-        .select({ id: appSchema.outletStaff.id, role: appSchema.outletStaff.role, phone: appSchema.outletStaff.phone })
+        .select({ id: appSchema.outletStaff.id, role: appSchema.outletStaff.role, phone: appSchema.outletStaff.phone, userId: appSchema.outletStaff.userId })
         .from(appSchema.outletStaff)
         .where(and(eq(appSchema.outletStaff.id, staffId), eq(appSchema.outletStaff.restaurantId, restaurantId)))
         .limit(1);
@@ -434,6 +475,13 @@ app.delete(
         .where(and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.phone, existing.phone)));
 
       await invalidateStaff(kv(c), restaurantId);
+      await invalidateStaffSessions(db, kv(c), [{ phone: existing.phone, userId: existing.userId }]);
+      await notifyStaffRoleUpdated(c, db, restaurantId, {
+        phone: existing.phone,
+        userId: existing.userId,
+        role: null,
+        status: 'DELETED',
+      });
       return c.json({ success: true, message: 'Staff member removed' });
     } finally {
       await close();

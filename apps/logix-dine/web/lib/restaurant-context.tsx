@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import type { JsonRestaurantRow, JsonRestaurantOutletRow } from "@logixsoft/logix-dine/types/pos-schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMyRole } from "@/lib/api-client";
+import { notifications } from "@mantine/notifications";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 const RESTAURANT_COOKIE = "dine.restaurantId";
@@ -50,6 +51,7 @@ interface RestaurantContextType {
   setActiveRestaurant: (restaurantId: string) => void;
   setActiveOutlet: (outletId: string) => void;
   refresh: () => Promise<void>;
+  refreshRole: () => Promise<void>;
 }
 
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
@@ -169,6 +171,117 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
     if (activeRestaurantId) await fetchData(activeRestaurantId);
   }, [activeRestaurantId, fetchData]);
 
+  const revalidateRole = useCallback(async (targetRestaurantId?: string) => {
+    const rid = targetRestaurantId || activeRestaurantId;
+    if (!rid || !isAuthenticated || (user as any)?.role === "ADMIN") return;
+
+    try {
+      const roleInfo = await getMyRole(rid).catch(() => null);
+      if (roleInfo) {
+        setRole((prev) => {
+          if (prev && prev !== roleInfo.role) {
+            notifications.show({
+              title: "Role Updated",
+              message: `Your role has been updated to ${roleInfo.roleName || roleInfo.role}.`,
+              color: "blue",
+              autoClose: 5000,
+            });
+          }
+          return roleInfo.role;
+        });
+        setRoleName(roleInfo.roleName || roleInfo.role);
+        setPermissions(roleInfo.permissions || []);
+        setAllOutlets(roleInfo.allOutlets);
+        setMyOutletIds(roleInfo.outletIds || []);
+
+        if (!roleInfo.allOutlets && roleInfo.outletIds) {
+          const outletsRes = await fetch(`${API_BASE}/outlets`, {
+            credentials: "include",
+            headers: { "X-Restaurant-Id": rid },
+          }).catch(() => null);
+          if (outletsRes && outletsRes.ok) {
+            const allO: JsonRestaurantOutletRow[] = await outletsRes.json();
+            const scoped = allO.filter((out) => roleInfo.outletIds.includes(out.id));
+            setOutlets(scoped);
+            setActiveOutletState((curr) => {
+              if (curr && !roleInfo.outletIds.includes(curr.id)) {
+                const nextChosen = scoped[0] ?? null;
+                if (nextChosen) {
+                  setCookie(OUTLET_COOKIE, nextChosen.id);
+                  updateUrlOutletId(nextChosen.id);
+                }
+                return nextChosen;
+              }
+              return curr;
+            });
+          }
+        }
+      } else {
+        const restsRes = await fetch(`${API_BASE}/restaurants`, { credentials: "include" }).catch(() => null);
+        if (restsRes && restsRes.ok) {
+          const rests: JsonRestaurantRow[] = await restsRes.json();
+          setMyRestaurants(rests);
+          const stillMember = rests.some((r) => r.id === rid);
+          if (!stillMember) {
+            setRestaurant(null);
+            setRole(null);
+            setRoleName(null);
+            setPermissions([]);
+            setOutlets([]);
+            setActiveOutletState(null);
+            notifications.show({
+              title: "Access Updated",
+              message: "Your access to this restaurant is no longer active.",
+              color: "orange",
+              autoClose: 6000,
+            });
+            if (rests.length > 0) {
+              setCookie(RESTAURANT_COOKIE, rests[0].id);
+              setActiveRestaurantId(rests[0].id);
+              fetchData(rests[0].id);
+            }
+          }
+        }
+      }
+    } catch {
+      // silently ignore network errors
+    }
+  }, [activeRestaurantId, isAuthenticated, user, fetchData]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !activeRestaurantId || (user as any)?.role === "ADMIN") return;
+
+    const handleRoleUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const data = customEvent.detail;
+      if (!data?.restaurantId || data.restaurantId === activeRestaurantId) {
+        revalidateRole(activeRestaurantId);
+      }
+    };
+    window.addEventListener("dine:role-updated", handleRoleUpdated);
+
+    const handleFocus = () => revalidateRole(activeRestaurantId);
+    window.addEventListener("focus", handleFocus);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        revalidateRole(activeRestaurantId);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    const timer = setInterval(() => {
+      revalidateRole(activeRestaurantId);
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("dine:role-updated", handleRoleUpdated);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(timer);
+    };
+  }, [isAuthenticated, activeRestaurantId, user, revalidateRole]);
+
   useEffect(() => {
     // Don't do anything while auth is still loading
     if (authLoading) return;
@@ -258,6 +371,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       setActiveRestaurant,
       setActiveOutlet,
       refresh,
+      refreshRole: () => revalidateRole(activeRestaurantId ?? undefined),
     }}>
       {children}
     </RestaurantContext.Provider>

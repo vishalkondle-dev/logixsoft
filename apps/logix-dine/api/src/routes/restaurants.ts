@@ -2,13 +2,13 @@ import { Hono } from 'hono';
 import { eq, and, or } from 'drizzle-orm';
 import * as z from 'zod';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission, requireAuth, requireMembership } from '../lib/tenancy';
+import { requirePermission, requireAuth, requireMembership, buildSessionPayload, resolveSessionPayload } from '../lib/tenancy';
 import { isAllOutletRole } from '@logixsoft/logix-dine/types/roles';
 import type { RestaurantRole } from '@logixsoft/logix-dine/types/roles';
 import { RestaurantSchema, UpdateRestaurantSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
-import { invalidateRestaurant } from '../lib/cache';
+import { invalidateRestaurant, setSessionPayload } from '../lib/cache';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
@@ -121,15 +121,51 @@ app.get(
       }),
     },
   }),
-  requireMembership(),
+  requireAuth(),
   async (c) => {
-    const tenant = c.get('tenant');
+    const sessionUser = c.get('sessionUser') as any;
+    if (!sessionUser) {
+      return c.json({ error: 'Unauthorized', message: 'Authentication required' }, 401);
+    }
+
+    const restaurantId = c.req.header('X-Restaurant-Id');
+    if (!restaurantId) {
+      return c.json({ error: 'Bad Request', message: 'X-Restaurant-Id header required' }, 400);
+    }
+
+    if (sessionUser.role === 'ADMIN') {
+      return c.json({
+        role: 'ADMIN',
+        roleName: 'Platform Admin',
+        permissions: ['*'],
+        outletIds: [],
+        allOutlets: true,
+      });
+    }
+
+    // Always fetch fresh memberships from DB for real-time role accuracy
+    const freshPayload = await buildSessionPayload(c, sessionUser);
+    if (!freshPayload) {
+      return c.json({ error: 'Unauthorized', message: 'Failed to resolve user session' }, 401);
+    }
+
+    // Update KV cache synchronously with fresh payload so subsequent API requests immediately reflect the new role
+    const { token } = await resolveSessionPayload(c);
+    if (token && c.env?.CACHE) {
+      await setSessionPayload(c.env.CACHE, token, freshPayload).catch(() => {});
+    }
+
+    const membership = freshPayload.memberships.find((m) => m.restaurantId === restaurantId);
+    if (!membership) {
+      return c.json({ error: 'Forbidden', message: 'You do not have access to this restaurant' }, 403);
+    }
+
     return c.json({
-      role: tenant.role,
-      roleName: tenant.roleName || tenant.role,
-      permissions: tenant.permissions ?? [],
-      outletIds: tenant.outletIds ?? [],
-      allOutlets: !!tenant.allOutlets,
+      role: membership.role,
+      roleName: membership.roleName || membership.role,
+      permissions: membership.permissions ?? [],
+      outletIds: membership.outletIds ?? [],
+      allOutlets: !!membership.allOutlets,
     });
   });
 

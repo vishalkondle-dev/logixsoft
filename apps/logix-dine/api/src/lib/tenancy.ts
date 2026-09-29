@@ -10,7 +10,7 @@ import type { AuthEnv } from './auth';
 import { createAuth } from './auth';
 import {
   extractSessionToken, getSessionPayload, setSessionPayload, isJwtToken,
-  type SessionPayload, type MembershipEntry,
+  deleteSessionPayload, type SessionPayload, type MembershipEntry, type KVNamespace,
 } from './cache';
 import { verifySessionJwt } from './jwt';
 
@@ -241,6 +241,72 @@ export async function storeSessionPayload(c: Context, token: string, userObj?: a
     if (payload) await setSessionPayload(kv(c), token, payload);
   } catch (err) {
     console.warn('[storeSessionPayload] failed:', err);
+  }
+}
+
+/**
+ * Invalidate cached session payloads in Cloudflare KV for one or more staff members.
+ * Resolves user IDs from either userId or phone number, queries all active session
+ * tokens from PostgreSQL `session` table, and evicts them from Cloudflare KV.
+ * This guarantees the user's next API request fetches fresh role and outlet permissions from DB.
+ */
+export async function invalidateStaffSessions(
+  db: any,
+  kvNamespace: KVNamespace | undefined | null,
+  targets: Array<{ phone?: string | null; userId?: string | null }>
+): Promise<void> {
+  if (!kvNamespace || !targets || targets.length === 0) return;
+  try {
+    const userIds = new Set<string>();
+    const phoneVariations = new Set<string>();
+
+    for (const t of targets) {
+      if (t.userId) userIds.add(t.userId);
+      if (t.phone) {
+        const raw = t.phone.trim();
+        const digits = raw.replace(/\D/g, '');
+        if (raw) phoneVariations.add(raw);
+        if (digits) {
+          phoneVariations.add(digits);
+          if (digits.length === 10) {
+            phoneVariations.add(`+91${digits}`);
+            phoneVariations.add(`91${digits}`);
+          } else if (digits.length > 10) {
+            phoneVariations.add(`+${digits}`);
+            phoneVariations.add(digits.slice(-10));
+          }
+        }
+      }
+    }
+
+    if (phoneVariations.size > 0) {
+      const usersByPhone = await db
+        .select({ id: appSchema.user.id })
+        .from(appSchema.user)
+        .where(inArray(appSchema.user.phoneNumber, Array.from(phoneVariations)));
+      for (const u of usersByPhone) {
+        userIds.add(u.id);
+      }
+    }
+
+    if (userIds.size === 0) return;
+
+    const sessions = await db
+      .select({ token: appSchema.session.token })
+      .from(appSchema.session)
+      .where(inArray(appSchema.session.userId, Array.from(userIds)));
+
+    const deletePromises: Promise<void>[] = [];
+    for (const s of sessions) {
+      deletePromises.push(deleteSessionPayload(kvNamespace, s.token));
+      if (s.token && s.token.includes('.')) {
+        deletePromises.push(deleteSessionPayload(kvNamespace, s.token.split('.')[0]));
+      }
+    }
+
+    await Promise.all(deletePromises);
+  } catch (err) {
+    console.warn('[invalidateStaffSessions] Failed to invalidate sessions in KV:', err);
   }
 }
 

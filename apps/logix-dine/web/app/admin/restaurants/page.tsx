@@ -106,6 +106,15 @@ function RestaurantsContent() {
       notifications.show({ title: "Validation Error", message: "Store name and owner phone are required.", color: "orange" });
       return;
     }
+    const cleanOwner = createForm.ownerPhone.replace(/\D/g, "").slice(-10);
+    if (cleanOwner === "7276718848") {
+      notifications.show({
+        title: "Invalid Owner",
+        message: "Platform superadmin cannot be assigned as restaurant owner. Admin ID must not be linked to any restaurant.",
+        color: "red",
+      });
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/admin/restaurants`, {
@@ -139,6 +148,17 @@ function RestaurantsContent() {
 
   const handleSaveEdit = async () => {
     if (!selectedRest) return;
+    if (editForm.ownerPhone) {
+      const cleanOwner = editForm.ownerPhone.replace(/\D/g, "").slice(-10);
+      if (cleanOwner === "7276718848") {
+        notifications.show({
+          title: "Invalid Owner",
+          message: "Platform superadmin cannot be assigned as restaurant owner. Admin ID must not be linked to any restaurant.",
+          color: "red",
+        });
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`${API_BASE}/admin/restaurants/${selectedRest.id}`, {
@@ -147,7 +167,8 @@ function RestaurantsContent() {
         credentials: "include",
         body: JSON.stringify(editForm),
       });
-      if (!res.ok) throw new Error("Failed to update store");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to update store");
       notifications.show({ title: "Store Updated", message: "Changes saved.", color: "teal" });
       setEditOpened(false);
       loadData();

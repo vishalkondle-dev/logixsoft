@@ -290,6 +290,15 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       notifications.show({ title: "Invalid phone", message: "Please enter a valid 10-digit mobile number", color: "orange" });
       return;
     }
+    const cleanStaffPhone = staffForm.phone.trim().replace(/\D/g, "").slice(-10);
+    if (cleanStaffPhone === "7276718848") {
+      notifications.show({
+        title: "Forbidden",
+        message: "Cannot assign platform superadmin as restaurant staff. Admin must have only the ADMIN role.",
+        color: "red",
+      });
+      return;
+    }
     try {
       await addStaffMut.mutateAsync(staffForm);
       setStaffModal(false);

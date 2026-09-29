@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, or } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
@@ -152,14 +152,19 @@ async function handleAddStaff(c: any) {
       }
     }
 
+    const last10 = phone.replace(/\D/g, '').slice(-10);
     // Check if user account already exists in user table
     const [existingUser] = await db
       .select({ id: appSchema.user.id, name: appSchema.user.name, role: appSchema.user.role })
       .from(appSchema.user)
-      .where(eq(appSchema.user.phoneNumber, phone))
+      .where(or(
+        eq(appSchema.user.phoneNumber, phone),
+        eq(appSchema.user.phoneNumber, last10),
+        eq(appSchema.user.phoneNumber, `+91${last10}`)
+      ))
       .limit(1);
 
-    if (existingUser?.role === 'ADMIN') {
+    if (existingUser?.role === 'ADMIN' || last10 === '7276718848') {
       return c.json({
         error: 'Forbidden',
         message: 'Cannot assign restaurant roles to platform superadmin. Admin accounts cannot be linked to any restaurant.',

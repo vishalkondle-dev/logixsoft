@@ -301,13 +301,20 @@ app.post(
     const { db, close } = getDb(c);
     try {
       // 1. Find or create user for ownerPhone
+      const last10 = cleanOwnerPhone.replace(/\D/g, '').slice(-10);
+      const sessionLast10 = sessionUser?.phoneNumber ? sessionUser.phoneNumber.replace(/\D/g, '').slice(-10) : '';
+
       let [ownerUser] = await db
         .select()
         .from(appSchema.user)
-        .where(eq(appSchema.user.phoneNumber, cleanOwnerPhone))
+        .where(or(
+          eq(appSchema.user.phoneNumber, cleanOwnerPhone),
+          eq(appSchema.user.phoneNumber, last10),
+          eq(appSchema.user.phoneNumber, `+91${last10}`)
+        ))
         .limit(1);
 
-      if (ownerUser?.role === 'ADMIN' || cleanOwnerPhone === sessionUser?.phoneNumber) {
+      if (ownerUser?.role === 'ADMIN' || last10 === sessionLast10 || last10 === '7276718848') {
         return c.json({
           error: 'BadRequest',
           message: 'Platform superadmin cannot be assigned as restaurant owner. Admin ID must not be linked to any restaurant.',
@@ -588,11 +595,27 @@ app.patch(
       // Handle ownership transfer if ownerPhone changed
       if (ownerPhone) {
         const cleanOwnerPhone = normalizePhone(ownerPhone);
+        const last10 = cleanOwnerPhone.replace(/\D/g, '').slice(-10);
+
         let [ownerUser] = await db
           .select()
           .from(appSchema.user)
-          .where(eq(appSchema.user.phoneNumber, cleanOwnerPhone))
+          .where(or(
+            eq(appSchema.user.phoneNumber, cleanOwnerPhone),
+            eq(appSchema.user.phoneNumber, last10),
+            eq(appSchema.user.phoneNumber, `+91${last10}`)
+          ))
           .limit(1);
+
+        const sessionUser = c.get('sessionUser') as any;
+        const sessionLast10 = sessionUser?.phoneNumber ? sessionUser.phoneNumber.replace(/\D/g, '').slice(-10) : '';
+
+        if (ownerUser?.role === 'ADMIN' || last10 === sessionLast10 || last10 === '7276718848') {
+          return c.json({
+            error: 'BadRequest',
+            message: 'Platform superadmin cannot be assigned as restaurant owner. Admin ID must not be linked to any restaurant.',
+          }, 400);
+        }
 
         if (!ownerUser) {
           const newUserId = generateId('user');
@@ -1411,16 +1434,23 @@ app.post(
     }
 
     const cleanPhone = normalizePhone(phone);
+    const last10 = cleanPhone.replace(/\D/g, '').slice(-10);
     const { db, close } = getDb(c);
     try {
+      const sessionUser = c.get('sessionUser') as any;
+      const sessionLast10 = sessionUser?.phoneNumber ? sessionUser.phoneNumber.replace(/\D/g, '').slice(-10) : '';
+
       const [user] = await db
         .select()
         .from(appSchema.user)
-        .where(eq(appSchema.user.phoneNumber, cleanPhone))
+        .where(or(
+          eq(appSchema.user.phoneNumber, cleanPhone),
+          eq(appSchema.user.phoneNumber, last10),
+          eq(appSchema.user.phoneNumber, `+91${last10}`)
+        ))
         .limit(1);
 
-      const sessionUser = c.get('sessionUser') as any;
-      if (user?.role === 'ADMIN' || cleanPhone === sessionUser?.phoneNumber) {
+      if (user?.role === 'ADMIN' || last10 === sessionLast10 || last10 === '7276718848') {
         return c.json({
           error: 'BadRequest',
           message: 'Cannot assign platform superadmin to a restaurant. Admin must have only the ADMIN role.',

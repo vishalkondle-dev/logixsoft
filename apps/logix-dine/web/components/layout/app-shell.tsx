@@ -79,12 +79,6 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const isLanding = pathname === "/";
   const isAdmin = pathname?.startsWith("/admin");
 
-  // On /admin, Superadmin has their own dedicated sidebar, menu, and header.
-  // Bypass staff AppShellLayout completely so no owner or staff navigation paths appear.
-  if (isAdmin) {
-    return <>{children}</>;
-  }
-
   const ALL_STAFF_ROLES = ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER", "KITCHEN", "RIDER"];
   const effectiveRole = (user as any)?.role === "ADMIN" ? "OWNER" : role;
   const isStaffOrOwner = Boolean(
@@ -162,6 +156,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     return roleName || "Staff Dashboard";
   }, [effectiveRole, roleName]);
 
+  // On /admin, Superadmin has their own dedicated sidebar, menu, and header.
+  // Bypass staff AppShellLayout completely so no owner or staff navigation paths appear.
+  // Placed here AFTER all React hooks have executed to ensure hook order consistency across route transitions.
+  if (isAdmin) {
+    return <>{children}</>;
+  }
 
   return (
     <AppShell
@@ -322,9 +322,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                 <>
                   <Button
                     component={Link}
-                    href="/admin"
+                    href="/admin/overview"
                     size="xs"
-                    variant={pathname === "/admin" ? "filled" : "light"}
+                    variant={pathname?.startsWith("/admin") ? "filled" : "light"}
                     color="indigo"
                     radius="xl"
                     leftSection={<IconShieldLock size={14} />}
@@ -335,9 +335,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   </Button>
                   <ActionIcon
                     component={Link}
-                    href="/admin"
+                    href="/admin/overview"
                     size="sm"
-                    variant="light"
+                    variant={pathname?.startsWith("/admin") ? "filled" : "light"}
                     color="indigo"
                     radius="xl"
                     hiddenFrom="sm"
@@ -475,7 +475,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     {(user as any)?.role === "ADMIN" && (
                       <Menu.Item
                         component={Link}
-                        href="/admin"
+                        href="/admin/overview"
                         leftSection={<IconShieldLock size={16} color="#4c6ef5" />}
                         style={{ fontWeight: 600, color: "#4c6ef5", backgroundColor: "rgba(76, 110, 245, 0.08)" }}
                       >

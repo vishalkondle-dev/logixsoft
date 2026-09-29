@@ -213,6 +213,10 @@ app.post(
     const now = new Date();
     const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     const id = generateId('outlet');
+    const planTier = parsed.data.planTier || 'PRO';
+    const billingCycle = parsed.data.billingCycle || 'MONTHLY';
+    const status = parsed.data.status || (planTier === 'FREE' ? 'TRIAL' : 'ACTIVE');
+
     await db.insert(appSchema.restaurantOutlet).values({
       id,
       restaurantId,
@@ -220,10 +224,10 @@ app.post(
       address: parsed.data.address ?? null,
       phone: parsed.data.phone ?? null,
       upiId: parsed.data.upiId ?? null,
-      status: 'TRIAL',
-      planTier: 'PRO',
-      billingCycle: 'MONTHLY',
-      trialEndsAt,
+      status,
+      planTier,
+      billingCycle,
+      trialEndsAt: status === 'TRIAL' ? trialEndsAt : null,
       isDefault: false,
       createdAt: now,
       updatedAt: now,

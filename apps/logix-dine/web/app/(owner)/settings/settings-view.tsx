@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Box, Title, Tabs, TextInput, Button, Stack, Group, Text, Switch,
-  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Center,
+  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Center, Divider,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -151,7 +151,14 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const [restForm, setRestForm] = useState({ name: "", address: "", phone: "" });
   const [restSaving, setRestSaving] = useState(false);
   const [outletModal, setOutletModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
-  const [outletForm, setOutletForm] = useState({ name: "", address: "", phone: "", upiId: "" });
+  const [outletForm, setOutletForm] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    upiId: "",
+    planTier: "PRO",
+    billingCycle: "MONTHLY",
+  });
   const [outletSaving, setOutletSaving] = useState(false);
 
   // Staff — React Query
@@ -207,7 +214,14 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   // ─── Outlet handlers ────────────────────────────────────────────────────
   const openCreateOutlet = () => {
-    setOutletForm({ name: "", address: "", phone: "", upiId: "" });
+    setOutletForm({
+      name: "",
+      address: "",
+      phone: "",
+      upiId: "",
+      planTier: "PRO",
+      billingCycle: "MONTHLY",
+    });
     setOutletModal({ open: true, editing: null });
   };
 
@@ -217,6 +231,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       address: o.address ?? "",
       phone: o.phone ?? "",
       upiId: o.upiId ?? "",
+      planTier: o.planTier || "PRO",
+      billingCycle: o.billingCycle || "MONTHLY",
     });
     setOutletModal({ open: true, editing: o });
   };
@@ -233,6 +249,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             address: outletForm.address?.trim() || null,
             phone: outletForm.phone?.trim() || null,
             upiId: outletForm.upiId?.trim() || null,
+            planTier: outletForm.planTier,
+            billingCycle: outletForm.billingCycle,
           },
         });
       } else {
@@ -241,11 +259,13 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           address: outletForm.address?.trim() || undefined,
           phone: outletForm.phone?.trim() || undefined,
           upiId: outletForm.upiId?.trim() || undefined,
+          planTier: outletForm.planTier,
+          billingCycle: outletForm.billingCycle,
         });
       }
       await refresh();
       setOutletModal({ open: false, editing: null });
-      notifications.show({ title: "Saved", message: "Outlet saved", color: "green", icon: <IconCheck size={16} /> });
+      notifications.show({ title: "Saved", message: "Outlet and subscription plan saved", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
@@ -450,7 +470,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           {outlet.phone && <Text size="xs" c="dimmed">{outlet.phone}</Text>}
           {outlet.upiId && <Text size="xs" c="teal" fw={500} truncate>UPI: {outlet.upiId}</Text>}
           <Group gap="xs" mt={8}>
-            <Link href="/settings/billing" style={{ textDecoration: "none" }}>
+            <Link href={`/settings/billing?outletId=${outlet.id}`} style={{ textDecoration: "none" }}>
               <Text size="xs" c="dinePrimary" fw={600} style={{ cursor: "pointer" }}>
                 Manage Subscription &amp; Plan &rarr;
               </Text>
@@ -458,6 +478,15 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           </Group>
         </div>
         <Group gap="xs" wrap="nowrap">
+          <Button
+            size="xs"
+            variant="light"
+            color="dinePrimary"
+            leftSection={<IconCreditCard size={13} />}
+            onClick={() => router.push(`/settings/billing?outletId=${outlet.id}`)}
+          >
+            Change Plan
+          </Button>
           {!outlet.isDefault && (
             <ActionIcon variant="light" color="yellow" size="sm" onClick={() => handleSetDefault(outlet)} title="Set as default">
               <IconStar size={14} />
@@ -849,9 +878,31 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             value={outletForm.upiId}
             onChange={(e) => setOutletForm((f) => ({ ...f, upiId: e.target.value.trim() }))}
           />
+          <Divider label="Branch SaaS Subscription" labelPosition="center" my="xs" />
+          <Select
+            label="Branch Subscription Plan"
+            description="Assign the right plan tier for this specific outlet branch"
+            value={outletForm.planTier}
+            onChange={(v) => v && setOutletForm((f) => ({ ...f, planTier: v }))}
+            data={[
+              { value: "FREE", label: "Free Trial (14 Days) — ₹0/mo" },
+              { value: "BASIC", label: "Starter Plan — ₹999/mo" },
+              { value: "PRO", label: "Pro Plan — ₹1,499/mo (Most Popular)" },
+              { value: "ENTERPRISE", label: "Enterprise Plan — ₹2,999/mo" },
+            ]}
+          />
+          <Select
+            label="Billing Cycle"
+            value={outletForm.billingCycle}
+            onChange={(v) => v && setOutletForm((f) => ({ ...f, billingCycle: v }))}
+            data={[
+              { value: "MONTHLY", label: "Monthly Recurring" },
+              { value: "ANNUAL", label: "Annual (15% Savings / 2 Months Free)" },
+            ]}
+          />
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setOutletModal({ open: false, editing: null })}>Cancel</Button>
-            <Button color="dinePrimary" onClick={saveOutlet} loading={outletSaving}>Save</Button>
+            <Button color="dinePrimary" onClick={saveOutlet} loading={outletSaving}>Save Outlet</Button>
           </Group>
         </Stack>
       </Modal>

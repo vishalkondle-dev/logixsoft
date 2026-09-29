@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Stack,
   Group,
@@ -42,6 +43,8 @@ import { getBillingData, updateOutletSubscription } from "@/lib/api-client";
 export function BillingManagement() {
   const { restaurant } = useRestaurant();
   const restaurantId = restaurant?.id || "";
+  const searchParams = useSearchParams();
+  const urlOutletId = searchParams.get("outletId");
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
@@ -50,6 +53,9 @@ export function BillingManagement() {
     plans: any[];
     invoices: any[];
   } | null>(null);
+
+  // Active branch being inspected/configured in the plans catalog
+  const [activeBranchId, setActiveBranchId] = useState<string>("");
 
   // Upgrade / Change Plan Modal
   const [modalOpened, setModalOpened] = useState(false);
@@ -64,6 +70,20 @@ export function BillingManagement() {
       setLoading(true);
       const res = await getBillingData(restaurantId);
       setData(res);
+      if (res?.outlets && res.outlets.length > 0) {
+        if (urlOutletId) {
+          const matched = res.outlets.find((o: any) => o.id === urlOutletId);
+          if (matched) {
+            setActiveBranchId(matched.id);
+            setSelectedOutlet(matched);
+            setSelectedPlanTier(matched.planTier || "PRO");
+            setSelectedCycle((matched.billingCycle as any) || "MONTHLY");
+            setModalOpened(true);
+            return;
+          }
+        }
+        setActiveBranchId((curr) => curr || res.outlets[0].id);
+      }
     } catch (err: any) {
       notifications.show({
         title: "Failed to load billing",
@@ -73,14 +93,14 @@ export function BillingManagement() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId]);
+  }, [restaurantId, urlOutletId]);
 
   useEffect(() => {
     loadBilling();
   }, [loadBilling]);
 
   const handleOpenPlanModal = (outlet?: any, defaultPlan?: string) => {
-    const target = outlet || (data?.outlets && data.outlets[0]) || null;
+    const target = outlet || (data?.outlets && (data.outlets.find((o: any) => o.id === activeBranchId) || data.outlets[0])) || null;
     setSelectedOutlet(target);
     setSelectedPlanTier(defaultPlan || target?.planTier || "PRO");
     setSelectedCycle((target?.billingCycle as any) || "MONTHLY");
@@ -126,6 +146,7 @@ export function BillingManagement() {
   const outlets = data.outlets || [];
   const plans = data.plans || [];
   const invoices = data.invoices || [];
+  const activeBranch = outlets.find((o) => o.id === activeBranchId) || outlets[0];
 
   const totalMonthly = outlets.reduce((sum, o) => {
     if (o.status === "SUSPENDED" || o.status === "EXPIRED") return sum;
@@ -355,18 +376,68 @@ export function BillingManagement() {
 
       {/* 3. Available Plans Comparison Grid */}
       <div>
-        <Group justify="space-between" align="flex-end" mb="md">
+        <Group justify="space-between" align="flex-end" mb="md" wrap="wrap">
           <div>
             <Title order={4}>Available SaaS Plans</Title>
             <Text size="xs" c="dimmed">
-              Choose the right capability tier for each of your restaurant outlets.
+              Choose different capability tiers for different branches based on store format and volume.
             </Text>
           </div>
         </Group>
 
+        {/* Branch Context Selector */}
+        {outlets.length > 0 && (
+          <Paper withBorder p="md" radius="md" mb="md" bg="gray.0">
+            <Group justify="space-between" align="center" wrap="wrap">
+              <Group gap="sm">
+                <ThemeIcon color="dinePrimary" variant="light" size="lg" radius="md">
+                  <IconBuildingStore size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.5px" }}>
+                    Configure Subscription For Outlet
+                  </Text>
+                  <Group gap="xs" mt={2}>
+                    <Text size="sm" fw={700}>
+                      {activeBranch?.name || "Selected Branch"}
+                    </Text>
+                    {activeBranch?.isDefault && (
+                      <Badge size="xs" color="dinePrimary" variant="light">
+                        Default Branch
+                      </Badge>
+                    )}
+                    <Badge size="xs" color="indigo" variant="filled">
+                      {activeBranch?.planTier || "PRO"} Plan
+                    </Badge>
+                  </Group>
+                </div>
+              </Group>
+
+              {outlets.length > 1 && (
+                <Group gap="xs">
+                  <Text size="xs" fw={600} c="dimmed">
+                    Switch Outlet:
+                  </Text>
+                  <Select
+                    size="xs"
+                    w={220}
+                    value={activeBranchId}
+                    onChange={(val) => val && setActiveBranchId(val)}
+                    data={outlets.map((o: any) => ({
+                      value: o.id,
+                      label: `${o.name} (${o.planTier || "PRO"} Plan)`,
+                    }))}
+                  />
+                </Group>
+              )}
+            </Group>
+          </Paper>
+        )}
+
         <Grid gap="md">
           {plans.map((p) => {
             const isPro = p.popular;
+            const isCurrentForActive = activeBranch?.planTier === p.id;
             return (
               <Grid.Col key={p.id} span={{ base: 12, sm: 6, lg: 3 }}>
                 <Paper
@@ -377,12 +448,25 @@ export function BillingManagement() {
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
-                    borderColor: isPro ? "var(--mantine-color-indigo-6)" : undefined,
-                    borderWidth: isPro ? 2 : 1,
+                    borderColor: isCurrentForActive
+                      ? "var(--mantine-color-teal-6)"
+                      : isPro
+                      ? "var(--mantine-color-indigo-6)"
+                      : undefined,
+                    borderWidth: isCurrentForActive || isPro ? 2 : 1,
                     position: "relative",
                   }}
                 >
-                  {isPro && (
+                  {isCurrentForActive ? (
+                    <Badge
+                      color="teal"
+                      variant="filled"
+                      size="sm"
+                      style={{ position: "absolute", top: -12, right: 16 }}
+                    >
+                      Active on Branch
+                    </Badge>
+                  ) : isPro ? (
                     <Badge
                       color="indigo"
                       variant="filled"
@@ -391,7 +475,7 @@ export function BillingManagement() {
                     >
                       Most Popular
                     </Badge>
-                  )}
+                  ) : null}
 
                   <Title order={4}>{p.name}</Title>
                   <Text size="xs" c="dimmed" mt={4}>
@@ -427,11 +511,15 @@ export function BillingManagement() {
                   <Button
                     fullWidth
                     mt="lg"
-                    color={isPro ? "indigo" : "dinePrimary"}
-                    variant={isPro ? "filled" : "outline"}
-                    onClick={() => handleOpenPlanModal(undefined, p.id)}
+                    color={isCurrentForActive ? "teal" : isPro ? "indigo" : "dinePrimary"}
+                    variant={isCurrentForActive ? "light" : isPro ? "filled" : "outline"}
+                    disabled={isCurrentForActive}
+                    leftSection={isCurrentForActive ? <IconCheck size={14} /> : undefined}
+                    onClick={() => handleOpenPlanModal(activeBranch, p.id)}
                   >
-                    Select {p.name}
+                    {isCurrentForActive
+                      ? `Active on ${activeBranch?.name || "Branch"}`
+                      : `Assign to ${activeBranch?.name || "Branch"}`}
                   </Button>
                 </Paper>
               </Grid.Col>
@@ -529,18 +617,23 @@ export function BillingManagement() {
         radius="md"
       >
         <Stack gap="md">
-          {outlets.length > 1 && (
-            <Select
-              label="Select Outlet Branch"
-              description="Choose which store license to upgrade or modify"
-              data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-              value={selectedOutlet?.id || ""}
-              onChange={(val) => {
-                const found = outlets.find((o) => o.id === val);
-                if (found) setSelectedOutlet(found);
-              }}
-            />
-          )}
+          <Select
+            label="Target Outlet Branch"
+            description="Choose which store branch license this subscription will apply to"
+            data={outlets.map((o: any) => ({
+              value: o.id,
+              label: `${o.name} (Current: ${o.planTier || "PRO"} Plan • ${o.status || "ACTIVE"})`,
+            }))}
+            value={selectedOutlet?.id || ""}
+            onChange={(val) => {
+              const found = outlets.find((o: any) => o.id === val);
+              if (found) {
+                setSelectedOutlet(found);
+                setSelectedPlanTier(found.planTier || "PRO");
+                setSelectedCycle(found.billingCycle || "MONTHLY");
+              }
+            }}
+          />
 
           <div>
             <Text size="sm" fw={600} mb="xs">

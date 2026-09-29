@@ -383,7 +383,10 @@ export const getMyRole = (restaurantId: string) =>
 export const getOutlets = (restaurantId: string) =>
   apiFetch<any[]>("/outlets", restaurantId);
 
-export const createOutlet = (restaurantId: string, body: { name: string; address?: string; phone?: string; upiId?: string }) =>
+export const createOutlet = (
+  restaurantId: string,
+  body: { name: string; address?: string; phone?: string; upiId?: string; planTier?: string; billingCycle?: string; status?: string }
+) =>
   apiFetch<any>("/outlets", restaurantId, { method: "POST", body: JSON.stringify(body) });
 
 export const updateOutlet = (restaurantId: string, outletId: string, body: any) =>

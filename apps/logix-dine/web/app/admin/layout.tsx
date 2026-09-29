@@ -39,7 +39,6 @@ import {
   IconLayoutDashboard,
   IconRefresh,
   IconLogout,
-  IconLogin,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { AdminProvider, useAdmin } from "./admin-context";
@@ -108,7 +107,6 @@ function AdminHeaderStoreScope() {
     setSelectedRestFilter,
     refreshing,
     fetchGlobalMetadata,
-    handleEnterStore,
   } = useAdmin();
 
   const urlRestId = searchParams.get("restaurantId") || "";
@@ -139,10 +137,6 @@ function AdminHeaderStoreScope() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
-  const activeStore = (currentScope !== "ALL"
-    ? restaurants.find((r) => r.id === currentScope)
-    : null) || restaurants[0];
-
   return (
     <Group gap="xs">
       <Select
@@ -169,25 +163,6 @@ function AdminHeaderStoreScope() {
           <IconRefresh size={18} />
         </ActionIcon>
       </Tooltip>
-
-      {restaurants.length > 0 && (
-        <Button
-          variant="light"
-          color="indigo"
-          size="xs"
-          leftSection={<IconLogin size={14} />}
-          visibleFrom="sm"
-          onClick={() => {
-            const storeToEnter = activeStore || restaurants[0];
-            if (storeToEnter) handleEnterStore(storeToEnter);
-          }}
-          title={activeStore ? `Impersonate & Enter POS for ${activeStore.name}` : "Enter POS"}
-        >
-          {currentScope !== "ALL" && activeStore
-            ? `Enter ${activeStore.name.length > 16 ? activeStore.name.slice(0, 14) + "…" : activeStore.name} POS`
-            : "Enter POS"}
-        </Button>
-      )}
     </Group>
   );
 }

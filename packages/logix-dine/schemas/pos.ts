@@ -449,7 +449,7 @@ export const CreateOutletSchema = z.object({
   address: z.string().max(255).optional(),
   phone: z.string().max(20).optional(),
   upiId: z.string().max(100).optional(),
-  planTier: z.enum(['FREE', 'BASIC', 'PRO', 'ENTERPRISE']).optional(),
+  planTier: z.enum(['BASIC', 'PRO']).optional(),
   billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
   status: z.string().optional(),
 });
@@ -459,7 +459,7 @@ export const UpdateOutletSchema = z.object({
   address: z.string().max(255).nullable().optional(),
   phone: z.string().max(20).nullable().optional(),
   upiId: z.string().max(100).nullable().optional(),
-  planTier: z.enum(['FREE', 'BASIC', 'PRO', 'ENTERPRISE']).optional(),
+  planTier: z.enum(['BASIC', 'PRO']).optional(),
   billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
   status: z.string().optional(),
   openingHours: z.any().nullable().optional(),

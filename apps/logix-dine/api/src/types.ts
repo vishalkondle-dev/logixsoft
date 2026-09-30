@@ -14,6 +14,7 @@ declare module 'hono' {
       outletId: string | null;
       outletIds: string[];
       allOutlets?: boolean;
+      outletPlans?: Record<string, { status: string; planTier: string; trialEndsAt?: string | null; subscriptionExpiresAt?: string | null }>;
     };
     /** Phone number of the authenticated actor — used to populate createdBy/updatedBy audit columns. */
     actorPhone: string | null;

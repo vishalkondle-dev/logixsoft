@@ -238,7 +238,6 @@ function RestaurantsContent() {
             data={[
               { value: "ALL", label: "All Statuses" },
               { value: "ACTIVE", label: "Active" },
-              { value: "TRIAL", label: "Trial" },
               { value: "SUSPENDED", label: "Suspended" },
               { value: "INACTIVE", label: "Inactive" },
             ]}

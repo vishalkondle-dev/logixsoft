@@ -79,7 +79,7 @@ app.post(
         address,
         phone: phone ?? null,
         currency: 'INR',
-        status: 'TRIAL',
+        status: 'ACTIVE',
         ownerUserId: user.id,
         createdAt: now,
         updatedAt: now,
@@ -87,16 +87,15 @@ app.post(
         updatedBy: actorPhone,
       });
 
-      const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
       await tx.insert(appSchema.restaurantOutlet).values({
         id: outletId,
         restaurantId,
         name: outletName ?? 'Main',
         isDefault: true,
-        status: 'TRIAL',
-        planTier: 'PRO',
+        status: 'ACTIVE',
+        planTier: 'BASIC',
         billingCycle: 'MONTHLY',
-        trialEndsAt,
+        trialEndsAt: null,
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,

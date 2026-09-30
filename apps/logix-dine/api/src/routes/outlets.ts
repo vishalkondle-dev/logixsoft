@@ -84,19 +84,6 @@ app.get(
 
       const plans = [
         {
-          id: 'FREE',
-          name: 'Free Trial',
-          monthlyPrice: 0,
-          annualPrice: 0,
-          features: [
-            '14 Days Full Access',
-            'POS & Table Management',
-            'Digital QR Menu',
-            'Basic Daily Sales Reports',
-            'Up to 100 Orders',
-          ],
-        },
-        {
           id: 'BASIC',
           name: 'Starter Plan',
           monthlyPrice: 999,
@@ -124,38 +111,18 @@ app.get(
             'WhatsApp Instant e-Bills',
             'Advanced Analytics & Tax Audit',
             'Online Aggregators (Swiggy, Zomato)',
-          ],
-        },
-        {
-          id: 'ENTERPRISE',
-          name: 'Enterprise Plan',
-          monthlyPrice: 2999,
-          annualPrice: 29990,
-          features: [
-            'Everything in Pro',
-            'Central Kitchen & Multi-store Stock Transfer',
-            'Dedicated Account Manager',
-            'Custom Domain & Brand Whitelabeling',
-            'Custom ERP & Accounting Webhooks',
-            'Priority 24/7 Phone Support',
+            'Table Reservations & Custom Roles Matrix',
           ],
         },
       ];
 
       const enrichedOutlets = outlets.map((o: any) => {
-        const plan = plans.find((p) => p.id === o.planTier) || plans[2];
-        const now = Date.now();
-        let daysLeft: number | null = null;
-        if (o.status === 'TRIAL' && o.trialEndsAt) {
-          const diffMs = new Date(o.trialEndsAt).getTime() - now;
-          daysLeft = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-        }
+        const plan = plans.find((p) => p.id === o.planTier) || plans[0];
         return {
           ...toOutlet(o),
           planName: plan.name,
           monthlyPrice: plan.monthlyPrice,
           annualPrice: plan.annualPrice,
-          trialDaysRemaining: daysLeft,
         };
       });
 
@@ -211,11 +178,10 @@ app.post(
   const { db, close } = getDb(c);
   try {
     const now = new Date();
-    const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     const id = generateId('outlet');
-    const planTier = parsed.data.planTier || 'PRO';
+    const planTier = parsed.data.planTier || 'BASIC';
     const billingCycle = parsed.data.billingCycle || 'MONTHLY';
-    const status = parsed.data.status || (planTier === 'FREE' ? 'TRIAL' : 'ACTIVE');
+    const status = parsed.data.status || 'ACTIVE';
 
     await db.insert(appSchema.restaurantOutlet).values({
       id,
@@ -227,7 +193,7 @@ app.post(
       status,
       planTier,
       billingCycle,
-      trialEndsAt: status === 'TRIAL' ? trialEndsAt : null,
+      trialEndsAt: null,
       isDefault: false,
       createdAt: now,
       updatedAt: now,
@@ -401,9 +367,9 @@ app.patch(
 
 // PUT /outlets/:id/subscription — update an outlet's subscription plan & cycle
 const UpdateOutletSubscriptionSchema = z.object({
-  planTier: z.enum(['FREE', 'BASIC', 'PRO', 'ENTERPRISE']),
+  planTier: z.enum(['BASIC', 'PRO']),
   billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
-  status: z.enum(['ACTIVE', 'TRIAL', 'SUSPENDED', 'EXPIRED']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'EXPIRED']).optional(),
 });
 
 app.put(
@@ -450,7 +416,7 @@ app.put(
 
       if (parsed.data.status) {
         updates.status = parsed.data.status;
-      } else if (parsed.data.planTier !== 'FREE') {
+      } else {
         updates.status = 'ACTIVE';
         const days = parsed.data.billingCycle === 'ANNUAL' ? 365 : 30;
         updates.subscriptionExpiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);

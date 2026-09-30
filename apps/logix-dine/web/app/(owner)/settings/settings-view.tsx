@@ -156,7 +156,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     address: "",
     phone: "",
     upiId: "",
-    planTier: "PRO",
+    planTier: "BASIC",
     billingCycle: "MONTHLY",
   });
   const [outletSaving, setOutletSaving] = useState(false);
@@ -442,22 +442,9 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               <Badge
                 size="xs"
                 variant="light"
-                color={
-                  outlet.planTier === "ENTERPRISE"
-                    ? "grape"
-                    : outlet.planTier === "PRO"
-                    ? "indigo"
-                    : outlet.planTier === "BASIC"
-                    ? "blue"
-                    : "gray"
-                }
+                color={outlet.planTier === "PRO" ? "indigo" : "blue"}
               >
                 {outlet.planTier} Plan
-              </Badge>
-            )}
-            {outlet.status === "TRIAL" && (
-              <Badge size="xs" color="orange" variant="filled">
-                14-Day Trial
               </Badge>
             )}
             {outlet.status === "EXPIRED" && (
@@ -885,10 +872,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             value={outletForm.planTier}
             onChange={(v) => v && setOutletForm((f) => ({ ...f, planTier: v }))}
             data={[
-              { value: "FREE", label: "Free Trial (14 Days) — ₹0/mo" },
               { value: "BASIC", label: "Starter Plan — ₹999/mo" },
-              { value: "PRO", label: "Pro Plan — ₹1,499/mo (Most Popular)" },
-              { value: "ENTERPRISE", label: "Enterprise Plan — ₹2,999/mo" },
+              { value: "PRO", label: "Pro Plan — ₹1,499/mo" },
             ]}
           />
           <Select

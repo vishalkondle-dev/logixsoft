@@ -3279,10 +3279,8 @@ app.get(
     }
 
     const plans = [
-      { id: 'FREE', name: 'Free Trial (14 Days)', price: 0, duration: '14 Days' },
       { id: 'BASIC', name: 'Starter Plan', price: 999, duration: 'Monthly' },
       { id: 'PRO', name: 'Pro SaaS Plan', price: 1499, duration: 'Monthly' },
-      { id: 'ENTERPRISE', name: 'Enterprise Plan', price: 2999, duration: 'Monthly' },
     ];
 
     let items = allOutlets.map((o: any) => {
@@ -3297,7 +3295,7 @@ app.get(
         phone: o.phone || rest?.phone || null,
         status: o.status || 'ACTIVE',
         subscriptionStatus: o.status || 'ACTIVE',
-        planTier: o.planTier || 'PRO',
+        planTier: o.planTier || 'BASIC',
         billingCycle: o.billingCycle || 'MONTHLY',
         trialEndsAt: o.trialEndsAt,
         subscriptionExpiresAt: o.subscriptionExpiresAt,
@@ -3340,7 +3338,7 @@ app.patch(
   apiDoc({
     tags: ['Admin'],
     summary: 'Update Outlet Subscription Status (Admin)',
-    description: 'Updates the SaaS subscription status of an outlet (ACTIVE, TRIAL, SUSPENDED, EXPIRED) or plan tier.',
+    description: 'Updates the SaaS subscription status of an outlet (ACTIVE, SUSPENDED, EXPIRED) or plan tier (BASIC, PRO).',
     params: z.object({ id: z.string() }),
     body: z.object({
       status: z.string().optional(),

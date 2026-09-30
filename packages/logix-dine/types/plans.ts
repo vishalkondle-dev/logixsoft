@@ -1,11 +1,12 @@
 /**
  * Plan tiers, module licensing, and feature gating matrix for Logix Dine SaaS.
+ * Strictly 2 plans: BASIC (Starter Plan) and PRO (Pro Plan).
  */
 
-export const PLAN_TIERS = ['FREE', 'BASIC', 'PRO', 'ENTERPRISE'] as const;
+export const PLAN_TIERS = ['BASIC', 'PRO'] as const;
 export type PlanTier = (typeof PLAN_TIERS)[number];
 
-export const OUTLET_STATUSES = ['ACTIVE', 'TRIAL', 'SUSPENDED', 'EXPIRED'] as const;
+export const OUTLET_STATUSES = ['ACTIVE', 'SUSPENDED', 'EXPIRED'] as const;
 export type OutletStatus = (typeof OUTLET_STATUSES)[number];
 
 export const PLAN_MODULE_IDS = [
@@ -34,11 +35,6 @@ export const PLAN_MODULE_IDS = [
   'whatsapp',      // WhatsApp automated bills & order notifications
   'reservations',  // Table reservations & bookings
   'roles',         // Custom team roles & granular permissions matrix
-
-  // ─── Enterprise Modules (₹2,999/mo) ───
-  'central_kitchen', // Central kitchen & multi-store stock transfers
-  'webhooks',        // Custom ERP & accounting webhooks
-  'whitelabel',      // Custom domain & brand whitelabeling
 ] as const;
 
 export type PlanModuleId = (typeof PLAN_MODULE_IDS)[number];
@@ -47,10 +43,8 @@ export type PlanModuleId = (typeof PLAN_MODULE_IDS)[number];
  * Numeric plan rank used for tier comparisons.
  */
 export const PLAN_RANKS: Record<PlanTier, number> = {
-  FREE: 0,
   BASIC: 1,
   PRO: 2,
-  ENTERPRISE: 3,
 };
 
 /**
@@ -82,11 +76,6 @@ export const MODULE_MIN_PLAN: Record<PlanModuleId, PlanTier> = {
   whatsapp: 'PRO',
   reservations: 'PRO',
   roles: 'PRO',
-
-  // Enterprise
-  central_kitchen: 'ENTERPRISE',
-  webhooks: 'ENTERPRISE',
-  whitelabel: 'ENTERPRISE',
 };
 
 export interface PlanModuleInfo {
@@ -340,35 +329,6 @@ export const MODULE_INFO_CATALOG: Record<PlanModuleId, PlanModuleInfo> = {
       'Zero-delay permission enforcement',
     ],
   },
-
-  // ─── ENTERPRISE MODULES ───
-  central_kitchen: {
-    id: 'central_kitchen',
-    name: 'Central Kitchen & Stock Transfers',
-    minPlan: 'ENTERPRISE',
-    minPlanLabel: 'Enterprise Plan',
-    minPlanPrice: 2999,
-    description: 'Commissary kitchen management, inter-branch raw material transfer orders, and chain stock balances.',
-    highlights: ['Commissary kitchen production runs', 'Inter-branch stock requisition & dispatch', 'Transit loss tracking'],
-  },
-  webhooks: {
-    id: 'webhooks',
-    name: 'Custom ERP & Accounting Webhooks',
-    minPlan: 'ENTERPRISE',
-    minPlanLabel: 'Enterprise Plan',
-    minPlanPrice: 2999,
-    description: 'Webhook streams for SAP, Tally, Zoho Books, and corporate ERP accounting integration.',
-    highlights: ['Real-time order & payment webhooks', 'Automated Tally / Zoho sync', 'Custom payload signing'],
-  },
-  whitelabel: {
-    id: 'whitelabel',
-    name: 'Custom Domain & Whitelabeling',
-    minPlan: 'ENTERPRISE',
-    minPlanLabel: 'Enterprise Plan',
-    minPlanPrice: 2999,
-    description: 'Custom domain mapping for customer QR ordering and branded email/receipt footers.',
-    highlights: ['Custom DNS (e.g. order.yourbrand.com)', 'Whitelabel digital menu', 'Dedicated SLA support'],
-  },
 };
 
 /**
@@ -523,9 +483,8 @@ export const ROUTE_TO_MODULE_MAP: Array<{ prefix: string; moduleId: PlanModuleId
 ];
 
 export interface OutletSubscriptionState {
-  status: string; // 'ACTIVE' | 'TRIAL' | 'SUSPENDED' | 'EXPIRED'
-  planTier: string; // 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE'
-  trialEndsAt?: string | null;
+  status: string; // 'ACTIVE' | 'SUSPENDED' | 'EXPIRED'
+  planTier: string; // 'BASIC' | 'PRO'
   subscriptionExpiresAt?: string | null;
 }
 
@@ -547,12 +506,6 @@ export function isSubscriptionActive(outlet: OutletSubscriptionState | null | un
   if (outlet.status === 'SUSPENDED' || outlet.status === 'EXPIRED') return false;
 
   const now = Date.now();
-  if (outlet.status === 'TRIAL' && outlet.trialEndsAt) {
-    if (new Date(outlet.trialEndsAt).getTime() < now) {
-      return false; // Free trial expired
-    }
-  }
-
   if (outlet.subscriptionExpiresAt) {
     if (new Date(outlet.subscriptionExpiresAt).getTime() < now) {
       return false; // Paid subscription expired
@@ -575,12 +528,6 @@ export function isModuleAllowedForOutlet(
 
   // Suspended or expired outlets cannot operate any module
   if (!isSubscriptionActive(outlet)) return false;
-
-  // Active free trial gets full PRO access
-  if (outlet.status === 'TRIAL') {
-    const required = MODULE_MIN_PLAN[moduleId] || 'BASIC';
-    return isPlanSufficient('PRO', required);
-  }
 
   const required = MODULE_MIN_PLAN[moduleId] || 'BASIC';
   return isPlanSufficient(outlet.planTier, required);

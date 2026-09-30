@@ -30,10 +30,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.
 
 const PLAN_TIERS = [
   { value: "ALL", label: "All Plan Tiers" },
-  { value: "FREE", label: "Free Tier" },
-  { value: "BASIC", label: "Basic Tier" },
+  { value: "BASIC", label: "Basic Tier (Starter)" },
   { value: "PRO", label: "Pro Tier" },
-  { value: "ENTERPRISE", label: "Enterprise Tier" },
 ];
 
 function SubscriptionsContent() {
@@ -52,7 +50,7 @@ function SubscriptionsContent() {
   // Edit Subscription Modal
   const [editOpened, setEditOpened] = useState(false);
   const [selectedRest, setSelectedRest] = useState<any>(null);
-  const [planTier, setPlanTier] = useState("PRO");
+  const [planTier, setPlanTier] = useState("BASIC");
   const [subStatus, setSubStatus] = useState("ACTIVE");
   const [billingCycle, setBillingCycle] = useState("MONTHLY");
 
@@ -142,7 +140,6 @@ function SubscriptionsContent() {
             data={[
               { value: "ALL", label: "All Statuses" },
               { value: "ACTIVE", label: "Active" },
-              { value: "TRIAL", label: "Trial" },
               { value: "SUSPENDED", label: "Suspended" },
               { value: "EXPIRED", label: "Expired" },
             ]}
@@ -227,29 +224,15 @@ function SubscriptionsContent() {
                       <Badge
                         size="sm"
                         variant="filled"
-                        color={
-                          r.planTier === "ENTERPRISE"
-                            ? "grape"
-                            : r.planTier === "PRO"
-                            ? "indigo"
-                            : r.planTier === "BASIC"
-                            ? "blue"
-                            : "gray"
-                        }
+                        color={r.planTier === "PRO" ? "indigo" : "blue"}
                       >
-                        {r.planTier || "PRO"}
+                        {r.planTier || "BASIC"}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
                       <Badge
                         size="xs"
-                        color={
-                          (r.status || "ACTIVE") === "ACTIVE"
-                            ? "green"
-                            : (r.status || "") === "TRIAL"
-                            ? "orange"
-                            : "red"
-                        }
+                        color={(r.status || "ACTIVE") === "ACTIVE" ? "green" : "red"}
                       >
                         {r.status || r.subscriptionStatus || "ACTIVE"}
                       </Badge>
@@ -259,9 +242,7 @@ function SubscriptionsContent() {
                     </Table.Td>
                     <Table.Td>
                       <Text size="xs" c="dimmed">
-                        {r.status === "TRIAL" && r.trialEndsAt
-                          ? `Trial ends ${new Date(r.trialEndsAt).toLocaleDateString()}`
-                          : r.subscriptionExpiresAt
+                        {r.subscriptionExpiresAt
                           ? new Date(r.subscriptionExpiresAt).toLocaleDateString()
                           : "Auto-renews"}
                       </Text>
@@ -325,7 +306,6 @@ function SubscriptionsContent() {
             label="Subscription Status"
             data={[
               { value: "ACTIVE", label: "Active" },
-              { value: "TRIAL", label: "14-Day Trial" },
               { value: "SUSPENDED", label: "Suspended" },
               { value: "EXPIRED", label: "Expired" },
             ]}

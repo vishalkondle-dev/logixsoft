@@ -13,7 +13,7 @@ export const restaurant = pgTable(
     address: text('address').notNull(),
     phone: text('phone'),
     currency: text('currency').notNull().default('INR'),
-    status: text('status').notNull().default('TRIAL'), // ACTIVE | TRIAL
+    status: text('status').notNull().default('ACTIVE'), // ACTIVE | SUSPENDED
     ownerUserId: text('ownerUserId')
       .references(() => user.id, { onDelete: 'set null' }),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
@@ -79,8 +79,8 @@ export const restaurantOutlet = pgTable(
     qrMenuSettings: jsonb('qrMenuSettings'),
     whatsappSettings: jsonb('whatsappSettings'),
     inventorySettings: jsonb('inventorySettings'),
-    status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'TRIAL' | 'SUSPENDED' | 'EXPIRED'
-    planTier: text('planTier').notNull().default('PRO'), // 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE'
+    status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'SUSPENDED' | 'EXPIRED'
+    planTier: text('planTier').notNull().default('BASIC'), // 'BASIC' | 'PRO'
     billingCycle: text('billingCycle').notNull().default('MONTHLY'), // 'MONTHLY' | 'ANNUAL'
     trialEndsAt: timestamp('trialEndsAt'),
     subscriptionExpiresAt: timestamp('subscriptionExpiresAt'),

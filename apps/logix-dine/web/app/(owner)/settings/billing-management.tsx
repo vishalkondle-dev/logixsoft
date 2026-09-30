@@ -102,7 +102,7 @@ export function BillingManagement() {
   const handleOpenPlanModal = (outlet?: any, defaultPlan?: string) => {
     const target = outlet || (data?.outlets && (data.outlets.find((o: any) => o.id === activeBranchId) || data.outlets[0])) || null;
     setSelectedOutlet(target);
-    setSelectedPlanTier(defaultPlan || target?.planTier || "PRO");
+    setSelectedPlanTier(defaultPlan || target?.planTier || "BASIC");
     setSelectedCycle((target?.billingCycle as any) || "MONTHLY");
     setModalOpened(true);
   };
@@ -114,7 +114,7 @@ export function BillingManagement() {
       await updateOutletSubscription(restaurantId, selectedOutlet.id, {
         planTier: selectedPlanTier,
         billingCycle: selectedCycle,
-        status: selectedPlanTier === "FREE" ? "TRIAL" : "ACTIVE",
+        status: "ACTIVE",
       });
       notifications.show({
         title: "Plan Updated",
@@ -153,7 +153,7 @@ export function BillingManagement() {
     return sum + (o.monthlyPrice || 0);
   }, 0);
 
-  const activeCount = outlets.filter((o) => o.status === "ACTIVE" || o.status === "TRIAL").length;
+  const activeCount = outlets.filter((o) => o.status === "ACTIVE").length;
 
   return (
     <Stack gap="xl">
@@ -280,7 +280,6 @@ export function BillingManagement() {
             </Table.Thead>
             <Table.Tbody>
               {outlets.map((o) => {
-                const isTrial = o.status === "TRIAL";
                 const isExpired = o.status === "EXPIRED" || o.status === "SUSPENDED";
                 return (
                   <Table.Tr key={o.id}>
@@ -311,26 +310,14 @@ export function BillingManagement() {
                       <Badge
                         size="sm"
                         variant="filled"
-                        color={
-                          o.planTier === "ENTERPRISE"
-                            ? "violet"
-                            : o.planTier === "PRO"
-                            ? "indigo"
-                            : o.planTier === "BASIC"
-                            ? "cyan"
-                            : "gray"
-                        }
+                        color={o.planTier === "PRO" ? "indigo" : "cyan"}
                       >
                         {o.planName || o.planTier}
                       </Badge>
                     </Table.Td>
 
                     <Table.Td>
-                      {isTrial ? (
-                        <Badge size="sm" color="blue" variant="light" leftSection={<IconClock size={12} />}>
-                          {o.trialDaysRemaining !== null ? `${o.trialDaysRemaining}d Trial Left` : "Free Trial"}
-                        </Badge>
-                      ) : isExpired ? (
+                      {isExpired ? (
                         <Badge size="sm" color="red" variant="filled">
                           {o.status}
                         </Badge>
@@ -439,7 +426,7 @@ export function BillingManagement() {
             const isPro = p.popular;
             const isCurrentForActive = activeBranch?.planTier === p.id;
             return (
-              <Grid.Col key={p.id} span={{ base: 12, sm: 6, lg: 3 }}>
+              <Grid.Col key={p.id} span={{ base: 12, md: 6 }}>
                 <Paper
                   withBorder
                   p="lg"

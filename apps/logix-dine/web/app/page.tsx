@@ -54,6 +54,8 @@ export default function HomePage() {
   const primaryDashboardHref =
     user?.role === "ADMIN"
       ? "/admin/overview"
+      : user?.role === "CUSTOMER"
+      ? "/portal"
       : role === "WAITER" || role === "CAPTAIN"
       ? `/waiter${outletQuery}`
       : role === "KITCHEN"

@@ -24,35 +24,46 @@ import { isModuleAllowedForOutlet, type PlanModuleId } from "@logixsoft/logix-di
 
 // Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
 const STAFF_NAV_ITEMS = [
-  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view", moduleId: "tables" },
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
+  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view", moduleId: "tables" },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
   { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view", moduleId: "kitchen" },
   { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view", moduleId: "waiter" },
   { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view", moduleId: "delivery" },
 ];
 
-// Settings sidebar items (clean flat list without descriptions or category groupings)
+// Settings sidebar items (clean logical sections: Store Setup, Menu & Floor, Delivery & Hardware, Guest Experience, Team & Access, Account & Billing)
 const SETTINGS_SIDEBAR_ITEMS = [
-  { id: "overview", label: "All Settings", href: "/settings", icon: IconLayoutGrid, moduleId: "settings" },
-  { id: "restaurant", label: "Store & Outlets", href: "/settings/restaurant", icon: IconBuildingStore, moduleId: "settings" },
-  { id: "menu", label: "Menu Catalog", href: "/settings/menu", icon: IconBook, moduleId: "menu" },
-  { id: "inventory", label: "Inventory & Recipes", href: "/settings/inventory", icon: IconPackages, moduleId: "inventory", requiredPlan: "PRO" },
-  { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias, moduleId: "tables" },
-  { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock, moduleId: "hours" },
-  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, permission: "staff:view", moduleId: "staff" },
-  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, permission: "roles:manage", moduleId: "roles", requiredPlan: "PRO" },
-  { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar, moduleId: "reports" },
-  { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar, moduleId: "feedback" },
-  { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax, moduleId: "tax" },
-  { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee, moduleId: "dining" },
-  { id: "aggregators", label: "Online Delivery (Swiggy/Zomato)", href: "/settings/aggregators", icon: IconTruckDelivery, moduleId: "aggregators", requiredPlan: "PRO" },
-  { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter, moduleId: "printing" },
-  { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode, moduleId: "qr_menu" },
-  { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp, moduleId: "whatsapp", requiredPlan: "PRO" },
-  { id: "reservations", label: "Table Reservations", href: "/settings/reservations", icon: IconCalendarEvent, moduleId: "reservations", requiredPlan: "PRO" },
-  { id: "riders", label: "Delivery & Riders", href: "/settings/riders", icon: IconMotorbike, moduleId: "delivery", requiredPlan: "PRO" },
-  { id: "billing", label: "Subscription & Billing", href: "/settings/billing", icon: IconCreditCard, ownerOnly: true, moduleId: "billing" },
+  // ─── 1. General & Store Setup ───
+  { id: "overview", label: "All Settings", href: "/settings", icon: IconLayoutGrid, section: "STORE SETUP", moduleId: "settings" },
+  { id: "restaurant", label: "Store & Outlets", href: "/settings/restaurant", icon: IconBuildingStore, section: "STORE SETUP", moduleId: "settings" },
+  { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock, section: "STORE SETUP", moduleId: "hours" },
+  { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee, section: "STORE SETUP", moduleId: "dining" },
+
+  // ─── 2. Menu & Dining Floor ───
+  { id: "menu", label: "Menu Catalog", href: "/settings/menu", icon: IconBook, section: "MENU & FLOOR", moduleId: "menu" },
+  { id: "inventory", label: "Inventory & Recipes", href: "/settings/inventory", icon: IconPackages, section: "MENU & FLOOR", moduleId: "inventory", requiredPlan: "PRO" },
+  { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias, section: "MENU & FLOOR", moduleId: "tables" },
+  { id: "reservations", label: "Table Reservations", href: "/settings/reservations", icon: IconCalendarEvent, section: "MENU & FLOOR", moduleId: "reservations", requiredPlan: "PRO" },
+
+  // ─── 3. Delivery & Hardware ───
+  { id: "aggregators", label: "Online Delivery (Swiggy/Zomato)", href: "/settings/aggregators", icon: IconTruckDelivery, section: "DELIVERY & HARDWARE", moduleId: "aggregators", requiredPlan: "PRO" },
+  { id: "riders", label: "Delivery & Riders", href: "/settings/riders", icon: IconMotorbike, section: "DELIVERY & HARDWARE", moduleId: "delivery", requiredPlan: "PRO" },
+  { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter, section: "DELIVERY & HARDWARE", moduleId: "printing" },
+
+  // ─── 4. Digital Guest Experience ───
+  { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode, section: "GUEST EXPERIENCE", moduleId: "qr_menu" },
+  { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp, section: "GUEST EXPERIENCE", moduleId: "whatsapp", requiredPlan: "PRO" },
+  { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar, section: "GUEST EXPERIENCE", moduleId: "feedback" },
+
+  // ─── 5. Team & Governance ───
+  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, section: "TEAM & ANALYTICS", permission: "staff:view", moduleId: "staff" },
+  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, section: "TEAM & ANALYTICS", permission: "roles:manage", moduleId: "roles", requiredPlan: "PRO" },
+  { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar, section: "TEAM & ANALYTICS", moduleId: "reports" },
+
+  // ─── 6. Financials & Billing ───
+  { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax, section: "ACCOUNT & BILLING", moduleId: "tax" },
+  { id: "billing", label: "Subscription & Billing", href: "/settings/billing", icon: IconCreditCard, section: "ACCOUNT & BILLING", ownerOnly: true, moduleId: "billing" },
 ];
 
 // Customer portal navigation items (Active Order, Past Orders, My Profile)
@@ -562,6 +573,17 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       </>
                     )}
 
+                    {isCustomer && (
+                      <Menu.Item
+                        component={Link}
+                        href="/portal"
+                        leftSection={<IconReceipt size={16} color="#af73d7" />}
+                        style={{ fontWeight: 600, color: "#af73d7", backgroundColor: "rgba(175, 115, 215, 0.08)" }}
+                      >
+                        My Orders & Dining Profile
+                      </Menu.Item>
+                    )}
+
                     {isStaffOrOwner && (
                       <Menu.Item
                         component={Link}
@@ -597,13 +619,15 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       </>
                     )}
 
-                    <Menu.Item
-                      component={Link}
-                      href="/portal"
-                      leftSection={<IconUser size={16} color="#868e96" />}
-                    >
-                      Customer Portal (My Orders)
-                    </Menu.Item>
+                    {!isCustomer && (
+                      <Menu.Item
+                        component={Link}
+                        href="/portal"
+                        leftSection={<IconUser size={16} color="#868e96" />}
+                      >
+                        Customer Portal (My Orders)
+                      </Menu.Item>
+                    )}
                     <Menu.Divider />
                     <Menu.Item color="red" leftSection={<IconLogout size={16} />} onClick={() => signOut()}>Sign Out</Menu.Item>
                   </Menu.Dropdown>
@@ -632,83 +656,109 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         >
           <ScrollArea style={{ height: "100%" }} scrollbarSize={4} type="hover">
             <Stack gap={2}>
-              {SETTINGS_SIDEBAR_ITEMS.filter((item) => {
-                if ((user as any)?.role === "ADMIN") return true;
-                if (effectiveRole !== "OWNER") {
-                  if ((item as any).ownerOnly) return false;
-                  if ((item as any).permission && !can((item as any).permission)) return false;
-                  if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId)) {
-                    return false;
+              {(() => {
+                const visibleItems = SETTINGS_SIDEBAR_ITEMS.filter((item) => {
+                  if ((user as any)?.role === "ADMIN") return true;
+                  if (effectiveRole !== "OWNER") {
+                    if ((item as any).ownerOnly) return false;
+                    if ((item as any).permission && !can((item as any).permission)) return false;
+                    if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId)) {
+                      return false;
+                    }
                   }
-                }
-                return true;
-              }).map((item, index) => {
-                const Icon = item.icon;
-                const isActive = activeSettingId === item.id;
-                const isProGated =
-                  (user as any)?.role !== "ADMIN" &&
-                  activeOutlet &&
-                  (item as any).requiredPlan === "PRO" &&
-                  !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId);
+                  return true;
+                });
 
-                return (
-                  <React.Fragment key={item.id}>
-                    <UnstyledButton
-                      component={Link}
-                      href={item.href}
-                      onClick={() => setMobileSidebarOpen(false)}
-                      px={12}
-                      py={8}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        borderRadius: 8,
-                        fontWeight: isActive ? 600 : 500,
-                        color: isActive ? "#af73d7" : isProGated ? "#868e96" : "#343a40",
-                        backgroundColor: isActive ? "rgba(175, 115, 215, 0.12)" : "transparent",
-                        textDecoration: "none",
-                        fontSize: 13.5,
-                        transition: "all 0.12s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.backgroundColor = "#f8f9fa";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) {
-                          e.currentTarget.style.backgroundColor = "transparent";
-                        }
-                      }}
-                    >
-                      <Icon
-                        size={18}
-                        stroke={isActive ? 2.1 : 1.75}
-                        color={isActive ? "#af73d7" : isProGated ? "#adb5bd" : "#495057"}
-                        style={{ flexShrink: 0 }}
-                      />
-                      <Group gap={4} wrap="nowrap" style={{ flex: 1, minWidth: 0, justifyContent: "space-between" }}>
-                        <Text
-                          size="sm"
-                          fw={isActive ? 600 : 500}
-                          c={isActive ? "dinePrimary" : isProGated ? "dimmed" : "dark.8"}
-                          truncate
-                          style={{ fontSize: 13.5, lineHeight: 1.3 }}
-                        >
-                          {item.label}
-                        </Text>
-                        {isProGated && (
-                          <Badge size="xs" variant="light" color="violet" style={{ fontSize: 9, height: 16, padding: "0 4px", flexShrink: 0 }}>
-                            PRO
-                          </Badge>
-                        )}
-                      </Group>
-                    </UnstyledButton>
-                    {index === 0 && <Divider my={4} color="#f1f3f5" />}
-                  </React.Fragment>
-                );
-              })}
+                let lastSection: string | undefined = undefined;
+
+                return visibleItems.map((item, index) => {
+                  const Icon = item.icon;
+                  const isActive = activeSettingId === item.id;
+                  const isProGated =
+                    (user as any)?.role !== "ADMIN" &&
+                    activeOutlet &&
+                    (item as any).requiredPlan === "PRO" &&
+                    !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId);
+
+                  const showSectionHeader = item.section && item.section !== lastSection;
+                  if (item.section) {
+                    lastSection = item.section;
+                  }
+
+                  return (
+                    <React.Fragment key={item.id}>
+                      {showSectionHeader && (
+                        <Box pt={index === 0 ? 4 : 14} pb={4} px={10}>
+                          <Text
+                            size="10px"
+                            fw={700}
+                            c="dimmed"
+                            style={{
+                              textTransform: "uppercase",
+                              letterSpacing: "0.06em",
+                              fontSize: 10,
+                            }}
+                          >
+                            {item.section}
+                          </Text>
+                        </Box>
+                      )}
+                      <UnstyledButton
+                        component={Link}
+                        href={item.href}
+                        onClick={() => setMobileSidebarOpen(false)}
+                        px={12}
+                        py={8}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          borderRadius: 8,
+                          fontWeight: isActive ? 600 : 500,
+                          color: isActive ? "#af73d7" : isProGated ? "#868e96" : "#343a40",
+                          backgroundColor: isActive ? "rgba(175, 115, 215, 0.12)" : "transparent",
+                          textDecoration: "none",
+                          fontSize: 13.5,
+                          transition: "all 0.12s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = "#f8f9fa";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) {
+                            e.currentTarget.style.backgroundColor = "transparent";
+                          }
+                        }}
+                      >
+                        <Icon
+                          size={18}
+                          stroke={isActive ? 2.1 : 1.75}
+                          color={isActive ? "#af73d7" : isProGated ? "#adb5bd" : "#495057"}
+                          style={{ flexShrink: 0 }}
+                        />
+                        <Group gap={4} wrap="nowrap" style={{ flex: 1, minWidth: 0, justifyContent: "space-between" }}>
+                          <Text
+                            size="sm"
+                            fw={isActive ? 600 : 500}
+                            c={isActive ? "dinePrimary" : isProGated ? "dimmed" : "dark.8"}
+                            truncate
+                            style={{ fontSize: 13.5, lineHeight: 1.3 }}
+                          >
+                            {item.label}
+                          </Text>
+                          {isProGated && (
+                            <Badge size="xs" variant="light" color="violet" style={{ fontSize: 9, height: 16, padding: "0 4px", flexShrink: 0 }}>
+                              PRO
+                            </Badge>
+                          )}
+                        </Group>
+                      </UnstyledButton>
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </Stack>
           </ScrollArea>
         </AppShell.Navbar>

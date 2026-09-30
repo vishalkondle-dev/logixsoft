@@ -6,6 +6,10 @@ import {
   ROLE_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, hasPermission, isAllOutletRole,
   type Permission, type RestaurantRole,
 } from '@logixsoft/logix-dine/types/roles';
+import {
+  isModuleAllowedForOutlet, isPermissionAllowedForOutlet, isSubscriptionActive,
+  type PlanModuleId,
+} from '@logixsoft/logix-dine/types/plans';
 import type { AuthEnv } from './auth';
 import { createAuth } from './auth';
 import {
@@ -148,17 +152,40 @@ export async function buildSessionPayload(
           permissions = (ROLE_PERMISSIONS[roleUpper as keyof typeof ROLE_PERMISSIONS] as string[]) || [];
         }
 
+        // Fetch all outlets for this restaurant with plan & status details
+        const outletRows = await db
+          .select({
+            id: appSchema.restaurantOutlet.id,
+            planTier: appSchema.restaurantOutlet.planTier,
+            status: appSchema.restaurantOutlet.status,
+            trialEndsAt: appSchema.restaurantOutlet.trialEndsAt,
+            subscriptionExpiresAt: appSchema.restaurantOutlet.subscriptionExpiresAt,
+          })
+          .from(appSchema.restaurantOutlet)
+          .where(eq(appSchema.restaurantOutlet.restaurantId, restId));
+
         let outletIds: string[] = [];
         if (allOutlets) {
-          // For OWNER / ALL_OUTLET_ROLES: Fetch all active outlets of their restaurant
-          const outletRows = await db
-            .select({ id: appSchema.restaurantOutlet.id })
-            .from(appSchema.restaurantOutlet)
-            .where(eq(appSchema.restaurantOutlet.restaurantId, restId));
           outletIds = outletRows.map((r: any) => r.id);
         } else {
           // Explicitly assigned outlets from outletStaff rows
           outletIds = Array.from(new Set(rowsForRest.map((r: any) => r.outletId).filter(Boolean)));
+        }
+
+        const outletPlans: Record<string, {
+          planTier: string;
+          status: string;
+          trialEndsAt?: string | null;
+          subscriptionExpiresAt?: string | null;
+        }> = {};
+
+        for (const o of outletRows) {
+          outletPlans[o.id] = {
+            planTier: o.planTier || 'BASIC',
+            status: o.status || 'ACTIVE',
+            trialEndsAt: o.trialEndsAt ? new Date(o.trialEndsAt).toISOString() : null,
+            subscriptionExpiresAt: o.subscriptionExpiresAt ? new Date(o.subscriptionExpiresAt).toISOString() : null,
+          };
         }
 
         return {
@@ -169,6 +196,7 @@ export async function buildSessionPayload(
           permissions,
           outletIds,
           allOutlets,
+          outletPlans,
         };
       }),
     );
@@ -426,6 +454,7 @@ export function requireMembership(): MiddlewareHandler {
       outletId: headerOutletId,
       outletIds: membership.outletIds,
       allOutlets: membership.allOutlets,
+      outletPlans: membership.outletPlans || {},
     });
     await next();
   };
@@ -495,6 +524,28 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
       }
     }
 
+    // Subscription plan licensing check for active outlet (enforced for BOTH Owner and Staff):
+    if (headerOutletId && membership.outletPlans) {
+      const planInfo = membership.outletPlans[headerOutletId];
+      if (planInfo) {
+        if (!isSubscriptionActive(planInfo)) {
+          return c.json({
+            error: 'Subscription Inactive',
+            message: `This outlet's subscription is ${planInfo.status}. Please renew your subscription to access this feature.`,
+            status: planInfo.status,
+          }, 403);
+        }
+        if (!isPermissionAllowedForOutlet(planInfo, permission)) {
+          return c.json({
+            error: 'Plan Upgrade Required',
+            message: `Feature '${permission}' requires a higher plan tier (e.g. Pro Plan). Current outlet plan: ${planInfo.planTier}`,
+            requiredPlan: 'PRO',
+            currentPlan: planInfo.planTier,
+          }, 403);
+        }
+      }
+    }
+
     c.set('tenant', {
       restaurantId,
       role: membership.role,
@@ -504,6 +555,7 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
       outletId: headerOutletId,
       outletIds: membership.outletIds,
       allOutlets: membership.allOutlets,
+      outletPlans: membership.outletPlans || {},
     });
     await next();
   };
@@ -580,9 +632,46 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
       outletId: headerOutletId,
       outletIds: membership.outletIds,
       allOutlets: membership.allOutlets,
+      outletPlans: membership.outletPlans || {},
     });
     await next();
   };
+}
+
+/**
+ * Synchronous in-memory outlet plan feature check (ZERO DB CALLS).
+ * Enforces that an outlet has the required SaaS subscription plan tier
+ * and an active (non-expired) subscription status to access a module/feature.
+ * Enforced strictly for BOTH Staff and Owner.
+ */
+export function assertOutletPlanFeature(
+  tenant: { role?: string; outletPlans?: Record<string, { planTier: string; status: string; trialEndsAt?: string | null; subscriptionExpiresAt?: string | null }> } | null | undefined,
+  outletId: string | null | undefined,
+  moduleIdOrPermission: string,
+): { allowed: boolean; error?: string; message?: string } {
+  if (tenant?.role === 'ADMIN') return { allowed: true };
+  if (!outletId) return { allowed: true };
+  const planInfo = tenant?.outletPlans?.[outletId];
+  if (!planInfo) return { allowed: true };
+
+  if (!isSubscriptionActive(planInfo)) {
+    return {
+      allowed: false,
+      error: 'Subscription Inactive',
+      message: `This outlet's subscription is ${planInfo.status}. Please renew your subscription in Billing to access this module.`,
+    };
+  }
+
+  const allowed = isModuleAllowedForOutlet(planInfo, moduleIdOrPermission as PlanModuleId) ||
+                  isPermissionAllowedForOutlet(planInfo, moduleIdOrPermission);
+  if (!allowed) {
+    return {
+      allowed: false,
+      error: 'Plan Upgrade Required',
+      message: `Module requires a higher plan tier (e.g. Pro Plan). Current outlet plan: ${planInfo.planTier}`,
+    };
+  }
+  return { allowed: true };
 }
 
 // ─── Role-Based Convenience Middlewares ───────────────────────────────────────

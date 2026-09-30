@@ -6,6 +6,8 @@ import { Center, Loader, Container, Paper, Stack, Title, Text, Button, ThemeIcon
 import { IconLock, IconBrandWhatsapp } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { isRouteAllowedForOutlet } from "@logixsoft/logix-dine/types/plans";
+import { PlanPaywall } from "@/components/billing/plan-paywall";
 
 function getRoleHomePath(role: string | null, outletId?: string | null, can?: (perm: string) => boolean): string {
   const q = outletId ? `?outletId=${outletId}` : "";
@@ -108,13 +110,22 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
       }
       return;
     }
+    const isPlatformAdmin = (user as any)?.role === "ADMIN";
+    const isPlanGated =
+      !isPlatformAdmin &&
+      activeOutlet &&
+      !isRouteAllowedForOutlet(activeOutlet as any, pathname);
+
+    // If route is plan-gated, let PlanPaywall render without redirecting
+    if (isPlanGated) return;
+
     // Enforce role-based allowed routes for all staff roles
     if (restaurant && role && !isPathAllowedForRole(role, pathname, can) && !redirected.current) {
       redirected.current = true;
       router.replace(getRoleHomePath(role, activeOutlet?.id, can));
       return;
     }
-  }, [authLoading, restLoading, isAuthenticated, restaurant, myRestaurants, activeOutlet, role, pathname, router, can]);
+  }, [authLoading, restLoading, isAuthenticated, restaurant, myRestaurants, activeOutlet, role, pathname, router, can, user]);
 
   // Still loading either auth or restaurant context
   if (authLoading || (isAuthenticated && restLoading)) {
@@ -142,6 +153,23 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
           </Stack>
         </Paper>
       </Container>
+    );
+  }
+
+  const isPlatformAdmin = (user as any)?.role === "ADMIN";
+  const isPlanGated =
+    !isPlatformAdmin &&
+    activeOutlet &&
+    !isRouteAllowedForOutlet(activeOutlet as any, pathname);
+
+  if (isPlanGated) {
+    return (
+      <PlanPaywall
+        outlet={activeOutlet}
+        pathname={pathname}
+        isOwner={role === "OWNER"}
+        restaurantName={restaurant?.name}
+      />
     );
   }
 

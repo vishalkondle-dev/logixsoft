@@ -3,7 +3,7 @@ import { eq, and, or, sql, desc, inArray, gte, lte } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requirePermission, assertOutletAccess } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess, assertOutletPlanFeature } from '../lib/tenancy';
 import {
   CreateInventoryItemSchema,
   UpdateInventoryItemSchema,
@@ -63,8 +63,14 @@ inventoryRoutes.get(
     const tenant = c.get('tenant');
     const { restaurantId } = tenant;
     const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || '';
-    if (outletId && !assertOutletAccess(tenant, outletId)) {
-      return c.json({ error: 'Forbidden', message: 'No access to outlet' }, 403);
+    if (outletId) {
+      if (!assertOutletAccess(tenant, outletId)) {
+        return c.json({ error: 'Forbidden', message: 'No access to outlet' }, 403);
+      }
+      const planCheck = assertOutletPlanFeature(tenant, outletId, 'inventory');
+      if (!planCheck.allowed) {
+        return c.json({ error: planCheck.error || 'Plan Upgrade Required', message: planCheck.message }, 403);
+      }
     }
 
     const { db, close } = getDb(c);

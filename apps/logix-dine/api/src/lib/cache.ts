@@ -32,6 +32,12 @@ export interface MembershipEntry {
   permissions: string[];
   outletIds: string[];     // empty = OWNER (all outlets)
   allOutlets: boolean;
+  outletPlans?: Record<string, {
+    planTier: string;
+    status: string;
+    trialEndsAt?: string | null;
+    subscriptionExpiresAt?: string | null;
+  }>;
 }
 
 export interface SessionPayload {

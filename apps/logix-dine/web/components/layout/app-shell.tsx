@@ -20,38 +20,39 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
+import { isModuleAllowedForOutlet, type PlanModuleId } from "@logixsoft/logix-dine/types/plans";
 
 // Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
 const STAFF_NAV_ITEMS = [
-  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view" },
-  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view" },
-  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view" },
-  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view" },
-  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view" },
-  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view" },
+  { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view", moduleId: "tables" },
+  { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
+  { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
+  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view", moduleId: "kitchen" },
+  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view", moduleId: "waiter" },
+  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view", moduleId: "delivery" },
 ];
 
 // Settings sidebar items (clean flat list without descriptions or category groupings)
 const SETTINGS_SIDEBAR_ITEMS = [
-  { id: "overview", label: "All Settings", href: "/settings", icon: IconLayoutGrid },
-  { id: "restaurant", label: "Store & Outlets", href: "/settings/restaurant", icon: IconBuildingStore },
-  { id: "menu", label: "Menu Catalog", href: "/settings/menu", icon: IconBook },
-  { id: "inventory", label: "Inventory & Recipes", href: "/settings/inventory", icon: IconPackages },
-  { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias },
-  { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock },
-  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, permission: "staff:view" },
-  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, permission: "roles:manage" },
-  { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar },
-  { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar },
-  { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax },
-  { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee },
-  { id: "aggregators", label: "Online Delivery (Swiggy/Zomato)", href: "/settings/aggregators", icon: IconTruckDelivery },
-  { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter },
-  { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode },
-  { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp },
-  { id: "reservations", label: "Table Reservations", href: "/settings/reservations", icon: IconCalendarEvent },
-  { id: "riders", label: "Delivery & Riders", href: "/settings/riders", icon: IconMotorbike },
-  { id: "billing", label: "Subscription & Billing", href: "/settings/billing", icon: IconCreditCard, ownerOnly: true },
+  { id: "overview", label: "All Settings", href: "/settings", icon: IconLayoutGrid, moduleId: "settings" },
+  { id: "restaurant", label: "Store & Outlets", href: "/settings/restaurant", icon: IconBuildingStore, moduleId: "settings" },
+  { id: "menu", label: "Menu Catalog", href: "/settings/menu", icon: IconBook, moduleId: "menu" },
+  { id: "inventory", label: "Inventory & Recipes", href: "/settings/inventory", icon: IconPackages, moduleId: "inventory", requiredPlan: "PRO" },
+  { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias, moduleId: "tables" },
+  { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock, moduleId: "hours" },
+  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, permission: "staff:view", moduleId: "staff" },
+  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, permission: "roles:manage", moduleId: "roles", requiredPlan: "PRO" },
+  { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar, moduleId: "reports" },
+  { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar, moduleId: "feedback" },
+  { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax, moduleId: "tax" },
+  { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee, moduleId: "dining" },
+  { id: "aggregators", label: "Online Delivery (Swiggy/Zomato)", href: "/settings/aggregators", icon: IconTruckDelivery, moduleId: "aggregators", requiredPlan: "PRO" },
+  { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter, moduleId: "printing" },
+  { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode, moduleId: "qr_menu" },
+  { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp, moduleId: "whatsapp", requiredPlan: "PRO" },
+  { id: "reservations", label: "Table Reservations", href: "/settings/reservations", icon: IconCalendarEvent, moduleId: "reservations", requiredPlan: "PRO" },
+  { id: "riders", label: "Delivery & Riders", href: "/settings/riders", icon: IconMotorbike, moduleId: "delivery", requiredPlan: "PRO" },
+  { id: "billing", label: "Subscription & Billing", href: "/settings/billing", icon: IconCreditCard, ownerOnly: true, moduleId: "billing" },
 ];
 
 // Customer portal navigation items (Active Order, Past Orders, My Profile)
@@ -162,6 +163,12 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     ? []
     : isStaffOrOwner
     ? STAFF_NAV_ITEMS.filter((n) => {
+        // Platform ADMIN sees everything
+        if ((user as any)?.role !== "ADMIN") {
+          if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, n.moduleId as PlanModuleId)) {
+            return false;
+          }
+        }
         if (effectiveRole && n.roles?.includes(effectiveRole)) return true;
         if (n.permission && can(n.permission)) return true;
         return false;
@@ -178,13 +185,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     if (can("kitchen:view")) return `/kitchen${q}`;
     if (can("delivery:view")) return `/rider${q}`;
     if (can("tables:view")) return `/tables${q}`;
-    if (effectiveRole === "WAITER") return `/waiter${q}`;
-    if (effectiveRole === "CAPTAIN") return `/waiter${q}`;
-    if (effectiveRole === "KITCHEN") return `/kitchen${q}`;
-    if (effectiveRole === "RIDER") return `/rider${q}`;
-    if (effectiveRole === "CASHIER") return `/pos${q}`;
     return `/pos${q}`;
-  }, [effectiveRole, activeOutlet, can]);
+  }, [activeOutlet, can]);
 
   const staffRoleLabel = React.useMemo(() => {
     if (roleName && !["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER", "KITCHEN", "RIDER"].includes(roleName)) {
@@ -631,13 +633,24 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           <ScrollArea style={{ height: "100%" }} scrollbarSize={4} type="hover">
             <Stack gap={2}>
               {SETTINGS_SIDEBAR_ITEMS.filter((item) => {
-                if (effectiveRole === "OWNER" || (user as any)?.role === "ADMIN") return true;
-                if ((item as any).ownerOnly) return false;
-                if ((item as any).permission) return can((item as any).permission);
+                if ((user as any)?.role === "ADMIN") return true;
+                if (effectiveRole !== "OWNER") {
+                  if ((item as any).ownerOnly) return false;
+                  if ((item as any).permission && !can((item as any).permission)) return false;
+                  if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId)) {
+                    return false;
+                  }
+                }
                 return true;
               }).map((item, index) => {
                 const Icon = item.icon;
                 const isActive = activeSettingId === item.id;
+                const isProGated =
+                  (user as any)?.role !== "ADMIN" &&
+                  activeOutlet &&
+                  (item as any).requiredPlan === "PRO" &&
+                  !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId);
+
                 return (
                   <React.Fragment key={item.id}>
                     <UnstyledButton
@@ -652,7 +665,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         gap: 10,
                         borderRadius: 8,
                         fontWeight: isActive ? 600 : 500,
-                        color: isActive ? "#af73d7" : "#343a40",
+                        color: isActive ? "#af73d7" : isProGated ? "#868e96" : "#343a40",
                         backgroundColor: isActive ? "rgba(175, 115, 215, 0.12)" : "transparent",
                         textDecoration: "none",
                         fontSize: 13.5,
@@ -672,18 +685,25 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       <Icon
                         size={18}
                         stroke={isActive ? 2.1 : 1.75}
-                        color={isActive ? "#af73d7" : "#495057"}
+                        color={isActive ? "#af73d7" : isProGated ? "#adb5bd" : "#495057"}
                         style={{ flexShrink: 0 }}
                       />
-                      <Text
-                        size="sm"
-                        fw={isActive ? 600 : 500}
-                        c={isActive ? "dinePrimary" : "dark.8"}
-                        truncate
-                        style={{ fontSize: 13.5, lineHeight: 1.3 }}
-                      >
-                        {item.label}
-                      </Text>
+                      <Group gap={4} wrap="nowrap" style={{ flex: 1, minWidth: 0, justifyContent: "space-between" }}>
+                        <Text
+                          size="sm"
+                          fw={isActive ? 600 : 500}
+                          c={isActive ? "dinePrimary" : isProGated ? "dimmed" : "dark.8"}
+                          truncate
+                          style={{ fontSize: 13.5, lineHeight: 1.3 }}
+                        >
+                          {item.label}
+                        </Text>
+                        {isProGated && (
+                          <Badge size="xs" variant="light" color="violet" style={{ fontSize: 9, height: 16, padding: "0 4px", flexShrink: 0 }}>
+                            PRO
+                          </Badge>
+                        )}
+                      </Group>
                     </UnstyledButton>
                     {index === 0 && <Divider my={4} color="#f1f3f5" />}
                   </React.Fragment>

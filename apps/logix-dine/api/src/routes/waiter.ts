@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { appSchema } from '../db';
-import { requirePermission, assertOutletAccess } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess, assertOutletPlanFeature } from '../lib/tenancy';
 import type { AuthEnv } from '../lib/auth';
 import * as z from 'zod';
 import { broadcastToOutlet } from '../lib/sync';
@@ -55,6 +55,10 @@ async function handleListRequests(c: any) {
   }
   if (!assertOutletAccess(tenant, outletId)) {
     return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+  }
+  const planCheck = assertOutletPlanFeature(tenant, outletId, 'waiter');
+  if (!planCheck.allowed) {
+    return c.json({ error: planCheck.error || 'Plan Upgrade Required', message: planCheck.message }, 403);
   }
 
   const statusFilter = c.req.query('status') || 'ALL';

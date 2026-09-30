@@ -35,6 +35,13 @@ function updateUrlOutletId(outletId: string | null) {
 }
 
 import { hasPermission, type Permission } from "@logixsoft/logix-dine/types/roles";
+import {
+  isPermissionAllowedForOutlet,
+  isModuleAllowedForOutlet,
+  isSubscriptionActive,
+  type PlanModuleId,
+  type PlanTier,
+} from "@logixsoft/logix-dine/types/plans";
 
 interface RestaurantContextType {
   restaurant: JsonRestaurantRow | null;
@@ -47,7 +54,10 @@ interface RestaurantContextType {
   permissions: string[];
   allOutlets: boolean;
   myOutletIds: string[];
+  isPlanActive: boolean;
+  activePlanTier: PlanTier;
   can: (permission: string) => boolean;
+  isModuleAllowed: (moduleId: PlanModuleId) => boolean;
   setActiveRestaurant: (restaurantId: string) => void;
   setActiveOutlet: (outletId: string) => void;
   refresh: () => Promise<void>;
@@ -348,12 +358,38 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
 
   const can = useCallback(
     (permission: string): boolean => {
+      // Platform ADMIN bypasses everything
+      if ((user as any)?.role === "ADMIN") return true;
       if (!role) return false;
-      if (role === "OWNER" || (user as any)?.role === "ADMIN") return true;
+
+      // 1. Subscription plan licensing check for active outlet:
+      // Both STAFF and OWNER are bound by what the active outlet's subscription allows!
+      if (activeOutlet && !isPermissionAllowedForOutlet(activeOutlet as any, permission)) {
+        return false;
+      }
+
+      // 2. Role & permission matrix check:
+      if (role === "OWNER") return true;
       return hasPermission(permissions, permission as Permission);
     },
-    [role, permissions, user]
+    [role, permissions, user, activeOutlet]
   );
+
+  const isModuleAllowed = useCallback(
+    (moduleId: PlanModuleId): boolean => {
+      if ((user as any)?.role === "ADMIN") return true;
+      if (!activeOutlet) return true;
+      return isModuleAllowedForOutlet(activeOutlet as any, moduleId);
+    },
+    [user, activeOutlet]
+  );
+
+  const isPlanActive = React.useMemo(() => {
+    if (!activeOutlet) return true;
+    return isSubscriptionActive(activeOutlet as any);
+  }, [activeOutlet]);
+
+  const activePlanTier = ((activeOutlet?.planTier?.toUpperCase() as PlanTier) || "BASIC");
 
   return (
     <RestaurantContext.Provider value={{
@@ -367,7 +403,10 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       permissions,
       allOutlets,
       myOutletIds,
+      isPlanActive,
+      activePlanTier,
       can,
+      isModuleAllowed,
       setActiveRestaurant,
       setActiveOutlet,
       refresh,
@@ -394,16 +433,16 @@ export function useRestaurantRole(): string | null {
 
 /**
  * Checks if the active user has a specific permission or set of permissions.
- * Zero overhead - evaluated against in-memory session permissions.
+ * Evaluated against active outlet subscription plan and in-memory session permissions.
  */
 export function usePermission(
   permission: string | string[],
   mode: "all" | "any" = "all"
 ): boolean {
-  const { can, role } = useRestaurant();
+  const { can } = useRestaurant();
   const { user } = useAuth();
 
-  if (role === "OWNER" || (user as any)?.role === "ADMIN") return true;
+  if ((user as any)?.role === "ADMIN") return true;
 
   if (Array.isArray(permission)) {
     return mode === "all"

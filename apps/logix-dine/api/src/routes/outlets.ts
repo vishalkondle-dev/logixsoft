@@ -39,7 +39,7 @@ app.get(
   const { db, close } = getDb(c);
   try {
     const conditions = [eq(appSchema.restaurantOutlet.restaurantId, restaurantId)];
-    if (tenant.role !== 'ADMIN') {
+    if (!tenant.allOutlets && tenant.role !== 'OWNER' && tenant.role !== 'ADMIN') {
       conditions.push(inArray(appSchema.restaurantOutlet.id, tenant.outletIds || ['__none__']));
     }
     const outlets = await db
@@ -51,6 +51,109 @@ app.get(
     await close();
   }
 });
+
+// GET /outlets/billing — returns billing summary & outlet subscriptions for current restaurant
+app.get(
+  '/billing',
+  apiDoc({
+    tags: ['Outlets'],
+    summary: 'Get Restaurant Outlets Billing & Subscriptions',
+    description: 'Returns billing summary, per-outlet SaaS plan tiers, status, and invoice history.',
+    responses: {
+      200: z.any(),
+      401: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireMembership(),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const { db, close } = getDb(c);
+    try {
+      const [rest] = await db
+        .select()
+        .from(appSchema.restaurant)
+        .where(eq(appSchema.restaurant.id, restaurantId))
+        .limit(1);
+
+      const outlets = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
+
+      const plans = [
+        {
+          id: 'BASIC',
+          name: 'Starter Plan',
+          monthlyPrice: 999,
+          annualPrice: 9990,
+          features: [
+            'Standard POS Terminal',
+            'KOT Generation & Printing',
+            'Table & Section Layouts',
+            'GST Invoicing & Thermal Bills',
+            'Unlimited Orders',
+            'Email & Chat Support',
+          ],
+        },
+        {
+          id: 'PRO',
+          name: 'Pro Plan',
+          monthlyPrice: 1499,
+          annualPrice: 14990,
+          popular: true,
+          features: [
+            'Everything in Starter',
+            'Unlimited Waiter Mobile Apps',
+            'Kitchen Display System (KDS)',
+            'Inventory & Recipe BOM Costing',
+            'WhatsApp Instant e-Bills',
+            'Advanced Analytics & Tax Audit',
+            'Online Aggregators (Swiggy, Zomato)',
+            'Table Reservations & Custom Roles Matrix',
+          ],
+        },
+      ];
+
+      const enrichedOutlets = outlets.map((o: any) => {
+        const plan = plans.find((p) => p.id === o.planTier) || plans[0];
+        return {
+          ...toOutlet(o),
+          planName: plan.name,
+          monthlyPrice: plan.monthlyPrice,
+          annualPrice: plan.annualPrice,
+        };
+      });
+
+      const invoices = [
+        {
+          id: `INV-${new Date().getFullYear()}-001`,
+          date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+          outletName: enrichedOutlets[0]?.name || 'Main Branch',
+          planName: 'Pro SaaS Plan',
+          billingCycle: 'Monthly',
+          amount: 1499,
+          tax: 270,
+          total: 1769,
+          status: 'PAID',
+        },
+      ];
+
+      return c.json({
+        restaurant: {
+          id: rest?.id,
+          name: rest?.name,
+        },
+        outlets: enrichedOutlets,
+        plans,
+        invoices,
+      });
+    } finally {
+      await close();
+    }
+  }
+);
 
 // POST /outlets
 app.post(
@@ -76,6 +179,10 @@ app.post(
   try {
     const now = new Date();
     const id = generateId('outlet');
+    const planTier = parsed.data.planTier || 'BASIC';
+    const billingCycle = parsed.data.billingCycle || 'MONTHLY';
+    const status = parsed.data.status || 'ACTIVE';
+
     await db.insert(appSchema.restaurantOutlet).values({
       id,
       restaurantId,
@@ -83,6 +190,10 @@ app.post(
       address: parsed.data.address ?? null,
       phone: parsed.data.phone ?? null,
       upiId: parsed.data.upiId ?? null,
+      status,
+      planTier,
+      billingCycle,
+      trialEndsAt: null,
       isDefault: false,
       createdAt: now,
       updatedAt: now,
@@ -253,5 +364,83 @@ app.patch(
     await close();
   }
 });
+
+// PUT /outlets/:id/subscription — update an outlet's subscription plan & cycle
+const UpdateOutletSubscriptionSchema = z.object({
+  planTier: z.enum(['BASIC', 'PRO']),
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
+  status: z.enum(['ACTIVE', 'SUSPENDED', 'EXPIRED']).optional(),
+});
+
+app.put(
+  '/:id/subscription',
+  apiDoc({
+    tags: ['Outlets'],
+    summary: 'Update Outlet Subscription',
+    description: 'Updates plan tier, billing cycle, or status for a specific outlet (Owner only).',
+    params: z.object({ id: z.string() }),
+    body: UpdateOutletSubscriptionSchema,
+    responses: {
+      200: RestaurantOutletSchema,
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = UpdateOutletSubscriptionSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+    }
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const now = new Date();
+      const updates: any = {
+        planTier: parsed.data.planTier,
+        updatedAt: now,
+      };
+
+      if (parsed.data.billingCycle) {
+        updates.billingCycle = parsed.data.billingCycle;
+      }
+
+      if (parsed.data.status) {
+        updates.status = parsed.data.status;
+      } else {
+        updates.status = 'ACTIVE';
+        const days = parsed.data.billingCycle === 'ANNUAL' ? 365 : 30;
+        updates.subscriptionExpiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      }
+
+      const [updated] = await db
+        .update(appSchema.restaurantOutlet)
+        .set(updates)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId),
+        ))
+        .returning();
+
+      if (!updated) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      await invalidateRestaurant(kv(c), restaurantId);
+      return c.json(toOutlet(updated));
+    } finally {
+      await close();
+    }
+  }
+);
 
 export { app as outletRoutes };

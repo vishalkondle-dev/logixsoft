@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Box, Title, Tabs, TextInput, Button, Stack, Group, Text,
-  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Center,
+  Box, Title, Tabs, TextInput, Button, Stack, Group, Text, Switch,
+  Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Center, Divider,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -16,9 +16,10 @@ import {
   IconMotorbike, IconPlayerPause, IconPlayerPlay, IconCash, IconDeviceMobile, IconAlertTriangle,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useAuth } from "@/lib/auth-context";
 import {
   useStaff, useTables, useRoles,
-  useInviteStaff, useUpdateStaff, useRemoveStaff,
+  useAddStaff, useInviteStaff, useUpdateStaff, useRemoveStaff,
   useCreateTable, useUpdateTable, useToggleTable, useDeleteTable,
   useCreateOutlet, useUpdateOutlet, useDeleteOutlet, useSetDefaultOutlet,
 } from "@/lib/queries";
@@ -61,6 +62,7 @@ import { ReservationsManagement } from "./reservations-management";
 import { RidersManagement } from "./riders-management";
 import { AggregatorsManagement } from "./aggregators-management";
 import { FeedbackManagement } from "./feedback-management";
+import { BillingManagement } from "./billing-management";
 
 const STAFF_ROLES = [
   { value: "MANAGER", label: "Manager — full access to assigned outlet(s)" },
@@ -89,6 +91,7 @@ export const VALID_SETTINGS_TABS = [
   "riders",
   "aggregators",
   "feedback",
+  "billing",
 ] as const;
 
 export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
@@ -96,11 +99,14 @@ export type SettingsTab = (typeof VALID_SETTINGS_TABS)[number];
 export function SettingsView({ currentTab }: { currentTab?: string }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { restaurant, outlets: ctxOutlets, activeOutlet, refresh, role } = useRestaurant();
+  const { restaurant, outlets: ctxOutlets, activeOutlet, refresh, role, can } = useRestaurant();
+  const { user } = useAuth();
   const restaurantId = restaurant?.id ?? "";
-  const isOwner = role === "OWNER";
+  const isOwner = role === "OWNER" || (user as any)?.role === "ADMIN";
+  const canViewStaff = isOwner || can("staff:view");
+  const canManageRoles = isOwner || can("roles:manage");
 
-  const { data: rolesData } = useRoles(restaurantId, !!restaurantId && isOwner);
+  const { data: rolesData } = useRoles(restaurantId, !!restaurantId && (isOwner || canManageRoles));
   const staffRoleOptions = React.useMemo(() => {
     if (rolesData?.roles && rolesData.roles.length > 0) {
       return rolesData.roles
@@ -145,13 +151,20 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const [restForm, setRestForm] = useState({ name: "", address: "", phone: "" });
   const [restSaving, setRestSaving] = useState(false);
   const [outletModal, setOutletModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
-  const [outletForm, setOutletForm] = useState({ name: "", address: "", phone: "", upiId: "" });
+  const [outletForm, setOutletForm] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    upiId: "",
+    planTier: "BASIC",
+    billingCycle: "MONTHLY",
+  });
   const [outletSaving, setOutletSaving] = useState(false);
 
   // Staff — React Query
   const { data: staff = [], isLoading: staffLoading } = useStaff(restaurantId, isOwner);
-  const [inviteModal, setInviteModal] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ phone: "", role: "WAITER", outletIds: [] as string[] });
+  const [staffModal, setStaffModal] = useState(false);
+  const [staffForm, setStaffForm] = useState({ name: "", phone: "", role: "WAITER", outletIds: [] as string[] });
 
   // Table — React Query (shared cache with POS page)
   const tableOutletId = activeOutlet?.id ?? (ctxOutlets[0]?.id || null);
@@ -168,7 +181,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const setDefaultMut = useSetDefaultOutlet(restaurantId);
 
   // Staff mutations
-  const inviteStaffMut = useInviteStaff(restaurantId);
+  const addStaffMut = useAddStaff(restaurantId);
+  const inviteStaffMut = addStaffMut;
   const updateStaffMut = useUpdateStaff(restaurantId);
   const removeStaffMut = useRemoveStaff(restaurantId);
 
@@ -200,7 +214,14 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   // ─── Outlet handlers ────────────────────────────────────────────────────
   const openCreateOutlet = () => {
-    setOutletForm({ name: "", address: "", phone: "", upiId: "" });
+    setOutletForm({
+      name: "",
+      address: "",
+      phone: "",
+      upiId: "",
+      planTier: "PRO",
+      billingCycle: "MONTHLY",
+    });
     setOutletModal({ open: true, editing: null });
   };
 
@@ -210,6 +231,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
       address: o.address ?? "",
       phone: o.phone ?? "",
       upiId: o.upiId ?? "",
+      planTier: o.planTier || "PRO",
+      billingCycle: o.billingCycle || "MONTHLY",
     });
     setOutletModal({ open: true, editing: o });
   };
@@ -226,6 +249,8 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             address: outletForm.address?.trim() || null,
             phone: outletForm.phone?.trim() || null,
             upiId: outletForm.upiId?.trim() || null,
+            planTier: outletForm.planTier,
+            billingCycle: outletForm.billingCycle,
           },
         });
       } else {
@@ -234,11 +259,13 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           address: outletForm.address?.trim() || undefined,
           phone: outletForm.phone?.trim() || undefined,
           upiId: outletForm.upiId?.trim() || undefined,
+          planTier: outletForm.planTier,
+          billingCycle: outletForm.billingCycle,
         });
       }
       await refresh();
       setOutletModal({ open: false, editing: null });
-      notifications.show({ title: "Saved", message: "Outlet saved", color: "green", icon: <IconCheck size={16} /> });
+      notifications.show({ title: "Saved", message: "Outlet and subscription plan saved", color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     } finally {
@@ -269,25 +296,41 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   // ─── Staff handlers ─────────────────────────────────────────────────────
 
-  const openInvite = () => {
+  const openAddStaff = () => {
     const defaultOutletId = activeOutlet?.id || outlets[0]?.id;
-    setInviteForm({ phone: "", role: "WAITER", outletIds: defaultOutletId ? [defaultOutletId] : [] });
-    setInviteModal(true);
+    setStaffForm({ name: "", phone: "", role: "WAITER", outletIds: defaultOutletId ? [defaultOutletId] : [] });
+    setStaffModal(true);
   };
+  const openInvite = openAddStaff;
 
-  const saveInvite = async () => {
-    if (!inviteForm.phone.trim() || !inviteForm.outletIds.length) {
-      notifications.show({ title: "Missing info", message: "Phone and at least one outlet are required", color: "orange" });
+  const saveStaff = async () => {
+    if (!staffForm.name.trim() || !staffForm.phone.trim() || !staffForm.outletIds.length) {
+      notifications.show({ title: "Missing info", message: "Name, 10-digit mobile number, and branch are required", color: "orange" });
+      return;
+    }
+    if (staffForm.phone.trim().length !== 10) {
+      notifications.show({ title: "Invalid phone", message: "Please enter a valid 10-digit mobile number", color: "orange" });
+      return;
+    }
+    const cleanStaffPhone = staffForm.phone.trim().replace(/\D/g, "").slice(-10);
+    if (cleanStaffPhone === "7276718848") {
+      notifications.show({
+        title: "Forbidden",
+        message: "Cannot assign platform superadmin as restaurant staff. Admin must have only the ADMIN role.",
+        color: "red",
+      });
       return;
     }
     try {
-      await inviteStaffMut.mutateAsync(inviteForm);
-      setInviteModal(false);
-      notifications.show({ title: "Invited", message: "Staff member invited — they can now sign in to access it", color: "green", icon: <IconCheck size={16} /> });
+      await addStaffMut.mutateAsync(staffForm);
+      setStaffModal(false);
+      setStaffForm({ name: "", phone: "", role: "WAITER", outletIds: [] });
+      notifications.show({ title: "Staff Added", message: `${staffForm.name} is active and ready to log in`, color: "green", icon: <IconCheck size={16} /> });
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
     }
   };
+  const saveInvite = saveStaff;
 
   const handleRoleChange = async (member: any, newRole: string) => {
     try {
@@ -301,8 +344,22 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
   };
 
+  const handleStatusToggle = async (member: any) => {
+    const newStatus = member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    try {
+      await updateStaffMut.mutateAsync({ id: member.id, body: { status: newStatus } });
+      notifications.show({
+        title: newStatus === "ACTIVE" ? "Staff Activated" : "Staff Deactivated",
+        message: `${member.name || member.phone} is now ${newStatus.toLowerCase()}`,
+        color: newStatus === "ACTIVE" ? "green" : "gray",
+      });
+    } catch (err: any) {
+      notifications.show({ title: "Error", message: err.message, color: "red" });
+    }
+  };
+
   const handleRemoveStaff = async (member: any) => {
-    if (!confirm(`Remove ${member.phone} from staff?`)) return;
+    if (!confirm(`Remove ${member.name || member.phone} from staff?`)) return;
     try {
       await removeStaffMut.mutateAsync(member.id);
     } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
@@ -371,21 +428,52 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   };
 
   const tableSaving = createTableMut.isPending || updateTableMut.isPending;
-  const inviteSaving = inviteStaffMut.isPending;
+  const staffSaving = addStaffMut.isPending;
+  const inviteSaving = staffSaving;
 
   const OutletCard = ({ outlet }: { outlet: any }) => (
-    <Paper key={outlet.id} p="md" radius="md">
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <div style={{ minWidth: 0 }}>
-          <Group gap="xs" wrap="nowrap">
+    <Paper key={outlet.id} p="md" radius="md" withBorder>
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Group gap="xs" wrap="wrap" mb={4}>
             <Text fw={600} truncate>{outlet.name}</Text>
             {outlet.isDefault && <Badge size="xs" color="dinePrimary">Default</Badge>}
+            {outlet.planTier && (
+              <Badge
+                size="xs"
+                variant="light"
+                color={outlet.planTier === "PRO" ? "indigo" : "blue"}
+              >
+                {outlet.planTier} Plan
+              </Badge>
+            )}
+            {outlet.status === "EXPIRED" && (
+              <Badge size="xs" color="red" variant="filled">
+                Expired
+              </Badge>
+            )}
           </Group>
           {outlet.address && <Text size="xs" c="dimmed" truncate>{outlet.address}</Text>}
           {outlet.phone && <Text size="xs" c="dimmed">{outlet.phone}</Text>}
           {outlet.upiId && <Text size="xs" c="teal" fw={500} truncate>UPI: {outlet.upiId}</Text>}
+          <Group gap="xs" mt={8}>
+            <Link href={`/settings/billing?outletId=${outlet.id}`} style={{ textDecoration: "none" }}>
+              <Text size="xs" c="dinePrimary" fw={600} style={{ cursor: "pointer" }}>
+                Manage Subscription &amp; Plan &rarr;
+              </Text>
+            </Link>
+          </Group>
         </div>
         <Group gap="xs" wrap="nowrap">
+          <Button
+            size="xs"
+            variant="light"
+            color="dinePrimary"
+            leftSection={<IconCreditCard size={13} />}
+            onClick={() => router.push(`/settings/billing?outletId=${outlet.id}`)}
+          >
+            Change Plan
+          </Button>
           {!outlet.isDefault && (
             <ActionIcon variant="light" color="yellow" size="sm" onClick={() => handleSetDefault(outlet)} title="Set as default">
               <IconStar size={14} />
@@ -474,6 +562,10 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     feedback: {
       title: "Customer Reviews & Ratings",
       subtitle: "Authentic customer feedback, rating metrics, dish ratings & official responses",
+    },
+    billing: {
+      title: "Subscription & Billing",
+      subtitle: "Manage SaaS plan tiers, outlet licenses, renewals, and invoice history",
     },
   };
 
@@ -605,50 +697,60 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         </Tabs.Panel>
 
         {/* Staff tab */}
-        {isOwner && (
+        {(isOwner || canViewStaff) && (
           <Tabs.Panel value="staff">
             <Stack gap="md">
               <Group justify="space-between" align="center">
                 <div>
                   <Text fw={600} size="sm">Team Members</Text>
-                  <Text size="xs" c="dimmed">Manage roles and outlet access for each staff member</Text>
+                  <Text size="xs" c="dimmed">Directly add staff, assign roles, and manage branch access</Text>
                 </div>
-                <Button size="sm" color="dinePrimary" leftSection={<IconPlus size={14} />} onClick={openInvite}>Invite Staff</Button>
+                <Button size="sm" color="dinePrimary" leftSection={<IconPlus size={14} />} onClick={openAddStaff}>Add Staff</Button>
               </Group>
               {staffLoading ? (
                 <Loader size="sm" />
               ) : !staff.length ? (
                 <Paper p="xl" radius="md" ta="center">
                   <Text size="sm" c="dimmed">
-                    No staff yet. Invite a Manager, Waiter, or Kitchen member to get started.
+                    No staff members yet. Add a Manager, Waiter, Cashier, or Kitchen member to get started.
                   </Text>
-                  <Button size="xs" variant="light" color="dinePrimary" mt="md" leftSection={<IconPlus size={14} />} onClick={openInvite}>
-                    Invite First Staff Member
+                  <Button size="xs" variant="light" color="dinePrimary" mt="md" leftSection={<IconPlus size={14} />} onClick={openAddStaff}>
+                    Add First Staff Member
                   </Button>
                 </Paper>
               ) : (
                 <Stack gap="sm">
-                  {staff.map((m) => (
+                  {staff.map((m: any) => (
                     <Paper key={m.id} p="md" radius="md">
-                      {/* Row 1 — identity */}
+                      {/* Row 1 — identity & status */}
                       <Group justify="space-between" mb="sm" wrap="nowrap">
                         <div style={{ minWidth: 0 }}>
                           <Group gap="xs" wrap="nowrap">
-                            <Text fw={700} size="sm" style={{ fontFamily: "monospace" }}>{m.phone}</Text>
-                            <Badge size="xs" variant="light" color={m.inviteStatus === "ACCEPTED" ? "green" : "orange"}>
-                              {m.inviteStatus === "ACCEPTED" ? "Active" : "Pending"}
+                            <Text fw={700} size="sm">{m.name || "Staff Member"}</Text>
+                            <Text size="xs" c="dimmed" style={{ fontFamily: "monospace" }}>{m.phone}</Text>
+                            <Badge size="xs" variant="light" color={m.status === "ACTIVE" ? "green" : "gray"}>
+                              {m.status === "ACTIVE" ? "Active" : "Inactive"}
                             </Badge>
                           </Group>
                         </div>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          size="sm"
-                          onClick={() => handleRemoveStaff(m)}
-                          title="Remove staff member"
-                        >
-                          <IconTrash size={14} />
-                        </ActionIcon>
+                        <Group gap="xs">
+                          <Switch
+                            size="xs"
+                            checked={m.status === "ACTIVE"}
+                            onChange={() => handleStatusToggle(m)}
+                            color="green"
+                            title={m.status === "ACTIVE" ? "Click to deactivate" : "Click to activate"}
+                          />
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="sm"
+                            onClick={() => handleRemoveStaff(m)}
+                            title="Remove staff member"
+                          >
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Group>
                       </Group>
 
                       {/* Row 2 — role + outlet selectors */}
@@ -690,7 +792,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         )}
 
         {/* Roles & Permissions tab */}
-        {isOwner && (
+        {(isOwner || canManageRoles) && (
           <Tabs.Panel value="roles">
             <RolesManagement embedded />
           </Tabs.Panel>
@@ -744,6 +846,11 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
         <Tabs.Panel value="feedback">
           <FeedbackManagement />
         </Tabs.Panel>
+
+        {/* Subscription & Billing tab */}
+        <Tabs.Panel value="billing">
+          <BillingManagement />
+        </Tabs.Panel>
       </Tabs>
 
       <Modal opened={outletModal.open} onClose={() => setOutletModal({ open: false, editing: null })} title={outletModal.editing ? "Edit Outlet" : "Add Outlet"}>
@@ -758,49 +865,76 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
             value={outletForm.upiId}
             onChange={(e) => setOutletForm((f) => ({ ...f, upiId: e.target.value.trim() }))}
           />
+          <Divider label="Branch SaaS Subscription" labelPosition="center" my="xs" />
+          <Select
+            label="Branch Subscription Plan"
+            description="Assign the right plan tier for this specific outlet branch"
+            value={outletForm.planTier}
+            onChange={(v) => v && setOutletForm((f) => ({ ...f, planTier: v }))}
+            data={[
+              { value: "BASIC", label: "Starter Plan — ₹999/mo" },
+              { value: "PRO", label: "Pro Plan — ₹1,499/mo" },
+            ]}
+          />
+          <Select
+            label="Billing Cycle"
+            value={outletForm.billingCycle}
+            onChange={(v) => v && setOutletForm((f) => ({ ...f, billingCycle: v }))}
+            data={[
+              { value: "MONTHLY", label: "Monthly Recurring" },
+              { value: "ANNUAL", label: "Annual (15% Savings / 2 Months Free)" },
+            ]}
+          />
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setOutletModal({ open: false, editing: null })}>Cancel</Button>
-            <Button color="dinePrimary" onClick={saveOutlet} loading={outletSaving}>Save</Button>
+            <Button color="dinePrimary" onClick={saveOutlet} loading={outletSaving}>Save Outlet</Button>
           </Group>
         </Stack>
       </Modal>
 
-      <Modal opened={inviteModal} onClose={() => setInviteModal(false)} title="Invite Staff">
+      <Modal opened={staffModal} onClose={() => setStaffModal(false)} title="Add Staff Member">
         <Stack gap="md">
           <TextInput
-            label="Phone Number"
+            label="Staff Name"
+            placeholder="e.g. Ramesh Kumar"
+            required
+            value={staffForm.name}
+            onChange={(e) => setStaffForm((f) => ({ ...f, name: e.target.value }))}
+          />
+          <TextInput
+            label="Mobile Number"
             placeholder="10-digit mobile number"
             type="tel"
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={10}
             required
-            value={inviteForm.phone}
-            onChange={(e) => setInviteForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+            value={staffForm.phone}
+            onChange={(e) => setStaffForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
           />
           <Select
             label="Role"
             required
-            value={inviteForm.role}
-            onChange={(v) => v && setInviteForm((f) => ({ ...f, role: v }))}
+            value={staffForm.role}
+            onChange={(v) => v && setStaffForm((f) => ({ ...f, role: v }))}
             data={staffRoleOptions}
           />
           <MultiSelect
-            label="Outlet Access"
+            label="Branch / Outlet Access"
             required
-            placeholder="Select outlet(s)"
-            value={inviteForm.outletIds}
-            onChange={(v) => setInviteForm((f) => ({ ...f, outletIds: v }))}
+            placeholder="Select branch(es)"
+            value={staffForm.outletIds}
+            onChange={(v) => setStaffForm((f) => ({ ...f, outletIds: v }))}
             data={outlets.map((o) => ({ value: o.id, label: o.name }))}
             readOnly={outlets.length <= 1}
             rightSection={outlets.length <= 1 ? null : undefined}
           />
           <Text size="xs" c="dimmed">
-            They'll be notified on WhatsApp with a link to sign in using this number. No password needed — same OTP login as you.
+            Staff are added directly and active immediately. They can sign in using this mobile number via WhatsApp OTP to access their role screen.
           </Text>
           <Group justify="flex-end">
-            <Button variant="default" onClick={() => setInviteModal(false)}>Cancel</Button>
-            <Button color="dinePrimary" onClick={saveInvite} loading={inviteSaving}>Send Invite</Button>
+            <Button variant="default" onClick={() => setStaffModal(false)}>Cancel</Button>
+            <Button color="dinePrimary" onClick={saveStaff} loading={staffSaving}>Add Staff Member</Button>
           </Group>
         </Stack>
       </Modal>

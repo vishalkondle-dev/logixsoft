@@ -120,6 +120,12 @@ export function useCustomerSync(
         // Invalidate customer portal query (debounced to avoid multiple /portal/session requests)
         triggerCustomerPortalRefresh();
 
+        if (msg.type === "STAFF_ROLE_UPDATED" || msg.type === "STAFF_UPDATED") {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("dine:role-updated", { detail: msg.data }));
+          }
+        }
+
         if (msg.type === "WAITER_REQUEST_UPDATED" || msg.type === "WAITER_CALL_STATUS_CHANGED") {
           const d = (msg.data || {}) as any;
           if (d.status === "IN_PROGRESS") {

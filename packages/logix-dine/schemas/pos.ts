@@ -3,6 +3,7 @@ import { Expect } from '../types/utils';
 import { AssertSame } from '../types/utils';
 import type {
   JsonRestaurantRow,
+  JsonOutletStaffRow,
   JsonRestaurantMemberRow,
   JsonMemberOutletAccessRow,
   JsonRestaurantOutletRow,
@@ -37,7 +38,7 @@ export const RestaurantSchema = z.object({
   phone: z.string().nullable(),
   currency: z.string(),
   status: z.string(),
-  ownerUserId: z.string(),
+  ownerUserId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),
@@ -45,20 +46,24 @@ export const RestaurantSchema = z.object({
 });
 type _RestaurantAssert = Expect<AssertSame<z.infer<typeof RestaurantSchema>, JsonRestaurantRow>>;
 
-export const RestaurantMemberSchema = z.object({
+export const OutletStaffSchema = z.object({
   id: z.string(),
   restaurantId: z.string(),
+  outletId: z.string().nullable(),
   userId: z.string().nullable(),
   phone: z.string(),
+  name: z.string().nullable(),
   role: z.string(),
-  inviteStatus: z.string(),
+  status: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
   createdBy: z.string().nullable(),
   updatedBy: z.string().nullable(),
 });
-type _MemberAssert = Expect<AssertSame<z.infer<typeof RestaurantMemberSchema>, JsonRestaurantMemberRow>>;
+type _OutletStaffAssert = Expect<AssertSame<z.infer<typeof OutletStaffSchema>, JsonOutletStaffRow>>;
 
+// Aliases for backward compatibility during refactor
+export const RestaurantMemberSchema = OutletStaffSchema;
 export const MemberOutletAccessSchema = z.object({
   id: z.string(),
   memberId: z.string(),
@@ -66,7 +71,6 @@ export const MemberOutletAccessSchema = z.object({
   createdAt: z.string(),
   createdBy: z.string().nullable(),
 });
-type _MemberOutletAccessAssert = Expect<AssertSame<z.infer<typeof MemberOutletAccessSchema>, JsonMemberOutletAccessRow>>;
 
 export const RestaurantOutletSchema = z.object({
   id: z.string(),
@@ -82,6 +86,11 @@ export const RestaurantOutletSchema = z.object({
   qrMenuSettings: z.unknown().nullable(),
   whatsappSettings: z.unknown().nullable(),
   inventorySettings: z.unknown().nullable(),
+  status: z.string(),
+  planTier: z.string(),
+  billingCycle: z.string(),
+  trialEndsAt: z.string().nullable().optional(),
+  subscriptionExpiresAt: z.string().nullable().optional(),
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -440,6 +449,9 @@ export const CreateOutletSchema = z.object({
   address: z.string().max(255).optional(),
   phone: z.string().max(20).optional(),
   upiId: z.string().max(100).optional(),
+  planTier: z.enum(['BASIC', 'PRO']).optional(),
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
+  status: z.string().optional(),
 });
 
 export const UpdateOutletSchema = z.object({
@@ -447,6 +459,9 @@ export const UpdateOutletSchema = z.object({
   address: z.string().max(255).nullable().optional(),
   phone: z.string().max(20).nullable().optional(),
   upiId: z.string().max(100).nullable().optional(),
+  planTier: z.enum(['BASIC', 'PRO']).optional(),
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
+  status: z.string().optional(),
   openingHours: z.any().nullable().optional(),
   invoiceSettings: z.any().nullable().optional(),
   taxSettings: z.any().nullable().optional(),

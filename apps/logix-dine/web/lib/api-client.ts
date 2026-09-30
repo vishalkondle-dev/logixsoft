@@ -383,7 +383,10 @@ export const getMyRole = (restaurantId: string) =>
 export const getOutlets = (restaurantId: string) =>
   apiFetch<any[]>("/outlets", restaurantId);
 
-export const createOutlet = (restaurantId: string, body: { name: string; address?: string; phone?: string; upiId?: string }) =>
+export const createOutlet = (
+  restaurantId: string,
+  body: { name: string; address?: string; phone?: string; upiId?: string; planTier?: string; billingCycle?: string; status?: string }
+) =>
   apiFetch<any>("/outlets", restaurantId, { method: "POST", body: JSON.stringify(body) });
 
 export const updateOutlet = (restaurantId: string, outletId: string, body: any) =>
@@ -394,6 +397,60 @@ export const deleteOutlet = (restaurantId: string, outletId: string) =>
 
 export const setDefaultOutlet = (restaurantId: string, outletId: string) =>
   apiFetch<any>(`/outlets/${outletId}/set-default`, restaurantId, { method: "PATCH" });
+
+export const getBillingData = (restaurantId: string) =>
+  apiFetch<{
+    restaurant: { id: string; name: string };
+    outlets: Array<{
+      id: string;
+      restaurantId: string;
+      name: string;
+      address?: string | null;
+      phone?: string | null;
+      upiId?: string | null;
+      status: string;
+      planTier: string;
+      planName: string;
+      billingCycle: string;
+      trialEndsAt?: string | null;
+      subscriptionExpiresAt?: string | null;
+      trialDaysRemaining?: number | null;
+      monthlyPrice: number;
+      annualPrice: number;
+      isDefault: boolean;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    plans: Array<{
+      id: string;
+      name: string;
+      monthlyPrice: number;
+      annualPrice: number;
+      popular?: boolean;
+      features: string[];
+    }>;
+    invoices: Array<{
+      id: string;
+      date: string;
+      outletName: string;
+      planName: string;
+      billingCycle: string;
+      amount: number;
+      tax: number;
+      total: number;
+      status: string;
+    }>;
+  }>("/outlets/billing", restaurantId);
+
+export const updateOutletSubscription = (
+  restaurantId: string,
+  outletId: string,
+  body: { planTier: string; billingCycle?: string; status?: string }
+) =>
+  apiFetch<any>(`/outlets/${outletId}/subscription`, restaurantId, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 
 // ─── Roles & Permissions ──────────────────────────────────────────────────
 
@@ -453,14 +510,23 @@ export const resetRolePermissions = async (restaurantId: string, id: string) => 
 export const listStaff = (restaurantId: string) =>
   apiFetch<any[]>("/staff", restaurantId);
 
-export const inviteStaff = (restaurantId: string, body: { phone: string; role: string; outletIds: string[] }) =>
-  apiFetch<any>("/staff/invite", restaurantId, { method: "POST", body: JSON.stringify(body) });
+export const addStaff = (
+  restaurantId: string,
+  body: { name?: string; phone: string; role: string; outletIds: string[] }
+) =>
+  apiFetch<any>("/staff", restaurantId, { method: "POST", body: JSON.stringify(body) });
 
-export const updateStaff = (restaurantId: string, memberId: string, body: { role?: string; outletIds?: string[] }) =>
-  apiFetch<any>(`/staff/${memberId}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
+export const inviteStaff = addStaff;
 
-export const removeStaff = (restaurantId: string, memberId: string) =>
-  apiFetch<any>(`/staff/${memberId}`, restaurantId, { method: "DELETE" });
+export const updateStaff = (
+  restaurantId: string,
+  staffId: string,
+  body: { name?: string; role?: string; outletIds?: string[]; status?: "ACTIVE" | "INACTIVE" }
+) =>
+  apiFetch<any>(`/staff/${staffId}`, restaurantId, { method: "PUT", body: JSON.stringify(body) });
+
+export const removeStaff = (restaurantId: string, staffId: string) =>
+  apiFetch<any>(`/staff/${staffId}`, restaurantId, { method: "DELETE" });
 
 // ─── Tables ──────────────────────────────────────────────────────────────────
 

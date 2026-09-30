@@ -1,16 +1,20 @@
 import type { Context, MiddlewareHandler } from 'hono';
-import { eq, and, or, inArray } from 'drizzle-orm';
+import { eq, and, or, inArray, isNull } from 'drizzle-orm';
 import { createDbWithClient } from '../db';
 import { appSchema } from '../db';
 import {
   ROLE_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, hasPermission, isAllOutletRole,
   type Permission, type RestaurantRole,
 } from '@logixsoft/logix-dine/types/roles';
+import {
+  isModuleAllowedForOutlet, isPermissionAllowedForOutlet, isSubscriptionActive,
+  type PlanModuleId,
+} from '@logixsoft/logix-dine/types/plans';
 import type { AuthEnv } from './auth';
 import { createAuth } from './auth';
 import {
   extractSessionToken, getSessionPayload, setSessionPayload, isJwtToken,
-  type SessionPayload, type MembershipEntry,
+  deleteSessionPayload, type SessionPayload, type MembershipEntry, type KVNamespace,
 } from './cache';
 import { verifySessionJwt } from './jwt';
 
@@ -58,31 +62,54 @@ export async function buildSessionPayload(
   }
   if (!authUser) return null;
 
+  // Platform ADMIN has strictly only the ADMIN role and is decoupled from any restaurant
+  if (authUser.role === 'ADMIN') {
+    return {
+      user: {
+        id: authUser.id,
+        name: authUser.name ?? null,
+        email: authUser.email ?? null,
+        phoneNumber: (authUser as any).phoneNumber ?? null,
+        role: 'ADMIN',
+        phoneNumberVerified: (authUser as any).phoneNumberVerified ?? false,
+      },
+      memberships: [],
+    };
+  }
+
   const { db, close } = dbFromEnv(c);
   try {
     const phone = authUser.phoneNumber ?? null;
-    const memberConditions = [eq(appSchema.restaurantMember.userId, authUser.id)];
+    const staffConditions = [eq(appSchema.outletStaff.userId, authUser.id)];
     if (phone) {
-      memberConditions.push(eq(appSchema.restaurantMember.phone, phone));
+      staffConditions.push(eq(appSchema.outletStaff.phone, phone));
     }
-    const members = await db
+    const staffRows = await db
       .select()
-      .from(appSchema.restaurantMember)
-      .where(or(...memberConditions));
+      .from(appSchema.outletStaff)
+      .where(and(or(...staffConditions), eq(appSchema.outletStaff.status, 'ACTIVE')));
 
-    // Auto-link any pending member rows to this authUser
-    for (const m of members) {
-      if (!m.userId) {
+    // Auto-link any staff rows matching phone to this authUser
+    for (const s of staffRows) {
+      if (!s.userId) {
         await db
-          .update(appSchema.restaurantMember)
-          .set({ userId: authUser.id, inviteStatus: 'ACCEPTED', updatedAt: new Date() })
-          .where(eq(appSchema.restaurantMember.id, m.id))
+          .update(appSchema.outletStaff)
+          .set({ userId: authUser.id, name: s.name || authUser.name, updatedAt: new Date() })
+          .where(eq(appSchema.outletStaff.id, s.id))
           .catch(() => {});
       }
     }
 
+    // Group staff rows by restaurantId
+    const restaurantIds = Array.from(new Set(staffRows.map((s: any) => s.restaurantId as string)));
+    const staffByRestaurant = new Map<string, any[]>();
+    for (const s of staffRows) {
+      const list = staffByRestaurant.get(s.restaurantId) ?? [];
+      list.push(s);
+      staffByRestaurant.set(s.restaurantId, list);
+    }
+
     // Batch fetch custom roles for all restaurants the user belongs to
-    const restaurantIds = Array.from(new Set(members.map((m: any) => m.restaurantId as string)));
     const roleDefinitionsMap = new Map<string, { permissions: string[]; allOutlets: boolean; name: string }>();
     if (restaurantIds.length > 0) {
       try {
@@ -94,6 +121,7 @@ export async function buildSessionPayload(
           const perms = Array.isArray(r.permissions) ? (r.permissions as string[]) : [];
           roleDefinitionsMap.set(`${r.restaurantId}:${r.id}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
           roleDefinitionsMap.set(`${r.restaurantId}:${r.name}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
+          roleDefinitionsMap.set(`${r.restaurantId}:${r.name.toUpperCase()}`, { permissions: perms, allOutlets: r.allOutlets, name: r.name });
         }
       } catch (err) {
         console.warn('[buildSessionPayload] error querying restaurantRole:', err);
@@ -101,10 +129,16 @@ export async function buildSessionPayload(
     }
 
     const memberships: MembershipEntry[] = await Promise.all(
-      members.map(async (m: any) => {
-        const customRole = roleDefinitionsMap.get(`${m.restaurantId}:${m.role}`);
-        const isOwner = m.role === 'OWNER';
-        const allOutlets = isOwner || Boolean(customRole?.allOutlets) || isAllOutletRole(m.role as RestaurantRole);
+      restaurantIds.map(async (restId) => {
+        const rowsForRest = staffByRestaurant.get(restId)!;
+        const primaryRow = rowsForRest[0];
+        const rawRole = (primaryRow.role || '').trim();
+        const roleUpper = rawRole.toUpperCase();
+        const customRole = roleDefinitionsMap.get(`${restId}:${rawRole}`) ||
+                           roleDefinitionsMap.get(`${restId}:${roleUpper}`);
+        const isOwner = roleUpper === 'OWNER';
+        const hasNullOutlet = rowsForRest.some((r) => r.outletId === null);
+        const allOutlets = isOwner || hasNullOutlet || Boolean(customRole?.allOutlets) || isAllOutletRole(rawRole);
 
         // Resolve permissions:
         let permissions: string[] = [];
@@ -112,36 +146,57 @@ export async function buildSessionPayload(
           permissions = ['*'];
         } else if (customRole) {
           permissions = customRole.permissions;
-        } else if (DEFAULT_ROLE_PERMISSIONS[m.role as keyof typeof DEFAULT_ROLE_PERMISSIONS]) {
-          permissions = [...DEFAULT_ROLE_PERMISSIONS[m.role as keyof typeof DEFAULT_ROLE_PERMISSIONS]];
+        } else if (DEFAULT_ROLE_PERMISSIONS[roleUpper as keyof typeof DEFAULT_ROLE_PERMISSIONS]) {
+          permissions = [...DEFAULT_ROLE_PERMISSIONS[roleUpper as keyof typeof DEFAULT_ROLE_PERMISSIONS]];
         } else {
-          permissions = (ROLE_PERMISSIONS[m.role as keyof typeof ROLE_PERMISSIONS] as string[]) || [];
+          permissions = (ROLE_PERMISSIONS[roleUpper as keyof typeof ROLE_PERMISSIONS] as string[]) || [];
         }
+
+        // Fetch all outlets for this restaurant with plan & status details
+        const outletRows = await db
+          .select({
+            id: appSchema.restaurantOutlet.id,
+            planTier: appSchema.restaurantOutlet.planTier,
+            status: appSchema.restaurantOutlet.status,
+            trialEndsAt: appSchema.restaurantOutlet.trialEndsAt,
+            subscriptionExpiresAt: appSchema.restaurantOutlet.subscriptionExpiresAt,
+          })
+          .from(appSchema.restaurantOutlet)
+          .where(eq(appSchema.restaurantOutlet.restaurantId, restId));
 
         let outletIds: string[] = [];
         if (allOutlets) {
-          // For OWNER / ALL_OUTLET_ROLES: Fetch all active outlets of their restaurant
-          const rows = await db
-            .select({ id: appSchema.restaurantOutlet.id })
-            .from(appSchema.restaurantOutlet)
-            .where(eq(appSchema.restaurantOutlet.restaurantId, m.restaurantId));
-          outletIds = rows.map((r: any) => r.id);
+          outletIds = outletRows.map((r: any) => r.id);
         } else {
-          // For MANAGER / WAITER / KITCHEN / custom: Fetch explicitly assigned outlets
-          const rows = await db
-            .select({ outletId: appSchema.memberOutletAccess.outletId })
-            .from(appSchema.memberOutletAccess)
-            .where(eq(appSchema.memberOutletAccess.memberId, m.id));
-          outletIds = rows.map((r: any) => r.outletId);
+          // Explicitly assigned outlets from outletStaff rows
+          outletIds = Array.from(new Set(rowsForRest.map((r: any) => r.outletId).filter(Boolean)));
         }
+
+        const outletPlans: Record<string, {
+          planTier: string;
+          status: string;
+          trialEndsAt?: string | null;
+          subscriptionExpiresAt?: string | null;
+        }> = {};
+
+        for (const o of outletRows) {
+          outletPlans[o.id] = {
+            planTier: o.planTier || 'BASIC',
+            status: o.status || 'ACTIVE',
+            trialEndsAt: o.trialEndsAt ? new Date(o.trialEndsAt).toISOString() : null,
+            subscriptionExpiresAt: o.subscriptionExpiresAt ? new Date(o.subscriptionExpiresAt).toISOString() : null,
+          };
+        }
+
         return {
-          restaurantId: m.restaurantId,
-          memberId: m.id,
-          role: m.role,
-          roleName: customRole?.name || m.role,
+          restaurantId: restId,
+          memberId: primaryRow.id,
+          role: primaryRow.role,
+          roleName: customRole?.name || primaryRow.role,
           permissions,
           outletIds,
           allOutlets,
+          outletPlans,
         };
       }),
     );
@@ -218,6 +273,72 @@ export async function storeSessionPayload(c: Context, token: string, userObj?: a
 }
 
 /**
+ * Invalidate cached session payloads in Cloudflare KV for one or more staff members.
+ * Resolves user IDs from either userId or phone number, queries all active session
+ * tokens from PostgreSQL `session` table, and evicts them from Cloudflare KV.
+ * This guarantees the user's next API request fetches fresh role and outlet permissions from DB.
+ */
+export async function invalidateStaffSessions(
+  db: any,
+  kvNamespace: KVNamespace | undefined | null,
+  targets: Array<{ phone?: string | null; userId?: string | null }>
+): Promise<void> {
+  if (!kvNamespace || !targets || targets.length === 0) return;
+  try {
+    const userIds = new Set<string>();
+    const phoneVariations = new Set<string>();
+
+    for (const t of targets) {
+      if (t.userId) userIds.add(t.userId);
+      if (t.phone) {
+        const raw = t.phone.trim();
+        const digits = raw.replace(/\D/g, '');
+        if (raw) phoneVariations.add(raw);
+        if (digits) {
+          phoneVariations.add(digits);
+          if (digits.length === 10) {
+            phoneVariations.add(`+91${digits}`);
+            phoneVariations.add(`91${digits}`);
+          } else if (digits.length > 10) {
+            phoneVariations.add(`+${digits}`);
+            phoneVariations.add(digits.slice(-10));
+          }
+        }
+      }
+    }
+
+    if (phoneVariations.size > 0) {
+      const usersByPhone = await db
+        .select({ id: appSchema.user.id })
+        .from(appSchema.user)
+        .where(inArray(appSchema.user.phoneNumber, Array.from(phoneVariations)));
+      for (const u of usersByPhone) {
+        userIds.add(u.id);
+      }
+    }
+
+    if (userIds.size === 0) return;
+
+    const sessions = await db
+      .select({ token: appSchema.session.token })
+      .from(appSchema.session)
+      .where(inArray(appSchema.session.userId, Array.from(userIds)));
+
+    const deletePromises: Promise<void>[] = [];
+    for (const s of sessions) {
+      deletePromises.push(deleteSessionPayload(kvNamespace, s.token));
+      if (s.token && s.token.includes('.')) {
+        deletePromises.push(deleteSessionPayload(kvNamespace, s.token.split('.')[0]));
+      }
+    }
+
+    await Promise.all(deletePromises);
+  } catch (err) {
+    console.warn('[invalidateStaffSessions] Failed to invalidate sessions in KV:', err);
+  }
+}
+
+/**
  * Synchronous in-memory outlet permission check (ZERO DB CALLS).
  * Enforces that ANY role (including OWNER) can only act on outlets
  * they actually have permission for in their active restaurant session.
@@ -227,7 +348,7 @@ export function assertOutletAccess(
   outletId: string | null | undefined,
 ): boolean {
   if (!outletId) return false;
-  if (tenant?.role === 'ADMIN') return true;
+  if (tenant?.role === 'ADMIN' || tenant?.allOutlets || tenant?.role === 'OWNER') return true;
   const allowed = tenant?.outletIds;
   if (!Array.isArray(allowed)) return false;
   return allowed.includes(outletId);
@@ -243,11 +364,11 @@ export async function hasOutletAccess(
 ): Promise<boolean> {
   if (isAllOutletRole(role as RestaurantRole)) return true;
   const [row] = await db
-    .select({ id: appSchema.memberOutletAccess.id })
-    .from(appSchema.memberOutletAccess)
+    .select({ id: appSchema.outletStaff.id })
+    .from(appSchema.outletStaff)
     .where(and(
-      eq(appSchema.memberOutletAccess.memberId, memberId),
-      eq(appSchema.memberOutletAccess.outletId, outletId),
+      eq(appSchema.outletStaff.id, memberId),
+      or(eq(appSchema.outletStaff.outletId, outletId), isNull(appSchema.outletStaff.outletId)),
     ))
     .limit(1);
   return !!row;
@@ -288,13 +409,15 @@ export function requireMembership(): MiddlewareHandler {
     // Platform ADMIN bypasses everything
     if (user.role === 'ADMIN') {
       const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      const existingMembership = memberships.find((m) => m.restaurantId === restaurantId);
       c.set('tenant', {
         restaurantId,
-        role: 'OWNER',
-        roleName: 'OWNER',
-        member: null,
+        role: existingMembership?.role || 'OWNER',
+        roleName: existingMembership?.roleName || 'OWNER',
+        permissions: existingMembership?.permissions || ['*'],
+        member: existingMembership ? { id: existingMembership.memberId, restaurantId, role: existingMembership.role, userId: user.id } : null,
         outletId: headerOutletId,
-        outletIds: headerOutletId ? [headerOutletId] : [],
+        outletIds: existingMembership?.outletIds?.length ? existingMembership.outletIds : (headerOutletId ? [headerOutletId] : []),
         allOutlets: true,
       });
       return next();
@@ -311,7 +434,7 @@ export function requireMembership(): MiddlewareHandler {
     }
 
     // Strict Outlet scope check
-    if (headerOutletId && !membership.allOutlets) {
+    if (headerOutletId && !membership.allOutlets && membership.role?.toUpperCase() !== 'OWNER') {
       if (!membership.outletIds.includes(headerOutletId)) {
         return c.json({
           error: 'Forbidden',
@@ -331,6 +454,7 @@ export function requireMembership(): MiddlewareHandler {
       outletId: headerOutletId,
       outletIds: membership.outletIds,
       allOutlets: membership.allOutlets,
+      outletPlans: membership.outletPlans || {},
     });
     await next();
   };
@@ -355,12 +479,15 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
     // Platform ADMIN bypasses everything
     if (user.role === 'ADMIN') {
       const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      const existingMembership = memberships.find((m) => m.restaurantId === restaurantId);
       c.set('tenant', {
         restaurantId,
-        role: 'OWNER',
-        member: null,
+        role: existingMembership?.role || 'OWNER',
+        roleName: existingMembership?.roleName || 'OWNER',
+        permissions: existingMembership?.permissions || ['*'],
+        member: existingMembership ? { id: existingMembership.memberId, restaurantId, role: existingMembership.role, userId: user.id } : null,
         outletId: headerOutletId,
-        outletIds: headerOutletId ? [headerOutletId] : [],
+        outletIds: existingMembership?.outletIds?.length ? existingMembership.outletIds : (headerOutletId ? [headerOutletId] : []),
         allOutlets: true,
       });
       return next();
@@ -387,13 +514,35 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
       }, 403);
     }
 
-    // Strict Outlet scope check for EVERY role (including OWNER)
-    if (headerOutletId) {
+    // Strict Outlet scope check (bypassed if role has allOutlets access or is OWNER)
+    if (headerOutletId && !membership.allOutlets && membership.role?.toUpperCase() !== 'OWNER') {
       if (!membership.outletIds.includes(headerOutletId)) {
         return c.json({
           error: 'Forbidden',
           message: `You do not have access to outlet '${headerOutletId}'`,
         }, 403);
+      }
+    }
+
+    // Subscription plan licensing check for active outlet (enforced for BOTH Owner and Staff):
+    if (headerOutletId && membership.outletPlans) {
+      const planInfo = membership.outletPlans[headerOutletId];
+      if (planInfo) {
+        if (!isSubscriptionActive(planInfo)) {
+          return c.json({
+            error: 'Subscription Inactive',
+            message: `This outlet's subscription is ${planInfo.status}. Please renew your subscription to access this feature.`,
+            status: planInfo.status,
+          }, 403);
+        }
+        if (!isPermissionAllowedForOutlet(planInfo, permission)) {
+          return c.json({
+            error: 'Plan Upgrade Required',
+            message: `Feature '${permission}' requires a higher plan tier (e.g. Pro Plan). Current outlet plan: ${planInfo.planTier}`,
+            requiredPlan: 'PRO',
+            currentPlan: planInfo.planTier,
+          }, 403);
+        }
       }
     }
 
@@ -406,6 +555,7 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
       outletId: headerOutletId,
       outletIds: membership.outletIds,
       allOutlets: membership.allOutlets,
+      outletPlans: membership.outletPlans || {},
     });
     await next();
   };
@@ -431,12 +581,15 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
     // Platform ADMIN bypasses everything
     if (user.role === 'ADMIN') {
       const restaurantId = c.req.header('X-Restaurant-Id') ?? '';
+      const existingMembership = memberships.find((m) => m.restaurantId === restaurantId);
       c.set('tenant', {
         restaurantId,
-        role: 'OWNER',
-        member: null,
+        role: existingMembership?.role || 'OWNER',
+        roleName: existingMembership?.roleName || 'OWNER',
+        permissions: existingMembership?.permissions || ['*'],
+        member: existingMembership ? { id: existingMembership.memberId, restaurantId, role: existingMembership.role, userId: user.id } : null,
         outletId: headerOutletId,
-        outletIds: headerOutletId ? [headerOutletId] : [],
+        outletIds: existingMembership?.outletIds?.length ? existingMembership.outletIds : (headerOutletId ? [headerOutletId] : []),
         allOutlets: true,
       });
       return next();
@@ -460,8 +613,8 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
       }, 403);
     }
 
-    // Strict Outlet scope check
-    if (headerOutletId) {
+    // Strict Outlet scope check (bypassed if role has allOutlets access or is OWNER)
+    if (headerOutletId && !membership.allOutlets && membership.role?.toUpperCase() !== 'OWNER') {
       if (!membership.outletIds.includes(headerOutletId)) {
         return c.json({
           error: 'Forbidden',
@@ -479,9 +632,46 @@ export function requireRole(allowedRoles: RestaurantRole | readonly RestaurantRo
       outletId: headerOutletId,
       outletIds: membership.outletIds,
       allOutlets: membership.allOutlets,
+      outletPlans: membership.outletPlans || {},
     });
     await next();
   };
+}
+
+/**
+ * Synchronous in-memory outlet plan feature check (ZERO DB CALLS).
+ * Enforces that an outlet has the required SaaS subscription plan tier
+ * and an active (non-expired) subscription status to access a module/feature.
+ * Enforced strictly for BOTH Staff and Owner.
+ */
+export function assertOutletPlanFeature(
+  tenant: { role?: string; outletPlans?: Record<string, { planTier: string; status: string; trialEndsAt?: string | null; subscriptionExpiresAt?: string | null }> } | null | undefined,
+  outletId: string | null | undefined,
+  moduleIdOrPermission: string,
+): { allowed: boolean; error?: string; message?: string } {
+  if (tenant?.role === 'ADMIN') return { allowed: true };
+  if (!outletId) return { allowed: true };
+  const planInfo = tenant?.outletPlans?.[outletId];
+  if (!planInfo) return { allowed: true };
+
+  if (!isSubscriptionActive(planInfo)) {
+    return {
+      allowed: false,
+      error: 'Subscription Inactive',
+      message: `This outlet's subscription is ${planInfo.status}. Please renew your subscription in Billing to access this module.`,
+    };
+  }
+
+  const allowed = isModuleAllowedForOutlet(planInfo, moduleIdOrPermission as PlanModuleId) ||
+                  isPermissionAllowedForOutlet(planInfo, moduleIdOrPermission);
+  if (!allowed) {
+    return {
+      allowed: false,
+      error: 'Plan Upgrade Required',
+      message: `Module requires a higher plan tier (e.g. Pro Plan). Current outlet plan: ${planInfo.planTier}`,
+    };
+  }
+  return { allowed: true };
 }
 
 // ─── Role-Based Convenience Middlewares ───────────────────────────────────────

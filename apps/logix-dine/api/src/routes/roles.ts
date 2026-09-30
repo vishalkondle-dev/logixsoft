@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, inArray } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
-import { requireAuth, requirePermission, resolveSessionPayload } from '../lib/tenancy';
+import { requireAuth, requirePermission, resolveSessionPayload, invalidateStaffSessions } from '../lib/tenancy';
+import { invalidateStaff } from '../lib/cache';
+import { broadcastToOutlet } from '../lib/sync';
 import {
   PERMISSION_MODULES,
   DEFAULT_ROLE_PERMISSIONS,
@@ -23,7 +25,7 @@ function getDb(c: any) {
 
 // ─── Default Role Seed Helper ──────────────────────────────────────────────────
 
-async function ensureDefaultRoles(db: any, restaurantId: string, actorPhone?: string | null) {
+export async function ensureDefaultRoles(db: any, restaurantId: string, actorPhone?: string | null) {
   const existing = await db
     .select()
     .from(appSchema.restaurantRole)
@@ -184,21 +186,29 @@ app.get(
         .where(eq(appSchema.restaurantRole.restaurantId, restaurantId))
         .orderBy(appSchema.restaurantRole.isSystem, appSchema.restaurantRole.name);
 
-      // 3. Count members per role
-      const members = await db
-        .select({ role: appSchema.restaurantMember.role })
-        .from(appSchema.restaurantMember)
-        .where(eq(appSchema.restaurantMember.restaurantId, restaurantId));
+      // 3. Count active staff members per role (distinct phone numbers per role)
+      const staffList = await db
+        .select({ role: appSchema.outletStaff.role, phone: appSchema.outletStaff.phone })
+        .from(appSchema.outletStaff)
+        .where(and(eq(appSchema.outletStaff.restaurantId, restaurantId), eq(appSchema.outletStaff.status, 'ACTIVE')));
 
-      const memberCounts = new Map<string, number>();
-      for (const m of members) {
-        const key = m.role.toUpperCase();
-        memberCounts.set(key, (memberCounts.get(key) || 0) + 1);
-        memberCounts.set(m.role, (memberCounts.get(m.role) || 0) + 1);
+      const rolePhoneSets = new Map<string, Set<string>>();
+      for (const s of staffList) {
+        if (!s.role) continue;
+        const norm = s.role.trim();
+        const set = rolePhoneSets.get(norm) ?? new Set<string>();
+        set.add(s.phone);
+        rolePhoneSets.set(norm, set);
+        const upper = norm.toUpperCase();
+        if (upper !== norm) {
+          const upperSet = rolePhoneSets.get(upper) ?? new Set<string>();
+          upperSet.add(s.phone);
+          rolePhoneSets.set(upper, upperSet);
+        }
       }
 
       const rolesWithCounts = roles.map((r: any) => {
-        const count = (memberCounts.get(r.id) || 0) + (memberCounts.get(r.name.toUpperCase()) || 0);
+        const count = rolePhoneSets.get(r.id)?.size || rolePhoneSets.get(r.name)?.size || rolePhoneSets.get(r.name.toUpperCase())?.size || 0;
         return {
           id: r.id,
           restaurantId: r.restaurantId,
@@ -383,6 +393,42 @@ app.put(
         .where(eq(appSchema.restaurantRole.id, roleId))
         .returning();
 
+      // Invalidate sessions of all staff who hold this role so new permissions apply immediately
+      const staffRows = await db
+        .select({ phone: appSchema.outletStaff.phone, userId: appSchema.outletStaff.userId })
+        .from(appSchema.outletStaff)
+        .where(and(
+          eq(appSchema.outletStaff.restaurantId, restaurantId),
+          or(
+            eq(appSchema.outletStaff.role, existing.name),
+            eq(appSchema.outletStaff.role, existing.id)
+          )
+        ));
+
+      if (c.env?.CACHE) {
+        await invalidateStaff(c.env.CACHE, restaurantId);
+        await invalidateStaffSessions(db, c.env.CACHE, staffRows);
+      }
+
+      try {
+        const outlets = await db
+          .select({ id: appSchema.restaurantOutlet.id })
+          .from(appSchema.restaurantOutlet)
+          .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
+        const event = {
+          topic: 'ALL' as const,
+          type: 'STAFF_ROLE_UPDATED',
+          restaurantId,
+          data: { roleId, roleName: existing.name },
+          timestamp: Date.now(),
+        };
+        for (const out of outlets) {
+          await broadcastToOutlet(c.env as any, out.id, event);
+        }
+      } catch (err) {
+        console.warn('[roles:update] failed to broadcast role update:', err);
+      }
+
       return c.json({ role: updated, ...updated });
     } finally {
       await close();
@@ -427,14 +473,14 @@ app.delete(
         return c.json({ error: 'Bad Request', message: 'System default roles cannot be deleted.' }, 400);
       }
 
-      // Check if any active members have this role assigned
+      // Check if any active staff have this role assigned
       const assignedMembers = await db
-        .select({ id: appSchema.restaurantMember.id, phone: appSchema.restaurantMember.phone })
-        .from(appSchema.restaurantMember)
+        .select({ id: appSchema.outletStaff.id, phone: appSchema.outletStaff.phone })
+        .from(appSchema.outletStaff)
         .where(
           and(
-            eq(appSchema.restaurantMember.restaurantId, restaurantId),
-            sql`(${appSchema.restaurantMember.role} = ${roleId} OR LOWER(${appSchema.restaurantMember.role}) = LOWER(${existing.name}))`
+            eq(appSchema.outletStaff.restaurantId, restaurantId),
+            sql`(${appSchema.outletStaff.role} = ${roleId} OR LOWER(${appSchema.outletStaff.role}) = LOWER(${existing.name}))`
           )
         )
         .limit(5);

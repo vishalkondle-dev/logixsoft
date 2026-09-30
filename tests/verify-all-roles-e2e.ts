@@ -125,6 +125,7 @@ async function run() {
       console.log(`[${config.role}] API returned role: ${roleData.role}, permissions count: ${roleData.permissions?.length}, outlets: ${roleData.outletIds?.length}`);
 
       // Step C: Playwright UI Verification
+      const roleOutletId = (roleData.outletIds && roleData.outletIds[0]) || outletIds[0] || '';
       const context = await browser.newContext({
         viewport: { width: 1440, height: 900 },
       });
@@ -159,7 +160,7 @@ async function run() {
         },
         {
           name: 'dine.outletId',
-          value: outletIds[0],
+          value: roleOutletId,
           domain: 'dine.logixsoft.in',
           path: '/',
           secure: false,
@@ -171,7 +172,7 @@ async function run() {
       const page = await context.newPage();
 
       // Test 1: Direct navigation to role's expected home
-      const targetHome = `${WEB_BASE}${config.expectedHome}?outletId=${outletIds[0]}`;
+      const targetHome = `${WEB_BASE}${config.expectedHome}${roleOutletId ? `?outletId=${roleOutletId}` : ''}`;
       console.log(`[${config.role}] Navigating to primary screen: ${targetHome}`);
       await page.goto(targetHome, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(3000);

@@ -52,7 +52,9 @@ export default function HomePage() {
 
   const outletQuery = activeOutlet?.id ? `?outletId=${activeOutlet.id}` : "";
   const primaryDashboardHref =
-    role === "WAITER" || role === "CAPTAIN"
+    user?.role === "ADMIN"
+      ? "/admin/overview"
+      : role === "WAITER" || role === "CAPTAIN"
       ? `/waiter${outletQuery}`
       : role === "KITCHEN"
       ? `/kitchen${outletQuery}`
@@ -334,7 +336,9 @@ export default function HomePage() {
                       radius="xl"
                       visibleFrom="sm"
                     >
-                      {restaurant?.name || "My Restaurant"} • {role || "OWNER"}
+                      {user?.role === "ADMIN"
+                        ? "Platform Superadmin"
+                        : `${restaurant?.name || "My Restaurant"} • ${role || "OWNER"}`}
                     </Badge>
                     <Button
                       component={Link}
@@ -346,7 +350,7 @@ export default function HomePage() {
                       size="sm"
                       rightSection={<IconArrowRight size={16} />}
                     >
-                      Open POS
+                      {user?.role === "ADMIN" ? "Admin Portal" : "Open POS"}
                     </Button>
                   </Group>
                 ) : (
@@ -450,22 +454,42 @@ export default function HomePage() {
                 mt="xs"
                 style={{ width: "100%", maxWidth: 480 }}
               >
-                <Button
-                  onClick={openLoginModal}
-                  size="lg"
-                  radius="xl"
-                  color="grape"
-                  variant="gradient"
-                  gradient={{ from: "#7950F2", to: "#9775fa", deg: 135 }}
-                  leftSection={<IconBrandWhatsapp size={22} />}
-                  style={{
-                    boxShadow: "0 8px 30px rgba(121, 80, 242, 0.5)",
-                    padding: "0 28px",
-                    flex: "1 1 auto",
-                  }}
-                >
-                  Start Free with WhatsApp
-                </Button>
+                {isAuthenticated ? (
+                  <Button
+                    component={Link}
+                    href={primaryDashboardHref}
+                    size="lg"
+                    radius="xl"
+                    color="grape"
+                    variant="gradient"
+                    gradient={{ from: "#7950F2", to: "#4C6EF5", deg: 135 }}
+                    rightSection={<IconArrowRight size={22} />}
+                    style={{
+                      boxShadow: "0 8px 30px rgba(121, 80, 242, 0.5)",
+                      padding: "0 28px",
+                      flex: "1 1 auto",
+                    }}
+                  >
+                    {user?.role === "ADMIN" ? "Platform Admin Portal" : "Launch POS Terminal"}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={openLoginModal}
+                    size="lg"
+                    radius="xl"
+                    color="grape"
+                    variant="gradient"
+                    gradient={{ from: "#7950F2", to: "#9775fa", deg: 135 }}
+                    leftSection={<IconBrandWhatsapp size={22} />}
+                    style={{
+                      boxShadow: "0 8px 30px rgba(121, 80, 242, 0.5)",
+                      padding: "0 28px",
+                      flex: "1 1 auto",
+                    }}
+                  >
+                    Start Free with WhatsApp
+                  </Button>
+                )}
                 <Button
                   component="a"
                   href="#devices"

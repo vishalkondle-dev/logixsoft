@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import type { JsonRestaurantRow, JsonRestaurantOutletRow } from "@logixsoft/logix-dine/types/pos-schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMyRole } from "@/lib/api-client";
+import { notifications } from "@mantine/notifications";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
 const RESTAURANT_COOKIE = "dine.restaurantId";
@@ -20,6 +21,7 @@ function getUrlOutletId(): string | null {
 
 function updateUrlOutletId(outletId: string | null) {
   if (typeof window === "undefined") return;
+  if (window.location.pathname.startsWith("/admin")) return;
   const url = new URL(window.location.href);
   if (outletId) {
     if (url.searchParams.get("outletId") === outletId && !url.searchParams.has("outlet")) return;
@@ -33,6 +35,13 @@ function updateUrlOutletId(outletId: string | null) {
 }
 
 import { hasPermission, type Permission } from "@logixsoft/logix-dine/types/roles";
+import {
+  isPermissionAllowedForOutlet,
+  isModuleAllowedForOutlet,
+  isSubscriptionActive,
+  type PlanModuleId,
+  type PlanTier,
+} from "@logixsoft/logix-dine/types/plans";
 
 interface RestaurantContextType {
   restaurant: JsonRestaurantRow | null;
@@ -45,10 +54,14 @@ interface RestaurantContextType {
   permissions: string[];
   allOutlets: boolean;
   myOutletIds: string[];
+  isPlanActive: boolean;
+  activePlanTier: PlanTier;
   can: (permission: string) => boolean;
+  isModuleAllowed: (moduleId: PlanModuleId) => boolean;
   setActiveRestaurant: (restaurantId: string) => void;
   setActiveOutlet: (outletId: string) => void;
   refresh: () => Promise<void>;
+  refreshRole: () => Promise<void>;
 }
 
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
@@ -61,6 +74,9 @@ function getCookie(name: string): string | null {
 
 function setCookie(name: string, value: string, days = 365) {
   const expires = new Date(Date.now() + days * 86400000).toUTCString();
+  const isSubdomain = typeof window !== "undefined" && window.location.hostname.includes("logixsoft.in");
+  const domainAttr = isSubdomain ? ";domain=.logixsoft.in" : "";
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/${domainAttr};SameSite=Lax`;
   document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Lax`;
 }
 
@@ -126,7 +142,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
         setActiveOutletState(chosen);
         if (chosen) {
           setCookie(OUTLET_COOKIE, chosen.id);
-          if (typeof window !== "undefined" && window.location.pathname !== "/") {
+          if (typeof window !== "undefined" && window.location.pathname !== "/" && !window.location.pathname.startsWith("/admin")) {
             updateUrlOutletId(chosen.id);
           }
         }
@@ -141,7 +157,7 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (activeOutlet && pathname && pathname !== "/" && pathname !== "/onboarding") {
+    if (activeOutlet && pathname && pathname !== "/" && pathname !== "/onboarding" && !pathname.startsWith("/admin")) {
       updateUrlOutletId(activeOutlet.id);
     }
   }, [pathname, activeOutlet]);
@@ -165,6 +181,117 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
     if (activeRestaurantId) await fetchData(activeRestaurantId);
   }, [activeRestaurantId, fetchData]);
 
+  const revalidateRole = useCallback(async (targetRestaurantId?: string) => {
+    const rid = targetRestaurantId || activeRestaurantId;
+    if (!rid || !isAuthenticated || (user as any)?.role === "ADMIN") return;
+
+    try {
+      const roleInfo = await getMyRole(rid).catch(() => null);
+      if (roleInfo) {
+        setRole((prev) => {
+          if (prev && prev !== roleInfo.role) {
+            notifications.show({
+              title: "Role Updated",
+              message: `Your role has been updated to ${roleInfo.roleName || roleInfo.role}.`,
+              color: "blue",
+              autoClose: 5000,
+            });
+          }
+          return roleInfo.role;
+        });
+        setRoleName(roleInfo.roleName || roleInfo.role);
+        setPermissions(roleInfo.permissions || []);
+        setAllOutlets(roleInfo.allOutlets);
+        setMyOutletIds(roleInfo.outletIds || []);
+
+        if (!roleInfo.allOutlets && roleInfo.outletIds) {
+          const outletsRes = await fetch(`${API_BASE}/outlets`, {
+            credentials: "include",
+            headers: { "X-Restaurant-Id": rid },
+          }).catch(() => null);
+          if (outletsRes && outletsRes.ok) {
+            const allO: JsonRestaurantOutletRow[] = await outletsRes.json();
+            const scoped = allO.filter((out) => roleInfo.outletIds.includes(out.id));
+            setOutlets(scoped);
+            setActiveOutletState((curr) => {
+              if (curr && !roleInfo.outletIds.includes(curr.id)) {
+                const nextChosen = scoped[0] ?? null;
+                if (nextChosen) {
+                  setCookie(OUTLET_COOKIE, nextChosen.id);
+                  updateUrlOutletId(nextChosen.id);
+                }
+                return nextChosen;
+              }
+              return curr;
+            });
+          }
+        }
+      } else {
+        const restsRes = await fetch(`${API_BASE}/restaurants`, { credentials: "include" }).catch(() => null);
+        if (restsRes && restsRes.ok) {
+          const rests: JsonRestaurantRow[] = await restsRes.json();
+          setMyRestaurants(rests);
+          const stillMember = rests.some((r) => r.id === rid);
+          if (!stillMember) {
+            setRestaurant(null);
+            setRole(null);
+            setRoleName(null);
+            setPermissions([]);
+            setOutlets([]);
+            setActiveOutletState(null);
+            notifications.show({
+              title: "Access Updated",
+              message: "Your access to this restaurant is no longer active.",
+              color: "orange",
+              autoClose: 6000,
+            });
+            if (rests.length > 0) {
+              setCookie(RESTAURANT_COOKIE, rests[0].id);
+              setActiveRestaurantId(rests[0].id);
+              fetchData(rests[0].id);
+            }
+          }
+        }
+      }
+    } catch {
+      // silently ignore network errors
+    }
+  }, [activeRestaurantId, isAuthenticated, user, fetchData]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !activeRestaurantId || (user as any)?.role === "ADMIN") return;
+
+    const handleRoleUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const data = customEvent.detail;
+      if (!data?.restaurantId || data.restaurantId === activeRestaurantId) {
+        revalidateRole(activeRestaurantId);
+      }
+    };
+    window.addEventListener("dine:role-updated", handleRoleUpdated);
+
+    const handleFocus = () => revalidateRole(activeRestaurantId);
+    window.addEventListener("focus", handleFocus);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        revalidateRole(activeRestaurantId);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    const timer = setInterval(() => {
+      revalidateRole(activeRestaurantId);
+    }, 15000);
+
+    return () => {
+      window.removeEventListener("dine:role-updated", handleRoleUpdated);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(timer);
+    };
+  }, [isAuthenticated, activeRestaurantId, user, revalidateRole]);
+
   useEffect(() => {
     // Don't do anything while auth is still loading
     if (authLoading) return;
@@ -177,6 +304,18 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       setRoleName(null);
       setPermissions([]);
       setIsLoading(false); // auth settled, no session — done
+      return;
+    }
+
+    // Platform ADMIN has strictly only the ADMIN role and has 0 restaurant memberships
+    if ((user as any).role === "ADMIN") {
+      setRestaurant(null);
+      setOutlets([]);
+      setMyRestaurants([]);
+      setRole(null);
+      setRoleName(null);
+      setPermissions([]);
+      setIsLoading(false);
       return;
     }
     // Fetch the list of restaurants the user is a member of (owner or staff)
@@ -193,8 +332,13 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
         // Pick active from cookie or first
         const savedId = getCookie(RESTAURANT_COOKIE);
         const toLoad = rests.find((r) => r.id === savedId) ?? rests[0];
-        setActiveRestaurantId(toLoad.id);
-        fetchData(toLoad.id);
+        if (toLoad) {
+          setActiveRestaurantId(toLoad.id);
+          fetchData(toLoad.id);
+        } else if (savedId) {
+          setActiveRestaurantId(savedId);
+          fetchData(savedId);
+        }
       })
       .catch(() => {});
   }, [isAuthenticated, user, authLoading, fetchData]);
@@ -214,12 +358,38 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
 
   const can = useCallback(
     (permission: string): boolean => {
+      // Platform ADMIN bypasses everything
+      if ((user as any)?.role === "ADMIN") return true;
       if (!role) return false;
-      if (role === "OWNER" || (user as any)?.role === "ADMIN") return true;
+
+      // 1. Subscription plan licensing check for active outlet:
+      // Both STAFF and OWNER are bound by what the active outlet's subscription allows!
+      if (activeOutlet && !isPermissionAllowedForOutlet(activeOutlet as any, permission)) {
+        return false;
+      }
+
+      // 2. Role & permission matrix check:
+      if (role === "OWNER") return true;
       return hasPermission(permissions, permission as Permission);
     },
-    [role, permissions, user]
+    [role, permissions, user, activeOutlet]
   );
+
+  const isModuleAllowed = useCallback(
+    (moduleId: PlanModuleId): boolean => {
+      if ((user as any)?.role === "ADMIN") return true;
+      if (!activeOutlet) return true;
+      return isModuleAllowedForOutlet(activeOutlet as any, moduleId);
+    },
+    [user, activeOutlet]
+  );
+
+  const isPlanActive = React.useMemo(() => {
+    if (!activeOutlet) return true;
+    return isSubscriptionActive(activeOutlet as any);
+  }, [activeOutlet]);
+
+  const activePlanTier = ((activeOutlet?.planTier?.toUpperCase() as PlanTier) || "BASIC");
 
   return (
     <RestaurantContext.Provider value={{
@@ -233,10 +403,14 @@ export function RestaurantProvider({ children }: { children: ReactNode }) {
       permissions,
       allOutlets,
       myOutletIds,
+      isPlanActive,
+      activePlanTier,
       can,
+      isModuleAllowed,
       setActiveRestaurant,
       setActiveOutlet,
       refresh,
+      refreshRole: () => revalidateRole(activeRestaurantId ?? undefined),
     }}>
       {children}
     </RestaurantContext.Provider>
@@ -259,16 +433,16 @@ export function useRestaurantRole(): string | null {
 
 /**
  * Checks if the active user has a specific permission or set of permissions.
- * Zero overhead - evaluated against in-memory session permissions.
+ * Evaluated against active outlet subscription plan and in-memory session permissions.
  */
 export function usePermission(
   permission: string | string[],
   mode: "all" | "any" = "all"
 ): boolean {
-  const { can, role } = useRestaurant();
+  const { can } = useRestaurant();
   const { user } = useAuth();
 
-  if (role === "OWNER" || (user as any)?.role === "ADMIN") return true;
+  if ((user as any)?.role === "ADMIN") return true;
 
   if (Array.isArray(permission)) {
     return mode === "all"

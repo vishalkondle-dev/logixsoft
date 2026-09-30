@@ -93,8 +93,8 @@ async function run() {
 
   await browser.close();
 
-  if (!grantedText?.includes('2 of 49 Granted')) {
-    throw new Error(`Expected "2 of 49 Granted", got: ${grantedText}`);
+  if (!grantedText?.includes('2 of 59 Granted')) {
+    throw new Error(`Expected "2 of 59 Granted", got: ${grantedText}`);
   }
   if (checkedSwitches !== 2) {
     throw new Error(`Expected exactly 2 checked switches, got: ${checkedSwitches}`);

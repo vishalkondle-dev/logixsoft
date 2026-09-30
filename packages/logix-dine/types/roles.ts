@@ -522,5 +522,5 @@ export function hasPermission(
 export const ALL_OUTLET_ROLES: readonly string[] = ['OWNER'];
 
 export function isAllOutletRole(role: string): boolean {
-  return ALL_OUTLET_ROLES.includes(role);
+  return ALL_OUTLET_ROLES.includes(role ? role.toUpperCase() : '');
 }

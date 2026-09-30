@@ -42,6 +42,8 @@ import {
   IconShieldLock,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useAuth } from "@/lib/auth-context";
+import { isModuleAllowedForOutlet, type PlanModuleId } from "@logixsoft/logix-dine/types/plans";
 
 interface SettingItem {
   id: string;
@@ -60,8 +62,18 @@ interface SettingCategory {
 }
 
 export function SettingsOverview() {
-  const { restaurant, activeOutlet, role } = useRestaurant();
-  const isOwner = role === "OWNER";
+  const { restaurant, activeOutlet, role, can } = useRestaurant();
+  const { user } = useAuth();
+  const isOwner = role === "OWNER" || (user as any)?.role === "ADMIN";
+  const canViewStaff = isOwner || can("staff:view");
+  const canManageRoles = isOwner || can("roles:manage");
+
+  const isSuperadmin = (user as any)?.role === "ADMIN";
+  const hasModule = (mod: PlanModuleId) => {
+    if (isSuperadmin) return true;
+    if (!activeOutlet) return true;
+    return isModuleAllowedForOutlet(activeOutlet as any, mod);
+  };
 
   const settingsGroups: SettingCategory[] = [
     {
@@ -93,6 +105,7 @@ export function SettingsOverview() {
           color: "teal",
           href: "/settings/inventory",
           isAvailable: true,
+          badge: hasModule("inventory") ? undefined : "PRO PLAN",
         },
         {
           id: "tables",
@@ -124,7 +137,7 @@ export function SettingsOverview() {
           icon: IconTruckDelivery,
           color: "orange",
           href: "/settings/aggregators",
-          badge: "Swiggy • Zomato • ONDC",
+          badge: hasModule("aggregators") ? "Swiggy • Zomato • ONDC" : "PRO PLAN",
           isAvailable: true,
         },
         {
@@ -134,6 +147,7 @@ export function SettingsOverview() {
           icon: IconMotorbike,
           color: "red",
           href: "/settings/riders",
+          badge: hasModule("delivery") ? undefined : "PRO PLAN",
           isAvailable: true,
         },
       ],
@@ -147,9 +161,9 @@ export function SettingsOverview() {
           description: "Manage team members, roles, and outlet access",
           icon: IconUsers,
           color: "indigo",
-          href: isOwner ? "/settings/staff" : undefined,
-          isAvailable: isOwner,
-          badge: isOwner ? undefined : "Owner only",
+          href: canViewStaff ? "/settings/staff" : undefined,
+          isAvailable: canViewStaff,
+          badge: canViewStaff ? undefined : "Restricted",
         },
         {
           id: "roles-permissions",
@@ -157,9 +171,9 @@ export function SettingsOverview() {
           description: "Granular access control matrix, custom team roles & sub-feature privileges",
           icon: IconShieldLock,
           color: "violet",
-          href: isOwner ? "/settings/roles" : undefined,
-          isAvailable: isOwner,
-          badge: isOwner ? "Matrix RBAC" : "Owner only",
+          href: canManageRoles ? "/settings/roles" : undefined,
+          isAvailable: canManageRoles,
+          badge: !hasModule("roles") ? "PRO PLAN" : canManageRoles ? "Matrix RBAC" : "Restricted",
         },
         {
           id: "kitchen-locations",
@@ -169,6 +183,7 @@ export function SettingsOverview() {
           color: "cyan",
           href: "/kitchen",
           isAvailable: true,
+          badge: hasModule("kitchen") ? undefined : "PRO PLAN",
         },
         {
           id: "analytics",
@@ -220,6 +235,16 @@ export function SettingsOverview() {
           href: "/settings/dining",
           isAvailable: true,
         },
+        {
+          id: "billing",
+          title: "Subscription & Billing",
+          description: "Manage branch plan tiers, active outlet licenses, renewals, and invoice receipts",
+          icon: IconCreditCard,
+          color: "blue",
+          href: isOwner ? "/settings/billing" : undefined,
+          isAvailable: isOwner,
+          badge: isOwner ? "Outlet Plans" : "Restricted",
+        },
       ],
     },
     {
@@ -242,6 +267,7 @@ export function SettingsOverview() {
           color: "green",
           href: "/settings/whatsapp",
           isAvailable: true,
+          badge: hasModule("whatsapp") ? undefined : "PRO PLAN",
         },
         {
           id: "reservations",
@@ -251,6 +277,7 @@ export function SettingsOverview() {
           color: "pink",
           href: "/settings/reservations",
           isAvailable: true,
+          badge: hasModule("reservations") ? undefined : "PRO PLAN",
         },
       ],
     },

@@ -33,6 +33,7 @@ import {
   updateTable,
   toggleTable,
   deleteTable,
+  addStaff,
   inviteStaff,
   updateStaff,
   removeStaff,
@@ -461,21 +462,23 @@ export function useDeleteTable(restaurantId: string, outletId: string | null) {
 }
 
 // Staff
-export function useInviteStaff(restaurantId: string) {
+export function useAddStaff(restaurantId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { phone: string; role: string; outletIds: string[] }) =>
-      inviteStaff(restaurantId, body),
+    mutationFn: (body: { name?: string; phone: string; role: string; outletIds: string[] }) =>
+      addStaff(restaurantId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.staff(restaurantId) });
     },
   });
 }
 
+export const useInviteStaff = useAddStaff;
+
 export function useUpdateStaff(restaurantId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { role?: string; outletIds?: string[] } }) =>
+    mutationFn: ({ id, body }: { id: string; body: { name?: string; role?: string; outletIds?: string[]; status?: 'ACTIVE' | 'INACTIVE' } }) =>
       updateStaff(restaurantId, id, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.staff(restaurantId) });
@@ -497,7 +500,15 @@ export function useRemoveStaff(restaurantId: string) {
 export function useCreateOutlet(restaurantId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; address?: string; phone?: string; upiId?: string }) =>
+    mutationFn: (body: {
+      name: string;
+      address?: string;
+      phone?: string;
+      upiId?: string;
+      planTier?: string;
+      billingCycle?: string;
+      status?: string;
+    }) =>
       createOutlet(restaurantId, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.outlets(restaurantId) });

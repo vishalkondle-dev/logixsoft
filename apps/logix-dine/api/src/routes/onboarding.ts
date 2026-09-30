@@ -9,6 +9,7 @@ import { CreateRestaurantSchema, RestaurantSchema, RestaurantOutletSchema } from
 import { toRestaurant, toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
+import { ensureDefaultRoles } from './roles';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -46,6 +47,13 @@ app.post(
 
   const { db, close } = getDb(c);
   try {
+    if (user?.role === 'ADMIN') {
+      return c.json({
+        error: 'Forbidden',
+        message: 'Platform superadmin cannot own a restaurant. Admin must have only the ADMIN role. Create stores via the Admin Portal.',
+      }, 403);
+    }
+
     // Check not already an owner
     const [existing] = await db
       .select({ id: appSchema.restaurant.id })
@@ -71,7 +79,7 @@ app.post(
         address,
         phone: phone ?? null,
         currency: 'INR',
-        status: 'TRIAL',
+        status: 'ACTIVE',
         ownerUserId: user.id,
         createdAt: now,
         updatedAt: now,
@@ -84,30 +92,41 @@ app.post(
         restaurantId,
         name: outletName ?? 'Main',
         isDefault: true,
+        status: 'ACTIVE',
+        planTier: 'BASIC',
+        billingCycle: 'MONTHLY',
+        trialEndsAt: null,
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,
         updatedBy: actorPhone,
       });
 
-      await tx.insert(appSchema.restaurantMember).values({
+      await tx.insert(appSchema.outletStaff).values({
         id: memberId,
         restaurantId,
+        outletId: null, // brand-wide
         userId: user.id,
         phone: actorPhone ?? '',
+        name: user.name,
         role: 'OWNER',
-        inviteStatus: 'ACCEPTED',
+        status: 'ACTIVE',
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,
         updatedBy: actorPhone,
       });
 
-      await tx
-        .update(appSchema.user)
-        .set({ role: 'OWNER', updatedAt: now })
-        .where(eq(appSchema.user.id, user.id));
+      if (user.role !== 'ADMIN') {
+        await tx
+          .update(appSchema.user)
+          .set({ role: 'OWNER', updatedAt: now })
+          .where(eq(appSchema.user.id, user.id));
+      }
     });
+
+    // Seed default system roles for the new restaurant
+    await ensureDefaultRoles(db, restaurantId, actorPhone || 'system');
 
     const [newRestaurant] = await db
       .select()

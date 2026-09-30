@@ -3,7 +3,7 @@ import { eq, and, or, sql, inArray } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { appSchema } from '../db';
-import { requirePermission, assertOutletAccess } from '../lib/tenancy';
+import { requirePermission, assertOutletAccess, assertOutletPlanFeature } from '../lib/tenancy';
 import { OrderWithItemsSchema } from '@logixsoft/logix-dine/schemas/pos';
 import {
   computeOrderStatus,
@@ -41,8 +41,14 @@ app.get(
     const { restaurantId } = tenant;
     const outletId = c.req.query('outletId') || c.req.header('x-outlet-id') || tenant.outletId;
 
-    if (outletId && !assertOutletAccess(tenant, outletId)) {
-      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    if (outletId) {
+      if (!assertOutletAccess(tenant, outletId)) {
+        return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+      }
+      const planCheck = assertOutletPlanFeature(tenant, outletId, 'kitchen');
+      if (!planCheck.allowed) {
+        return c.json({ error: planCheck.error || 'Plan Upgrade Required', message: planCheck.message }, 403);
+      }
     }
 
     const { db, close } = getDb(c);
@@ -52,17 +58,25 @@ app.get(
         sql`${appSchema.saleOrder.orderStatus} NOT IN ('SERVED', 'CANCELLED')`,
       );
 
-      const where = outletId
-        ? and(
-            eq(appSchema.saleOrder.restaurantId, restaurantId),
-            eq(appSchema.saleOrder.outletId, outletId),
-            activeCondition,
-          )
-        : and(
-            eq(appSchema.saleOrder.restaurantId, restaurantId),
-            inArray(appSchema.saleOrder.outletId, tenant.outletIds || []),
-            activeCondition,
-          );
+      let where;
+      if (outletId) {
+        where = and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          eq(appSchema.saleOrder.outletId, outletId),
+          activeCondition,
+        );
+      } else if (!tenant.allOutlets && tenant.role !== 'OWNER' && tenant.role !== 'ADMIN') {
+        where = and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          inArray(appSchema.saleOrder.outletId, tenant.outletIds || []),
+          activeCondition,
+        );
+      } else {
+        where = and(
+          eq(appSchema.saleOrder.restaurantId, restaurantId),
+          activeCondition,
+        );
+      }
 
       const orders = await db
         .select()

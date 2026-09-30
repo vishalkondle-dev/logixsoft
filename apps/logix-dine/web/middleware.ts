@@ -30,14 +30,16 @@ export function middleware(request: NextRequest) {
   );
 
   if (isProtected) {
-    const hasSessionCookie = SESSION_COOKIE_NAMES.some((cookieName) =>
-      request.cookies.has(cookieName)
-    );
+    const hasSessionCookie = SESSION_COOKIE_NAMES.some((cookieName) => {
+      const cookie = request.cookies.get(cookieName);
+      return Boolean(cookie?.value);
+    });
 
     if (!hasSessionCookie) {
       const loginUrl = new URL('/', request.url);
       loginUrl.searchParams.set('login', 'true');
-      loginUrl.searchParams.set('next', pathname);
+      const nextPath = `${pathname}${request.nextUrl.search || ''}`;
+      loginUrl.searchParams.set('next', nextPath);
       return NextResponse.redirect(loginUrl);
     }
   }
@@ -47,16 +49,27 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/pos',
     '/pos/:path*',
+    '/orders',
     '/orders/:path*',
+    '/tables',
     '/tables/:path*',
+    '/menu',
     '/menu/:path*',
+    '/reports',
     '/reports/:path*',
+    '/settings',
     '/settings/:path*',
+    '/customers',
     '/customers/:path*',
+    '/kitchen',
     '/kitchen/:path*',
+    '/waiter',
     '/waiter/:path*',
+    '/rider',
     '/rider/:path*',
+    '/admin',
     '/admin/:path*',
   ],
 };

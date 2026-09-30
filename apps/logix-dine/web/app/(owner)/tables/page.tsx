@@ -468,7 +468,7 @@ export default function TablesPage() {
             </Badge>
           </Group>
           <Text size="sm" c="dimmed">
-            {activeOutlet ? activeOutlet.name : "All Outlets"} · {stats.occupied} Occupied · {stats.free} Free
+            {activeOutlet?.name || "Active Outlet"} · {stats.occupied} Occupied · {stats.free} Free
           </Text>
         </div>
 

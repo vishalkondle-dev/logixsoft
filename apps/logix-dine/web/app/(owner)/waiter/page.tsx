@@ -12,7 +12,7 @@ import {
   IconBellRinging, IconCheck, IconClock, IconDroplet, IconToolsKitchen2,
   IconReceipt, IconSparkles, IconSearch, IconPlus, IconVolume,
   IconVolumeOff, IconTableAlias, IconRefresh, IconAlertCircle,
-  IconArrowRight, IconUser, IconPhone, IconWifi,
+  IconArrowRight, IconUser, IconPhone, IconWifi, IconBuildingStore,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useUiStore } from "@/lib/stores";
@@ -328,26 +328,14 @@ export default function WaiterPage() {
             </Badge>
           </Group>
           <Text size="sm" c="dimmed">
-            {activeOutlet ? activeOutlet.name : "All Outlets"} · Real-time guest assistance calls & kitchen pickup
+            {activeOutlet?.name || outlets[0]?.name || "Active Floor"} · Real-time guest assistance calls & kitchen pickup
           </Text>
         </div>
 
         <Group gap="sm" wrap="wrap">
-          {outlets.length > 0 && (
-            <Select
-              size="sm"
-              data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-              value={activeOutlet?.id ?? outlets[0]?.id ?? null}
-              readOnly={outlets.length <= 1}
-              rightSection={outlets.length <= 1 ? null : undefined}
-              styles={outlets.length <= 1 ? { input: { cursor: "default" } } : undefined}
-              onChange={(val) => {
-                const found = outlets.find((o) => o.id === val);
-                if (found) setActiveOutlet(found.id);
-              }}
-              w={180}
-            />
-          )}
+          <Badge size="md" color="dinePrimary" variant="light" leftSection={<IconBuildingStore size={14} />}>
+            {activeOutlet?.name || outlets[0]?.name || "Waiter Floor"}
+          </Badge>
 
           <Tooltip label={soundEnabled ? "Chime sound enabled on new requests" : "Chime sound muted"}>
             <ActionIcon

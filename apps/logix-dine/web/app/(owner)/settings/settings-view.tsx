@@ -163,6 +163,15 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   // Staff — React Query
   const { data: staff = [], isLoading: staffLoading } = useStaff(restaurantId, isOwner);
+  const scopedStaff = React.useMemo(() => {
+    if (!activeOutlet) return staff;
+    return staff.filter((m: any) =>
+      m.allOutlets === true ||
+      !m.outletIds ||
+      m.outletIds.length === 0 ||
+      m.outletIds.includes(activeOutlet.id)
+    );
+  }, [staff, activeOutlet]);
   const [staffModal, setStaffModal] = useState(false);
   const [staffForm, setStaffForm] = useState({ name: "", phone: "", role: "WAITER", outletIds: [] as string[] });
 
@@ -612,8 +621,17 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                     Add Outlet
                   </Button>
                 </Group>
-                {outlets.map((o) => <OutletCard key={o.id} outlet={o} />)}
+                {activeOutlet ? (
+                  outlets.filter((o) => o.id === activeOutlet.id).map((o) => <OutletCard key={o.id} outlet={o} />)
+                ) : (
+                  outlets.map((o) => <OutletCard key={o.id} outlet={o} />)
+                )}
                 {!outlets.length && <Text size="sm" c="dimmed">No outlets yet.</Text>}
+                {outlets.length > 1 && (
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Showing settings for &quot;{activeOutlet?.name || outlets[0]?.name}&quot;. Switch branches in the top navigation bar to configure other outlets.
+                  </Text>
+                )}
               </Stack>
             </Grid.Col>
           </Grid>
@@ -709,18 +727,20 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               </Group>
               {staffLoading ? (
                 <Loader size="sm" />
-              ) : !staff.length ? (
+              ) : !scopedStaff.length ? (
                 <Paper p="xl" radius="md" ta="center">
                   <Text size="sm" c="dimmed">
-                    No staff members yet. Add a Manager, Waiter, Cashier, or Kitchen member to get started.
+                    {activeOutlet
+                      ? `No staff members assigned to "${activeOutlet.name}" yet.`
+                      : "No staff members yet. Add a Manager, Waiter, Cashier, or Kitchen member to get started."}
                   </Text>
                   <Button size="xs" variant="light" color="dinePrimary" mt="md" leftSection={<IconPlus size={14} />} onClick={openAddStaff}>
-                    Add First Staff Member
+                    Add Staff Member
                   </Button>
                 </Paper>
               ) : (
                 <Stack gap="sm">
-                  {staff.map((m: any) => (
+                  {scopedStaff.map((m: any) => (
                     <Paper key={m.id} p="md" radius="md">
                       {/* Row 1 — identity & status */}
                       <Group justify="space-between" mb="sm" wrap="nowrap">

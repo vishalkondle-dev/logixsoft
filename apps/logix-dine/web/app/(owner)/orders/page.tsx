@@ -59,7 +59,7 @@ export default function OrdersPage() {
   // Real-time live sync via Cloudflare Durable Object
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
 
-  const enabled = !!restaurantId && (allOutlets || !!outletId);
+  const enabled = !!restaurantId && !!outletId;
 
   const isDeliveryFilter = statusFilter === "DELIVERY";
   const isBillingStatus =
@@ -299,8 +299,8 @@ export default function OrdersPage() {
         </Group>
       </Group>
 
-      {!allOutlets && !outletId ? (
-        <Text c="dimmed" ta="center" py="xl">Select an outlet to view orders</Text>
+      {!outletId ? (
+        <Text c="dimmed" ta="center" py="xl">Select an outlet from the top navigation bar to view orders</Text>
       ) : loading ? (
         <Center py={60}><Loader color="dinePrimary" /></Center>
       ) : !orders.length ? (

@@ -130,6 +130,7 @@ app.get(
         {
           id: `INV-${new Date().getFullYear()}-001`,
           date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+          outletId: enrichedOutlets[0]?.id,
           outletName: enrichedOutlets[0]?.name || 'Main Branch',
           planName: 'Pro SaaS Plan',
           billingCycle: 'Monthly',

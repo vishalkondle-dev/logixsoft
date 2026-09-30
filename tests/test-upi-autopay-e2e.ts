@@ -189,8 +189,8 @@ async function runTest() {
 
   // Test 9B: Billing Management in Dine Web
   console.log(`Navigating to Dine Web Billing page: ${WEB_BASE}/settings/billing...`);
-  await page.goto(`${WEB_BASE}/settings/billing`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(3000);
+  await page.goto(`${WEB_BASE}/settings/billing`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(5000);
 
   const billingScreenshotPath = '/root/.gemini/antigravity-cli/brain/55f57a55-95f7-4878-83aa-64f13c31892e/billing_autopay_active.png';
   await page.screenshot({ path: billingScreenshotPath, fullPage: true });

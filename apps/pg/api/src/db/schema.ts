@@ -133,6 +133,64 @@ export const merchantWebhook = pgTable(
   ]
 );
 
+export const subscriptionMandate = pgTable(
+  'subscription_mandate',
+  {
+    id: text('id').primaryKey(),
+    mandateId: text('mandateId').notNull().unique(),
+    merchantId: text('merchantId').notNull(),
+    customerPhone: text('customerPhone').notNull(),
+    customerName: text('customerName'),
+    customerVpa: text('customerVpa'),
+    mandateName: text('mandateName').notNull(),
+    maxAmount: integer('maxAmount').notNull().default(1500000), // In paise (₹15,000)
+    recurringAmount: integer('recurringAmount').notNull(),      // In paise (e.g. ₹1,499 = 149900)
+    frequency: text('frequency').notNull().default('MONTHLY'), // 'MONTHLY' | 'ANNUAL'
+    status: text('status').notNull().default('PENDING'),        // 'PENDING' | 'ACTIVE' | 'PAUSED' | 'REVOKED' | 'EXPIRED'
+    provider: text('provider').notNull().default('MOCK'),       // 'PAYTM' | 'MOCK'
+    providerSubscriptionId: text('providerSubscriptionId'),
+    umn: text('umn'),
+    upiString: text('upiString'),
+    metadata: text('metadata'),
+    nextBillingDate: timestamp('nextBillingDate'),
+    lastDebitedAt: timestamp('lastDebitedAt'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('subscription_mandate_mandateId_idx').on(t.mandateId),
+    index('subscription_mandate_merchantId_idx').on(t.merchantId),
+    index('subscription_mandate_status_idx').on(t.status),
+    index('subscription_mandate_customerPhone_idx').on(t.customerPhone),
+  ]
+);
+
+export const subscriptionCharge = pgTable(
+  'subscription_charge',
+  {
+    id: text('id').primaryKey(),
+    chargeId: text('chargeId').notNull().unique(),
+    mandateId: text('mandateId')
+      .notNull()
+      .references(() => subscriptionMandate.mandateId, { onDelete: 'cascade' }),
+    merchantId: text('merchantId').notNull(),
+    amount: integer('amount').notNull(),
+    status: text('status').notNull().default('PENDING'), // 'PRE_NOTIFIED' | 'PENDING' | 'SUCCESS' | 'FAILED'
+    preDebitSentAt: timestamp('preDebitSentAt'),
+    debitedAt: timestamp('debitedAt'),
+    providerReferenceId: text('providerReferenceId'),
+    bankReferenceNo: text('bankReferenceNo'),
+    failureReason: text('failureReason'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('subscription_charge_chargeId_idx').on(t.chargeId),
+    index('subscription_charge_mandateId_idx').on(t.mandateId),
+    index('subscription_charge_status_idx').on(t.status),
+  ]
+);
+
 export const pgSchema = {
   pgProviderCredential,
   pgCredential,
@@ -140,6 +198,8 @@ export const pgSchema = {
   webhookLog,
   apiKey,
   merchantWebhook,
+  subscriptionMandate,
+  subscriptionCharge,
 };
 
 export type pgSchema = typeof pgSchema;

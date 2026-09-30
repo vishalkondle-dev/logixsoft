@@ -452,6 +452,28 @@ export const updateOutletSubscription = (
     body: JSON.stringify(body),
   });
 
+export const initiateOutletAutopay = (
+  restaurantId: string,
+  outletId: string,
+  body: { planTier: 'BASIC' | 'PRO'; billingCycle?: 'MONTHLY' | 'ANNUAL' }
+) =>
+  apiFetch<{
+    success: boolean;
+    mandateId: string;
+    checkoutUrl: string;
+    upiString: string;
+    recurringAmount: number;
+    frequency: string;
+  }>(`/outlets/${outletId}/autopay/initiate`, restaurantId, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const cancelOutletAutopay = (restaurantId: string, outletId: string) =>
+  apiFetch<any>(`/outlets/${outletId}/autopay/cancel`, restaurantId, {
+    method: "POST",
+  });
+
 // ─── Roles & Permissions ──────────────────────────────────────────────────
 
 export interface RoleItem {

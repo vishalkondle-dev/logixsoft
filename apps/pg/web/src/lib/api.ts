@@ -46,6 +46,16 @@ export const pgApi = {
       body: JSON.stringify({ utr }),
     }),
 
+  // Mandate / UPI AutoPay endpoints
+  getMandateStatus: (mandateId: string) =>
+    apiFetch<any>(`/api/v1/mandates/${mandateId}`, { method: 'GET' }),
+
+  simulateMandateAuthorize: (mandateId: string, customerVpa?: string) =>
+    apiFetch<any>(`/api/v1/mandates/${mandateId}/simulate-authorize`, {
+      method: 'POST',
+      body: JSON.stringify({ customerVpa }),
+    }),
+
   // Merchant Portal endpoints
   getStats: () => apiFetch<any>('/api/v1/merchant/stats'),
 

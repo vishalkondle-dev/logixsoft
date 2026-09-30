@@ -84,13 +84,20 @@ export const restaurantOutlet = pgTable(
     billingCycle: text('billingCycle').notNull().default('MONTHLY'), // 'MONTHLY' | 'ANNUAL'
     trialEndsAt: timestamp('trialEndsAt'),
     subscriptionExpiresAt: timestamp('subscriptionExpiresAt'),
+    autopayStatus: text('autopayStatus'), // 'PENDING' | 'ACTIVE' | 'REVOKED'
+    autopayMandateId: text('autopayMandateId'),
+    autopayUmn: text('autopayUmn'),
+    autopayNextBillingAt: timestamp('autopayNextBillingAt'),
     isDefault: boolean('isDefault').notNull().default(false),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
     updatedBy: text('updatedBy'),
   },
-  (t) => [index('restaurantOutlet_restaurantId_idx').on(t.restaurantId)],
+  (t) => [
+    index('restaurantOutlet_restaurantId_idx').on(t.restaurantId),
+    index('restaurantOutlet_autopayMandateId_idx').on(t.autopayMandateId),
+  ],
 );
 
 // ─── POS Table (dine-in table registry) ───────────────────────────────────────

@@ -443,4 +443,237 @@ app.put(
   }
 );
 
+// POST /outlets/:id/autopay/initiate — create recurring mandate via logix-pg
+const InitiateAutopaySchema = z.object({
+  planTier: z.enum(['BASIC', 'PRO']),
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL']).default('MONTHLY'),
+});
+
+app.post(
+  '/:id/autopay/initiate',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = InitiateAutopaySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+    }
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      const [restaurant] = await db
+        .select()
+        .from(appSchema.restaurant)
+        .where(eq(appSchema.restaurant.id, restaurantId))
+        .limit(1);
+
+      const planTier = parsed.data.planTier;
+      const billingCycle = parsed.data.billingCycle;
+
+      // Price matrix in paise
+      let recurringAmountInPaise = 149900; // PRO monthly default
+      if (planTier === 'BASIC') {
+        recurringAmountInPaise = billingCycle === 'ANNUAL' ? 999000 : 99900;
+      } else {
+        recurringAmountInPaise = billingCycle === 'ANNUAL' ? 1499000 : 149900;
+      }
+
+      const ownerPhone = restaurant?.phone || outlet.phone || c.get('actorPhone') || '9876543210';
+      const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+
+      // Call Logix PG Mandate Creation
+      const pgRes = await fetch(`${pgApiUrl}/api/v1/mandates/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerPhone: ownerPhone,
+          customerName: restaurant?.name || 'Restaurant Owner',
+          mandateName: `Logix Dine - ${outlet.name} (${planTier} Plan)`,
+          recurringAmount: recurringAmountInPaise,
+          maxAmount: 1500000, // ₹15,000 NPCI limit
+          frequency: billingCycle === 'ANNUAL' ? 'ANNUAL' : 'MONTHLY',
+          metadata: {
+            restaurantId,
+            outletId,
+            planTier,
+            billingCycle,
+            webhookUrl: `${(c.env as any)?.API_URL || 'https://dine-api.logixsoft.in'}/api/webhooks/pg`,
+          },
+        }),
+      });
+
+      if (!pgRes.ok) {
+        const errText = await pgRes.text();
+        return c.json({ error: 'Payment Gateway Error', message: `Failed to initiate mandate with logix-pg: ${errText}` }, 502);
+      }
+
+      const pgData = (await pgRes.json()) as any;
+
+      // Save pending mandate info on the outlet
+      await db
+        .update(appSchema.restaurantOutlet)
+        .set({
+          autopayStatus: 'PENDING',
+          autopayMandateId: pgData.mandateId,
+          updatedAt: new Date(),
+        })
+        .where(eq(appSchema.restaurantOutlet.id, outletId));
+
+      await invalidateRestaurant(kv(c), restaurantId);
+
+      return c.json({
+        success: true,
+        mandateId: pgData.mandateId,
+        checkoutUrl: pgData.checkoutUrl,
+        upiString: pgData.upiString,
+        recurringAmount: pgData.recurringAmount,
+        frequency: pgData.frequency,
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
+// POST /outlets/:id/autopay/cancel — cancel active UPI AutoPay mandate
+app.post(
+  '/:id/autopay/cancel',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      if (outlet.autopayMandateId) {
+        const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+        await fetch(`${pgApiUrl}/api/v1/mandates/${outlet.autopayMandateId}/cancel`, {
+          method: 'POST',
+        }).catch(() => {});
+      }
+
+      const [updated] = await db
+        .update(appSchema.restaurantOutlet)
+        .set({
+          autopayStatus: 'REVOKED',
+          autopayMandateId: null,
+          autopayUmn: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(appSchema.restaurantOutlet.id, outletId))
+        .returning();
+
+      await invalidateRestaurant(kv(c), restaurantId);
+      return c.json(toOutlet(updated));
+    } finally {
+      await close();
+    }
+  }
+);
+
+// POST /outlets/:id/autopay/sync — query PG mandate status and sync to outlet
+app.post(
+  '/:id/autopay/sync',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      if (!outlet.autopayMandateId) {
+        return c.json(toOutlet(outlet));
+      }
+
+      const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+      const pgRes = await fetch(`${pgApiUrl}/api/v1/mandates/${outlet.autopayMandateId}`).catch(() => null);
+
+      if (pgRes && pgRes.ok) {
+        const pgData = (await pgRes.json()) as any;
+        if (pgData.status === 'ACTIVE') {
+          const nextBilling = pgData.nextBillingDate ? new Date(pgData.nextBillingDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          const [updated] = await db
+            .update(appSchema.restaurantOutlet)
+            .set({
+              autopayStatus: 'ACTIVE',
+              autopayUmn: pgData.umn || outlet.autopayUmn,
+              autopayNextBillingAt: nextBilling,
+              subscriptionExpiresAt: nextBilling,
+              status: 'ACTIVE',
+              updatedAt: new Date(),
+            })
+            .where(eq(appSchema.restaurantOutlet.id, outletId))
+            .returning();
+
+          await invalidateRestaurant(kv(c), restaurantId);
+          return c.json(toOutlet(updated));
+        }
+      }
+
+      return c.json(toOutlet(outlet));
+    } finally {
+      await close();
+    }
+  }
+);
+
 export { app as outletRoutes };
+

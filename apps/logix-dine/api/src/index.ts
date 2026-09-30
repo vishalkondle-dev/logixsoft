@@ -46,6 +46,7 @@ import { reservationRoutes } from './routes/reservations';
 import { inventoryRoutes } from './routes/inventory';
 import feedbackRoutes from './routes/feedback';
 import { rolesRouter } from './routes/roles';
+import { webhookRoutes } from './routes/webhooks';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -596,6 +597,9 @@ app.route('/api/feedback', feedbackRoutes);
 
 app.route('/roles', rolesRouter);
 app.route('/api/roles', rolesRouter);
+
+app.route('/webhooks', webhookRoutes);
+app.route('/api/webhooks', webhookRoutes);
 
 
 

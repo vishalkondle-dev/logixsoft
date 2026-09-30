@@ -36,9 +36,16 @@ import {
   IconSparkles,
   IconClock,
   IconArrowUpRight,
+  IconRefresh,
+  IconQrcode,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { getBillingData, updateOutletSubscription } from "@/lib/api-client";
+import {
+  getBillingData,
+  updateOutletSubscription,
+  initiateOutletAutopay,
+  cancelOutletAutopay,
+} from "@/lib/api-client";
 
 export function BillingManagement() {
   const { restaurant } = useRestaurant();
@@ -63,6 +70,20 @@ export function BillingManagement() {
   const [selectedPlanTier, setSelectedPlanTier] = useState<string>("PRO");
   const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [submitting, setSubmitting] = useState(false);
+
+  // AutoPay state
+  const [autopayModalOpened, setAutopayModalOpened] = useState(false);
+  const [autopayData, setAutopayData] = useState<{
+    mandateId: string;
+    checkoutUrl: string;
+    upiString: string;
+    recurringAmount: number;
+    frequency: string;
+    outletName: string;
+    planTier: string;
+  } | null>(null);
+  const [initiatingAutopay, setInitiatingAutopay] = useState(false);
+  const [cancellingOutletId, setCancellingOutletId] = useState<string | null>(null);
 
   const loadBilling = useCallback(async () => {
     if (!restaurantId) return;
@@ -98,6 +119,82 @@ export function BillingManagement() {
   useEffect(() => {
     loadBilling();
   }, [loadBilling]);
+
+  // Listen for iframe postMessage from PG Mandate checkout
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data && (e.data.type === 'LOGIXSOFT_MANDATE_SUCCESS' || e.data.event === 'mandate.activated')) {
+        notifications.show({
+          title: "AutoPay Mandate Authorized!",
+          message: "UPI AutoPay has been successfully activated. Subscription extended.",
+          color: "teal",
+          icon: <IconCheck size={16} />,
+        });
+        setAutopayModalOpened(false);
+        setModalOpened(false);
+        loadBilling();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [loadBilling]);
+
+  const handleStartAutopay = async (outlet?: any, planTier?: string, cycle?: "MONTHLY" | "ANNUAL") => {
+    const target = outlet || selectedOutlet || (data?.outlets && data.outlets[0]);
+    if (!target || !restaurantId) return;
+
+    const tier = (planTier || selectedPlanTier || target.planTier || "PRO") as "BASIC" | "PRO";
+    const billCycle = cycle || selectedCycle || target.billingCycle || "MONTHLY";
+
+    setInitiatingAutopay(true);
+    try {
+      const res = await initiateOutletAutopay(restaurantId, target.id, {
+        planTier: tier,
+        billingCycle: billCycle,
+      });
+
+      setAutopayData({
+        mandateId: res.mandateId,
+        checkoutUrl: res.checkoutUrl,
+        upiString: res.upiString,
+        recurringAmount: res.recurringAmount,
+        frequency: res.frequency,
+        outletName: target.name,
+        planTier: tier,
+      });
+      setAutopayModalOpened(true);
+    } catch (err: any) {
+      notifications.show({
+        title: "AutoPay Initiation Failed",
+        message: err.message || "Failed to initiate mandate with payment gateway.",
+        color: "red",
+      });
+    } finally {
+      setInitiatingAutopay(false);
+    }
+  };
+
+  const handleCancelAutopay = async (outlet: any) => {
+    if (!outlet || !restaurantId) return;
+    setCancellingOutletId(outlet.id);
+    try {
+      await cancelOutletAutopay(restaurantId, outlet.id);
+      notifications.show({
+        title: "AutoPay Cancelled",
+        message: `UPI AutoPay for "${outlet.name}" has been revoked.`,
+        color: "yellow",
+      });
+      await loadBilling();
+    } catch (err: any) {
+      notifications.show({
+        title: "Cancellation Failed",
+        message: err.message || "Failed to cancel AutoPay mandate.",
+        color: "red",
+      });
+    } finally {
+      setCancellingOutletId(null);
+    }
+  };
 
   const handleOpenPlanModal = (outlet?: any, defaultPlan?: string) => {
     const target = outlet || (data?.outlets && (data.outlets.find((o: any) => o.id === activeBranchId) || data.outlets[0])) || null;
@@ -275,6 +372,7 @@ export function BillingManagement() {
                 <Table.Th>License Status</Table.Th>
                 <Table.Th>Billing Cycle</Table.Th>
                 <Table.Th>Monthly Fee</Table.Th>
+                <Table.Th>AutoPay</Table.Th>
                 <Table.Th style={{ textAlign: "right" }}>Actions</Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -343,15 +441,71 @@ export function BillingManagement() {
                       </Text>
                     </Table.Td>
 
+                    <Table.Td>
+                      {o.autopayStatus === "ACTIVE" ? (
+                        <div>
+                          <Badge
+                            size="sm"
+                            color="teal"
+                            variant="filled"
+                            leftSection={<IconCheck size={12} />}
+                          >
+                            AutoPay Active
+                          </Badge>
+                          {o.autopayUmn && (
+                            <Text size="10px" c="dimmed" ff="monospace" truncate maw={130} title={o.autopayUmn}>
+                              {o.autopayUmn}
+                            </Text>
+                          )}
+                          {o.autopayNextBillingAt && (
+                            <Text size="10px" c="dimmed">
+                              Next: {new Date(o.autopayNextBillingAt).toLocaleDateString("en-IN")}
+                            </Text>
+                          )}
+                        </div>
+                      ) : o.autopayStatus === "PENDING" ? (
+                        <Badge size="sm" color="yellow" variant="light">
+                          Setup Pending
+                        </Badge>
+                      ) : (
+                        <Text size="xs" c="dimmed">
+                          Manual Billing
+                        </Text>
+                      )}
+                    </Table.Td>
+
                     <Table.Td style={{ textAlign: "right" }}>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        color="dinePrimary"
-                        onClick={() => handleOpenPlanModal(o)}
-                      >
-                        Change Plan
-                      </Button>
+                      <Group gap="xs" justify="flex-end">
+                        {o.autopayStatus === "ACTIVE" ? (
+                          <Button
+                            size="xs"
+                            variant="subtle"
+                            color="red"
+                            loading={cancellingOutletId === o.id}
+                            onClick={() => handleCancelAutopay(o)}
+                          >
+                            Cancel AutoPay
+                          </Button>
+                        ) : (
+                          <Button
+                            size="xs"
+                            variant="light"
+                            color="indigo"
+                            leftSection={<IconRefresh size={12} />}
+                            loading={initiatingAutopay && selectedOutlet?.id === o.id}
+                            onClick={() => handleStartAutopay(o)}
+                          >
+                            Set Up AutoPay
+                          </Button>
+                        )}
+                        <Button
+                          size="xs"
+                          variant="default"
+                          onClick={() => handleOpenPlanModal(o)}
+                        >
+                          Change Plan
+                        </Button>
+                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 );
@@ -701,15 +855,64 @@ export function BillingManagement() {
               Cancel
             </Button>
             <Button
+              color="indigo"
+              variant="filled"
+              loading={initiatingAutopay}
+              leftSection={<IconRefresh size={16} />}
+              onClick={() => handleStartAutopay(selectedOutlet, selectedPlanTier, selectedCycle)}
+            >
+              Set Up UPI AutoPay
+            </Button>
+            <Button
               color="dinePrimary"
+              variant="light"
               loading={submitting}
               leftSection={<IconCheck size={16} />}
               onClick={handleSavePlan}
             >
-              Activate Subscription
+              Manual Update
             </Button>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* 5. UPI AutoPay Mandate Checkout Modal */}
+      <Modal
+        opened={autopayModalOpened}
+        onClose={() => setAutopayModalOpened(false)}
+        title={
+          <Group gap="xs">
+            <ThemeIcon color="indigo" variant="light" size="md">
+              <IconQrcode size={18} />
+            </ThemeIcon>
+            <div>
+              <Text fw={700}>UPI AutoPay Mandate Setup</Text>
+              <Text size="xs" c="dimmed">
+                {autopayData?.outletName} • {autopayData?.planTier} Plan (₹{(Number(autopayData?.recurringAmount || 0) / 100).toLocaleString('en-IN')}/{autopayData?.frequency === 'ANNUAL' ? 'yr' : 'mo'})
+              </Text>
+            </div>
+          </Group>
+        }
+        size="lg"
+        radius="md"
+        centered
+        padding="md"
+      >
+        {autopayData && (
+          <Stack gap="sm">
+            <iframe
+              src={`${autopayData.checkoutUrl}?embed=true`}
+              style={{
+                width: "100%",
+                height: "640px",
+                border: "none",
+                borderRadius: "8px",
+              }}
+              title="UPI AutoPay Mandate Checkout"
+              allow="payment; clipboard-write"
+            />
+          </Stack>
+        )}
       </Modal>
     </Stack>
   );

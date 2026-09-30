@@ -107,9 +107,10 @@ export type JsonMemberOutletAccessRow = any;
 
 export type RestaurantOutletRow = InferSelectModel<typeof restaurantOutlet>;
 export type NewRestaurantOutletRow = InferInsertModel<typeof restaurantOutlet>;
-export type JsonRestaurantOutletRow = Omit<RestaurantOutletRow, 'createdAt' | 'updatedAt' | 'trialEndsAt' | 'subscriptionExpiresAt'> & {
+export type JsonRestaurantOutletRow = Omit<RestaurantOutletRow, 'createdAt' | 'updatedAt' | 'trialEndsAt' | 'subscriptionExpiresAt' | 'autopayNextBillingAt'> & {
   trialEndsAt?: string | null;
   subscriptionExpiresAt?: string | null;
+  autopayNextBillingAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

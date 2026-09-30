@@ -10,31 +10,19 @@
     "dist/**/*",
     "package.json"
   ],
+  "nodeGypRebuild": false,
+  "npmRebuild": false,
+  "asar": true,
   "win": {
     "target": [
       {
-        "target": "nsis",
+        "target": "zip",
         "arch": ["x64", "arm64"]
-      },
-      {
-        "target": "portable",
-        "arch": ["x64"]
       }
     ]
   },
-  "nsis": {
-    "oneClick": false,
-    "allowToChangeInstallationDirectory": true,
-    "createDesktopShortcut": true,
-    "createStartMenuShortcut": true,
-    "shortcutName": "Logix Dine"
-  },
   "mac": {
     "target": [
-      {
-        "target": "dmg",
-        "arch": ["x64", "arm64"]
-      },
       {
         "target": "zip",
         "arch": ["x64", "arm64"]

@@ -28,16 +28,21 @@ import {
   IconSparkles,
 } from '@tabler/icons-react';
 import { pgApi } from '@/lib/api';
+import { useCheckoutStore } from '@/stores';
 
 function MandateContent({ mandateId }: { mandateId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEmbed = searchParams.get('embed') === 'true';
 
-  const [mandate, setMandate] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [simulating, setSimulating] = useState(false);
-  const [activeSuccess, setActiveSuccess] = useState<any>(null);
+  const mandate = useCheckoutStore((s) => s.mandate);
+  const setMandate = useCheckoutStore((s) => s.setMandate);
+  const loading = useCheckoutStore((s) => s.loading);
+  const setLoading = useCheckoutStore((s) => s.setLoading);
+  const simulating = useCheckoutStore((s) => s.simulating);
+  const setSimulating = useCheckoutStore((s) => s.setSimulating);
+  const activeSuccess = useCheckoutStore((s) => s.activeSuccess);
+  const setActiveSuccess = useCheckoutStore((s) => s.setActiveSuccess);
 
   useEffect(() => {
     let interval: any = null;

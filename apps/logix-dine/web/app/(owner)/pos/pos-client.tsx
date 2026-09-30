@@ -32,6 +32,7 @@ import { printTicket, printTicketSilent } from "@/lib/print";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
 import { useOutletSync } from "@/lib/use-outlet-sync";
 import { getOrderChannel } from "@/lib/channel-helpers";
+import { usePosStore } from "@/lib/stores";
 
 interface LocalCartItem {
   cartKey: string;
@@ -836,9 +837,11 @@ export default function POSPage() {
   const [filterVeg, setFilterVeg] = useState(false);
   const [filterNonVeg, setFilterNonVeg] = useState(false);
 
-  // Local cart state — orders are only created upon clicking Send
-  const [cartItems, setCartItems] = useState<LocalCartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
+  // Local cart state managed via Zustand usePosStore
+  const cartItems = usePosStore((s) => s.cart);
+  const setCartItems = usePosStore((s) => s.setCartItems);
+  const cartOpen = usePosStore((s) => s.cartOpen);
+  const setCartOpen = usePosStore((s) => s.setCartOpen);
   const [tableNo, setTableNo] = useState<string>("Takeaway");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 

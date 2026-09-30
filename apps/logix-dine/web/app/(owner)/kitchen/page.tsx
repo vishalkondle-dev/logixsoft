@@ -15,6 +15,7 @@ import {
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useUiStore } from "@/lib/stores";
 import { useKitchenOrders, qk } from "@/lib/queries";
 import { markOrderReady, updateOrderItemStatus } from "@/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -63,9 +64,12 @@ export default function KitchenPage() {
   const canView = can("kitchen:view");
   const canBump = can("kitchen:item_bump");
 
-  const [activeTab, setActiveTab] = useState<string>("ALL");
+  const activeTab = useUiStore((s) => s.kdsStatusFilter);
+  const setActiveTab = useUiStore((s) => s.setKdsStatusFilter);
+  const soundEnabled = useUiStore((s) => s.soundEnabled);
+  const toggleSound = useUiStore((s) => s.toggleSound);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [marking, setMarking] = useState<string | null>(null);
   const [updatingAction, setUpdatingAction] = useState<{ itemId: string; action: "next" | "close" } | null>(null);
   const [, forceTick] = useState(0);
@@ -298,7 +302,7 @@ export default function KitchenPage() {
                 color={soundEnabled ? "indigo" : "gray"}
                 size="lg"
                 radius="md"
-                onClick={() => setSoundEnabled((v) => !v)}
+                onClick={toggleSound}
                 aria-label="Toggle chime sound"
               >
                 {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}

@@ -15,6 +15,7 @@ import {
   IconArrowRight, IconUser, IconPhone, IconWifi,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useUiStore } from "@/lib/stores";
 import {
   useWaiterRequests, useWaiterStats, useCreateWaiterRequest,
   useUpdateWaiterRequestStatus, useTables, useOrders, qk,
@@ -74,10 +75,13 @@ export default function WaiterPage() {
   const canAttendCall = can("waiter:attend_call");
   const canPunchOrder = can("waiter:punch_order");
 
+  const soundEnabled = useUiStore((s) => s.soundEnabled);
+  const toggleSound = useUiStore((s) => s.toggleSound);
+  const serviceFilter = useUiStore((s) => s.waiterServiceFilter);
+  const setServiceFilter = useUiStore((s) => s.setWaiterServiceFilter);
+
   const [activeTab, setActiveTab] = useState<string>("active");
-  const [serviceFilter, setServiceFilter] = useState<string>("ALL");
   const [searchTable, setSearchTable] = useState("");
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [newModalOpen, setNewModalOpen] = useState(false);
 
   // New Request Form State
@@ -351,7 +355,7 @@ export default function WaiterPage() {
               color={soundEnabled ? "indigo" : "gray"}
               size="lg"
               radius="md"
-              onClick={() => setSoundEnabled((v) => !v)}
+              onClick={toggleSound}
             >
               {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
             </ActionIcon>

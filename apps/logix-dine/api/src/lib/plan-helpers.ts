@@ -147,3 +147,64 @@ export function resolveOutletPlanPricing(
     isCustom: isMonthlyCustom || isAnnualCustom,
   };
 }
+
+export interface UpgradePricingResult {
+  isUpgrade: boolean;
+  targetPrice: number;
+  remainingDays: number;
+  unusedCredit: number;
+  payableAmount: number;
+  newCycleDays: number;
+}
+
+/**
+ * Option 2: Calculate prorated credit for unused days when upgrading mid-cycle (e.g. Starter -> Pro).
+ * The unused value of the current plan is applied as an instant credit against a brand-new 30-day Pro cycle.
+ */
+export function calculateUpgradePricing(
+  outlet: any,
+  currentPlan: SubscriptionPlan,
+  targetPlan: SubscriptionPlan,
+  billingCycle: 'MONTHLY' | 'ANNUAL' | string = 'MONTHLY'
+): UpgradePricingResult {
+  const targetPricing = resolveOutletPlanPricing(outlet, targetPlan, billingCycle);
+  const targetPrice = targetPricing.effectivePrice;
+  const newCycleDays = billingCycle === 'ANNUAL' ? 365 : 30;
+
+  const isUpgradingTier = (outlet?.planTier === 'BASIC' || !outlet?.planTier) && targetPlan.id === 'PRO';
+  const now = Date.now();
+  const expiresAt = outlet?.subscriptionExpiresAt ? new Date(outlet.subscriptionExpiresAt).getTime() : 0;
+  const hasActiveRemainingTime = expiresAt > now;
+
+  if (!isUpgradingTier || !hasActiveRemainingTime) {
+    return {
+      isUpgrade: isUpgradingTier,
+      targetPrice,
+      remainingDays: 0,
+      unusedCredit: 0,
+      payableAmount: targetPrice,
+      newCycleDays,
+    };
+  }
+
+  const remainingMs = expiresAt - now;
+  const totalDaysInCurrentCycle = (outlet?.billingCycle || 'MONTHLY') === 'ANNUAL' ? 365 : 30;
+  const remainingDays = Math.min(totalDaysInCurrentCycle, Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))));
+
+  const currentPricing = resolveOutletPlanPricing(outlet, currentPlan, outlet?.billingCycle || 'MONTHLY');
+  const currentPrice = currentPricing.effectivePrice;
+  const dailyRate = currentPrice / totalDaysInCurrentCycle;
+
+  const rawCredit = remainingDays * dailyRate;
+  const unusedCredit = Math.min(targetPrice - 1, Math.round(rawCredit));
+  const payableAmount = Math.max(1, targetPrice - unusedCredit);
+
+  return {
+    isUpgrade: true,
+    targetPrice,
+    remainingDays,
+    unusedCredit,
+    payableAmount,
+    newCycleDays,
+  };
+}

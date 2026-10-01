@@ -116,15 +116,22 @@ app.post('/pg', async (c) => {
       const billingCycle = data.metadata?.billingCycle || outlet.billingCycle || 'MONTHLY';
       const days = billingCycle === 'ANNUAL' ? 365 : 30;
 
-      // Extend from existing expiration date if currently active into future, otherwise from now
-      let baseTime = now.getTime();
-      if (outlet.subscriptionExpiresAt) {
-        const existingExpires = new Date(outlet.subscriptionExpiresAt).getTime();
-        if (existingExpires > baseTime) {
-          baseTime = existingExpires;
+      // Option 2: If upgrade with prorated credit, reset to a brand-new cycle from now!
+      // Otherwise (regular renewal of same plan), extend from existing future expiration.
+      const isUpgrade = Boolean(data.metadata?.isUpgrade || data.metadata?.resetCycle);
+      let newExpiry: Date;
+      if (isUpgrade) {
+        newExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      } else {
+        let baseTime = now.getTime();
+        if (outlet.subscriptionExpiresAt) {
+          const existingExpires = new Date(outlet.subscriptionExpiresAt).getTime();
+          if (existingExpires > baseTime) {
+            baseTime = existingExpires;
+          }
         }
+        newExpiry = new Date(baseTime + days * 24 * 60 * 60 * 1000);
       }
-      const newExpiry = new Date(baseTime + days * 24 * 60 * 60 * 1000);
 
       await db
         .update(appSchema.restaurantOutlet)
@@ -143,7 +150,10 @@ app.post('/pg', async (c) => {
       const targetPhone = outlet.phone || data.customerPhone;
       if (targetPhone) {
         const amountRs = (Number(data.amount) / 100).toFixed(2);
-        const msg = `🎉 *Subscription Payment Received!*\n\nPayment of ₹${amountRs} for *${outlet.name}* (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'}) was successful.\n\nValid until: ${newExpiry.toLocaleDateString('en-IN')}\nPayment Ref: ${data.bankReferenceNo || data.orderId}\n\nThank you for choosing Logix Dine!`;
+        const unusedCredit = data.metadata?.unusedCredit ? Number(data.metadata.unusedCredit) : 0;
+        const msg = isUpgrade && unusedCredit > 0
+          ? `🎉 *Plan Upgraded to ${planTier}!*\n\nPayment of ₹${amountRs} for *${outlet.name}* (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'}) was successful.\n\n✨ Applied Starter Credit: ₹${unusedCredit}\nValid until: ${newExpiry.toLocaleDateString('en-IN')}\nPayment Ref: ${data.bankReferenceNo || data.orderId}\n\nThank you for choosing Logix Dine!`
+          : `🎉 *Subscription Payment Received!*\n\nPayment of ₹${amountRs} for *${outlet.name}* (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'}) was successful.\n\nValid until: ${newExpiry.toLocaleDateString('en-IN')}\nPayment Ref: ${data.bankReferenceNo || data.orderId}\n\nThank you for choosing Logix Dine!`;
         await sendWhatsAppText(targetPhone, msg, undefined, {
           url: (c.env as any)?.WA_API_URL,
           apiKey: (c.env as any)?.WA_API_KEY,

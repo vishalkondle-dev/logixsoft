@@ -920,7 +920,7 @@ export function BillingManagement() {
           {(() => {
             const plan = plans.find((p) => p.id === selectedPlanTier) || plans[0];
             const isSameTierAsCurrent = currentOutlet?.planTier === selectedPlanTier;
-            const amount = selectedCycle === "ANNUAL"
+            const targetFullAmount = selectedCycle === "ANNUAL"
               ? (isSameTierAsCurrent && currentOutlet?.isCustomPrice && currentOutlet?.annualPrice
                   ? currentOutlet.annualPrice
                   : plan?.annualPrice || (plan?.monthlyPrice || 1499) * 10)
@@ -929,20 +929,81 @@ export function BillingManagement() {
                   : plan?.monthlyPrice || 1499);
             const periodLabel = selectedCycle === "ANNUAL" ? "1 Year" : "1 Month";
 
+            // Option 2 Prorated Credit Calculation:
+            const isUpgradeFromStarter = currentOutlet?.planTier === "BASIC" && selectedPlanTier === "PRO";
+            const now = Date.now();
+            const expiresAt = currentOutlet?.subscriptionExpiresAt ? new Date(currentOutlet.subscriptionExpiresAt).getTime() : 0;
+            const hasRemainingTime = expiresAt > now;
+
+            let remainingDays = 0;
+            let unusedCredit = 0;
+            let payableAmount = targetFullAmount;
+
+            if (isUpgradeFromStarter && hasRemainingTime) {
+              const remainingMs = expiresAt - now;
+              const totalDaysInCurrent = (currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL" ? 365 : 30;
+              remainingDays = Math.min(totalDaysInCurrent, Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))));
+              const currentMonthly = currentOutlet?.monthlyPrice || 999;
+              const dailyRate = currentMonthly / totalDaysInCurrent;
+              unusedCredit = Math.min(targetFullAmount - 1, Math.round(remainingDays * dailyRate));
+              payableAmount = Math.max(1, targetFullAmount - unusedCredit);
+            }
+
             return (
-              <Paper withBorder p="md" radius="md" bg="gray.0">
-                <Group justify="space-between" align="center">
-                  <div>
-                    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Total Payable ({periodLabel})</Text>
-                    <Title order={3} c="teal" mt={2}>
-                      ₹{amount.toLocaleString("en-IN")}
-                    </Title>
-                  </div>
-                  <Badge size="md" color={selectedCycle === "ANNUAL" ? "orange" : "blue"} variant="light">
-                    {selectedCycle === "ANNUAL" ? "Annual (Save 15%)" : "Monthly Billing"}
-                  </Badge>
-                </Group>
-              </Paper>
+              <Stack gap="xs">
+                {isUpgradeFromStarter && unusedCredit > 0 && (
+                  <Paper withBorder p="sm" radius="md" style={{ backgroundColor: "#e6fcf5", borderColor: "#63e6be" }}>
+                    <Group justify="space-between" align="center" mb={4}>
+                      <Group gap="xs">
+                        <ThemeIcon size="sm" color="teal" variant="filled" radius="xl">
+                          <IconCheck size={12} />
+                        </ThemeIcon>
+                        <Text size="xs" fw={700} c="teal.9">
+                          Unused Starter Credit Applied
+                        </Text>
+                      </Group>
+                      <Badge size="xs" color="teal" variant="light">
+                        {remainingDays} days remaining
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between">
+                      <Text size="xs" c="dimmed">Pro Plan Standard ({periodLabel}):</Text>
+                      <Text size="xs" fw={600}>₹{targetFullAmount.toLocaleString("en-IN")}</Text>
+                    </Group>
+                    <Group justify="space-between">
+                      <Text size="xs" c="teal.8">Unused Starter Value Credit:</Text>
+                      <Text size="xs" fw={700} c="teal.8">-₹{unusedCredit.toLocaleString("en-IN")}</Text>
+                    </Group>
+                    <Divider my={4} />
+                    <Text size="xs" c="dimmed">
+                      Your unused {remainingDays} days of Starter plan are credited immediately today, starting a <strong>fresh 30-day Pro cycle</strong> with zero lost value.
+                    </Text>
+                  </Paper>
+                )}
+
+                <Paper withBorder p="md" radius="md" bg="gray.0">
+                  <Group justify="space-between" align="center">
+                    <div>
+                      <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                        {unusedCredit > 0 ? "Total Payable Today (With Credit)" : `Total Payable (${periodLabel})`}
+                      </Text>
+                      <Group align="baseline" gap="xs" mt={2}>
+                        <Title order={3} c="teal">
+                          ₹{payableAmount.toLocaleString("en-IN")}
+                        </Title>
+                        {unusedCredit > 0 && (
+                          <Text size="xs" c="dimmed" td="line-through">
+                            ₹{targetFullAmount.toLocaleString("en-IN")}
+                          </Text>
+                        )}
+                      </Group>
+                    </div>
+                    <Badge size="md" color={selectedCycle === "ANNUAL" ? "orange" : "blue"} variant="light">
+                      {selectedCycle === "ANNUAL" ? "Annual (Save 15%)" : "Monthly Billing"}
+                    </Badge>
+                  </Group>
+                </Paper>
+              </Stack>
             );
           })()}
 

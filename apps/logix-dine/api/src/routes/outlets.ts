@@ -13,7 +13,7 @@ import { toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 import { invalidateRestaurant, invalidateUserSession, extractSessionToken } from '../lib/cache';
-import { getSubscriptionPlans, resolveOutletPlanPricing } from '../lib/plan-helpers';
+import { getSubscriptionPlans, resolveOutletPlanPricing, calculateUpgradePricing } from '../lib/plan-helpers';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -88,6 +88,10 @@ app.get(
       const enrichedOutlets = outlets.map((o: any) => {
         const plan = plans.find((p) => p.id === o.planTier) || plans[0];
         const pricing = resolveOutletPlanPricing(o, plan, o.billingCycle || 'MONTHLY');
+        const proPlan = plans.find((p) => p.id === 'PRO');
+        const upgradeMonthly = proPlan ? calculateUpgradePricing(o, plan, proPlan, 'MONTHLY') : null;
+        const upgradeAnnual = proPlan ? calculateUpgradePricing(o, plan, proPlan, 'ANNUAL') : null;
+
         return {
           ...toOutlet(o),
           planName: plan.name,
@@ -95,6 +99,14 @@ app.get(
           annualPrice: pricing.annualPrice,
           effectivePrice: pricing.effectivePrice,
           isCustomPrice: pricing.isCustom,
+          upgradeCredit: upgradeMonthly?.isUpgrade && upgradeMonthly.unusedCredit > 0 ? {
+            remainingDays: upgradeMonthly.remainingDays,
+            unusedCredit: upgradeMonthly.unusedCredit,
+            proPayableMonthly: upgradeMonthly.payableAmount,
+            proOriginalMonthly: upgradeMonthly.targetPrice,
+            proPayableAnnual: upgradeAnnual?.payableAmount ?? (proPlan?.annualPrice || 14990),
+            proOriginalAnnual: upgradeAnnual?.targetPrice ?? (proPlan?.annualPrice || 14990),
+          } : null,
         };
       });
 
@@ -409,8 +421,10 @@ app.put(
         updates.status = 'ACTIVE';
       }
 
+      // In Option 2: When upgrading from BASIC to PRO, start a fresh 30-day (or 365-day) cycle from now!
+      const isUpgrading = existing.planTier === 'BASIC' && parsed.data.planTier === 'PRO';
       if (updates.status === 'ACTIVE') {
-        if (!existing.subscriptionExpiresAt || new Date(existing.subscriptionExpiresAt).getTime() < now.getTime()) {
+        if (isUpgrading || !existing.subscriptionExpiresAt || new Date(existing.subscriptionExpiresAt).getTime() < now.getTime()) {
           updates.subscriptionExpiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
         }
       }
@@ -487,15 +501,22 @@ app.post(
       const planTier = parsed.data.planTier;
       const billingCycle = parsed.data.billingCycle;
 
-      // Price matrix in paise from configured plans & custom outlet override
+      // Option 2: Calculate prorated upgrade credit if upgrading from Starter to Pro mid-cycle
       const plans = await getSubscriptionPlans(c);
+      const currentPlan = plans.find((p) => p.id === outlet.planTier) || plans[0];
       const targetPlan = plans.find((p) => p.id === planTier) || plans[0];
-      const pricing = resolveOutletPlanPricing(outlet, targetPlan, billingCycle);
-      const amountInPaise = Math.round(pricing.effectivePrice * 100);
+      const upgradePricing = calculateUpgradePricing(outlet, currentPlan, targetPlan, billingCycle);
+
+      const finalAmount = upgradePricing.isUpgrade ? upgradePricing.payableAmount : upgradePricing.targetPrice;
+      const amountInPaise = Math.round(finalAmount * 100);
 
       const ownerPhone = restaurant?.phone || outlet.phone || c.get('actorPhone') || '9876543210';
       const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
       const pgWebUrl = (c.env as any)?.PG_WEB_URL || 'https://payment.logixsoft.in';
+
+      const description = upgradePricing.isUpgrade && upgradePricing.unusedCredit > 0
+        ? `Logix Dine - ${outlet.name} (Upgrade to ${planTier} with ₹${upgradePricing.unusedCredit} Starter credit)`
+        : `Logix Dine - ${outlet.name} (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'})`;
 
       // Call Logix PG Order Creation
       const pgRes = await fetch(`${pgApiUrl}/api/v1/orders/create`, {
@@ -508,13 +529,17 @@ app.post(
           customerPhone: ownerPhone,
           customerName: restaurant?.name || 'Restaurant Owner',
           merchantId: c.get('sessionUser')?.id || tenant.member?.userId || undefined,
-          description: `Logix Dine - ${outlet.name} (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'})`,
+          description,
           metadata: {
             type: 'OUTLET_SUBSCRIPTION_ONE_TIME',
             restaurantId,
             outletId,
             planTier,
             billingCycle,
+            isUpgrade: upgradePricing.isUpgrade,
+            unusedCredit: upgradePricing.unusedCredit,
+            remainingDays: upgradePricing.remainingDays,
+            resetCycle: upgradePricing.isUpgrade, // Option 2 resets to full 30 days of Pro from today
             webhookUrl: `${(c.env as any)?.API_URL || 'https://dine-api.logixsoft.in'}/api/webhooks/pg`,
           },
         }),
@@ -532,7 +557,11 @@ app.post(
         orderId: pgData.orderId,
         checkoutUrl: `${pgWebUrl}/pay/${pgData.orderId}`,
         upiString: pgData.upiString,
-        amount: pricing.effectivePrice,
+        amount: finalAmount,
+        originalAmount: upgradePricing.targetPrice,
+        unusedCredit: upgradePricing.unusedCredit,
+        remainingDays: upgradePricing.remainingDays,
+        isUpgrade: upgradePricing.isUpgrade,
         frequency: billingCycle === 'ANNUAL' ? 'Annual' : 'Monthly',
       });
     } finally {

@@ -43,6 +43,7 @@ import {
   IconAlertCircle,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { useRestaurantStore } from "@/lib/stores/restaurant-store";
 import {
   getBillingData,
   updateOutletSubscription,
@@ -141,6 +142,7 @@ export function BillingManagement() {
         setAutopayModalOpened(false);
         setModalOpened(false);
         loadBilling();
+        if (restaurantId) useRestaurantStore.getState().fetchData(restaurantId);
       } else if (e.data && (e.data.type === "LOGIXSOFT_PAYMENT_SUCCESS" || e.data.event === "payment.success")) {
         notifications.show({
           title: "Payment Received Successfully!",
@@ -151,11 +153,12 @@ export function BillingManagement() {
         setPaymentModalOpened(false);
         setModalOpened(false);
         loadBilling();
+        if (restaurantId) useRestaurantStore.getState().fetchData(restaurantId);
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [loadBilling]);
+  }, [loadBilling, restaurantId]);
 
   // Resolve target outlet strictly for the currently active outlet
   const outlets = data?.outlets || [];
@@ -284,6 +287,7 @@ export function BillingManagement() {
       });
       setModalOpened(false);
       await loadBilling();
+      await useRestaurantStore.getState().fetchData(restaurantId);
     } catch (err: any) {
       notifications.show({
         title: "Update Failed",
@@ -695,18 +699,29 @@ export function BillingManagement() {
                         : `Switch ${currentOutlet.name} to ${p.name}`}
                     </Button>
 
-                    {isPro && !isAutoPayActive && (
-                      <Button
-                        fullWidth
-                        size="xs"
-                        variant="light"
-                        color="teal"
-                        leftSection={<IconCreditCard size={14} />}
-                        loading={initiatingAutopay}
-                        onClick={() => handleStartAutopay("PRO")}
-                      >
-                        Setup UPI AutoPay (₹{p.monthlyPrice.toLocaleString("en-IN")}/mo)
-                      </Button>
+                    {!isCurrentForActive && (
+                      <Group grow gap="xs">
+                        <Button
+                          size="xs"
+                          variant="filled"
+                          color="teal"
+                          leftSection={<IconCreditCard size={13} />}
+                          loading={initiatingPayment}
+                          onClick={() => handleStartOneTimePay(p.id)}
+                        >
+                          Pay Once (₹{p.monthlyPrice.toLocaleString("en-IN")})
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color="indigo"
+                          leftSection={<IconSparkles size={13} />}
+                          loading={initiatingAutopay}
+                          onClick={() => handleStartAutopay(p.id)}
+                        >
+                          AutoPay (₹{p.monthlyPrice.toLocaleString("en-IN")})
+                        </Button>
+                      </Group>
                     )}
                   </Stack>
                 </Paper>
@@ -904,9 +919,14 @@ export function BillingManagement() {
 
           {(() => {
             const plan = plans.find((p) => p.id === selectedPlanTier) || plans[0];
+            const isSameTierAsCurrent = currentOutlet?.planTier === selectedPlanTier;
             const amount = selectedCycle === "ANNUAL"
-              ? (currentOutlet?.annualPrice || plan?.annualPrice || (plan?.monthlyPrice || 999) * 10)
-              : (currentOutlet?.monthlyPrice || plan?.monthlyPrice || 999);
+              ? (isSameTierAsCurrent && currentOutlet?.isCustomPrice && currentOutlet?.annualPrice
+                  ? currentOutlet.annualPrice
+                  : plan?.annualPrice || (plan?.monthlyPrice || 1499) * 10)
+              : (isSameTierAsCurrent && currentOutlet?.isCustomPrice && currentOutlet?.monthlyPrice
+                  ? currentOutlet.monthlyPrice
+                  : plan?.monthlyPrice || 1499);
             const periodLabel = selectedCycle === "ANNUAL" ? "1 Year" : "1 Month";
 
             return (

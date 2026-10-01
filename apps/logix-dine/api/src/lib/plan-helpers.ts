@@ -126,8 +126,15 @@ export function resolveOutletPlanPricing(
   isCustom: boolean;
 } {
   const customPricing = outlet?.invoiceSettings?.customPlanPricing;
-  const isMonthlyCustom = typeof customPricing?.monthlyPrice === 'number' && customPricing.monthlyPrice >= 0;
-  const isAnnualCustom = typeof customPricing?.annualPrice === 'number' && customPricing.annualPrice >= 0;
+  // Custom price override applies only to the plan tier it was configured for.
+  // If customPricing has an explicit planTier, verify it matches.
+  // If customPricing has no explicit planTier, it belongs to the outlet's planTier when configured.
+  const isTierMatch = customPricing?.planTier
+    ? customPricing.planTier === plan.id
+    : (outlet?.planTier ? outlet.planTier === plan.id : true);
+
+  const isMonthlyCustom = isTierMatch && typeof customPricing?.monthlyPrice === 'number' && customPricing.monthlyPrice >= 0;
+  const isAnnualCustom = isTierMatch && typeof customPricing?.annualPrice === 'number' && customPricing.annualPrice >= 0;
 
   const monthlyPrice = isMonthlyCustom ? customPricing.monthlyPrice : plan.monthlyPrice;
   const annualPrice = isAnnualCustom ? customPricing.annualPrice : plan.annualPrice;

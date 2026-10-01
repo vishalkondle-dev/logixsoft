@@ -378,6 +378,19 @@ app.put(
     const { db, close } = getDb(c);
     try {
       const now = new Date();
+      const [existing] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId),
+        ))
+        .limit(1);
+
+      if (!existing) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
       const updates: any = {
         planTier: parsed.data.planTier,
         updatedAt: now,
@@ -387,12 +400,19 @@ app.put(
         updates.billingCycle = parsed.data.billingCycle;
       }
 
+      const effectiveCycle = parsed.data.billingCycle || existing.billingCycle || 'MONTHLY';
+      const days = effectiveCycle === 'ANNUAL' ? 365 : 30;
+
       if (parsed.data.status) {
         updates.status = parsed.data.status;
       } else {
         updates.status = 'ACTIVE';
-        const days = parsed.data.billingCycle === 'ANNUAL' ? 365 : 30;
-        updates.subscriptionExpiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      }
+
+      if (updates.status === 'ACTIVE') {
+        if (!existing.subscriptionExpiresAt || new Date(existing.subscriptionExpiresAt).getTime() < now.getTime()) {
+          updates.subscriptionExpiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+        }
       }
 
       const [updated] = await db
@@ -404,11 +424,15 @@ app.put(
         ))
         .returning();
 
-      if (!updated) {
-        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      await invalidateRestaurant(kv(c), restaurantId);
+
+      const cookieHeader = c.req.header('Cookie') || c.req.header('cookie') || '';
+      const authHeader = c.req.header('Authorization') || c.req.header('authorization') || '';
+      const token = extractSessionToken(cookieHeader, authHeader);
+      if (token) {
+        await invalidateUserSession(kv(c), token);
       }
 
-      await invalidateRestaurant(kv(c), restaurantId);
       return c.json(toOutlet(updated));
     } finally {
       await close();

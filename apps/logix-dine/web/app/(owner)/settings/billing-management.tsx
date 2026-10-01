@@ -329,23 +329,35 @@ export function BillingManagement() {
   return (
     <Stack gap="xl">
       {/* 1. Scoped Overview Cards for Active Outlet */}
-      <Grid gap="md">
+      <Grid gap="md" align="stretch">
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Paper withBorder p="md" radius="md">
-            <Group justify="space-between" align="flex-start">
-              <div>
-                <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-                  Active Outlet Branch
-                </Text>
-                <Title order={3} mt={4}>
-                  {currentOutlet.name}
-                </Title>
-              </div>
-              <ThemeIcon size={40} radius="md" color="indigo" variant="light">
-                <IconBuildingStore size={22} />
-              </ThemeIcon>
-            </Group>
-            <Group gap={6} mt="xs">
+          <Paper
+            withBorder
+            p="md"
+            radius="md"
+            style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+          >
+            <div>
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="xs" c="dimmed" fw={600} tt="uppercase" truncate>
+                    Active Outlet Branch
+                  </Text>
+                  <Title
+                    order={3}
+                    mt={4}
+                    title={currentOutlet.name}
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {currentOutlet.name}
+                  </Title>
+                </Box>
+                <ThemeIcon size={40} radius="md" color="indigo" variant="light" style={{ flexShrink: 0 }}>
+                  <IconBuildingStore size={22} />
+                </ThemeIcon>
+              </Group>
+            </div>
+            <Group gap={6} mt="xs" align="center">
               <Badge size="xs" color={isExpired ? "red" : "teal"} variant="light">
                 {currentOutlet.status || "ACTIVE"}
               </Badge>
@@ -359,23 +371,34 @@ export function BillingManagement() {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Paper withBorder p="md" radius="md">
-            <Group justify="space-between" align="flex-start">
-              <div>
-                <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-                  Monthly Subscription
-                </Text>
-                <Title order={3} mt={4}>
-                  ₹{monthlyPrice.toLocaleString("en-IN")}
-                  <Text component="span" size="sm" c="dimmed" fw={400}>
-                    /mo
+          <Paper
+            withBorder
+            p="md"
+            radius="md"
+            style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+          >
+            <div>
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="xs" c="dimmed" fw={600} tt="uppercase" truncate>
+                    Monthly Subscription
                   </Text>
-                </Title>
-              </div>
-              <ThemeIcon size={40} radius="md" color="teal" variant="light">
-                <IconCreditCard size={22} />
-              </ThemeIcon>
-            </Group>
+                  <Title
+                    order={3}
+                    mt={4}
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    ₹{monthlyPrice.toLocaleString("en-IN")}
+                    <Text component="span" size="sm" c="dimmed" fw={400}>
+                      /mo
+                    </Text>
+                  </Title>
+                </Box>
+                <ThemeIcon size={40} radius="md" color="teal" variant="light" style={{ flexShrink: 0 }}>
+                  <IconCreditCard size={22} />
+                </ThemeIcon>
+              </Group>
+            </div>
             <Text size="xs" c="teal" mt="xs" fw={500}>
               {currentOutlet.planTier || "BASIC"} Plan Tier
             </Text>
@@ -383,47 +406,70 @@ export function BillingManagement() {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Paper withBorder p="md" radius="md">
-            <Group justify="space-between" align="flex-start">
-              <div>
-                <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-                  UPI AutoPay
-                </Text>
-                <Title order={3} mt={4}>
-                  {isAutoPayActive ? "Active" : currentOutlet.autopayStatus === "PENDING" ? "Pending" : "Inactive"}
-                </Title>
-              </div>
-              <ThemeIcon
-                size={40}
-                radius="md"
-                color={isAutoPayActive ? "teal" : "violet"}
-                variant="light"
-              >
-                <IconSparkles size={22} />
-              </ThemeIcon>
-            </Group>
-            <Text size="xs" c={isAutoPayActive ? "teal" : "dimmed"} mt="xs">
+          <Paper
+            withBorder
+            p="md"
+            radius="md"
+            style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+          >
+            <div>
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="xs" c="dimmed" fw={600} tt="uppercase" truncate>
+                    UPI AutoPay
+                  </Text>
+                  <Title
+                    order={3}
+                    mt={4}
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {isAutoPayActive ? "Active" : currentOutlet.autopayStatus === "PENDING" ? "Pending" : "Inactive"}
+                  </Title>
+                </Box>
+                <ThemeIcon
+                  size={40}
+                  radius="md"
+                  color={isAutoPayActive ? "teal" : "violet"}
+                  variant="light"
+                  style={{ flexShrink: 0 }}
+                >
+                  <IconSparkles size={22} />
+                </ThemeIcon>
+              </Group>
+            </div>
+            <Text size="xs" c={isAutoPayActive ? "teal" : "dimmed"} mt="xs" truncate>
               {currentOutlet.autopayUmn ? "Auto-debit registered" : "Manual / on-demand billing"}
             </Text>
           </Paper>
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-          <Paper withBorder p="md" radius="md">
-            <Group justify="space-between" align="flex-start">
-              <div>
-                <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-                  Billing Cycle
-                </Text>
-                <Title order={3} mt={4}>
-                  {currentOutlet.billingCycle === "ANNUAL" ? "Annual" : "Monthly"} SaaS
-                </Title>
-              </div>
-              <ThemeIcon size={40} radius="md" color="orange" variant="light">
-                <IconCalendar size={22} />
-              </ThemeIcon>
-            </Group>
-            <Text size="xs" c="dimmed" mt="xs">
+          <Paper
+            withBorder
+            p="md"
+            radius="md"
+            style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+          >
+            <div>
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Box style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="xs" c="dimmed" fw={600} tt="uppercase" truncate>
+                    Billing Cycle
+                  </Text>
+                  <Title
+                    order={3}
+                    mt={4}
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {currentOutlet.billingCycle === "ANNUAL" ? "Annual" : "Monthly"} SaaS
+                  </Title>
+                </Box>
+                <ThemeIcon size={40} radius="md" color="orange" variant="light" style={{ flexShrink: 0 }}>
+                  <IconCalendar size={22} />
+                </ThemeIcon>
+              </Group>
+            </div>
+            <Text size="xs" c="dimmed" mt="xs" truncate>
               {currentOutlet.subscriptionExpiresAt
                 ? `Expires: ${new Date(currentOutlet.subscriptionExpiresAt).toLocaleDateString("en-IN")}`
                 : "Active period"}

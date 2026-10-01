@@ -17,6 +17,7 @@ import {
   Box,
   Modal,
   TextInput,
+  ActionIcon,
 } from "@mantine/core";
 import {
   IconUser,
@@ -33,6 +34,7 @@ import {
   IconCrown,
   IconStar,
   IconCheck,
+  IconTrash,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import type { CustomerPortalData } from "@/lib/api-client";
@@ -57,21 +59,8 @@ export function PortalProfileView({
 }: PortalProfileViewProps) {
   const customer = data?.customer;
 
-  // Saved Addresses State (mock/local with ability to add)
-  const [addresses, setAddresses] = useState<SavedAddress[]>([
-    {
-      id: "addr_1",
-      tag: "Home",
-      address: "Flat 402, Prestige Palms, 12th Main Road, Indiranagar, Bengaluru",
-      landmark: "Near Metro Station",
-    },
-    {
-      id: "addr_2",
-      tag: "Office",
-      address: "Building 3B, RMZ Infinity, Old Madras Road, Bengaluru",
-      landmark: "Floor 4, Wing B",
-    },
-  ]);
+  // Saved Addresses State (user-managed delivery locations)
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
 
   const [isAddAddressOpen, setIsAddAddressOpen] = useState(false);
   const [newTag, setNewTag] = useState("Other");
@@ -188,32 +177,57 @@ export function PortalProfileView({
           </Button>
         </Group>
 
-        <Stack gap="xs">
-          {addresses.map((addr) => (
-            <Paper key={addr.id} p="sm" radius="md" withBorder style={{ background: "#fbfbfc" }}>
-              <Group justify="space-between" align="flex-start">
-                <Group gap="xs" align="flex-start" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-                  <ThemeIcon size="sm" radius="md" color="violet" variant="light" mt={2}>
-                    <IconMapPin size={13} />
-                  </ThemeIcon>
-                  <Box style={{ minWidth: 0 }}>
-                    <Text size="xs" fw={700}>
-                      {addr.tag}
-                    </Text>
-                    <Text size="xs" c="dimmed" lineClamp={2}>
-                      {addr.address}
-                    </Text>
-                    {addr.landmark && (
-                      <Text size="11px" c="violet.7" mt={2}>
-                        Landmark: {addr.landmark}
+        {addresses.length === 0 ? (
+          <Paper p="md" radius="md" withBorder style={{ background: "#fbfbfc", textAlign: "center" }}>
+            <Text size="xs" c="dimmed">
+              No saved delivery addresses yet. Click &quot;Add Address&quot; to save a location.
+            </Text>
+          </Paper>
+        ) : (
+          <Stack gap="xs">
+            {addresses.map((addr) => (
+              <Paper key={addr.id} p="sm" radius="md" withBorder style={{ background: "#fbfbfc" }}>
+                <Group justify="space-between" align="flex-start" wrap="nowrap">
+                  <Group gap="xs" align="flex-start" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                    <ThemeIcon size="sm" radius="md" color="violet" variant="light" mt={2} style={{ flexShrink: 0 }}>
+                      <IconMapPin size={13} />
+                    </ThemeIcon>
+                    <Box style={{ minWidth: 0 }}>
+                      <Text size="xs" fw={700}>
+                        {addr.tag}
                       </Text>
-                    )}
-                  </Box>
+                      <Text size="xs" c="dimmed" lineClamp={2}>
+                        {addr.address}
+                      </Text>
+                      {addr.landmark && (
+                        <Text size="11px" c="violet.7" mt={2}>
+                          Landmark: {addr.landmark}
+                        </Text>
+                      )}
+                    </Box>
+                  </Group>
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    size="sm"
+                    onClick={() => {
+                      setAddresses((prev) => prev.filter((a) => a.id !== addr.id));
+                      notifications.show({
+                        title: "Address Removed",
+                        message: "Delivery address has been removed.",
+                        color: "gray",
+                      });
+                    }}
+                    title="Remove address"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <IconTrash size={14} />
+                  </ActionIcon>
                 </Group>
-              </Group>
-            </Paper>
-          ))}
-        </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        )}
       </Paper>
 
       {/* ─── Notification & WhatsApp Settings ─── */}

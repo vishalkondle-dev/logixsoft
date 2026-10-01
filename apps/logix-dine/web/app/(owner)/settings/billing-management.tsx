@@ -97,6 +97,7 @@ export function BillingManagement() {
   } | null>(null);
   const [initiatingAutopay, setInitiatingAutopay] = useState(false);
   const [cancellingOutletId, setCancellingOutletId] = useState<string | null>(null);
+  const [cancelConfirmOpened, setCancelConfirmOpened] = useState(false);
 
   const loadBilling = useCallback(async () => {
     if (!restaurantId) return;
@@ -237,11 +238,16 @@ export function BillingManagement() {
     setCancellingOutletId(currentOutlet.id);
     try {
       await cancelOutletAutopay(restaurantId, currentOutlet.id);
+      const expiryFormatted = currentOutlet.subscriptionExpiresAt
+        ? new Date(currentOutlet.subscriptionExpiresAt).toLocaleDateString("en-IN")
+        : "the end of your current cycle";
       notifications.show({
         title: "AutoPay Cancelled",
-        message: `UPI AutoPay for "${currentOutlet.name}" has been revoked.`,
+        message: `UPI AutoPay for "${currentOutlet.name}" has been revoked. Your subscription remains active with full access until ${expiryFormatted}.`,
         color: "yellow",
+        autoClose: 8000,
       });
+      setCancelConfirmOpened(false);
       await loadBilling();
     } catch (err: any) {
       notifications.show({
@@ -299,7 +305,15 @@ export function BillingManagement() {
 
   const monthlyPrice = currentOutlet.monthlyPrice || (currentOutlet.planTier === "PRO" ? 1499 : 499);
   const isAutoPayActive = currentOutlet.autopayStatus === "ACTIVE";
-  const isExpired = currentOutlet.status === "EXPIRED" || currentOutlet.status === "SUSPENDED";
+  const isExpired =
+    currentOutlet.status === "EXPIRED" ||
+    currentOutlet.status === "SUSPENDED" ||
+    (currentOutlet.subscriptionExpiresAt ? new Date(currentOutlet.subscriptionExpiresAt).getTime() < Date.now() : false);
+  const isAutoPayRevokedActive =
+    !isAutoPayActive &&
+    (currentOutlet.autopayStatus === "REVOKED" || currentOutlet.autopayStatus === "CANCELLED") &&
+    !isExpired &&
+    Boolean(currentOutlet.subscriptionExpiresAt);
 
   // Filter invoices strictly to the active outlet
   const outletInvoices = invoices.filter(
@@ -416,6 +430,20 @@ export function BillingManagement() {
 
       {/* 2. Active Outlet License & Subscription Card */}
       <Card withBorder radius="md" p="lg">
+        {isAutoPayRevokedActive && (
+          <Alert
+            color="yellow"
+            variant="light"
+            icon={<IconAlertCircle size={18} />}
+            mb="md"
+            title="AutoPay Cancelled — Active Until Expiry"
+          >
+            Recurring auto-debit has been cancelled and no further deductions will occur. Your subscription remains{" "}
+            <strong>fully active with unrestricted access</strong> until{" "}
+            <strong>{new Date(currentOutlet.subscriptionExpiresAt).toLocaleDateString("en-IN")}</strong>.
+          </Alert>
+        )}
+
         <Group justify="space-between" align="center" mb="lg">
           <div>
             <Group gap="xs" align="center">
@@ -427,11 +455,16 @@ export function BillingManagement() {
                 {currentOutlet.planTier || "BASIC"} Plan
               </Badge>
               <Badge size="sm" color={isExpired ? "red" : "teal"} variant="light">
-                {currentOutlet.status || "ACTIVE"}
+                {isExpired ? "EXPIRED" : (currentOutlet.status || "ACTIVE")}
               </Badge>
               {isAutoPayActive && (
                 <Badge size="sm" color="teal" variant="outline" leftSection={<IconCheck size={12} />}>
                   AutoPay Active
+                </Badge>
+              )}
+              {isAutoPayRevokedActive && (
+                <Badge size="sm" color="yellow" variant="outline" leftSection={<IconAlertCircle size={12} />}>
+                  AutoPay Off (Active until {new Date(currentOutlet.subscriptionExpiresAt).toLocaleDateString("en-IN")})
                 </Badge>
               )}
             </Group>
@@ -506,7 +539,7 @@ export function BillingManagement() {
                   color="red"
                   variant="subtle"
                   loading={cancellingOutletId === currentOutlet.id}
-                  onClick={handleCancelAutopay}
+                  onClick={() => setCancelConfirmOpened(true)}
                 >
                   Cancel AutoPay
                 </Button>
@@ -1059,6 +1092,74 @@ export function BillingManagement() {
             </Group>
           </Stack>
         )}
+      </Modal>
+
+      {/* Cancel AutoPay Confirmation Modal */}
+      <Modal
+        opened={cancelConfirmOpened}
+        onClose={() => setCancelConfirmOpened(false)}
+        title={
+          <Group gap="xs">
+            <IconAlertCircle size={20} color="#f59f00" />
+            <Text fw={700}>Cancel UPI AutoPay Mandate</Text>
+          </Group>
+        }
+        radius="md"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to cancel recurring UPI AutoPay for <strong>{currentOutlet?.name}</strong>?
+          </Text>
+
+          <Paper withBorder p="sm" radius="md" bg="gray.0">
+            <Stack gap="xs">
+              <Group gap="xs" align="flex-start" wrap="nowrap">
+                <ThemeIcon size="xs" color="teal" variant="light" radius="xl" mt={2}>
+                  <IconCheck size={10} />
+                </ThemeIcon>
+                <Text size="xs">
+                  <strong>Access continues until end of paid period:</strong> Your subscription stays active and fully functional until{" "}
+                  <strong>
+                    {currentOutlet?.subscriptionExpiresAt
+                      ? new Date(currentOutlet.subscriptionExpiresAt).toLocaleDateString("en-IN")
+                      : "the end of your current cycle"}
+                  </strong>.
+                </Text>
+              </Group>
+              <Group gap="xs" align="flex-start" wrap="nowrap">
+                <ThemeIcon size="xs" color="teal" variant="light" radius="xl" mt={2}>
+                  <IconCheck size={10} />
+                </ThemeIcon>
+                <Text size="xs">
+                  <strong>No further bank deductions:</strong> Your recurring UPI mandate will be cancelled immediately with NPCI and your bank.
+                </Text>
+              </Group>
+              <Group gap="xs" align="flex-start" wrap="nowrap">
+                <ThemeIcon size="xs" color="teal" variant="light" radius="xl" mt={2}>
+                  <IconCheck size={10} />
+                </ThemeIcon>
+                <Text size="xs">
+                  <strong>Re-enable anytime:</strong> You can pay on-demand or restart AutoPay at any time with no penalty.
+                </Text>
+              </Group>
+            </Stack>
+          </Paper>
+
+          <Group justify="flex-end" gap="xs" mt="xs">
+            <Button variant="default" size="xs" onClick={() => setCancelConfirmOpened(false)}>
+              Keep Subscription
+            </Button>
+            <Button
+              color="red"
+              size="xs"
+              loading={cancellingOutletId === currentOutlet?.id}
+              onClick={handleCancelAutopay}
+            >
+              Confirm Cancellation
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Stack>
   );

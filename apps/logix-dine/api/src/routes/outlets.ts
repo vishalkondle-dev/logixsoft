@@ -13,6 +13,7 @@ import { toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 import { invalidateRestaurant, invalidateUserSession, extractSessionToken } from '../lib/cache';
+import { getSubscriptionPlans, resolveOutletPlanPricing } from '../lib/plan-helpers';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -82,47 +83,18 @@ app.get(
         .from(appSchema.restaurantOutlet)
         .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
 
-      const plans = [
-        {
-          id: 'BASIC',
-          name: 'Starter Plan',
-          monthlyPrice: 999,
-          annualPrice: 9990,
-          features: [
-            'Standard POS Terminal',
-            'KOT Generation & Printing',
-            'Table & Section Layouts',
-            'GST Invoicing & Thermal Bills',
-            'Unlimited Orders',
-            'Email & Chat Support',
-          ],
-        },
-        {
-          id: 'PRO',
-          name: 'Pro Plan',
-          monthlyPrice: 1499,
-          annualPrice: 14990,
-          popular: true,
-          features: [
-            'Everything in Starter',
-            'Unlimited Waiter Mobile Apps',
-            'Kitchen Display System (KDS)',
-            'Inventory & Recipe BOM Costing',
-            'WhatsApp Instant e-Bills',
-            'Advanced Analytics & Tax Audit',
-            'Online Aggregators (Swiggy, Zomato)',
-            'Table Reservations & Custom Roles Matrix',
-          ],
-        },
-      ];
+      const plans = await getSubscriptionPlans(c);
 
       const enrichedOutlets = outlets.map((o: any) => {
         const plan = plans.find((p) => p.id === o.planTier) || plans[0];
+        const pricing = resolveOutletPlanPricing(o, plan, o.billingCycle || 'MONTHLY');
         return {
           ...toOutlet(o),
           planName: plan.name,
-          monthlyPrice: plan.monthlyPrice,
-          annualPrice: plan.annualPrice,
+          monthlyPrice: pricing.monthlyPrice,
+          annualPrice: pricing.annualPrice,
+          effectivePrice: pricing.effectivePrice,
+          isCustomPrice: pricing.isCustom,
         };
       });
 
@@ -491,13 +463,11 @@ app.post(
       const planTier = parsed.data.planTier;
       const billingCycle = parsed.data.billingCycle;
 
-      // Price matrix in paise
-      let recurringAmountInPaise = 149900; // PRO monthly default
-      if (planTier === 'BASIC') {
-        recurringAmountInPaise = billingCycle === 'ANNUAL' ? 999000 : 99900;
-      } else {
-        recurringAmountInPaise = billingCycle === 'ANNUAL' ? 1499000 : 149900;
-      }
+      // Price matrix in paise from configured plans & custom outlet override
+      const plans = await getSubscriptionPlans(c);
+      const targetPlan = plans.find((p) => p.id === planTier) || plans[0];
+      const pricing = resolveOutletPlanPricing(outlet, targetPlan, billingCycle);
+      const recurringAmountInPaise = Math.round(pricing.effectivePrice * 100);
 
       const ownerPhone = restaurant?.phone || outlet.phone || c.get('actorPhone') || '9876543210';
       const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';

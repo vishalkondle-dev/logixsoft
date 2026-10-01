@@ -76,6 +76,9 @@ export const CacheKey = {
   report:     (r: string, type: string, from: string, to: string, o: string | null) =>
     `report:${r}:${type}:${from}:${to}:${o ?? 'all'}`,
 
+  // Platform level config
+  plans: () => 'platform:plans',
+
   // Prefixes for bulk invalidation
   menuPrefix:   (r: string) => `cats:${r}:`,
   itemsPrefix:  (r: string) => `items:${r}:`,

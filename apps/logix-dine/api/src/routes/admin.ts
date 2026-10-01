@@ -10,6 +10,7 @@ import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 import { invalidateRestaurant, invalidateStaff, cacheGet, cacheSet, cacheDel, CacheKey, TTL } from '../lib/cache';
 import { ensureDefaultRoles } from './roles';
+import { getSubscriptionPlans, saveSubscriptionPlans, resolveOutletPlanPricing } from '../lib/plan-helpers';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -3278,13 +3279,12 @@ app.get(
       restMap.set(r.id, r);
     }
 
-    const plans = [
-      { id: 'BASIC', name: 'Starter Plan', price: 999, duration: 'Monthly' },
-      { id: 'PRO', name: 'Pro SaaS Plan', price: 1499, duration: 'Monthly' },
-    ];
+    const plans = await getSubscriptionPlans(c);
 
     let items = allOutlets.map((o: any) => {
       const rest = restMap.get(o.restaurantId);
+      const plan = plans.find((p) => p.id === (o.planTier || 'BASIC')) || plans[0];
+      const pricing = resolveOutletPlanPricing(o, plan, o.billingCycle || 'MONTHLY');
       return {
         id: o.id,
         outletId: o.id,
@@ -3297,6 +3297,11 @@ app.get(
         subscriptionStatus: o.status || 'ACTIVE',
         planTier: o.planTier || 'BASIC',
         billingCycle: o.billingCycle || 'MONTHLY',
+        monthlyPrice: pricing.monthlyPrice,
+        annualPrice: pricing.annualPrice,
+        effectivePrice: pricing.effectivePrice,
+        isCustomPrice: pricing.isCustom,
+        customPlanPricing: o.invoiceSettings?.customPlanPricing || null,
         trialEndsAt: o.trialEndsAt,
         subscriptionExpiresAt: o.subscriptionExpiresAt,
         createdAt: o.createdAt,
@@ -3333,17 +3338,70 @@ app.get(
   }
 });
 
+app.get(
+  '/plans',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Get Platform Plans (Admin)',
+    description: 'Returns active platform subscription plans with monthly and annual pricing.',
+    responses: {
+      200: z.object({ plans: z.array(z.any()) }),
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
+    const plans = await getSubscriptionPlans(c);
+    return c.json({ plans });
+  }
+);
+
+app.put(
+  '/plans',
+  apiDoc({
+    tags: ['Admin'],
+    summary: 'Customize Platform Plan Amounts (Admin)',
+    description: 'Allows superadmins to configure and customize monthly and annual plan amounts across the platform.',
+    body: z.object({
+      plans: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string().optional(),
+          monthlyPrice: z.number().min(0),
+          annualPrice: z.number().min(0),
+        })
+      ),
+    }),
+    responses: {
+      200: z.object({ success: z.boolean(), plans: z.array(z.any()) }),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requireAdmin(),
+  async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    if (!body.plans || !Array.isArray(body.plans)) {
+      return c.json({ error: 'Bad Request', message: 'plans array is required' }, 400);
+    }
+    const updated = await saveSubscriptionPlans(c, body.plans);
+    return c.json({ success: true, plans: updated });
+  }
+);
+
 app.patch(
   '/subscriptions/:id',
   apiDoc({
     tags: ['Admin'],
     summary: 'Update Outlet Subscription Status (Admin)',
-    description: 'Updates the SaaS subscription status of an outlet (ACTIVE, SUSPENDED, EXPIRED) or plan tier (BASIC, PRO).',
+    description: 'Updates the SaaS subscription status of an outlet (ACTIVE, SUSPENDED, EXPIRED), plan tier (BASIC, PRO), or custom plan price overrides.',
     params: z.object({ id: z.string() }),
     body: z.object({
       status: z.string().optional(),
       planTier: z.string().optional(),
       billingCycle: z.string().optional(),
+      customMonthlyPrice: z.number().nullable().optional(),
+      customAnnualPrice: z.number().nullable().optional(),
     }),
     responses: {
       200: z.any(),
@@ -3355,13 +3413,45 @@ app.patch(
   async (c) => {
   const targetId = c.req.param('id');
   const body = await c.req.json().catch(() => ({}));
-  const { status, planTier, billingCycle } = body;
+  const { status, planTier, billingCycle, customMonthlyPrice, customAnnualPrice } = body;
   const { db, close } = getDb(c);
   try {
     const updates: any = { updatedAt: new Date() };
     if (status) updates.status = status;
     if (planTier) updates.planTier = planTier;
     if (billingCycle) updates.billingCycle = billingCycle;
+
+    if (customMonthlyPrice !== undefined || customAnnualPrice !== undefined) {
+      const existing = await db
+        .select({ invoiceSettings: appSchema.restaurantOutlet.invoiceSettings })
+        .from(appSchema.restaurantOutlet)
+        .where(eq(appSchema.restaurantOutlet.id, targetId))
+        .limit(1);
+
+      const currentInv = (existing[0]?.invoiceSettings as any) || {};
+      const currentCustom = { ...(currentInv.customPlanPricing || {}) };
+
+      if (customMonthlyPrice !== undefined) {
+        if (customMonthlyPrice === null || customMonthlyPrice === '') {
+          delete currentCustom.monthlyPrice;
+        } else {
+          currentCustom.monthlyPrice = Number(customMonthlyPrice);
+        }
+      }
+
+      if (customAnnualPrice !== undefined) {
+        if (customAnnualPrice === null || customAnnualPrice === '') {
+          delete currentCustom.annualPrice;
+        } else {
+          currentCustom.annualPrice = Number(customAnnualPrice);
+        }
+      }
+
+      updates.invoiceSettings = {
+        ...currentInv,
+        customPlanPricing: Object.keys(currentCustom).length > 0 ? currentCustom : null,
+      };
+    }
 
     // Try updating outlet first
     const [updatedOutlet] = await db

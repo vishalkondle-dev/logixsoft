@@ -46,6 +46,7 @@ import { useRestaurant } from "@/lib/restaurant-context";
 import {
   getBillingData,
   updateOutletSubscription,
+  initiateOutletOneTimePay,
   initiateOutletAutopay,
   cancelOutletAutopay,
 } from "@/lib/api-client";
@@ -69,6 +70,19 @@ export function BillingManagement() {
   const [selectedPlanTier, setSelectedPlanTier] = useState<string>("PRO");
   const [selectedCycle, setSelectedCycle] = useState<"MONTHLY" | "ANNUAL">("MONTHLY");
   const [submitting, setSubmitting] = useState(false);
+
+  // One-Time Payment state
+  const [paymentModalOpened, setPaymentModalOpened] = useState(false);
+  const [paymentData, setPaymentData] = useState<{
+    orderId: string;
+    checkoutUrl: string;
+    upiString: string;
+    amount: number;
+    frequency: string;
+    outletName: string;
+    planTier: string;
+  } | null>(null);
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
 
   // AutoPay state
   const [autopayModalOpened, setAutopayModalOpened] = useState(false);
@@ -113,7 +127,7 @@ export function BillingManagement() {
     loadBilling();
   }, [loadBilling]);
 
-  // Listen for iframe postMessage from PG Mandate checkout
+  // Listen for iframe postMessage from PG checkout (AutoPay or One-Time)
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && (e.data.type === "LOGIXSOFT_MANDATE_SUCCESS" || e.data.event === "mandate.activated")) {
@@ -124,6 +138,16 @@ export function BillingManagement() {
           icon: <IconCheck size={16} />,
         });
         setAutopayModalOpened(false);
+        setModalOpened(false);
+        loadBilling();
+      } else if (e.data && (e.data.type === "LOGIXSOFT_PAYMENT_SUCCESS" || e.data.event === "payment.success")) {
+        notifications.show({
+          title: "Payment Received Successfully!",
+          message: "Your subscription payment was confirmed. Plan activated.",
+          color: "teal",
+          icon: <IconCheck size={16} />,
+        });
+        setPaymentModalOpened(false);
         setModalOpened(false);
         loadBilling();
       }
@@ -139,6 +163,40 @@ export function BillingManagement() {
 
   const targetOutletId = activeOutlet?.id || urlOutletId || ctxOutlets[0]?.id || outlets[0]?.id;
   const currentOutlet = outlets.find((o: any) => o.id === targetOutletId) || outlets[0] || null;
+
+  const handleStartOneTimePay = async (planTier?: string, cycle?: "MONTHLY" | "ANNUAL") => {
+    if (!currentOutlet || !restaurantId) return;
+
+    const tier = (planTier || selectedPlanTier || currentOutlet.planTier || "PRO") as "BASIC" | "PRO";
+    const billCycle = cycle || selectedCycle || currentOutlet.billingCycle || "MONTHLY";
+
+    setInitiatingPayment(true);
+    try {
+      const res = await initiateOutletOneTimePay(restaurantId, currentOutlet.id, {
+        planTier: tier,
+        billingCycle: billCycle,
+      });
+
+      setPaymentData({
+        orderId: res.orderId,
+        checkoutUrl: res.checkoutUrl,
+        upiString: res.upiString,
+        amount: res.amount,
+        frequency: res.frequency,
+        outletName: currentOutlet.name,
+        planTier: tier,
+      });
+      setPaymentModalOpened(true);
+    } catch (err: any) {
+      notifications.show({
+        title: "Payment Initiation Failed",
+        message: err.message || "Failed to initiate payment with payment gateway.",
+        color: "red",
+      });
+    } finally {
+      setInitiatingPayment(false);
+    }
+  };
 
   const handleStartAutopay = async (planTier?: string, cycle?: "MONTHLY" | "ANNUAL") => {
     if (!currentOutlet || !restaurantId) return;
@@ -453,16 +511,28 @@ export function BillingManagement() {
                   Cancel AutoPay
                 </Button>
               ) : (
-                <Button
-                  size="compact-xs"
-                  color="teal"
-                  variant="light"
-                  leftSection={<IconCreditCard size={12} />}
-                  loading={initiatingAutopay}
-                  onClick={() => handleStartAutopay(currentOutlet.planTier || "PRO")}
-                >
-                  Setup UPI AutoPay
-                </Button>
+                <Group gap={6}>
+                  <Button
+                    size="compact-xs"
+                    color="teal"
+                    variant="filled"
+                    leftSection={<IconCreditCard size={12} />}
+                    loading={initiatingPayment}
+                    onClick={() => handleStartOneTimePay(currentOutlet.planTier || "PRO")}
+                  >
+                    Pay Once
+                  </Button>
+                  <Button
+                    size="compact-xs"
+                    color="indigo"
+                    variant="light"
+                    leftSection={<IconSparkles size={12} />}
+                    loading={initiatingAutopay}
+                    onClick={() => handleStartAutopay(currentOutlet.planTier || "PRO")}
+                  >
+                    Setup AutoPay
+                  </Button>
+                </Group>
               )}
             </Box>
           </Paper>
@@ -799,23 +869,136 @@ export function BillingManagement() {
             </Group>
           </div>
 
+          {(() => {
+            const plan = plans.find((p) => p.id === selectedPlanTier) || plans[0];
+            const amount = selectedCycle === "ANNUAL"
+              ? (currentOutlet?.annualPrice || plan?.annualPrice || (plan?.monthlyPrice || 999) * 10)
+              : (currentOutlet?.monthlyPrice || plan?.monthlyPrice || 999);
+            const periodLabel = selectedCycle === "ANNUAL" ? "1 Year" : "1 Month";
+
+            return (
+              <Paper withBorder p="md" radius="md" bg="gray.0">
+                <Group justify="space-between" align="center">
+                  <div>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={600}>Total Payable ({periodLabel})</Text>
+                    <Title order={3} c="teal" mt={2}>
+                      ₹{amount.toLocaleString("en-IN")}
+                    </Title>
+                  </div>
+                  <Badge size="md" color={selectedCycle === "ANNUAL" ? "orange" : "blue"} variant="light">
+                    {selectedCycle === "ANNUAL" ? "Annual (Save 15%)" : "Monthly Billing"}
+                  </Badge>
+                </Group>
+              </Paper>
+            );
+          })()}
+
           <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-            Plan changes take effect immediately for {currentOutlet.name}. POS terminals, Kitchen, and Staff under this branch will reflect updated features instantly.
+            Choose <strong>Pay Once</strong> for a single {selectedCycle === "ANNUAL" ? "year" : "month"} without auto-debit, or <strong>Setup AutoPay</strong> for hands-free recurring renewals via UPI.
           </Alert>
 
-          <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={() => setModalOpened(false)}>
+          <Group justify="space-between" mt="md" wrap="wrap" gap="xs">
+            <Button variant="subtle" color="gray" size="sm" onClick={() => setModalOpened(false)}>
               Cancel
             </Button>
-            <Button
-              color="dinePrimary"
-              loading={submitting}
-              onClick={handleSavePlan}
-            >
-              Confirm Plan Update
-            </Button>
+            <Group gap="xs">
+              <Button
+                variant="default"
+                size="sm"
+                loading={submitting}
+                onClick={handleSavePlan}
+              >
+                Direct Save (Offline)
+              </Button>
+              <Button
+                variant="light"
+                color="indigo"
+                size="sm"
+                leftSection={<IconSparkles size={16} />}
+                loading={initiatingAutopay}
+                onClick={() => {
+                  setModalOpened(false);
+                  handleStartAutopay(selectedPlanTier, selectedCycle);
+                }}
+              >
+                Setup AutoPay
+              </Button>
+              <Button
+                color="teal"
+                variant="filled"
+                size="sm"
+                leftSection={<IconCreditCard size={16} />}
+                loading={initiatingPayment}
+                onClick={() => {
+                  setModalOpened(false);
+                  handleStartOneTimePay(selectedPlanTier, selectedCycle);
+                }}
+              >
+                Pay Once (One-Time)
+              </Button>
+            </Group>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* One-Time Payment Checkout Modal */}
+      <Modal
+        opened={paymentModalOpened}
+        onClose={() => setPaymentModalOpened(false)}
+        title={
+          <Group gap="xs">
+            <IconCreditCard size={20} color="#12b886" />
+            <Text fw={700}>Complete One-Time Subscription Payment</Text>
+          </Group>
+        }
+        size="lg"
+        radius="md"
+      >
+        {paymentData && (
+          <Stack gap="md">
+            <Alert icon={<IconShieldCheck size={18} />} color="teal" variant="light">
+              Pay <strong>₹{paymentData.amount.toLocaleString("en-IN")}</strong> for{" "}
+              <strong>{paymentData.outletName}</strong> ({paymentData.planTier} Plan - {paymentData.frequency}).
+              No recurring mandate or auto-debit will be set on your bank account.
+            </Alert>
+
+            <Paper withBorder p="xs" radius="md" style={{ overflow: "hidden" }}>
+              <iframe
+                src={`${paymentData.checkoutUrl}?embed=true`}
+                style={{
+                  width: "100%",
+                  height: "580px",
+                  border: "none",
+                  borderRadius: "8px",
+                }}
+                title="Logix Payment Gateway Checkout"
+              />
+            </Paper>
+
+            <Group justify="space-between" align="center">
+              <Button
+                variant="subtle"
+                color="gray"
+                size="xs"
+                onClick={() => window.open(paymentData.checkoutUrl, "_blank")}
+                rightSection={<IconArrowUpRight size={14} />}
+              >
+                Open in Full Window
+              </Button>
+              <Button
+                color="dinePrimary"
+                variant="default"
+                size="xs"
+                onClick={() => {
+                  setPaymentModalOpened(false);
+                  loadBilling();
+                }}
+              >
+                Close Checkout
+              </Button>
+            </Group>
+          </Stack>
+        )}
       </Modal>
 
       {/* AutoPay Mandate Authorization Modal */}

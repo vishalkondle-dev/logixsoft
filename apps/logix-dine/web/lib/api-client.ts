@@ -452,6 +452,23 @@ export const updateOutletSubscription = (
     body: JSON.stringify(body),
   });
 
+export const initiateOutletOneTimePay = (
+  restaurantId: string,
+  outletId: string,
+  body: { planTier: 'BASIC' | 'PRO'; billingCycle?: 'MONTHLY' | 'ANNUAL' }
+) =>
+  apiFetch<{
+    success: boolean;
+    orderId: string;
+    checkoutUrl: string;
+    upiString: string;
+    amount: number;
+    frequency: string;
+  }>(`/outlets/${outletId}/payment/one-time`, restaurantId, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
 export const initiateOutletAutopay = (
   restaurantId: string,
   outletId: string,

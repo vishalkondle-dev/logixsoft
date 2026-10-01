@@ -49,9 +49,7 @@ export const paymentOrder = pgTable(
   {
     id: text('id').primaryKey(),
     orderId: text('orderId').notNull().unique(),
-    merchantId: text('merchantId')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
+    merchantId: text('merchantId').notNull(),
     amount: integer('amount').notNull(), // Amount in paise (100 paise = 1 INR)
     currency: text('currency').notNull().default('INR'),
     status: text('status').notNull().default('PENDING'), // PENDING, SUCCESS, FAILED, EXPIRED

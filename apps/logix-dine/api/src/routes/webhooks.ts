@@ -110,6 +110,49 @@ app.post('/pg', async (c) => {
     const restaurantId = outlet.restaurantId;
     const now = new Date();
 
+    // ─── 0. ONE-TIME SUBSCRIPTION PAYMENT SUCCESS ─────────────────────────────
+    if (event === 'payment.success' || event === 'order.paid') {
+      const planTier = data.metadata?.planTier || outlet.planTier || 'PRO';
+      const billingCycle = data.metadata?.billingCycle || outlet.billingCycle || 'MONTHLY';
+      const days = billingCycle === 'ANNUAL' ? 365 : 30;
+
+      // Extend from existing expiration date if currently active into future, otherwise from now
+      let baseTime = now.getTime();
+      if (outlet.subscriptionExpiresAt) {
+        const existingExpires = new Date(outlet.subscriptionExpiresAt).getTime();
+        if (existingExpires > baseTime) {
+          baseTime = existingExpires;
+        }
+      }
+      const newExpiry = new Date(baseTime + days * 24 * 60 * 60 * 1000);
+
+      await db
+        .update(appSchema.restaurantOutlet)
+        .set({
+          planTier,
+          billingCycle,
+          status: 'ACTIVE',
+          subscriptionExpiresAt: newExpiry,
+          updatedAt: now,
+        })
+        .where(eq(appSchema.restaurantOutlet.id, outlet.id));
+
+      await invalidateRestaurant(kv(c), restaurantId);
+
+      // WhatsApp alert
+      const targetPhone = outlet.phone || data.customerPhone;
+      if (targetPhone) {
+        const amountRs = (Number(data.amount) / 100).toFixed(2);
+        const msg = `🎉 *Subscription Payment Received!*\n\nPayment of ₹${amountRs} for *${outlet.name}* (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'}) was successful.\n\nValid until: ${newExpiry.toLocaleDateString('en-IN')}\nPayment Ref: ${data.bankReferenceNo || data.orderId}\n\nThank you for choosing Logix Dine!`;
+        await sendWhatsAppText(targetPhone, msg, undefined, {
+          url: (c.env as any)?.WA_API_URL,
+          apiKey: (c.env as any)?.WA_API_KEY,
+        }).catch((err) => console.warn('[webhook:pg] WA alert failed:', err.message));
+      }
+
+      return c.json({ received: true, action: 'subscription_payment_success', outletId: outlet.id });
+    }
+
     // ─── 1. MANDATE ACTIVATED ───────────────────────────────────────────────
     if (event === 'mandate.activated') {
       const planTier = data.metadata?.planTier || outlet.planTier || 'PRO';

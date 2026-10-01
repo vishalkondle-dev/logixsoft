@@ -416,6 +416,107 @@ app.put(
   }
 );
 
+// POST /outlets/:id/payment/one-time — create a one-time subscription payment order via logix-pg
+const InitiateOneTimePaymentSchema = z.object({
+  planTier: z.enum(['BASIC', 'PRO']),
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL']).default('MONTHLY'),
+});
+
+app.post(
+  '/:id/payment/one-time',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = InitiateOneTimePaymentSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+    }
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      const [restaurant] = await db
+        .select()
+        .from(appSchema.restaurant)
+        .where(eq(appSchema.restaurant.id, restaurantId))
+        .limit(1);
+
+      const planTier = parsed.data.planTier;
+      const billingCycle = parsed.data.billingCycle;
+
+      // Price matrix in paise from configured plans & custom outlet override
+      const plans = await getSubscriptionPlans(c);
+      const targetPlan = plans.find((p) => p.id === planTier) || plans[0];
+      const pricing = resolveOutletPlanPricing(outlet, targetPlan, billingCycle);
+      const amountInPaise = Math.round(pricing.effectivePrice * 100);
+
+      const ownerPhone = restaurant?.phone || outlet.phone || c.get('actorPhone') || '9876543210';
+      const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+      const pgWebUrl = (c.env as any)?.PG_WEB_URL || 'https://payment.logixsoft.in';
+
+      // Call Logix PG Order Creation
+      const pgRes = await fetch(`${pgApiUrl}/api/v1/orders/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amountInPaise,
+          customerPhone: ownerPhone,
+          customerName: restaurant?.name || 'Restaurant Owner',
+          merchantId: c.get('sessionUser')?.id || tenant.member?.userId || undefined,
+          description: `Logix Dine - ${outlet.name} (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'})`,
+          metadata: {
+            type: 'OUTLET_SUBSCRIPTION_ONE_TIME',
+            restaurantId,
+            outletId,
+            planTier,
+            billingCycle,
+            webhookUrl: `${(c.env as any)?.API_URL || 'https://dine-api.logixsoft.in'}/api/webhooks/pg`,
+          },
+        }),
+      });
+
+      if (!pgRes.ok) {
+        const errText = await pgRes.text();
+        return c.json({ error: 'Payment Gateway Error', message: `Failed to initiate payment with logix-pg: ${errText}` }, 502);
+      }
+
+      const pgData = (await pgRes.json()) as any;
+
+      return c.json({
+        success: true,
+        orderId: pgData.orderId,
+        checkoutUrl: `${pgWebUrl}/pay/${pgData.orderId}`,
+        upiString: pgData.upiString,
+        amount: pricing.effectivePrice,
+        frequency: billingCycle === 'ANNUAL' ? 'Annual' : 'Monthly',
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
 // POST /outlets/:id/autopay/initiate — create recurring mandate via logix-pg
 const InitiateAutopaySchema = z.object({
   planTier: z.enum(['BASIC', 'PRO']),

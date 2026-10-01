@@ -70,6 +70,22 @@ export async function dispatchMerchantWebhook({
             WHERE "id" = ${outletId}
           `);
           console.log(`[pg-api] Directly revoked outlet ${outletId} in shared DB`);
+        } else if ((event === 'payment.success' || event === 'order.paid') && data?.metadata?.type === 'OUTLET_SUBSCRIPTION_ONE_TIME') {
+          const planTier = data.metadata?.planTier || 'PRO';
+          const billingCycle = data.metadata?.billingCycle || 'MONTHLY';
+          const days = billingCycle === 'ANNUAL' ? 365 : 30;
+          const newExpiry = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+          await db.execute(sql`
+            UPDATE "restaurantOutlet"
+            SET "planTier" = ${planTier},
+                "billingCycle" = ${billingCycle},
+                "status" = 'ACTIVE',
+                "subscriptionExpiresAt" = ${newExpiry},
+                "updatedAt" = ${now}
+            WHERE "id" = ${outletId}
+          `);
+          console.log(`[pg-api] Directly updated outlet ${outletId} subscription from one-time payment`);
         }
       } catch (dbSyncErr: any) {
         console.warn('[pg-api] Direct outlet DB sync notice:', dbSyncErr.message);

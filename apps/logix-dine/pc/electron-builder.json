@@ -29,7 +29,6 @@
       }
     ],
     "category": "public.app-category.business",
-    "hardenedRuntime": true,
     "gatekeeperAssess": false
   },
   "linux": {

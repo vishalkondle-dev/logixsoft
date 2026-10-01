@@ -71,19 +71,19 @@ const DOWNLOAD_OPTIONS: DownloadOption[] = [
     icon: IconBrandApple,
     color: "gray",
     tag: "macOS 12+",
-    description: "Native macOS application designed for high-resolution Retina displays, Mac mini counter setups, and MacBook managers.",
+    description: "Native macOS application designed for high-resolution Retina displays, Mac mini counter setups, and MacBook managers. (Note: Run 'xattr -cr /Applications/Logix\\ Dine.app' in Terminal if macOS Gatekeeper flags it on first launch).",
     downloads: [
       {
         label: "Download for Apple Silicon",
         sublabel: "M1, M2, M3, M4 Macs",
-        size: "271 MB",
+        size: "224 MB",
         url: "https://pub-1d0c10adcdfd421aab701469007ccd2c.r2.dev/macos/LogixDine-macOS-AppleSilicon-arm64.zip",
         badge: "Apple Silicon",
       },
       {
         label: "Download for Intel Mac",
         sublabel: "Legacy Intel-based Macs (x64)",
-        size: "285 MB",
+        size: "230 MB",
         url: "https://pub-1d0c10adcdfd421aab701469007ccd2c.r2.dev/macos/LogixDine-macOS-Intel-x64.zip",
       },
     ],

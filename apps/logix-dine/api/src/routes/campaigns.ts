@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { sql, eq, and, desc, inArray } from 'drizzle-orm';
+import { sql, eq, and, or, isNull, desc, inArray } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
@@ -127,7 +127,12 @@ app.get(
     try {
       const conditions = [eq(appSchema.marketingCampaign.restaurantId, restaurantId)];
       if (filterOutletId) {
-        conditions.push(eq(appSchema.marketingCampaign.outletId, filterOutletId));
+        conditions.push(
+          or(
+            eq(appSchema.marketingCampaign.outletId, filterOutletId),
+            isNull(appSchema.marketingCampaign.outletId)
+          )!
+        );
       }
       if (filterStatus) {
         conditions.push(eq(appSchema.marketingCampaign.status, filterStatus.toUpperCase()));

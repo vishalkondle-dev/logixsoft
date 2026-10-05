@@ -101,7 +101,7 @@ export function CampaignsView() {
     refetch,
     isFetching,
     error: campaignsError,
-  } = useCampaigns(restaurantId, outletId);
+  } = useCampaigns(restaurantId);
 
   // Safely extract campaigns array no matter what shape is returned
   const campaigns: MarketingCampaign[] = useMemo(() => {

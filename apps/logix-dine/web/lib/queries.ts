@@ -101,12 +101,22 @@ import {
   setCashRegister,
   sendClosingReportWhatsApp,
   getClosingReportPreview,
+  getCustomersDirectory,
+  createCrmCustomer,
+  updateCrmCustomer,
+  broadcastWhatsApp,
+  type CrmCustomerItem,
+  type CrmDirectoryResponse,
+  type CreateCustomerInput,
+  type BroadcastWhatsAppInput,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 
 export const qk = {
   roles: (restaurantId: string) => ["roles", restaurantId] as const,
+  customers: (restaurantId: string, params?: Record<string, any>) =>
+    ["customers", restaurantId, params ?? {}] as const,
   expenseSummary: (restaurantId: string, outletId?: string | null, date?: string) =>
     ["expenseSummary", restaurantId, outletId ?? "all", date ?? "today"] as const,
   expenses: (restaurantId: string, params?: Record<string, any>) =>
@@ -594,6 +604,57 @@ export function useSendCustomerWhatsApp(restaurantId: string, phone: string) {
   return useMutation({
     mutationFn: ({ message, outletId }: { message: string; outletId?: string | null }) =>
       sendCustomerWhatsApp(restaurantId, phone, { message }, outletId),
+  });
+}
+
+// ─── Customer CRM Directory Hooks ────────────────────────────────────────────
+
+export function useCustomers(
+  restaurantId: string,
+  params?: {
+    search?: string;
+    segment?: string;
+    outletId?: string | null;
+    sortBy?: string;
+    limit?: number;
+    offset?: number;
+  },
+  outletId?: string | null
+) {
+  return useQuery({
+    queryKey: qk.customers(restaurantId, { ...params, outletId }),
+    queryFn: () => getCustomersDirectory(restaurantId, params, outletId),
+    enabled: Boolean(restaurantId),
+    staleTime: 15_000,
+  });
+}
+
+export function useCreateCrmCustomer(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body, outletId }: { body: CreateCustomerInput; outletId?: string | null }) =>
+      createCrmCustomer(restaurantId, body, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customers", restaurantId] });
+    },
+  });
+}
+
+export function useUpdateCrmCustomer(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body, outletId }: { id: string; body: Partial<CreateCustomerInput>; outletId?: string | null }) =>
+      updateCrmCustomer(restaurantId, id, body, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customers", restaurantId] });
+    },
+  });
+}
+
+export function useBroadcastWhatsApp(restaurantId: string) {
+  return useMutation({
+    mutationFn: ({ body, outletId }: { body: BroadcastWhatsAppInput; outletId?: string | null }) =>
+      broadcastWhatsApp(restaurantId, body, outletId),
   });
 }
 

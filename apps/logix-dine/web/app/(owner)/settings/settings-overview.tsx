@@ -190,6 +190,16 @@ export function SettingsOverview() {
       category: "Digital Guest Experience",
       items: [
         {
+          id: "customers",
+          title: "Customer CRM & Segments",
+          description: "Central guest directory, VIP & Regular segments, lifetime value & WhatsApp marketing",
+          icon: IconUserCheck,
+          color: "blue",
+          href: "/customers",
+          isAvailable: true,
+          badge: "CRM 360°",
+        },
+        {
           id: "qr-menu",
           title: "QR Menu Ordering",
           description: "Customise table QR code ordering & contactless self-checkout",

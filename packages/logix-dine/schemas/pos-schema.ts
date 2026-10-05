@@ -426,6 +426,44 @@ export const customerAddress = pgTable(
   ]
 );
 
+// ─── Restaurant Customer (Central CRM Directory) ─────────────────────────────
+
+export const restaurantCustomer = pgTable(
+  'restaurantCustomer',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    phone: text('phone').notNull(),
+    name: text('name'),
+    email: text('email'),
+    dob: text('dob'),
+    anniversary: text('anniversary'),
+    gender: text('gender'),
+    address: text('address'),
+    tags: jsonb('tags').$type<string[]>().default([]),
+    notes: text('notes'),
+    dietaryPreference: text('dietaryPreference').default('UNKNOWN'),
+    preferredChannel: text('preferredChannel'),
+    totalOrders: integer('totalOrders').notNull().default(0),
+    totalSpendPaise: integer('totalSpendPaise').notNull().default(0),
+    avgOrderPaise: integer('avgOrderPaise').notNull().default(0),
+    firstVisitAt: timestamp('firstVisitAt'),
+    lastVisitAt: timestamp('lastVisitAt'),
+    isBlacklisted: boolean('isBlacklisted').notNull().default(false),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('restaurantCustomer_restaurantId_phone_unique').on(t.restaurantId, t.phone),
+    index('restaurantCustomer_restaurantId_idx').on(t.restaurantId),
+    index('restaurantCustomer_phone_idx').on(t.phone),
+    index('restaurantCustomer_lastVisitAt_idx').on(t.lastVisitAt),
+    index('restaurantCustomer_totalSpendPaise_idx').on(t.totalSpendPaise),
+  ]
+);
+
 // ─── Delivery Rider (Fleet) ──────────────────────────────────────────────────
 
 export const deliveryRider = pgTable(
@@ -839,6 +877,7 @@ export const posSchema = {
   orderItemFeedback,
   restaurantExpense,
   cashRegisterLog,
+  restaurantCustomer,
 };
 
 

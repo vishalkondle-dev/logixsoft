@@ -25,6 +25,7 @@ import {
   orderItemFeedback,
   restaurantExpense,
   cashRegisterLog,
+  restaurantCustomer,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -285,6 +286,15 @@ export type JsonCashRegisterLogRow = Omit<CashRegisterLogRow, 'createdAt' | 'upd
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
+};
+
+export type RestaurantCustomerRow = InferSelectModel<typeof restaurantCustomer>;
+export type NewRestaurantCustomerRow = InferInsertModel<typeof restaurantCustomer>;
+export type JsonRestaurantCustomerRow = Omit<RestaurantCustomerRow, 'createdAt' | 'updatedAt' | 'firstVisitAt' | 'lastVisitAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  firstVisitAt: string | null;
+  lastVisitAt: string | null;
 };
 
 

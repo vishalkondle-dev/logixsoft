@@ -778,6 +778,127 @@ export const sendCustomerWhatsApp = (
     outletId
   );
 
+export interface CrmCustomerItem {
+  id: string;
+  phone: string;
+  displayPhone: string;
+  name: string | null;
+  email: string | null;
+  dob: string | null;
+  anniversary: string | null;
+  gender: string | null;
+  address: string | null;
+  tags: string[];
+  notes: string | null;
+  dietaryPreference: "VEG" | "NON_VEG" | "MIXED" | "UNKNOWN";
+  preferredChannel: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | null;
+  totalOrders: number;
+  totalSpendPaise: number;
+  avgOrderPaise: number;
+  firstVisitAt: string | null;
+  lastVisitAt: string | null;
+  daysSinceLastVisit: number;
+  isBlacklisted: boolean;
+  createdAt: string | null;
+  segments: string[];
+  isVip: boolean;
+  isRegular: boolean;
+  isNew: boolean;
+  isAtRisk: boolean;
+  isInactive: boolean;
+  isHighSpend: boolean;
+  isVeg: boolean;
+  isNonVeg: boolean;
+  isDelivery: boolean;
+}
+
+export interface CrmDirectoryResponse {
+  customers: CrmCustomerItem[];
+  totalCount: number;
+  metrics: {
+    totalGuests: number;
+    vipGuests: number;
+    regularGuests: number;
+    newGuests: number;
+    atRiskGuests: number;
+    inactiveGuests: number;
+    highSpendGuests: number;
+    repeatRate: number;
+    totalLifetimeSpendPaise: number;
+    avgGuestSpendPaise: number;
+  };
+  segmentCounts: Record<string, number>;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateCustomerInput {
+  phone: string;
+  name?: string | null;
+  email?: string | null;
+  dob?: string | null;
+  anniversary?: string | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY" | null;
+  address?: string | null;
+  tags?: string[];
+  notes?: string | null;
+  dietaryPreference?: "VEG" | "NON_VEG" | "MIXED" | "UNKNOWN";
+  preferredChannel?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | null;
+}
+
+export interface BroadcastWhatsAppInput {
+  message: string;
+  segment?: string;
+  phoneNumbers?: string[];
+  testOnly?: boolean;
+}
+
+export const getCustomersDirectory = (
+  restaurantId: string,
+  params?: {
+    search?: string;
+    segment?: string;
+    outletId?: string | null;
+    sortBy?: string;
+    limit?: number;
+    offset?: number;
+  },
+  outletId?: string | null
+) => {
+  const q = new URLSearchParams();
+  if (params?.search) q.set("search", params.search);
+  if (params?.segment) q.set("segment", params.segment);
+  if (params?.outletId || outletId) q.set("outletId", (params?.outletId || outletId)!);
+  if (params?.sortBy) q.set("sortBy", params.sortBy);
+  if (params?.limit) q.set("limit", String(params.limit));
+  if (params?.offset) q.set("offset", String(params.offset));
+  const qs = q.toString() ? `?${q.toString()}` : "";
+  return apiFetch<CrmDirectoryResponse>(`/customers${qs}`, restaurantId, {}, outletId);
+};
+
+export const createCrmCustomer = (
+  restaurantId: string,
+  body: CreateCustomerInput,
+  outletId?: string | null
+) =>
+  apiFetch<CrmCustomerItem>("/customers", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
+export const updateCrmCustomer = (
+  restaurantId: string,
+  id: string,
+  body: Partial<CreateCustomerInput>,
+  outletId?: string | null
+) =>
+  apiFetch<CrmCustomerItem>(`/customers/${id}`, restaurantId, { method: "PUT", body: JSON.stringify(body) }, outletId);
+
+export const broadcastWhatsApp = (
+  restaurantId: string,
+  body: BroadcastWhatsAppInput,
+  outletId?: string | null
+) =>
+  apiFetch<any>("/customers/broadcast-whatsapp", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
+
 // ─── Customer Portal API ─────────────────────────────────────────────────────
 
 export interface CustomerOrderItem {

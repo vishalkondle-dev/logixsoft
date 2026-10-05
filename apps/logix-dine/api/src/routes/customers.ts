@@ -1,11 +1,18 @@
 import { Hono } from 'hono';
 import { sql, eq, and, desc, inArray, or } from 'drizzle-orm';
 import * as z from 'zod';
+import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 import { sendWhatsAppText } from '@logixsoft/wa';
+import {
+  CreateCustomerSchema,
+  UpdateCustomerSchema,
+  BroadcastWhatsAppSchema,
+  CUSTOMER_SEGMENTS,
+} from '@logixsoft/logix-dine/schemas/pos';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -40,6 +47,562 @@ function checkIsNonVeg(name?: string | null): boolean {
   if (!name) return false;
   return /chicken|mutton|fish|prawn|egg|lamb|meat|keema|beef|pork|seafood/i.test(name) && !/veg/i.test(name);
 }
+
+// ─── GET /customers (Central Customer CRM Directory & Segments) ───────────────
+app.get(
+  '/',
+  apiDoc({
+    tags: ['Customers'],
+    summary: 'Central Customer CRM Directory & Segments',
+    description: 'Lists all customers with dynamic segmentation, lifetime spend, visits, recency, and directory analytics.',
+    query: z.object({
+      search: z.string().optional(),
+      segment: z.string().optional(),
+      outletId: z.string().optional(),
+      sortBy: z.string().optional(),
+      limit: z.coerce.number().optional().default(50),
+      offset: z.coerce.number().optional().default(0),
+    }),
+    responses: {
+      200: z.any(),
+      401: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:read'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const filterOutletId = c.req.query('outletId');
+    const search = (c.req.query('search') || '').toLowerCase().trim();
+    const segment = (c.req.query('segment') || 'ALL').toUpperCase().trim();
+    const sortBy = c.req.query('sortBy') || 'recent';
+    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit')) || 50));
+    const offset = Math.max(0, Number(c.req.query('offset')) || 0);
+
+    if (filterOutletId && !assertOutletAccess(tenant, filterOutletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${filterOutletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+
+    try {
+      // 1. Fast sync of orders into restaurantCustomer table
+      try {
+        await db.execute(sql`
+          INSERT INTO "restaurantCustomer" (
+            "id", "restaurantId", "phone", "name", "email", "totalOrders", "totalSpendPaise", "avgOrderPaise", "firstVisitAt", "lastVisitAt", "createdAt", "updatedAt"
+          )
+          SELECT 
+            gen_random_uuid()::text,
+            "restaurantId",
+            RIGHT(REGEXP_REPLACE("customerPhone", '\D', '', 'g'), 10) as p,
+            MAX(u.name),
+            MAX(u.email),
+            COUNT(*),
+            COALESCE(SUM("paidPaise"), 0),
+            CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM("paidPaise"), 0) / COUNT(*) ELSE 0 END,
+            MIN("saleOrder"."createdAt"),
+            MAX("saleOrder"."createdAt"),
+            MIN("saleOrder"."createdAt"),
+            MAX("saleOrder"."updatedAt")
+          FROM "saleOrder"
+          LEFT JOIN "user" u ON RIGHT(REGEXP_REPLACE(u."phoneNumber", '\D', '', 'g'), 10) = RIGHT(REGEXP_REPLACE("saleOrder"."customerPhone", '\D', '', 'g'), 10)
+          WHERE "restaurantId" = ${restaurantId}
+            AND "customerPhone" IS NOT NULL 
+            AND LENGTH(REGEXP_REPLACE("customerPhone", '\D', '', 'g')) >= 10
+          GROUP BY "restaurantId", RIGHT(REGEXP_REPLACE("customerPhone", '\D', '', 'g'), 10)
+          ON CONFLICT ("restaurantId", "phone") DO UPDATE SET
+            "name" = COALESCE("restaurantCustomer"."name", EXCLUDED."name"),
+            "email" = COALESCE("restaurantCustomer"."email", EXCLUDED."email"),
+            "totalOrders" = EXCLUDED."totalOrders",
+            "totalSpendPaise" = EXCLUDED."totalSpendPaise",
+            "avgOrderPaise" = EXCLUDED."avgOrderPaise",
+            "firstVisitAt" = EXCLUDED."firstVisitAt",
+            "lastVisitAt" = EXCLUDED."lastVisitAt",
+            "updatedAt" = now()
+          WHERE "restaurantCustomer"."totalOrders" != EXCLUDED."totalOrders"
+             OR "restaurantCustomer"."totalSpendPaise" != EXCLUDED."totalSpendPaise";
+        `);
+
+        // Sync names from deliveryOrder if missing
+        await db.execute(sql`
+          UPDATE "restaurantCustomer" c
+          SET "name" = d."customerName"
+          FROM "deliveryOrder" d
+          WHERE c."restaurantId" = ${restaurantId}
+            AND (c.name IS NULL OR c.name = '')
+            AND d."customerPhone" IS NOT NULL
+            AND RIGHT(REGEXP_REPLACE(d."customerPhone", '\D', '', 'g'), 10) = c.phone
+            AND d."customerName" IS NOT NULL AND d."customerName" != '';
+        `);
+      } catch (syncErr) {
+        console.warn('Auto-sync orders into customer CRM warning:', syncErr);
+      }
+
+      // 2. Fetch all customers for this restaurant
+      const rows = await db
+        .select()
+        .from(appSchema.restaurantCustomer)
+        .where(eq(appSchema.restaurantCustomer.restaurantId, restaurantId));
+
+      const now = Date.now();
+
+      // Enrich & classify all customers
+      const allCustomers = rows.map((row: any) => {
+        const lastVisitMs = row.lastVisitAt ? new Date(row.lastVisitAt).getTime() : 0;
+        const daysSinceLastVisit = lastVisitMs > 0 ? Math.floor((now - lastVisitMs) / (1000 * 60 * 60 * 24)) : 999;
+        const totalOrders = row.totalOrders || 0;
+        const totalSpendPaise = row.totalSpendPaise || 0;
+        const avgOrderPaise = row.avgOrderPaise || (totalOrders > 0 ? Math.round(totalSpendPaise / totalOrders) : 0);
+
+        // Dynamic Segments
+        const isVip = totalSpendPaise >= 500000 || totalOrders >= 8;
+        const isRegular = totalOrders >= 3 && !isVip;
+        const isNew = totalOrders === 1 && daysSinceLastVisit <= 30;
+        const isAtRisk = totalOrders >= 2 && daysSinceLastVisit >= 30 && daysSinceLastVisit <= 60;
+        const isInactive = daysSinceLastVisit > 60;
+        const isHighSpend = avgOrderPaise >= 80000 || totalSpendPaise >= 500000;
+        const isVeg = row.dietaryPreference === 'VEG';
+        const isNonVeg = row.dietaryPreference === 'NON_VEG';
+        const isDelivery = row.preferredChannel === 'DELIVERY' || row.preferredChannel === 'TAKEAWAY';
+
+        const computedSegments: string[] = [];
+        if (isVip) computedSegments.push('VIP');
+        else if (isRegular) computedSegments.push('REGULAR');
+        else if (isNew) computedSegments.push('NEW');
+
+        if (isAtRisk) computedSegments.push('AT_RISK');
+        if (isInactive) computedSegments.push('INACTIVE');
+        if (isHighSpend) computedSegments.push('HIGH_SPEND');
+        if (isVeg) computedSegments.push('VEG');
+        if (isNonVeg) computedSegments.push('NON_VEG');
+        if (isDelivery) computedSegments.push('DELIVERY');
+
+        const cleanPhone = row.phone.replace(/\D/g, '');
+        const displayPhone = cleanPhone.length === 10
+          ? `+91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)}`
+          : `+${cleanPhone}`;
+
+        return {
+          id: row.id,
+          phone: cleanPhone,
+          displayPhone,
+          name: row.name || null,
+          email: row.email || null,
+          dob: row.dob || null,
+          anniversary: row.anniversary || null,
+          gender: row.gender || null,
+          address: row.address || null,
+          tags: Array.isArray(row.tags) ? row.tags : [],
+          notes: row.notes || null,
+          dietaryPreference: row.dietaryPreference || 'UNKNOWN',
+          preferredChannel: row.preferredChannel || null,
+          totalOrders,
+          totalSpendPaise,
+          avgOrderPaise,
+          firstVisitAt: row.firstVisitAt ? new Date(row.firstVisitAt).toISOString() : null,
+          lastVisitAt: row.lastVisitAt ? new Date(row.lastVisitAt).toISOString() : null,
+          daysSinceLastVisit,
+          isBlacklisted: Boolean(row.isBlacklisted),
+          createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
+          segments: computedSegments,
+          isVip,
+          isRegular,
+          isNew,
+          isAtRisk,
+          isInactive,
+          isHighSpend,
+          isVeg,
+          isNonVeg,
+          isDelivery,
+        };
+      });
+
+      // Overall Directory Metrics across ALL guests
+      const totalGuests = allCustomers.length;
+      let vipGuests = 0;
+      let regularGuests = 0;
+      let newGuests = 0;
+      let atRiskGuests = 0;
+      let inactiveGuests = 0;
+      let highSpendGuests = 0;
+      let vegGuests = 0;
+      let nonVegGuests = 0;
+      let deliveryGuests = 0;
+      let totalLifetimeSpendPaise = 0;
+
+      for (const cust of allCustomers) {
+        if (cust.isVip) vipGuests++;
+        if (cust.isRegular) regularGuests++;
+        if (cust.isNew) newGuests++;
+        if (cust.isAtRisk) atRiskGuests++;
+        if (cust.isInactive) inactiveGuests++;
+        if (cust.isHighSpend) highSpendGuests++;
+        if (cust.isVeg) vegGuests++;
+        if (cust.isNonVeg) nonVegGuests++;
+        if (cust.isDelivery) deliveryGuests++;
+        totalLifetimeSpendPaise += cust.totalSpendPaise;
+      }
+
+      const repeatRate = totalGuests > 0 ? Number(((vipGuests + regularGuests) / totalGuests * 100).toFixed(1)) : 0;
+      const avgGuestSpendPaise = totalGuests > 0 ? Math.round(totalLifetimeSpendPaise / totalGuests) : 0;
+
+      const segmentCounts = {
+        ALL: totalGuests,
+        VIP: vipGuests,
+        REGULAR: regularGuests,
+        NEW: newGuests,
+        AT_RISK: atRiskGuests,
+        INACTIVE: inactiveGuests,
+        HIGH_SPEND: highSpendGuests,
+        VEG: vegGuests,
+        NON_VEG: nonVegGuests,
+        DELIVERY: deliveryGuests,
+      };
+
+      const metrics = {
+        totalGuests,
+        vipGuests,
+        regularGuests,
+        newGuests,
+        atRiskGuests,
+        inactiveGuests,
+        highSpendGuests,
+        repeatRate,
+        totalLifetimeSpendPaise,
+        avgGuestSpendPaise,
+      };
+
+      // Apply Segment Filter
+      let filtered = allCustomers;
+      if (segment && segment !== 'ALL') {
+        if (segment === 'VIP') filtered = filtered.filter((c) => c.isVip);
+        else if (segment === 'REGULAR') filtered = filtered.filter((c) => c.isRegular);
+        else if (segment === 'NEW') filtered = filtered.filter((c) => c.isNew);
+        else if (segment === 'AT_RISK') filtered = filtered.filter((c) => c.isAtRisk);
+        else if (segment === 'INACTIVE') filtered = filtered.filter((c) => c.isInactive);
+        else if (segment === 'HIGH_SPEND') filtered = filtered.filter((c) => c.isHighSpend);
+        else if (segment === 'VEG') filtered = filtered.filter((c) => c.isVeg);
+        else if (segment === 'NON_VEG') filtered = filtered.filter((c) => c.isNonVeg);
+        else if (segment === 'DELIVERY') filtered = filtered.filter((c) => c.isDelivery);
+      }
+
+      // Apply Search Filter
+      if (search) {
+        filtered = filtered.filter((c) => {
+          const matchName = c.name ? c.name.toLowerCase().includes(search) : false;
+          const matchPhone = c.phone.includes(search);
+          const matchEmail = c.email ? c.email.toLowerCase().includes(search) : false;
+          const matchNotes = c.notes ? c.notes.toLowerCase().includes(search) : false;
+          const matchTags = c.tags.some((t: string) => t.toLowerCase().includes(search));
+          return matchName || matchPhone || matchEmail || matchNotes || matchTags;
+        });
+      }
+
+      // Sort
+      filtered.sort((a, b) => {
+        if (sortBy === 'spend_desc') return b.totalSpendPaise - a.totalSpendPaise;
+        if (sortBy === 'visits_desc') return b.totalOrders - a.totalOrders;
+        if (sortBy === 'name_asc') return (a.name || a.phone).localeCompare(b.name || b.phone);
+        if (sortBy === 'oldest') return new Date(a.firstVisitAt || 0).getTime() - new Date(b.firstVisitAt || 0).getTime();
+        return new Date(b.lastVisitAt || 0).getTime() - new Date(a.lastVisitAt || 0).getTime();
+      });
+
+      const paged = filtered.slice(offset, offset + limit);
+
+      return c.json({
+        customers: paged,
+        totalCount: filtered.length,
+        metrics,
+        segmentCounts,
+        limit,
+        offset,
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
+// ─── POST /customers (Register / Add Customer) ────────────────────────────────
+app.post(
+  '/',
+  apiDoc({
+    tags: ['Customers'],
+    summary: 'Add or Register Customer in CRM',
+    description: 'Manually creates or updates a customer profile with contact information, tags, and preferences.',
+    body: CreateCustomerSchema,
+    responses: {
+      201: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const body = await c.req.json().catch(() => ({}));
+    const parse = CreateCustomerSchema.safeParse(body);
+    if (!parse.success) {
+      return c.json({ error: 'Validation Error', message: parse.error.issues[0]?.message || 'Invalid customer payload' }, 400);
+    }
+
+    const {
+      phone,
+      name,
+      email,
+      dob,
+      anniversary,
+      gender,
+      address,
+      tags,
+      notes,
+      dietaryPreference,
+      preferredChannel,
+    } = parse.data;
+
+    const rawDigits = phone.replace(/\D/g, '');
+    const cleanPhone = rawDigits.slice(-10);
+    if (cleanPhone.length < 8) {
+      return c.json({ error: 'Validation Error', message: 'Valid phone number is required (min 8 digits)' }, 400);
+    }
+
+    const { db, close } = getDb(c);
+
+    try {
+      const customerId = generateId();
+      const [inserted] = await db
+        .insert(appSchema.restaurantCustomer)
+        .values({
+          id: customerId,
+          restaurantId,
+          phone: cleanPhone,
+          name: name ? name.trim() : null,
+          email: email ? email.trim().toLowerCase() : null,
+          dob: dob || null,
+          anniversary: anniversary || null,
+          gender: gender || null,
+          address: address ? address.trim() : null,
+          tags: tags || [],
+          notes: notes ? notes.trim() : null,
+          dietaryPreference: dietaryPreference || 'UNKNOWN',
+          preferredChannel: preferredChannel || null,
+        })
+        .onConflictDoUpdate({
+          target: [appSchema.restaurantCustomer.restaurantId, appSchema.restaurantCustomer.phone],
+          set: {
+            name: name ? name.trim() : sql`"restaurantCustomer"."name"`,
+            email: email ? email.trim().toLowerCase() : sql`"restaurantCustomer"."email"`,
+            dob: dob || sql`"restaurantCustomer"."dob"`,
+            anniversary: anniversary || sql`"restaurantCustomer"."anniversary"`,
+            gender: gender || sql`"restaurantCustomer"."gender"`,
+            address: address ? address.trim() : sql`"restaurantCustomer"."address"`,
+            tags: tags || sql`"restaurantCustomer"."tags"`,
+            notes: notes ? notes.trim() : sql`"restaurantCustomer"."notes"`,
+            dietaryPreference: dietaryPreference || sql`"restaurantCustomer"."dietaryPreference"`,
+            preferredChannel: preferredChannel || sql`"restaurantCustomer"."preferredChannel"`,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+
+      return c.json(inserted, 201);
+    } finally {
+      await close();
+    }
+  }
+);
+
+// ─── POST /customers/broadcast-whatsapp (Broadcast to Segment) ────────────────
+app.post(
+  '/broadcast-whatsapp',
+  apiDoc({
+    tags: ['Customers'],
+    summary: 'Broadcast WhatsApp to Segment',
+    description: 'Previews or dispatches WhatsApp campaign messages to a customer segment.',
+    body: BroadcastWhatsAppSchema,
+    responses: {
+      200: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const body = await c.req.json().catch(() => ({}));
+    const parse = BroadcastWhatsAppSchema.safeParse(body);
+    if (!parse.success) {
+      return c.json({ error: 'Validation Error', message: parse.error.issues[0]?.message || 'Invalid broadcast payload' }, 400);
+    }
+
+    const { message, segment, phoneNumbers, testOnly } = parse.data;
+    const { db, close } = getDb(c);
+
+    try {
+      const [restRow] = await db
+        .select({ name: appSchema.restaurant.name })
+        .from(appSchema.restaurant)
+        .where(eq(appSchema.restaurant.id, restaurantId))
+        .limit(1);
+
+      const restaurantName = restRow?.name || 'Our Restaurant';
+
+      // Gather target customer list
+      let targets: { phone: string; name: string | null }[] = [];
+
+      if (phoneNumbers && phoneNumbers.length > 0) {
+        targets = phoneNumbers.map((p) => ({ phone: p.replace(/\D/g, '').slice(-10), name: null }));
+      } else {
+        const rows = await db
+          .select()
+          .from(appSchema.restaurantCustomer)
+          .where(eq(appSchema.restaurantCustomer.restaurantId, restaurantId));
+
+        const now = Date.now();
+        targets = rows
+          .filter((row: any) => {
+            if (!segment || segment === 'ALL') return true;
+            const lastVisitMs = row.lastVisitAt ? new Date(row.lastVisitAt).getTime() : 0;
+            const daysSinceLastVisit = lastVisitMs > 0 ? Math.floor((now - lastVisitMs) / (1000 * 60 * 60 * 24)) : 999;
+            const totalOrders = row.totalOrders || 0;
+            const totalSpendPaise = row.totalSpendPaise || 0;
+            const avgOrderPaise = row.avgOrderPaise || (totalOrders > 0 ? Math.round(totalSpendPaise / totalOrders) : 0);
+
+            if (segment === 'VIP') return totalSpendPaise >= 500000 || totalOrders >= 8;
+            if (segment === 'REGULAR') return totalOrders >= 3 && totalOrders < 8;
+            if (segment === 'NEW') return totalOrders === 1 && daysSinceLastVisit <= 30;
+            if (segment === 'AT_RISK') return totalOrders >= 2 && daysSinceLastVisit >= 30 && daysSinceLastVisit <= 60;
+            if (segment === 'INACTIVE') return daysSinceLastVisit > 60;
+            if (segment === 'HIGH_SPEND') return avgOrderPaise >= 80000 || totalSpendPaise >= 500000;
+            if (segment === 'VEG') return row.dietaryPreference === 'VEG';
+            if (segment === 'NON_VEG') return row.dietaryPreference === 'NON_VEG';
+            if (segment === 'DELIVERY') return row.preferredChannel === 'DELIVERY' || row.preferredChannel === 'TAKEAWAY';
+            return true;
+          })
+          .map((row: any) => ({ phone: row.phone, name: row.name || null }));
+      }
+
+      // Sample rendered message
+      const sampleCustomer = targets[0] || { name: 'Valued Guest', phone: '9876543210' };
+      const sampleText = message
+        .replace(/\{name\}/gi, sampleCustomer.name || 'Valued Guest')
+        .replace(/\{restaurant_name\}/gi, restaurantName);
+
+      if (testOnly) {
+        return c.json({
+          previewOnly: true,
+          totalTargets: targets.length,
+          sampleMessage: sampleText,
+          restaurantName,
+          targetPreview: targets.slice(0, 5),
+        });
+      }
+
+      // Dispatched (limit to batch of 100 for safety)
+      const dispatchBatch = targets.slice(0, 100);
+      let sentCount = 0;
+      const failures: string[] = [];
+
+      for (const target of dispatchBatch) {
+        const personalized = message
+          .replace(/\{name\}/gi, target.name || 'Valued Guest')
+          .replace(/\{restaurant_name\}/gi, restaurantName);
+
+        const targetPhone = target.phone.length === 10 ? `91${target.phone}` : target.phone;
+
+        try {
+          await sendWhatsAppText(
+            targetPhone,
+            personalized,
+            undefined,
+            { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
+          );
+          sentCount++;
+        } catch (err: any) {
+          failures.push(`${target.phone}: ${err.message || String(err)}`);
+        }
+      }
+
+      return c.json({
+        success: true,
+        sentCount,
+        totalTargets: targets.length,
+        failuresCount: failures.length,
+        failures: failures.slice(0, 5),
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
+// ─── PUT /customers/:id (Update Customer Details) ─────────────────────────────
+app.put(
+  '/:id',
+  apiDoc({
+    tags: ['Customers'],
+    summary: 'Update Customer Profile',
+    description: 'Updates customer profile, tags, notes, address, birthday, or dietary preferences.',
+    params: z.object({ id: z.string() }),
+    body: UpdateCustomerSchema,
+    responses: {
+      200: z.any(),
+      400: ErrorResponseSchema,
+      403: ErrorResponseSchema,
+      404: ErrorResponseSchema,
+    },
+  }),
+  requirePermission('order:create'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const id = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parse = UpdateCustomerSchema.safeParse(body);
+    if (!parse.success) {
+      return c.json({ error: 'Validation Error', message: parse.error.issues[0]?.message || 'Invalid customer update payload' }, 400);
+    }
+
+    const { db, close } = getDb(c);
+
+    try {
+      const updateData: any = { updatedAt: new Date() };
+      if (parse.data.name !== undefined) updateData.name = parse.data.name ? parse.data.name.trim() : null;
+      if (parse.data.email !== undefined) updateData.email = parse.data.email ? parse.data.email.trim().toLowerCase() : null;
+      if (parse.data.dob !== undefined) updateData.dob = parse.data.dob || null;
+      if (parse.data.anniversary !== undefined) updateData.anniversary = parse.data.anniversary || null;
+      if (parse.data.gender !== undefined) updateData.gender = parse.data.gender || null;
+      if (parse.data.address !== undefined) updateData.address = parse.data.address ? parse.data.address.trim() : null;
+      if (parse.data.tags !== undefined) updateData.tags = parse.data.tags;
+      if (parse.data.notes !== undefined) updateData.notes = parse.data.notes ? parse.data.notes.trim() : null;
+      if (parse.data.dietaryPreference !== undefined) updateData.dietaryPreference = parse.data.dietaryPreference;
+      if (parse.data.preferredChannel !== undefined) updateData.preferredChannel = parse.data.preferredChannel;
+
+      const [updated] = await db
+        .update(appSchema.restaurantCustomer)
+        .set(updateData)
+        .where(
+          and(
+            eq(appSchema.restaurantCustomer.id, id),
+            eq(appSchema.restaurantCustomer.restaurantId, restaurantId)
+          )
+        )
+        .returning();
+
+      if (!updated) {
+        return c.json({ error: 'Not Found', message: 'Customer record not found' }, 404);
+      }
+
+      return c.json(updated);
+    } finally {
+      await close();
+    }
+  }
+);
 
 // ─── GET /customers/:phone ───────────────────────────────────────────────────
 app.get(

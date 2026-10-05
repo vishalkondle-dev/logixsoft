@@ -788,4 +788,44 @@ export const SetCashRegisterSchema = z.object({
   outletId: z.string().optional(),
 });
 
+// ─── Customer CRM & Directory Schemas ─────────────────────────────────────────
+
+export const CUSTOMER_SEGMENTS = [
+  'ALL',
+  'VIP',
+  'REGULAR',
+  'NEW',
+  'AT_RISK',
+  'INACTIVE',
+  'HIGH_SPEND',
+  'VEG',
+  'NON_VEG',
+  'DELIVERY',
+] as const;
+
+export type CustomerSegment = (typeof CUSTOMER_SEGMENTS)[number];
+
+export const CreateCustomerSchema = z.object({
+  phone: z.string().min(8).max(20),
+  name: z.string().max(100).nullable().optional(),
+  email: z.string().email().nullable().optional().or(z.literal('')),
+  dob: z.string().max(20).nullable().optional(),
+  anniversary: z.string().max(20).nullable().optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).nullable().optional(),
+  address: z.string().max(300).nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  dietaryPreference: z.enum(['VEG', 'NON_VEG', 'MIXED', 'UNKNOWN']).optional(),
+  preferredChannel: z.enum(['DINE_IN', 'TAKEAWAY', 'DELIVERY']).nullable().optional(),
+});
+
+export const UpdateCustomerSchema = CreateCustomerSchema.partial();
+
+export const BroadcastWhatsAppSchema = z.object({
+  message: z.string().min(1).max(2000),
+  segment: z.enum(CUSTOMER_SEGMENTS).optional(),
+  phoneNumbers: z.array(z.string()).optional(),
+  testOnly: z.boolean().optional(),
+});
+
 

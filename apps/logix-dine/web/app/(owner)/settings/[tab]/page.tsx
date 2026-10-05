@@ -53,5 +53,8 @@ export default async function SettingsTabPage({
   if (tab === "finance" || tab === "expenses") {
     redirect("/finance");
   }
+  if (tab === "customers" || tab === "crm") {
+    redirect("/customers");
+  }
   return <SettingsView currentTab={tab} />;
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
-  Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
+  Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon, Indicator,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
   UnstyledButton, Tooltip, Alert, ThemeIcon, Collapse, NumberInput,
@@ -2133,21 +2133,36 @@ export default function POSPage() {
                   </Text>
                 </UnstyledButton>
 
-                {/* Delivery Quick Drawer Button */}
-                <Button
-                  size="xs"
-                  variant={activeDeliveryOrders.length > 0 ? "filled" : "light"}
-                  color="teal"
-                  leftSection={<IconMotorbike size={15} />}
-                  onClick={() => setDeliveryDrawerOpen(true)}
-                  style={{
-                    flexShrink: 0,
-                    fontWeight: 600,
-                    height: 29,
-                  }}
+                {/* Delivery Quick Drawer ActionIcon with Badge */}
+                <Tooltip
+                  label={
+                    activeDeliveryOrders.length > 0
+                      ? `Active Deliveries (${activeDeliveryOrders.length})`
+                      : "Deliveries"
+                  }
+                  withArrow
                 >
-                  Deliveries {activeDeliveryOrders.length > 0 ? `(${activeDeliveryOrders.length})` : ""}
-                </Button>
+                  <Indicator
+                    label={activeDeliveryOrders.length}
+                    size={16}
+                    offset={2}
+                    color="teal"
+                    disabled={activeDeliveryOrders.length === 0}
+                    withBorder
+                  >
+                    <ActionIcon
+                      size={29}
+                      variant={activeDeliveryOrders.length > 0 ? "light" : "subtle"}
+                      color="teal"
+                      radius="md"
+                      onClick={() => setDeliveryDrawerOpen(true)}
+                      aria-label="Deliveries"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <IconMotorbike size={17} />
+                    </ActionIcon>
+                  </Indicator>
+                </Tooltip>
 
                 {/* Fast Petty Cash / Expense Outflow Button */}
                 <Button

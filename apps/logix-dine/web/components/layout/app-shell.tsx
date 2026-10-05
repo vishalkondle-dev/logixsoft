@@ -512,6 +512,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   return (
     <AppShell
       header={isLanding ? undefined : { height: { base: 60, sm: 64 } }}
+      footer={
+        visibleNav.length > 0 && !isPortal && !isLanding
+          ? { height: { base: 56, md: 0 } }
+          : undefined
+      }
       navbar={
         canAccessSidebar
           ? {
@@ -1141,25 +1146,32 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       </AppShell.Main>
 
       {visibleNav.length > 0 && !isPortal && !isLanding && (
-        <Box
+        <AppShell.Footer
           component="nav"
           aria-label="Bottom Navigation"
-          className="floating-bottom-nav"
           hiddenFrom="md"
+          withBorder={false}
           style={{
-            position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-            zIndex: 100, maxWidth: "calc(100vw - 32px)",
-            background: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid rgba(175, 115, 215, 0.3)",
-            boxShadow: "0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08)",
-            borderRadius: "9999px", padding: "6px 8px",
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            WebkitOverflowScrolling: "touch",
+            backgroundColor: "#ffffff",
+            borderTop: "1px solid #e9ecef",
+            boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.05)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
           }}
         >
-          <Group gap={4} wrap="nowrap" style={{ flexWrap: "nowrap", minWidth: "max-content" }}>
+          <Group
+            justify="space-around"
+            align="center"
+            wrap="nowrap"
+            gap={0}
+            style={{
+              width: "100%",
+              maxWidth: 500,
+              margin: "0 auto",
+              height: "100%",
+            }}
+          >
             {visibleNav.map((item) => {
               const Icon = item.icon;
               const isPortalItem = item.href.includes("?tab=");
@@ -1180,29 +1192,55 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                   : item.href;
               return (
                 <UnstyledButton
-                  key={item.href} component={Link} href={itemHref} aria-label={item.label}
-                  px={{ base: isActive ? 14 : 10, sm: 16 }} py={8}
+                  key={item.href}
+                  component={Link}
+                  href={itemHref}
+                  aria-label={item.label}
                   style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    borderRadius: "9999px", fontWeight: isActive ? 600 : 500,
-                    color: isActive ? "#af73d7" : "rgba(30, 30, 30, 0.8)",
-                    backgroundColor: isActive ? "rgba(175, 115, 215, 0.15)" : "transparent",
-                    textDecoration: "none", userSelect: "none", fontSize: 13,
-                    flexShrink: 0,
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flex: 1,
+                    height: "100%",
+                    padding: "4px 2px",
+                    color: isActive ? "#af73d7" : "#6c757d",
+                    textDecoration: "none",
+                    userSelect: "none",
+                    transition: "color 0.15s ease",
                   }}
                 >
-                  <Icon size={18} stroke={isActive ? 2.2 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
-                  {isActive ? (
-                    <Text size="sm" fw={700} c="dinePrimary">{item.label}</Text>
-                  ) : (
-                    <Text size="sm" fw={500} c="inherit" visibleFrom="sm">{item.label}</Text>
-                  )}
+                  <Box
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "3px 14px",
+                      borderRadius: 16,
+                      backgroundColor: isActive ? "rgba(175, 115, 215, 0.12)" : "transparent",
+                      transition: "background-color 0.15s ease",
+                    }}
+                  >
+                    <Icon size={20} stroke={isActive ? 2.3 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
+                  </Box>
+                  <Text
+                    size="xs"
+                    fw={isActive ? 700 : 500}
+                    c={isActive ? "dinePrimary" : "dimmed"}
+                    style={{
+                      fontSize: 11,
+                      lineHeight: 1.1,
+                      marginTop: 2,
+                      letterSpacing: "-0.2px",
+                    }}
+                  >
+                    {item.label}
+                  </Text>
                 </UnstyledButton>
               );
             })}
           </Group>
-        </Box>
+        </AppShell.Footer>
       )}
     </AppShell>
   );

@@ -1960,8 +1960,10 @@ export default function POSPage() {
   return (
     <Box
       style={{
-        height: "calc(100dvh - var(--app-shell-header-offset, 60px))",
-        maxHeight: "calc(100dvh - var(--app-shell-header-offset, 60px))",
+        flex: "1 1 auto",
+        minHeight: 0,
+        height: "calc(100dvh - var(--app-shell-header-offset, 60px) - var(--app-shell-footer-offset, 0px))",
+        maxHeight: "calc(100dvh - var(--app-shell-header-offset, 60px) - var(--app-shell-footer-offset, 0px))",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -2493,7 +2495,7 @@ export default function POSPage() {
           hiddenFrom="sm"
           style={{
             position: "fixed",
-            bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+            bottom: "calc(68px + env(safe-area-inset-bottom, 0px))",
             right: 16,
             zIndex: 110,
           }}

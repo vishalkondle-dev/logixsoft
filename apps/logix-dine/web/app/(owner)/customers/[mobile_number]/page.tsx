@@ -391,7 +391,7 @@ export default function CustomerProfilePage() {
     <Box
       style={{
         boxSizing: "border-box",
-        minHeight: "calc(100dvh - var(--app-shell-header-offset, 60px))",
+        minHeight: "calc(100dvh - var(--app-shell-header-offset, 60px) - var(--app-shell-footer-offset, 0px))",
         backgroundColor: "#f8f9fa",
       }}
       px={{ base: "xs", sm: "md", md: "lg" }}

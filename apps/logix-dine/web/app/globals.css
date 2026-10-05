@@ -24,17 +24,31 @@
   box-shadow: 0 12px 36px rgba(175, 115, 215, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Whole page background */
+/* Whole page background and full device viewport height */
 html,
 body {
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
   background-color: #F3F5F8;
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
 }
 
-/* AppShell Layout */
-.mantine-AppShell-root,
+/* AppShell Layout: ensure full height backside content across all devices */
+.mantine-AppShell-root {
+  min-height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F3F5F8;
+}
+
 .mantine-AppShell-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background-color: #F3F5F8;
 }
 

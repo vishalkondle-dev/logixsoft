@@ -23,54 +23,297 @@ import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
 import { isModuleAllowedForOutlet, type PlanModuleId, DEFAULT_FREE_TRIAL_DAYS } from "@logixsoft/logix-dine/types/plans";
 
-// Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
-const STAFF_NAV_ITEMS = [
+// Top horizontal header navbar items: strictly 4 operational links only
+const TOP_NAV_ITEMS = [
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view", moduleId: "tables" },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
-  { label: "Customers", href: "/customers", icon: IconUserCheck, roles: ["OWNER", "MANAGER", "CASHIER"], permission: "customers:view", moduleId: "customers" },
-  { label: "Campaigns", href: "/campaigns", icon: IconSpeakerphone, roles: ["OWNER", "MANAGER"], moduleId: "campaigns" },
-  { label: "Finance", href: "/finance", icon: IconWallet, roles: ["OWNER", "MANAGER", "CASHIER"], permission: "finance:view", moduleId: "finance" },
   { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view", moduleId: "kitchen" },
-  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view", moduleId: "waiter" },
-  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view", moduleId: "delivery" },
 ];
 
-// Settings sidebar items (clean logical sections: Store Setup, Menu & Floor, Delivery & Hardware, Guest Experience, Team & Access, Account & Billing)
-const SETTINGS_SIDEBAR_ITEMS = [
-  // ─── 1. General & Store Setup ───
-  { id: "overview", label: "All Settings", href: "/settings", icon: IconLayoutGrid, section: "STORE SETUP", moduleId: "settings" },
-  { id: "restaurant", label: "Store & Outlets", href: "/settings/restaurant", icon: IconBuildingStore, section: "STORE SETUP", moduleId: "settings" },
-  { id: "hours", label: "Store Hours", href: "/settings/hours", icon: IconClock, section: "STORE SETUP", moduleId: "hours" },
-  { id: "dining", label: "Dining Options", href: "/settings/dining", icon: IconCoffee, section: "STORE SETUP", moduleId: "dining" },
+// All modules and pages organized in the left sidebar navigation
+const ALL_SIDEBAR_ITEMS = [
+  // ─── 1. OPERATIONS ───
+  {
+    id: "pos",
+    label: "POS Billing",
+    href: "/pos",
+    icon: IconShoppingCart,
+    section: "OPERATIONS",
+    roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"],
+    permission: "pos:view",
+    moduleId: "pos",
+  },
+  {
+    id: "tables-floor",
+    label: "Tables & Floor",
+    href: "/tables",
+    icon: IconTableAlias,
+    section: "OPERATIONS",
+    roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"],
+    permission: "tables:view",
+    moduleId: "tables",
+  },
+  {
+    id: "orders",
+    label: "Orders & Tokens",
+    href: "/orders",
+    icon: IconReceipt,
+    section: "OPERATIONS",
+    roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"],
+    permission: "pos:view",
+    moduleId: "pos",
+  },
+  {
+    id: "kitchen",
+    label: "Kitchen KDS",
+    href: "/kitchen",
+    icon: IconToolsKitchen2,
+    section: "OPERATIONS",
+    roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"],
+    permission: "kitchen:view",
+    moduleId: "kitchen",
+    requiredPlan: "PRO",
+  },
+  {
+    id: "waiter",
+    label: "Waiter Floor Calls",
+    href: "/waiter",
+    icon: IconBellRinging,
+    section: "OPERATIONS",
+    roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"],
+    permission: "waiter:view",
+    moduleId: "waiter",
+    requiredPlan: "PRO",
+  },
+  {
+    id: "rider",
+    label: "Rider Deliveries",
+    href: "/rider",
+    icon: IconMotorbike,
+    section: "OPERATIONS",
+    roles: ["OWNER", "MANAGER", "RIDER"],
+    permission: "delivery:view",
+    moduleId: "delivery",
+    requiredPlan: "PRO",
+  },
 
-  // ─── 2. Menu & Dining Floor ───
-  { id: "menu", label: "Menu Catalog", href: "/settings/menu", icon: IconBook, section: "MENU & FLOOR", moduleId: "menu" },
-  { id: "inventory", label: "Inventory & Recipes", href: "/settings/inventory", icon: IconPackages, section: "MENU & FLOOR", moduleId: "inventory", requiredPlan: "PRO" },
-  { id: "tables", label: "Table Management", href: "/settings/tables", icon: IconTableAlias, section: "MENU & FLOOR", moduleId: "tables" },
-  { id: "reservations", label: "Table Reservations", href: "/settings/reservations", icon: IconCalendarEvent, section: "MENU & FLOOR", moduleId: "reservations", requiredPlan: "PRO" },
+  // ─── 2. GUEST & MARKETING ───
+  {
+    id: "customers",
+    label: "Customer Directory",
+    href: "/customers",
+    icon: IconUserCheck,
+    section: "GUEST & MARKETING",
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    permission: "customers:view",
+    moduleId: "customers",
+  },
+  {
+    id: "campaigns",
+    label: "WhatsApp Broadcasts",
+    href: "/campaigns",
+    icon: IconSpeakerphone,
+    section: "GUEST & MARKETING",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "campaigns",
+    requiredPlan: "PRO",
+  },
+  {
+    id: "reservations",
+    label: "Table Reservations",
+    href: "/settings/reservations",
+    icon: IconCalendarEvent,
+    section: "GUEST & MARKETING",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "reservations",
+    requiredPlan: "PRO",
+  },
+  {
+    id: "feedback",
+    label: "Customer Reviews & Ratings",
+    href: "/settings/feedback",
+    icon: IconStar,
+    section: "GUEST & MARKETING",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "feedback",
+  },
+  {
+    id: "qr-menu",
+    label: "QR Menu Ordering",
+    href: "/settings/qr-menu",
+    icon: IconQrcode,
+    section: "GUEST & MARKETING",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "qr_menu",
+  },
+  {
+    id: "whatsapp",
+    label: "WhatsApp Alerts",
+    href: "/settings/whatsapp",
+    icon: IconBrandWhatsapp,
+    section: "GUEST & MARKETING",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "whatsapp",
+    requiredPlan: "PRO",
+  },
 
-  // ─── 3. Delivery & Hardware ───
-  { id: "aggregators", label: "Online Delivery (Swiggy/Zomato)", href: "/settings/aggregators", icon: IconTruckDelivery, section: "DELIVERY & HARDWARE", moduleId: "aggregators", requiredPlan: "PRO" },
-  { id: "riders", label: "Delivery & Riders", href: "/settings/riders", icon: IconMotorbike, section: "DELIVERY & HARDWARE", moduleId: "delivery", requiredPlan: "PRO" },
-  { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter, section: "DELIVERY & HARDWARE", moduleId: "printing" },
+  // ─── 3. FINANCIALS & REPORTS ───
+  {
+    id: "finance",
+    label: "Finance & Petty Cash",
+    href: "/finance",
+    icon: IconWallet,
+    section: "FINANCIALS & REPORTS",
+    roles: ["OWNER", "MANAGER", "CASHIER"],
+    permission: "finance:view",
+    moduleId: "finance",
+  },
+  {
+    id: "reports",
+    label: "Analytics & Reports",
+    href: "/settings/reports",
+    icon: IconChartBar,
+    section: "FINANCIALS & REPORTS",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "reports",
+  },
+  {
+    id: "tax",
+    label: "Invoice & Tax",
+    href: "/settings/tax",
+    icon: IconReceiptTax,
+    section: "FINANCIALS & REPORTS",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "tax",
+  },
+  {
+    id: "billing",
+    label: "Subscription & Billing",
+    href: "/settings/billing",
+    icon: IconCreditCard,
+    section: "FINANCIALS & REPORTS",
+    ownerOnly: true,
+    moduleId: "billing",
+  },
 
-  // ─── 4. Digital Guest Experience ───
-  { id: "customers", label: "Customer Directory", href: "/customers", icon: IconUserCheck, section: "GUEST EXPERIENCE", moduleId: "customers" },
-  { id: "campaigns", label: "WhatsApp Broadcasts", href: "/campaigns", icon: IconSpeakerphone, section: "GUEST EXPERIENCE", moduleId: "campaigns" },
-  { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode, section: "GUEST EXPERIENCE", moduleId: "qr_menu" },
-  { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp, section: "GUEST EXPERIENCE", moduleId: "whatsapp", requiredPlan: "PRO" },
-  { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar, section: "GUEST EXPERIENCE", moduleId: "feedback" },
+  // ─── 4. MENU & INVENTORY ───
+  {
+    id: "menu",
+    label: "Menu Catalog",
+    href: "/settings/menu",
+    icon: IconBook,
+    section: "MENU & INVENTORY",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "menu",
+  },
+  {
+    id: "inventory",
+    label: "Inventory & Recipes",
+    href: "/settings/inventory",
+    icon: IconPackages,
+    section: "MENU & INVENTORY",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "inventory",
+    requiredPlan: "PRO",
+  },
+  {
+    id: "tables-mgmt",
+    label: "Table Management",
+    href: "/settings/tables",
+    icon: IconTableAlias,
+    section: "MENU & INVENTORY",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "tables",
+  },
 
-  // ─── 5. Team & Governance ───
-  { id: "staff", label: "Staff & Team", href: "/settings/staff", icon: IconUsers, section: "TEAM & ANALYTICS", permission: "staff:view", moduleId: "staff" },
-  { id: "roles", label: "Roles & Permissions", href: "/settings/roles", icon: IconShieldLock, section: "TEAM & ANALYTICS", permission: "roles:manage", moduleId: "roles", requiredPlan: "PRO" },
-  { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar, section: "TEAM & ANALYTICS", moduleId: "reports" },
+  // ─── 5. DELIVERY & HARDWARE ───
+  {
+    id: "aggregators",
+    label: "Online Delivery (Swiggy/Zomato)",
+    href: "/settings/aggregators",
+    icon: IconTruckDelivery,
+    section: "DELIVERY & HARDWARE",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "aggregators",
+    requiredPlan: "PRO",
+  },
+  {
+    id: "riders",
+    label: "Delivery & Riders",
+    href: "/settings/riders",
+    icon: IconMotorbike,
+    section: "DELIVERY & HARDWARE",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "delivery",
+    requiredPlan: "PRO",
+  },
+  {
+    id: "printing",
+    label: "Thermal Printers",
+    href: "/settings/printing",
+    icon: IconPrinter,
+    section: "DELIVERY & HARDWARE",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "printing",
+  },
 
-  // ─── 6. Financials & Billing ───
-  { id: "finance", label: "Finance & Petty Cash", href: "/finance", icon: IconWallet, section: "ACCOUNT & BILLING", moduleId: "finance" },
-  { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax, section: "ACCOUNT & BILLING", moduleId: "tax" },
-  { id: "billing", label: "Subscription & Billing", href: "/settings/billing", icon: IconCreditCard, section: "ACCOUNT & BILLING", ownerOnly: true, moduleId: "billing" },
+  // ─── 6. STORE SETUP ───
+  {
+    id: "overview",
+    label: "All Settings",
+    href: "/settings",
+    icon: IconLayoutGrid,
+    section: "STORE SETUP",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "settings",
+  },
+  {
+    id: "restaurant",
+    label: "Store & Outlets",
+    href: "/settings/restaurant",
+    icon: IconBuildingStore,
+    section: "STORE SETUP",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "settings",
+  },
+  {
+    id: "hours",
+    label: "Store Hours",
+    href: "/settings/hours",
+    icon: IconClock,
+    section: "STORE SETUP",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "hours",
+  },
+  {
+    id: "dining",
+    label: "Dining Options",
+    href: "/settings/dining",
+    icon: IconCoffee,
+    section: "STORE SETUP",
+    roles: ["OWNER", "MANAGER"],
+    moduleId: "dining",
+  },
+  {
+    id: "staff",
+    label: "Staff & Team",
+    href: "/settings/staff",
+    icon: IconUsers,
+    section: "STORE SETUP",
+    permission: "staff:view",
+    moduleId: "staff",
+  },
+  {
+    id: "roles",
+    label: "Roles & Permissions",
+    href: "/settings/roles",
+    icon: IconShieldLock,
+    section: "STORE SETUP",
+    permission: "roles:manage",
+    moduleId: "roles",
+    requiredPlan: "PRO",
+  },
 ];
 
 // Customer portal navigation items (Active Order, Past Orders, My Profile)
@@ -148,6 +391,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     effectiveRole && (ALL_STAFF_ROLES.includes(effectiveRole) || effectiveRole !== "CUSTOMER")
   );
   const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
+  const canAccessSidebar = Boolean(isStaffOrOwner && !isPortal);
   const isCustomer = isAuthenticated && !isStaffOrOwner;
 
   const isTrial = Boolean(
@@ -157,13 +401,23 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     ? Math.max(1, Math.ceil((new Date(activeOutlet!.trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
 
-  const isSettingsPath = Boolean(pathname?.startsWith("/settings"));
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = React.useState<boolean>(isSettingsPath);
+  const isFullWidthPage = pathname === "/pos" || pathname === "/kitchen";
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = React.useState<boolean>(!isFullWidthPage);
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     setMobileSidebarOpen(false);
-    setDesktopSidebarOpen(Boolean(pathname?.startsWith("/settings")));
+    if (pathname === "/pos" || pathname === "/kitchen") {
+      setDesktopSidebarOpen(false);
+    } else if (
+      pathname?.startsWith("/settings") ||
+      pathname === "/customers" ||
+      pathname?.startsWith("/customers/") ||
+      pathname === "/campaigns" ||
+      pathname === "/finance"
+    ) {
+      setDesktopSidebarOpen(true);
+    }
   }, [pathname]);
 
   const activeSettingId = React.useMemo(() => {
@@ -182,12 +436,33 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     return "overview";
   }, [pathname]);
 
+  const isItemActive = React.useCallback(
+    (item: { id: string; href: string }) => {
+      if (!pathname) return false;
+      if (item.href === "/settings") {
+        return pathname === "/settings";
+      }
+      if (item.href === "/tables") {
+        return pathname === "/tables" || (pathname.startsWith("/tables/") && !pathname.startsWith("/settings/tables"));
+      }
+      if (item.href === "/settings/tables") {
+        return pathname === "/settings/tables" || activeSettingId === "tables";
+      }
+      if (item.href.startsWith("/settings/")) {
+        const tab = item.href.replace("/settings/", "").split("?")[0];
+        return pathname === item.href || pathname.startsWith(`${item.href}/`) || activeSettingId === tab;
+      }
+      return pathname === item.href || pathname.startsWith(`${item.href}/`);
+    },
+    [pathname, activeSettingId]
+  );
+
   // On /portal, the customer portal page already provides its own tabs for Active, Past, and Profile.
   // Suppress AppShell header and bottom nav on /portal to prevent duplicate navbars.
   const visibleNav = isPortal
     ? []
     : isStaffOrOwner
-    ? STAFF_NAV_ITEMS.filter((n) => {
+    ? TOP_NAV_ITEMS.filter((n) => {
         // Platform ADMIN sees everything
         if ((user as any)?.role !== "ADMIN") {
           if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, n.moduleId as PlanModuleId)) {
@@ -238,9 +513,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     <AppShell
       header={isLanding ? undefined : { height: { base: 60, sm: 64 } }}
       navbar={
-        canAccessSettings
+        canAccessSidebar
           ? {
-              width: 230,
+              width: 250,
               breakpoint: "md",
               collapsed: { mobile: !mobileSidebarOpen, desktop: !desktopSidebarOpen },
             }
@@ -262,7 +537,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         <Box h="100%" px={{ base: "xs", sm: "md" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
             <Group gap="xs" wrap="nowrap" align="center">
-              {canAccessSettings && (
+              {canAccessSidebar && (
                 <>
                   <Burger
                     opened={desktopSidebarOpen}
@@ -270,7 +545,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     size="sm"
                     color="#495057"
                     visibleFrom="md"
-                    aria-label="Toggle settings sidebar"
+                    aria-label="Toggle sidebar"
                   />
                   <Burger
                     opened={mobileSidebarOpen}
@@ -278,7 +553,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     size="sm"
                     color="#495057"
                     hiddenFrom="md"
-                    aria-label="Toggle mobile settings sidebar"
+                    aria-label="Toggle mobile sidebar"
                   />
                 </>
               )}
@@ -320,9 +595,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     ? pathname === "/portal" && currentTab === targetTab
                     : item.href === "/"
                       ? pathname === "/"
-                      : item.href.startsWith("/settings")
-                        ? pathname.startsWith("/settings")
-                        : pathname.startsWith(item.href);
+                      : item.href === "/tables"
+                        ? pathname === "/tables" || (pathname.startsWith("/tables/") && !pathname.startsWith("/settings/tables"))
+                        : item.href.startsWith("/settings")
+                          ? pathname.startsWith("/settings")
+                          : pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const itemHref = isPortalItem
                     ? item.href
                     : activeOutlet && item.href !== "/"
@@ -659,7 +936,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       </AppShell.Header>
       )}
 
-      {canAccessSettings && (
+      {canAccessSidebar && (
         <AppShell.Navbar
           p="xs"
           withBorder
@@ -671,14 +948,19 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           <ScrollArea style={{ height: "100%" }} scrollbarSize={4} type="hover">
             <Stack gap={2}>
               {(() => {
-                const visibleItems = SETTINGS_SIDEBAR_ITEMS.filter((item) => {
+                const visibleItems = ALL_SIDEBAR_ITEMS.filter((item) => {
                   if ((user as any)?.role === "ADMIN") return true;
-                  if (effectiveRole !== "OWNER") {
-                    if ((item as any).ownerOnly) return false;
-                    if ((item as any).permission && !can((item as any).permission)) return false;
-                    if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId)) {
+                  if (effectiveRole === "OWNER") return true;
+
+                  if (item.ownerOnly) return false;
+                  if (item.roles && effectiveRole && !item.roles.includes(effectiveRole)) {
+                    if (!item.permission || !can(item.permission)) {
                       return false;
                     }
+                  }
+                  if (item.permission && !can(item.permission)) return false;
+                  if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, item.moduleId as PlanModuleId)) {
+                    return false;
                   }
                   return true;
                 });
@@ -687,17 +969,21 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
                 return visibleItems.map((item, index) => {
                   const Icon = item.icon;
-                  const isActive = activeSettingId === item.id;
+                  const isActive = isItemActive(item);
                   const isProGated =
                     (user as any)?.role !== "ADMIN" &&
                     activeOutlet &&
-                    (item as any).requiredPlan === "PRO" &&
-                    !isModuleAllowedForOutlet(activeOutlet as any, (item as any).moduleId as PlanModuleId);
+                    item.requiredPlan === "PRO" &&
+                    !isModuleAllowedForOutlet(activeOutlet as any, item.moduleId as PlanModuleId);
 
                   const showSectionHeader = item.section && item.section !== lastSection;
                   if (item.section) {
                     lastSection = item.section;
                   }
+
+                  const itemHref = activeOutlet && item.href !== "/"
+                    ? `${item.href}?outletId=${activeOutlet.id}`
+                    : item.href;
 
                   return (
                     <React.Fragment key={item.id}>
@@ -719,7 +1005,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       )}
                       <UnstyledButton
                         component={Link}
-                        href={item.href}
+                        href={itemHref}
                         onClick={() => setMobileSidebarOpen(false)}
                         px={12}
                         py={8}
@@ -882,9 +1168,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                 ? pathname === "/portal" && currentTab === targetTab
                 : item.href === "/"
                   ? pathname === "/"
-                  : item.href.startsWith("/settings")
-                    ? pathname.startsWith("/settings")
-                    : pathname.startsWith(item.href);
+                  : item.href === "/tables"
+                    ? pathname === "/tables" || (pathname.startsWith("/tables/") && !pathname.startsWith("/settings/tables"))
+                    : item.href.startsWith("/settings")
+                      ? pathname.startsWith("/settings")
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
               const itemHref = isPortalItem
                 ? item.href
                 : activeOutlet && item.href !== "/"

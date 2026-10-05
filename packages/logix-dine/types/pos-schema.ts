@@ -26,6 +26,8 @@ import {
   restaurantExpense,
   cashRegisterLog,
   restaurantCustomer,
+  marketingCampaign,
+  campaignRecipient,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -295,6 +297,21 @@ export type JsonRestaurantCustomerRow = Omit<RestaurantCustomerRow, 'createdAt' 
   updatedAt: string;
   firstVisitAt: string | null;
   lastVisitAt: string | null;
+};
+
+export type MarketingCampaignRow = InferSelectModel<typeof marketingCampaign>;
+export type NewMarketingCampaignRow = InferInsertModel<typeof marketingCampaign>;
+export type JsonMarketingCampaignRow = Omit<MarketingCampaignRow, 'createdAt' | 'updatedAt' | 'scheduledAt' | 'sentAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  scheduledAt: string | null;
+  sentAt: string | null;
+};
+
+export type CampaignRecipientRow = InferSelectModel<typeof campaignRecipient>;
+export type NewCampaignRecipientRow = InferInsertModel<typeof campaignRecipient>;
+export type JsonCampaignRecipientRow = Omit<CampaignRecipientRow, 'sentAt'> & {
+  sentAt: string | null;
 };
 
 

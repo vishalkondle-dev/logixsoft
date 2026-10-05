@@ -39,6 +39,7 @@ export const PLAN_MODULE_IDS = [
   'delivery',      // In-house delivery fleet & rider dispatch
   'aggregators',   // Online aggregators relay (Swiggy, Zomato, Magicpin, ONDC)
   'whatsapp',      // WhatsApp automated bills & order notifications
+  'campaigns',     // WhatsApp promotional campaigns & broadcasts
   'reservations',  // Table reservations & bookings
   'roles',         // Custom team roles & granular permissions matrix
 ] as const;
@@ -81,6 +82,7 @@ export const MODULE_MIN_PLAN: Record<PlanModuleId, PlanTier> = {
   delivery: 'PRO',
   aggregators: 'PRO',
   whatsapp: 'PRO',
+  campaigns: 'PRO',
   reservations: 'PRO',
   roles: 'PRO',
 };
@@ -315,6 +317,20 @@ export const MODULE_INFO_CATALOG: Record<PlanModuleId, PlanModuleInfo> = {
       'Save thermal roll costs & delight customers',
       'Order dispatch & delivery arrival pings',
       'Secure WhatsApp OTP for staff logins',
+    ],
+  },
+  campaigns: {
+    id: 'campaigns',
+    name: 'WhatsApp Promotional Broadcasts',
+    minPlan: 'PRO',
+    minPlanLabel: 'Pro Plan',
+    minPlanPrice: 1499,
+    description: 'Broadcast promotional offers, festive discounts, and event updates directly to your customer base on WhatsApp.',
+    highlights: [
+      'Broadcast to all registered customer phone numbers',
+      'Personalized customer name and restaurant tags',
+      'Promo flyers and image banner attachments',
+      'Scheduled automated delivery and live WhatsApp preview',
     ],
   },
   reservations: {

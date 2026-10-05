@@ -20,27 +20,17 @@ import {
   Modal,
   Table,
   Tooltip,
-  Divider,
-  Alert,
   Avatar,
   Menu,
   Center,
   Loader,
   Card,
-  ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconUsers,
-  IconUserCheck,
   IconUserPlus,
   IconSearch,
-  IconCrown,
-  IconHeartHandshake,
-  IconStar,
-  IconClock,
-  IconAlertCircle,
-  IconCalendar,
   IconMail,
   IconPhone,
   IconBrandWhatsapp,
@@ -48,7 +38,7 @@ import {
   IconEdit,
   IconRefresh,
   IconCash,
-  IconSparkles,
+  IconReceipt,
   IconSend,
   IconCheck,
   IconEye,
@@ -59,15 +49,14 @@ import {
   IconMapPin,
   IconCake,
   IconGift,
-  IconFlame,
   IconX,
+  IconSpeakerphone,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useCustomers,
   useCreateCrmCustomer,
   useUpdateCrmCustomer,
-  useBroadcastWhatsApp,
   useSendCustomerWhatsApp,
 } from "@/lib/queries";
 import type { CrmCustomerItem, CreateCustomerInput } from "@/lib/api-client";
@@ -84,50 +73,15 @@ function formatRecency(days: number, lastVisitAt: string | null) {
   if (days === 1) return { label: "Yesterday", color: "green" };
   if (days <= 7) return { label: `${days}d ago`, color: "teal" };
   if (days <= 30) return { label: `${days}d ago`, color: "blue" };
-  if (days <= 60) return { label: `${days}d ago (At Risk)`, color: "orange" };
-  return { label: `${days}d ago (Inactive)`, color: "gray" };
+  return { label: `${days}d ago`, color: "gray" };
 }
-
-const SEGMENT_TABS = [
-  { id: "ALL", label: "All Customers", icon: IconUsers, color: "gray" },
-  { id: "VIP", label: "VIP Champions", icon: IconCrown, color: "yellow" },
-  { id: "REGULAR", label: "Loyal Regulars", icon: IconHeartHandshake, color: "teal" },
-  { id: "NEW", label: "New Guests", icon: IconSparkles, color: "blue" },
-  { id: "AT_RISK", label: "At-Risk (30-60d)", icon: IconClock, color: "orange" },
-  { id: "INACTIVE", label: "Inactive (>60d)", icon: IconAlertCircle, color: "gray" },
-  { id: "HIGH_SPEND", label: "High Ticket", icon: IconCash, color: "grape" },
-  { id: "VEG", label: "Pure Veg", icon: IconToolsKitchen2, color: "green" },
-  { id: "NON_VEG", label: "Non-Veg Lovers", icon: IconFlame, color: "red" },
-  { id: "DELIVERY", label: "Takeaway & Delivery", icon: IconMotorbike, color: "indigo" },
-] as const;
-
-// Quick message templates for WhatsApp broadcast / single message
-const MESSAGE_TEMPLATES = [
-  {
-    title: "Weekend VIP Special",
-    text: "Hello {name}! We appreciate you dining with us at {restaurant_name}. This weekend, enjoy a complimentary chef special dessert on your visit! Show this message to your server.",
-  },
-  {
-    title: "We Miss You (Win-Back)",
-    text: "Hi {name}, we miss having you at {restaurant_name}! It's been a while since your last visit. Here is an exclusive 15% off on your next dine-in or takeaway order. Valid for the next 7 days!",
-  },
-  {
-    title: "New Seasonal Dishes",
-    text: "Exciting news {name}! {restaurant_name} has just launched a brand new seasonal menu featuring signature fresh ingredients. Book your table or drop by today to taste the flavors!",
-  },
-  {
-    title: "Birthday / Celebration Treat",
-    text: "Warmest celebration wishes from all of us at {restaurant_name}! Celebrate your special occasion with us and receive a complimentary celebration cake on the house.",
-  },
-];
 
 export function CustomersDirectoryView() {
   const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id || "";
   const outletId = activeOutlet?.id || null;
 
-  // State
-  const [selectedSegment, setSelectedSegment] = useState<string>("ALL");
+  // Search & Sort state (No segments)
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("recent");
 
@@ -135,12 +89,6 @@ export function CustomersDirectoryView() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CrmCustomerItem | null>(null);
-
-  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
-  const [broadcastSegment, setBroadcastSegment] = useState<string>("AT_RISK");
-  const [broadcastMessage, setBroadcastMessage] = useState<string>(MESSAGE_TEMPLATES[1].text);
-  const [broadcastTestMode, setBroadcastTestMode] = useState<boolean>(true);
-  const [broadcastPreviewData, setBroadcastPreviewData] = useState<any>(null);
 
   const [directWaModalOpen, setDirectWaModalOpen] = useState(false);
   const [directWaCustomer, setDirectWaCustomer] = useState<CrmCustomerItem | null>(null);
@@ -162,38 +110,33 @@ export function CustomersDirectoryView() {
   });
   const [tagsInput, setTagsInput] = useState<string>("");
 
-  // Fetch customers with directory metrics
+  // Fetch customers
   const {
     data: directoryData,
     isLoading,
     refetch,
     isFetching,
   } = useCustomers(restaurantId, {
-    segment: selectedSegment,
     search: searchQuery,
     sortBy,
-    limit: 100,
+    limit: 200,
   });
 
   const createCustomerMutation = useCreateCrmCustomer(restaurantId);
   const updateCustomerMutation = useUpdateCrmCustomer(restaurantId);
-  const broadcastMutation = useBroadcastWhatsApp(restaurantId);
   const sendWaMutation = useSendCustomerWhatsApp(restaurantId, directWaCustomer?.phone || "");
 
   const customers = directoryData?.customers || [];
   const metrics = directoryData?.metrics || {
     totalGuests: 0,
-    vipGuests: 0,
-    regularGuests: 0,
-    newGuests: 0,
-    atRiskGuests: 0,
-    inactiveGuests: 0,
-    highSpendGuests: 0,
-    repeatRate: 0,
     totalLifetimeSpendPaise: 0,
     avgGuestSpendPaise: 0,
   };
-  const segmentCounts = directoryData?.segmentCounts || {};
+
+  // Compute total orders across listed customers
+  const totalOrdersCount = useMemo(() => {
+    return customers.reduce((sum, c) => sum + (c.totalOrders || 0), 0);
+  }, [customers]);
 
   // Open Edit Modal with Customer Data
   const handleOpenEdit = (cust: CrmCustomerItem) => {
@@ -262,7 +205,7 @@ export function CustomersDirectoryView() {
 
       notifications.show({
         title: "Customer Added",
-        message: `Guest ${custForm.name || custForm.phone} saved to central directory.`,
+        message: `Customer ${custForm.name || custForm.phone} saved to directory.`,
         color: "teal",
       });
       setAddModalOpen(false);
@@ -343,47 +286,6 @@ export function CustomersDirectoryView() {
     }
   };
 
-  // Trigger Broadcast Preview / Send
-  const handleBroadcast = async (isTest: boolean) => {
-    if (!broadcastMessage.trim()) {
-      notifications.show({ title: "Message Required", message: "Please type a message to broadcast.", color: "red" });
-      return;
-    }
-
-    try {
-      const res = await broadcastMutation.mutateAsync({
-        body: {
-          segment: broadcastSegment,
-          message: broadcastMessage.trim(),
-          testOnly: isTest,
-        },
-      });
-
-      if (isTest) {
-        setBroadcastPreviewData(res);
-        notifications.show({
-          title: "Preview Generated",
-          message: `Target audience: ${res.totalTargets} guests in ${broadcastSegment} segment.`,
-          color: "blue",
-        });
-      } else {
-        notifications.show({
-          title: "Campaign Broadcast Dispatched",
-          message: `Successfully delivered to ${res.sentCount} of ${res.totalTargets} guests.`,
-          color: "teal",
-        });
-        setBroadcastModalOpen(false);
-        setBroadcastPreviewData(null);
-      }
-    } catch (err: any) {
-      notifications.show({
-        title: "Broadcast Error",
-        message: err.message || "Could not dispatch broadcast",
-        color: "red",
-      });
-    }
-  };
-
   // Export to CSV
   const handleExportCsv = () => {
     if (customers.length === 0) {
@@ -395,12 +297,10 @@ export function CustomersDirectoryView() {
       "Customer Name",
       "Phone",
       "Email",
-      "Segments",
       "Total Orders",
       "Lifetime Spend (INR)",
       "Avg Order (INR)",
       "Last Visit",
-      "Days Inactive",
       "Dietary Preference",
       "Preferred Channel",
       "Tags",
@@ -411,12 +311,10 @@ export function CustomersDirectoryView() {
       `"${(c.name || "Guest").replace(/"/g, '""')}"`,
       `"${c.phone}"`,
       `"${(c.email || "").replace(/"/g, '""')}"`,
-      `"${c.segments.join(", ")}"`,
       c.totalOrders,
       (c.totalSpendPaise / 100).toFixed(2),
       (c.avgOrderPaise / 100).toFixed(2),
       c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString("en-IN") : "Never",
-      c.daysSinceLastVisit,
       c.dietaryPreference,
       c.preferredChannel || "",
       `"${c.tags.join(", ")}"`,
@@ -427,7 +325,7 @@ export function CustomersDirectoryView() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `customers_crm_${selectedSegment.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `customers_directory_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -452,10 +350,10 @@ export function CustomersDirectoryView() {
                 </ThemeIcon>
                 <div>
                   <Title order={3} fw={700}>
-                    Central Customer CRM Directory & Segments
+                    Customer Directory & CRM
                   </Title>
                   <Text size="xs" c="dimmed">
-                    Unified guest database, automated RFM segmentation, customer lifetime value, and targeted WhatsApp marketing.
+                    Unified guest database, dining visit history, customer lifetime value, and direct WhatsApp messaging.
                   </Text>
                 </div>
               </Group>
@@ -483,16 +381,13 @@ export function CustomersDirectoryView() {
               </Button>
 
               <Button
+                component={Link}
+                href="/campaigns"
                 color="green"
                 size="sm"
-                leftSection={<IconBrandWhatsapp size={16} />}
-                onClick={() => {
-                  setBroadcastSegment(selectedSegment === "ALL" ? "AT_RISK" : selectedSegment);
-                  setBroadcastPreviewData(null);
-                  setBroadcastModalOpen(true);
-                }}
+                leftSection={<IconSpeakerphone size={16} />}
               >
-                Broadcast WhatsApp
+                WhatsApp Campaigns
               </Button>
 
               <Button
@@ -507,12 +402,12 @@ export function CustomersDirectoryView() {
           </Group>
         </Paper>
 
-        {/* ─── CRM KPI Metrics ─── */}
-        <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="sm">
+        {/* ─── Clean CRM Metrics (No Segments) ─── */}
+        <SimpleGrid cols={{ base: 2, sm: 2, md: 4 }} spacing="sm">
           <Card withBorder p="sm" radius="md" bg="#f8f9fa">
             <Group justify="space-between" align="flex-start" mb={4}>
               <Text size="xs" c="dimmed" fw={600} tt="uppercase">
-                Total Guests
+                Total Customers
               </Text>
               <ThemeIcon size={28} radius="md" color="blue" variant="light">
                 <IconUsers size={16} />
@@ -522,82 +417,31 @@ export function CustomersDirectoryView() {
               {metrics.totalGuests.toLocaleString("en-IN")}
             </Title>
             <Text size="xs" c="dimmed" mt={2}>
-              Unique guest database
-            </Text>
-          </Card>
-
-          <Card withBorder p="sm" radius="md" bg="#fff9db">
-            <Group justify="space-between" align="flex-start" mb={4}>
-              <Text size="xs" c="#d97706" fw={600} tt="uppercase">
-                VIP Champions
-              </Text>
-              <ThemeIcon size={28} radius="md" color="yellow" variant="filled">
-                <IconCrown size={16} />
-              </ThemeIcon>
-            </Group>
-            <Title order={3} fw={700} c="#b45309">
-              {metrics.vipGuests}
-            </Title>
-            <Text size="xs" c="dimmed" mt={2}>
-              ₹5k+ spend or 8+ visits
-            </Text>
-          </Card>
-
-          <Card withBorder p="sm" radius="md" bg="#e6fcf5">
-            <Group justify="space-between" align="flex-start" mb={4}>
-              <Text size="xs" c="teal.8" fw={600} tt="uppercase">
-                Loyal Regulars
-              </Text>
-              <ThemeIcon size={28} radius="md" color="teal" variant="light">
-                <IconHeartHandshake size={16} />
-              </ThemeIcon>
-            </Group>
-            <Title order={3} fw={700} c="teal.9">
-              {metrics.regularGuests}
-            </Title>
-            <Text size="xs" c="dimmed" mt={2}>
-              3+ dine-in or takeaway visits
+              Unique guest contacts
             </Text>
           </Card>
 
           <Card withBorder p="sm" radius="md" bg="#edf2ff">
             <Group justify="space-between" align="flex-start" mb={4}>
               <Text size="xs" c="indigo.8" fw={600} tt="uppercase">
-                Repeat Rate
+                Total Orders Placed
               </Text>
               <ThemeIcon size={28} radius="md" color="indigo" variant="light">
-                <IconRefresh size={16} />
+                <IconReceipt size={16} />
               </ThemeIcon>
             </Group>
             <Title order={3} fw={700} c="indigo.9">
-              {metrics.repeatRate}%
+              {totalOrdersCount}
             </Title>
             <Text size="xs" c="dimmed" mt={2}>
-              Returning customer ratio
-            </Text>
-          </Card>
-
-          <Card withBorder p="sm" radius="md" bg="#fff4e6">
-            <Group justify="space-between" align="flex-start" mb={4}>
-              <Text size="xs" c="orange.8" fw={600} tt="uppercase">
-                At-Risk Guests
-              </Text>
-              <ThemeIcon size={28} radius="md" color="orange" variant="light">
-                <IconClock size={16} />
-              </ThemeIcon>
-            </Group>
-            <Title order={3} fw={700} c="orange.9">
-              {metrics.atRiskGuests}
-            </Title>
-            <Text size="xs" c="dimmed" mt={2}>
-              No visit in 30-60 days
+              Cumulative guest orders
             </Text>
           </Card>
 
           <Card withBorder p="sm" radius="md" bg="#ebfbee">
             <Group justify="space-between" align="flex-start" mb={4}>
               <Text size="xs" c="green.8" fw={600} tt="uppercase">
-                Total Spend LTV
+                Customer Lifetime Spend
               </Text>
               <ThemeIcon size={28} radius="md" color="green" variant="light">
                 <IconCash size={16} />
@@ -607,47 +451,27 @@ export function CustomersDirectoryView() {
               {formatRupees(metrics.totalLifetimeSpendPaise)}
             </Title>
             <Text size="xs" c="dimmed" mt={2}>
-              Avg: {formatRupees(metrics.avgGuestSpendPaise)} / guest
+              Total revenue from database
+            </Text>
+          </Card>
+
+          <Card withBorder p="sm" radius="md" bg="#fff9db">
+            <Group justify="space-between" align="flex-start" mb={4}>
+              <Text size="xs" c="#b45309" fw={600} tt="uppercase">
+                Average Spend / Customer
+              </Text>
+              <ThemeIcon size={28} radius="md" color="yellow" variant="light">
+                <IconCash size={16} />
+              </ThemeIcon>
+            </Group>
+            <Title order={3} fw={700} c="#b45309">
+              {formatRupees(metrics.avgGuestSpendPaise)}
+            </Title>
+            <Text size="xs" c="dimmed" mt={2}>
+              Average customer value
             </Text>
           </Card>
         </SimpleGrid>
-
-        {/* ─── Segments Bar ─── */}
-        <Paper withBorder p="xs" radius="md">
-          <ScrollArea type="never">
-            <Group gap="xs" wrap="nowrap">
-              {SEGMENT_TABS.map((tab) => {
-                const isSelected = selectedSegment === tab.id;
-                const count = segmentCounts[tab.id] ?? 0;
-                const TabIcon = tab.icon;
-
-                return (
-                  <Button
-                    key={tab.id}
-                    size="sm"
-                    variant={isSelected ? "filled" : "subtle"}
-                    color={isSelected ? "dinePrimary" : "gray"}
-                    leftSection={<TabIcon size={16} />}
-                    onClick={() => setSelectedSegment(tab.id)}
-                    radius="xl"
-                    style={{ whiteSpace: "nowrap" }}
-                  >
-                    {tab.label}
-                    <Badge
-                      size="sm"
-                      variant={isSelected ? "white" : "light"}
-                      color={isSelected ? "dinePrimary" : tab.color}
-                      ml={6}
-                      radius="xl"
-                    >
-                      {count}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </Group>
-          </ScrollArea>
-        </Paper>
 
         {/* ─── Search & Sort Filter Toolbar ─── */}
         <Paper withBorder p="sm" radius="md">
@@ -676,8 +500,8 @@ export function CustomersDirectoryView() {
                 onChange={(val) => setSortBy(val || "recent")}
                 data={[
                   { value: "recent", label: "Sort: Most Recent Visit" },
-                  { value: "spend_desc", label: "Sort: Highest Spend (LTV)" },
-                  { value: "visits_desc", label: "Sort: Most Orders / Visits" },
+                  { value: "spend_desc", label: "Sort: Highest Spend" },
+                  { value: "visits_desc", label: "Sort: Most Orders" },
                   { value: "name_asc", label: "Sort: Customer Name (A-Z)" },
                   { value: "oldest", label: "Sort: Oldest First Visit" },
                 ]}
@@ -685,13 +509,13 @@ export function CustomersDirectoryView() {
               />
 
               <Badge size="lg" variant="light" color="gray">
-                {customers.length} Guests
+                {customers.length} Customers
               </Badge>
             </Group>
           </Group>
         </Paper>
 
-        {/* ─── Customer Directory Table ─── */}
+        {/* ─── Customer Directory Table (Clean, No Segments) ─── */}
         <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
           {isLoading ? (
             <Center py={60}>
@@ -703,35 +527,32 @@ export function CustomersDirectoryView() {
                 <IconUsers size={28} />
               </ThemeIcon>
               <Title order={4} fw={600} c="dimmed">
-                No customers found in {selectedSegment === "ALL" ? "directory" : `${selectedSegment} segment`}
+                No customers found
               </Title>
               <Text size="sm" c="dimmed" mt={4} maw={420} mx="auto">
                 {searchQuery
-                  ? `No guest matches "${searchQuery}". Try adjusting your search keywords.`
-                  : "When customers place orders at the POS counter, digital QR menu, or delivery, they will appear here automatically."}
+                  ? `No customer matches "${searchQuery}". Try adjusting your search keywords.`
+                  : "When customers place orders at POS, digital QR menu, or delivery, they will appear here automatically."}
               </Text>
-              {(searchQuery || selectedSegment !== "ALL") && (
+              {searchQuery && (
                 <Button
                   variant="light"
                   color="dinePrimary"
                   size="xs"
                   mt="md"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedSegment("ALL");
-                  }}
+                  onClick={() => setSearchQuery("")}
                 >
-                  Clear Filters
+                  Clear Search
                 </Button>
               )}
             </Box>
           ) : (
-            <Table.ScrollContainer minWidth={850}>
+            <Table.ScrollContainer minWidth={750}>
               <Table verticalSpacing="sm" horizontalSpacing="md" striped highlightOnHover>
                 <Table.Thead>
                   <Table.Tr style={{ backgroundColor: "#f8f9fa" }}>
                     <Table.Th>Customer</Table.Th>
-                    <Table.Th>Segments & Tags</Table.Th>
+                    <Table.Th>Tags / Dietary</Table.Th>
                     <Table.Th ta="center">Orders</Table.Th>
                     <Table.Th ta="right">Lifetime Spend</Table.Th>
                     <Table.Th ta="right">Avg Order</Table.Th>
@@ -756,32 +577,20 @@ export function CustomersDirectoryView() {
                         {/* Customer Info */}
                         <Table.Td>
                           <Group gap="sm" wrap="nowrap">
-                            <Avatar
-                              color={cust.isVip ? "yellow" : cust.isRegular ? "teal" : "blue"}
-                              radius="xl"
-                              size="md"
-                            >
+                            <Avatar color="dinePrimary" radius="xl" size="md">
                               {initials}
                             </Avatar>
                             <div>
-                              <Group gap={6} align="center">
-                                <Text
-                                  component={Link}
-                                  href={`/customers/${cust.phone}`}
-                                  size="sm"
-                                  fw={700}
-                                  c="dark.9"
-                                  style={{ textDecoration: "none" }}
-                                  className="hover-underline"
-                                >
-                                  {cust.name || "Walk-in Guest"}
-                                </Text>
-                                {cust.isVip && (
-                                  <Tooltip label="VIP Guest: High spend / frequent visits" withArrow>
-                                    <IconCrown size={15} color="#d97706" />
-                                  </Tooltip>
-                                )}
-                              </Group>
+                              <Text
+                                component={Link}
+                                href={`/customers/${cust.phone}`}
+                                size="sm"
+                                fw={700}
+                                c="dark.9"
+                                style={{ textDecoration: "none" }}
+                              >
+                                {cust.name || "Walk-in Guest"}
+                              </Text>
 
                               <Group gap={8} align="center" mt={2}>
                                 <Text size="xs" c="dimmed">
@@ -811,34 +620,9 @@ export function CustomersDirectoryView() {
                           </Group>
                         </Table.Td>
 
-                        {/* Segments & Tags */}
+                        {/* Dietary & Custom Tags */}
                         <Table.Td>
                           <Group gap={4} wrap="wrap">
-                            {cust.isVip && (
-                              <Badge size="xs" color="yellow" variant="filled">
-                                VIP
-                              </Badge>
-                            )}
-                            {cust.isRegular && (
-                              <Badge size="xs" color="teal" variant="light">
-                                Regular
-                              </Badge>
-                            )}
-                            {cust.isNew && (
-                              <Badge size="xs" color="blue" variant="light">
-                                New
-                              </Badge>
-                            )}
-                            {cust.isAtRisk && (
-                              <Badge size="xs" color="orange" variant="light">
-                                At Risk
-                              </Badge>
-                            )}
-                            {cust.isInactive && (
-                              <Badge size="xs" color="gray" variant="light">
-                                Inactive
-                              </Badge>
-                            )}
                             {cust.dietaryPreference === "VEG" && (
                               <Badge size="xs" color="green" variant="outline">
                                 Veg
@@ -849,11 +633,21 @@ export function CustomersDirectoryView() {
                                 Non-Veg
                               </Badge>
                             )}
+                            {cust.preferredChannel && (
+                              <Badge size="xs" color="gray" variant="light">
+                                {cust.preferredChannel}
+                              </Badge>
+                            )}
                             {cust.tags.map((tag: string) => (
                               <Badge key={tag} size="xs" color="indigo" variant="subtle">
                                 {tag}
                               </Badge>
                             ))}
+                            {cust.tags.length === 0 && !cust.preferredChannel && cust.dietaryPreference === "UNKNOWN" && (
+                              <Text size="xs" c="dimmed">
+                                —
+                              </Text>
+                            )}
                           </Group>
                         </Table.Td>
 
@@ -927,7 +721,7 @@ export function CustomersDirectoryView() {
                                   leftSection={<IconEdit size={14} />}
                                   onClick={() => handleOpenEdit(cust)}
                                 >
-                                  Edit Guest Info
+                                  Edit Customer Info
                                 </Menu.Item>
                                 <Menu.Divider />
                                 <Menu.Item
@@ -960,7 +754,7 @@ export function CustomersDirectoryView() {
                 <IconUserPlus size={18} />
               </ThemeIcon>
               <Text fw={700} size="md">
-                Add New Customer to CRM
+                Add New Customer
               </Text>
             </Group>
           }
@@ -1002,9 +796,9 @@ export function CustomersDirectoryView() {
                 value={custForm.dietaryPreference || "UNKNOWN"}
                 onChange={(v) => setCustForm({ ...custForm, dietaryPreference: v as any })}
                 data={[
-                  { value: "UNKNOWN", label: "Unknown / No Preference" },
-                  { value: "VEG", label: "Pure Vegetarian" },
-                  { value: "NON_VEG", label: "Non-Vegetarian Lover" },
+                  { value: "UNKNOWN", label: "No Preference" },
+                  { value: "VEG", label: "Vegetarian" },
+                  { value: "NON_VEG", label: "Non-Vegetarian" },
                   { value: "MIXED", label: "Mixed / Flexible" },
                 ]}
               />
@@ -1030,7 +824,7 @@ export function CustomersDirectoryView() {
 
             <TextInput
               label="Custom Tags (comma separated)"
-              placeholder="e.g. Family, Corporate, High Spender, Weekend Regular"
+              placeholder="e.g. Family, Corporate, Regular"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               leftSection={<IconTag size={16} />}
@@ -1045,8 +839,8 @@ export function CustomersDirectoryView() {
             />
 
             <Textarea
-              label="Staff Notes & Preferences"
-              placeholder="Special table preferences, allergy restrictions, spicy/mild instructions..."
+              label="Staff Notes & Seating Preferences"
+              placeholder="Table preferences, spice tolerance, allergies..."
               value={custForm.notes || ""}
               onChange={(e) => setCustForm({ ...custForm, notes: e.target.value })}
               rows={2}
@@ -1110,9 +904,9 @@ export function CustomersDirectoryView() {
                 value={custForm.dietaryPreference || "UNKNOWN"}
                 onChange={(v) => setCustForm({ ...custForm, dietaryPreference: v as any })}
                 data={[
-                  { value: "UNKNOWN", label: "Unknown / No Preference" },
-                  { value: "VEG", label: "Pure Vegetarian" },
-                  { value: "NON_VEG", label: "Non-Vegetarian Lover" },
+                  { value: "UNKNOWN", label: "No Preference" },
+                  { value: "VEG", label: "Vegetarian" },
+                  { value: "NON_VEG", label: "Non-Vegetarian" },
                   { value: "MIXED", label: "Mixed / Flexible" },
                 ]}
               />
@@ -1149,7 +943,7 @@ export function CustomersDirectoryView() {
 
             <TextInput
               label="Custom Tags (comma separated)"
-              placeholder="e.g. Family, Corporate, High Spender"
+              placeholder="e.g. Family, Corporate, Regular"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               leftSection={<IconTag size={16} />}
@@ -1165,7 +959,7 @@ export function CustomersDirectoryView() {
 
             <Textarea
               label="Staff Notes & Seating Preferences"
-              placeholder="Special table preferences, allergy restrictions, spicy/mild instructions..."
+              placeholder="Table preferences, spice tolerance, allergies..."
               value={custForm.notes || ""}
               onChange={(e) => setCustForm({ ...custForm, notes: e.target.value })}
               rows={2}
@@ -1183,133 +977,6 @@ export function CustomersDirectoryView() {
               >
                 Update Profile
               </Button>
-            </Group>
-          </Stack>
-        </Modal>
-
-        {/* ─── BROADCAST WHATSAPP MODAL ─── */}
-        <Modal
-          opened={broadcastModalOpen}
-          onClose={() => setBroadcastModalOpen(false)}
-          title={
-            <Group gap="xs">
-              <ThemeIcon color="green" size="md" radius="md">
-                <IconBrandWhatsapp size={18} />
-              </ThemeIcon>
-              <Text fw={700} size="md">
-                WhatsApp Segment Broadcast Campaign
-              </Text>
-            </Group>
-          }
-          size="lg"
-          radius="md"
-        >
-          <Stack gap="md">
-            <Alert color="green" variant="light" icon={<IconBrandWhatsapp size={16} />}>
-              Reach targeted guest segments with personalized promotional greetings, anniversary treats, or win-back discounts directly on WhatsApp.
-            </Alert>
-
-            <Select
-              label="Target Customer Segment"
-              value={broadcastSegment}
-              onChange={(v) => {
-                setBroadcastSegment(v || "AT_RISK");
-                setBroadcastPreviewData(null);
-              }}
-              data={SEGMENT_TABS.map((t) => ({
-                value: t.id,
-                label: `${t.label} (${segmentCounts[t.id] ?? 0} guests)`,
-              }))}
-            />
-
-            {/* Quick Templates */}
-            <div>
-              <Text size="xs" fw={600} c="dimmed" mb={4}>
-                Quick Template Starters
-              </Text>
-              <Group gap={6} wrap="wrap">
-                {MESSAGE_TEMPLATES.map((tmpl) => (
-                  <Button
-                    key={tmpl.title}
-                    size="compact-xs"
-                    variant="light"
-                    color="gray"
-                    onClick={() => {
-                      setBroadcastMessage(tmpl.text);
-                      setBroadcastPreviewData(null);
-                    }}
-                  >
-                    {tmpl.title}
-                  </Button>
-                ))}
-              </Group>
-            </div>
-
-            <Textarea
-              label="WhatsApp Message"
-              description="Use {name} for guest name and {restaurant_name} for restaurant name."
-              value={broadcastMessage}
-              onChange={(e) => {
-                setBroadcastMessage(e.target.value);
-                setBroadcastPreviewData(null);
-              }}
-              rows={4}
-            />
-
-            {/* Live WhatsApp Preview Box */}
-            <Paper p="sm" radius="md" withBorder bg="#f0fdf4" style={{ borderLeft: "4px solid #22c55e" }}>
-              <Text size="xs" fw={700} c="teal.9" mb={4}>
-                📱 Live Guest WhatsApp Preview:
-              </Text>
-              <Text size="xs" style={{ whiteSpace: "pre-wrap", fontFamily: "sans-serif" }} c="dark.8">
-                {broadcastMessage
-                  .replace(/\{name\}/gi, "Rahul")
-                  .replace(/\{restaurant_name\}/gi, restaurant?.name || "Our Restaurant")}
-              </Text>
-            </Paper>
-
-            {broadcastPreviewData && (
-              <Paper p="sm" radius="md" withBorder bg="#f8f9fa">
-                <Text size="xs" fw={600} c="blue.9">
-                  Target Audience: {broadcastPreviewData.totalTargets} guests in {broadcastSegment}
-                </Text>
-                <Text size="xs" c="dimmed" mt={2}>
-                  Sample numbers: {broadcastPreviewData.targetPreview?.map((t: any) => t.phone).join(", ") || "None"}
-                </Text>
-              </Paper>
-            )}
-
-            <Group justify="space-between" align="center" mt="sm">
-              <Button
-                variant="light"
-                color="blue"
-                size="sm"
-                loading={broadcastMutation.isPending && broadcastTestMode}
-                onClick={() => {
-                  setBroadcastTestMode(true);
-                  handleBroadcast(true);
-                }}
-              >
-                Preview Audience
-              </Button>
-
-              <Group gap="xs">
-                <Button variant="default" onClick={() => setBroadcastModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  color="green"
-                  size="sm"
-                  loading={broadcastMutation.isPending && !broadcastTestMode}
-                  onClick={() => {
-                    setBroadcastTestMode(false);
-                    handleBroadcast(false);
-                  }}
-                  leftSection={<IconSend size={16} />}
-                >
-                  Send Campaign Now
-                </Button>
-              </Group>
             </Group>
           </Stack>
         </Modal>

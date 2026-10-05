@@ -48,6 +48,7 @@ import feedbackRoutes from './routes/feedback';
 import { rolesRouter } from './routes/roles';
 import { webhookRoutes } from './routes/webhooks';
 import { expenseRoutes } from './routes/expenses';
+import { campaignRoutes } from './routes/campaigns';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -604,6 +605,9 @@ app.route('/api/webhooks', webhookRoutes);
 
 app.route('/expenses', expenseRoutes);
 app.route('/api/expenses', expenseRoutes);
+
+app.route('/campaigns', campaignRoutes);
+app.route('/api/campaigns', campaignRoutes);
 
 
 

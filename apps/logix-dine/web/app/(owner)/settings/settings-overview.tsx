@@ -41,6 +41,7 @@ import {
   IconStar,
   IconShieldLock,
   IconWallet,
+  IconSpeakerphone,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useAuth } from "@/lib/auth-context";
@@ -191,13 +192,23 @@ export function SettingsOverview() {
       items: [
         {
           id: "customers",
-          title: "Customer CRM & Segments",
-          description: "Central guest directory, VIP & Regular segments, lifetime value & WhatsApp marketing",
+          title: "Customer Directory",
+          description: "Central guest directory, order history, lifetime spend & contact profiles",
           icon: IconUserCheck,
           color: "blue",
           href: "/customers",
           isAvailable: true,
-          badge: "CRM 360°",
+          badge: "Directory",
+        },
+        {
+          id: "campaigns",
+          title: "WhatsApp Broadcasts",
+          description: "Promotional campaigns, festival offers, and discount blasts to all customers",
+          icon: IconSpeakerphone,
+          color: "green",
+          href: "/campaigns",
+          isAvailable: true,
+          badge: "Campaigns",
         },
         {
           id: "qr-menu",

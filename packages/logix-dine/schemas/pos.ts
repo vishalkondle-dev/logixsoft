@@ -828,4 +828,25 @@ export const BroadcastWhatsAppSchema = z.object({
   testOnly: z.boolean().optional(),
 });
 
+// ─── WhatsApp Promotional Broadcasts (Campaigns) ─────────────────────────────
+
+export const CreateCampaignSchema = z.object({
+  title: z.string().min(1).max(100),
+  message: z.string().min(1).max(2000),
+  mediaUrl: z.string().url().nullable().optional().or(z.literal('')),
+  offerCode: z.string().max(30).nullable().optional(),
+  targetAudience: z.enum(['ALL', 'OUTLET']).default('ALL'),
+  outletId: z.string().nullable().optional(),
+  scheduledAt: z.string().nullable().optional(),
+  sendImmediately: z.boolean().default(true),
+});
+
+export const TestCampaignSchema = z.object({
+  message: z.string().min(1).max(2000),
+  mediaUrl: z.string().url().nullable().optional().or(z.literal('')),
+  offerCode: z.string().max(30).nullable().optional(),
+  testPhone: z.string().min(8).max(20).optional(),
+});
+
+
 

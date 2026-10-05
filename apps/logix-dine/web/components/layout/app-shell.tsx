@@ -16,6 +16,7 @@ import {
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
   IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages, IconTruckDelivery,
   IconStar, IconShieldLock, IconArrowRight, IconSparkles, IconWallet, IconUserCheck,
+  IconSpeakerphone,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -28,6 +29,7 @@ const STAFF_NAV_ITEMS = [
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view", moduleId: "tables" },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
   { label: "Customers", href: "/customers", icon: IconUserCheck, roles: ["OWNER", "MANAGER", "CASHIER"], permission: "customers:view", moduleId: "customers" },
+  { label: "Campaigns", href: "/campaigns", icon: IconSpeakerphone, roles: ["OWNER", "MANAGER"], moduleId: "campaigns" },
   { label: "Finance", href: "/finance", icon: IconWallet, roles: ["OWNER", "MANAGER", "CASHIER"], permission: "finance:view", moduleId: "finance" },
   { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view", moduleId: "kitchen" },
   { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view", moduleId: "waiter" },
@@ -54,7 +56,8 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "printing", label: "Thermal Printers", href: "/settings/printing", icon: IconPrinter, section: "DELIVERY & HARDWARE", moduleId: "printing" },
 
   // ─── 4. Digital Guest Experience ───
-  { id: "customers", label: "Customer CRM & Segments", href: "/customers", icon: IconUserCheck, section: "GUEST EXPERIENCE", moduleId: "customers" },
+  { id: "customers", label: "Customer Directory", href: "/customers", icon: IconUserCheck, section: "GUEST EXPERIENCE", moduleId: "customers" },
+  { id: "campaigns", label: "WhatsApp Broadcasts", href: "/campaigns", icon: IconSpeakerphone, section: "GUEST EXPERIENCE", moduleId: "campaigns" },
   { id: "qr-menu", label: "QR Menu Ordering", href: "/settings/qr-menu", icon: IconQrcode, section: "GUEST EXPERIENCE", moduleId: "qr_menu" },
   { id: "whatsapp", label: "WhatsApp Alerts", href: "/settings/whatsapp", icon: IconBrandWhatsapp, section: "GUEST EXPERIENCE", moduleId: "whatsapp", requiredPlan: "PRO" },
   { id: "feedback", label: "Customer Reviews & Ratings", href: "/settings/feedback", icon: IconStar, section: "GUEST EXPERIENCE", moduleId: "feedback" },

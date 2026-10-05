@@ -56,5 +56,8 @@ export default async function SettingsTabPage({
   if (tab === "customers" || tab === "crm") {
     redirect("/customers");
   }
+  if (tab === "campaigns" || tab === "broadcasts") {
+    redirect("/campaigns");
+  }
   return <SettingsView currentTab={tab} />;
 }

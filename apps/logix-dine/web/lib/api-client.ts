@@ -2101,6 +2101,150 @@ export const getClosingReportPreview = (
   );
 };
 
+// ─── Marketing Campaigns ──────────────────────────────────────────────────────
+
+export interface MarketingCampaign {
+  id: string;
+  restaurantId: string;
+  outletId?: string | null;
+  title: string;
+  message: string;
+  mediaUrl?: string | null;
+  offerCode?: string | null;
+  targetAudience: string;
+  status: "DRAFT" | "SCHEDULED" | "SENDING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  scheduledAt?: string | null;
+  sentAt?: string | null;
+  completedAt?: string | null;
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  recipientCount?: number;
+}
+
+export interface CampaignRecipient {
+  id: string;
+  campaignId: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  phone: string;
+  status: "PENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
+  whatsappMessageId?: string | null;
+  errorMessage?: string | null;
+  sentAt?: string | null;
+  deliveredAt?: string | null;
+  createdAt: string;
+}
+
+export interface CampaignDetail extends MarketingCampaign {
+  recipients?: CampaignRecipient[];
+}
+
+export interface CreateCampaignInput {
+  title: string;
+  message: string;
+  mediaUrl?: string;
+  offerCode?: string;
+  targetAudience?: "ALL" | "OUTLET";
+  outletId?: string;
+  scheduledAt?: string;
+  sendImmediately?: boolean;
+}
+
+export interface TestCampaignInput {
+  message: string;
+  mediaUrl?: string;
+  offerCode?: string;
+  testPhone: string;
+}
+
+export const getCampaigns = (
+  restaurantId: string,
+  outletId?: string | null
+) =>
+  apiFetch<MarketingCampaign[]>(
+    `/campaigns`,
+    restaurantId,
+    {},
+    outletId
+  );
+
+export const getCampaign = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<CampaignDetail>(
+    `/campaigns/${campaignId}`,
+    restaurantId,
+    {},
+    outletId
+  );
+
+export const createCampaign = (
+  restaurantId: string,
+  data: CreateCampaignInput,
+  outletId?: string | null
+) =>
+  apiFetch<MarketingCampaign>(
+    `/campaigns`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const testCampaign = (
+  restaurantId: string,
+  data: TestCampaignInput,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; recipient: string; message: string; mediaUrl?: string | null }>(
+    `/campaigns/test`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const sendCampaignNow = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; sentCount: number; failedCount: number }>(
+    `/campaigns/${campaignId}/send`,
+    restaurantId,
+    { method: "POST" },
+    outletId
+  );
+
+export const cancelCampaign = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean }>(
+    `/campaigns/${campaignId}/cancel`,
+    restaurantId,
+    { method: "POST" },
+    outletId
+  );
+
+export const deleteCampaign = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean }>(
+    `/campaigns/${campaignId}`,
+    restaurantId,
+    { method: "DELETE" },
+    outletId
+  );
+
+
 
 
 

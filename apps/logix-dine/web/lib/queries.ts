@@ -109,11 +109,24 @@ import {
   type CrmDirectoryResponse,
   type CreateCustomerInput,
   type BroadcastWhatsAppInput,
+  getCampaigns,
+  getCampaign,
+  createCampaign,
+  testCampaign,
+  sendCampaignNow,
+  cancelCampaign,
+  deleteCampaign,
+  type CreateCampaignInput,
+  type TestCampaignInput,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 
 export const qk = {
+  campaigns: (restaurantId: string, outletId?: string | null) =>
+    ["campaigns", restaurantId, outletId ?? "all"] as const,
+  campaign: (restaurantId: string, campaignId: string) =>
+    ["campaign", restaurantId, campaignId] as const,
   roles: (restaurantId: string) => ["roles", restaurantId] as const,
   customers: (restaurantId: string, params?: Record<string, any>) =>
     ["customers", restaurantId, params ?? {}] as const,
@@ -1366,6 +1379,78 @@ export function useClosingReportPreview(
     staleTime: 30_000,
   });
 }
+
+// ─── Campaign Hooks ──────────────────────────────────────────────────────────
+
+export function useCampaigns(restaurantId: string, outletId?: string | null) {
+  return useQuery({
+    queryKey: qk.campaigns(restaurantId, outletId),
+    queryFn: () => getCampaigns(restaurantId, outletId),
+    enabled: !!restaurantId,
+    staleTime: 10_000,
+  });
+}
+
+export function useCampaign(restaurantId: string, campaignId: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.campaign(restaurantId, campaignId),
+    queryFn: () => getCampaign(restaurantId, campaignId),
+    enabled: !!restaurantId && !!campaignId && enabled,
+    staleTime: 10_000,
+  });
+}
+
+export function useCreateCampaign(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ data, outletId }: { data: CreateCampaignInput; outletId?: string | null }) =>
+      createCampaign(restaurantId, data, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campaigns", restaurantId] });
+    },
+  });
+}
+
+export function useTestCampaign(restaurantId: string) {
+  return useMutation({
+    mutationFn: ({ data, outletId }: { data: TestCampaignInput; outletId?: string | null }) =>
+      testCampaign(restaurantId, data, outletId),
+  });
+}
+
+export function useSendCampaignNow(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ campaignId, outletId }: { campaignId: string; outletId?: string | null }) =>
+      sendCampaignNow(restaurantId, campaignId, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campaigns", restaurantId] });
+    },
+  });
+}
+
+export function useCancelCampaign(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ campaignId, outletId }: { campaignId: string; outletId?: string | null }) =>
+      cancelCampaign(restaurantId, campaignId, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campaigns", restaurantId] });
+    },
+  });
+}
+
+export function useDeleteCampaign(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ campaignId, outletId }: { campaignId: string; outletId?: string | null }) =>
+      deleteCampaign(restaurantId, campaignId, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campaigns", restaurantId] });
+    },
+  });
+}
+
 
 
 

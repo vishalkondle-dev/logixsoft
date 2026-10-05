@@ -464,6 +464,57 @@ export const restaurantCustomer = pgTable(
   ]
 );
 
+// ─── WhatsApp Promotional Broadcasts & Marketing Campaigns ──────────────────
+
+export const marketingCampaign = pgTable(
+  'marketingCampaign',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .references(() => restaurantOutlet.id, { onDelete: 'set null' }),
+    title: text('title').notNull(),
+    message: text('message').notNull(),
+    mediaUrl: text('mediaUrl'),
+    offerCode: text('offerCode'),
+    targetAudience: text('targetAudience').notNull().default('ALL'),
+    status: text('status').notNull().default('DRAFT'), // DRAFT | SCHEDULED | SENDING | COMPLETED | CANCELLED
+    scheduledAt: timestamp('scheduledAt'),
+    sentAt: timestamp('sentAt'),
+    totalRecipients: integer('totalRecipients').notNull().default(0),
+    sentCount: integer('sentCount').notNull().default(0),
+    failedCount: integer('failedCount').notNull().default(0),
+    createdByName: text('createdByName'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('marketingCampaign_restaurantId_idx').on(t.restaurantId),
+    index('marketingCampaign_status_idx').on(t.status),
+    index('marketingCampaign_scheduledAt_idx').on(t.scheduledAt),
+  ]
+);
+
+export const campaignRecipient = pgTable(
+  'campaignRecipient',
+  {
+    id: text('id').primaryKey(),
+    campaignId: text('campaignId')
+      .notNull()
+      .references(() => marketingCampaign.id, { onDelete: 'cascade' }),
+    customerPhone: text('customerPhone').notNull(),
+    customerName: text('customerName'),
+    status: text('status').notNull().default('PENDING'), // PENDING | SENT | FAILED
+    sentAt: timestamp('sentAt'),
+    error: text('error'),
+  },
+  (t) => [
+    index('campaignRecipient_campaignId_idx').on(t.campaignId),
+  ]
+);
+
 // ─── Delivery Rider (Fleet) ──────────────────────────────────────────────────
 
 export const deliveryRider = pgTable(
@@ -878,6 +929,8 @@ export const posSchema = {
   restaurantExpense,
   cashRegisterLog,
   restaurantCustomer,
+  marketingCampaign,
+  campaignRecipient,
 };
 
 

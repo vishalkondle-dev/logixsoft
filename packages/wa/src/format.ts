@@ -86,7 +86,26 @@ export function normalizeMedia(
   if (typeof media === 'string') {
     // If HTTP / HTTPS URL
     if (media.startsWith('http://') || media.startsWith('https://')) {
-      return { url: media, mimetype, filename };
+      let resolvedFilename = filename;
+      if (!resolvedFilename) {
+        try {
+          const urlObj = new URL(media);
+          const segment = urlObj.pathname.split('/').filter(Boolean).pop();
+          if (segment && segment.includes('.')) {
+            resolvedFilename = decodeURIComponent(segment.split('?')[0]);
+          }
+        } catch {
+          // ignore parsing error
+        }
+      }
+      let resolvedMime = options.mimetype;
+      if (!resolvedMime && resolvedFilename) {
+        const guessed = guessMimeType(resolvedFilename);
+        if (guessed !== 'application/octet-stream') {
+          resolvedMime = guessed;
+        }
+      }
+      return { url: media, mimetype: resolvedMime, filename: resolvedFilename };
     }
 
     // If data URL: data:image/png;base64,...

@@ -188,9 +188,13 @@ export class WhatsAppClient {
       const sessionId = await this.resolveSessionId(options.sessionId);
       const chatId = formatChatId(options.to);
       const media = normalizeMedia(options.media, {
-        filename: options.filename,
+        filename: options.filename || 'image.jpg',
         mimetype: options.mimetype,
       });
+
+      if (!media.mimetype || media.mimetype === 'application/octet-stream') {
+        media.mimetype = 'image/jpeg';
+      }
 
       const res = await this.request<{ messageId: string; timestamp: number }>(
         `/api/sessions/${sessionId}/messages/send-image`,

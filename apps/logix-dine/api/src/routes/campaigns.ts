@@ -26,6 +26,74 @@ function cleanPhone(phone: string): string {
   return last10.length === 10 ? `91${last10}` : digits;
 }
 
+/**
+ * Dispatches campaign message with image if mediaUrl is provided.
+ * If media delivery fails, it automatically falls back to text-only send
+ * so the customer always receives the promotional campaign.
+ */
+async function dispatchCampaignMessage(
+  targetPhone: string,
+  personalizedText: string,
+  mediaUrl: string | null | undefined,
+  waConfig: { url?: string; apiKey?: string }
+): Promise<{ success: boolean; error?: string; method: 'image' | 'text' }> {
+  const trimmedMedia = mediaUrl?.trim();
+  if (trimmedMedia) {
+    let filename = 'flyer.jpg';
+    let mimetype = 'image/jpeg';
+    try {
+      const urlObj = new URL(trimmedMedia);
+      const ext = urlObj.pathname.split('.').pop()?.toLowerCase();
+      if (ext === 'png') {
+        filename = 'flyer.png';
+        mimetype = 'image/png';
+      } else if (ext === 'webp') {
+        filename = 'flyer.webp';
+        mimetype = 'image/webp';
+      } else if (ext === 'gif') {
+        filename = 'flyer.gif';
+        mimetype = 'image/gif';
+      }
+    } catch {
+      // ignore parsing error
+    }
+
+    const imgRes = await sendWhatsAppImage(
+      targetPhone,
+      trimmedMedia,
+      {
+        caption: personalizedText,
+        filename,
+        mimetype,
+      },
+      waConfig
+    );
+
+    if (imgRes.success) {
+      return { success: true, method: 'image' };
+    }
+
+    // Fallback: If image fails (bad URL, 404, blocked CDN, timeout), deliver text message
+    console.warn(`[Campaign] Image delivery failed for ${targetPhone} (${imgRes.error}). Falling back to text.`);
+    const textRes = await sendWhatsAppText(targetPhone, personalizedText, undefined, waConfig);
+    if (textRes.success) {
+      return { success: true, method: 'text' };
+    }
+    return {
+      success: false,
+      error: imgRes.error || textRes.error || 'WhatsApp delivery failed',
+      method: 'text',
+    };
+  }
+
+  const textRes = await sendWhatsAppText(targetPhone, personalizedText, undefined, waConfig);
+  return {
+    success: textRes.success,
+    error: textRes.error,
+    method: 'text',
+  };
+}
+
 // ─── GET /campaigns (List All Marketing Campaigns) ───────────────────────────
 app.get(
   '/',
@@ -205,9 +273,47 @@ app.post(
       const waConfig = { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY };
 
       if (parse.data.mediaUrl && parse.data.mediaUrl.trim()) {
-        await sendWhatsAppImage(targetPhone, parse.data.mediaUrl.trim(), { caption: text }, waConfig);
+        const cleanedUrl = parse.data.mediaUrl.trim();
+        let filename = 'flyer.jpg';
+        let mimetype = 'image/jpeg';
+        try {
+          const urlObj = new URL(cleanedUrl);
+          const ext = urlObj.pathname.split('.').pop()?.toLowerCase();
+          if (ext === 'png') {
+            filename = 'flyer.png';
+            mimetype = 'image/png';
+          } else if (ext === 'webp') {
+            filename = 'flyer.webp';
+            mimetype = 'image/webp';
+          } else if (ext === 'gif') {
+            filename = 'flyer.gif';
+            mimetype = 'image/gif';
+          }
+        } catch {
+          // ignore
+        }
+
+        const res = await sendWhatsAppImage(
+          targetPhone,
+          cleanedUrl,
+          { caption: text, filename, mimetype },
+          waConfig
+        );
+
+        if (!res.success) {
+          return c.json({
+            error: 'WhatsApp Image Dispatch Failed',
+            message: res.error || 'Gateway failed to fetch or deliver promotional image URL',
+          }, 400);
+        }
       } else {
-        await sendWhatsAppText(targetPhone, text, undefined, waConfig);
+        const res = await sendWhatsAppText(targetPhone, text, undefined, waConfig);
+        if (!res.success) {
+          return c.json({
+            error: 'WhatsApp Text Dispatch Failed',
+            message: res.error || 'Gateway failed to dispatch text message',
+          }, 400);
+        }
       }
 
       return c.json({
@@ -325,20 +431,29 @@ app.post(
         }
 
         try {
-          if (mediaUrl && mediaUrl.trim()) {
-            await sendWhatsAppImage(targetPhone, mediaUrl.trim(), { caption: personalized }, waConfig);
+          const res = await dispatchCampaignMessage(targetPhone, personalized, mediaUrl, waConfig);
+          if (res.success) {
+            sentCount++;
+            recipientRows.push({
+              id: generateId(),
+              campaignId,
+              customerPhone: cust.phone,
+              customerName: cust.name || null,
+              status: 'SENT',
+              sentAt: new Date(),
+            });
           } else {
-            await sendWhatsAppText(targetPhone, personalized, undefined, waConfig);
+            failedCount++;
+            recipientRows.push({
+              id: generateId(),
+              campaignId,
+              customerPhone: cust.phone,
+              customerName: cust.name || null,
+              status: 'FAILED',
+              sentAt: new Date(),
+              error: res.error,
+            });
           }
-          sentCount++;
-          recipientRows.push({
-            id: generateId(),
-            campaignId,
-            customerPhone: cust.phone,
-            customerName: cust.name || null,
-            status: 'SENT',
-            sentAt: new Date(),
-          });
         } catch (err: any) {
           failedCount++;
           recipientRows.push({
@@ -457,20 +572,29 @@ app.post(
         }
 
         try {
-          if (campaign.mediaUrl && campaign.mediaUrl.trim()) {
-            await sendWhatsAppImage(targetPhone, campaign.mediaUrl.trim(), { caption: personalized }, waConfig);
+          const res = await dispatchCampaignMessage(targetPhone, personalized, campaign.mediaUrl, waConfig);
+          if (res.success) {
+            sentCount++;
+            recipientRows.push({
+              id: generateId(),
+              campaignId: id,
+              customerPhone: cust.phone,
+              customerName: cust.name || null,
+              status: 'SENT',
+              sentAt: new Date(),
+            });
           } else {
-            await sendWhatsAppText(targetPhone, personalized, undefined, waConfig);
+            failedCount++;
+            recipientRows.push({
+              id: generateId(),
+              campaignId: id,
+              customerPhone: cust.phone,
+              customerName: cust.name || null,
+              status: 'FAILED',
+              sentAt: new Date(),
+              error: res.error,
+            });
           }
-          sentCount++;
-          recipientRows.push({
-            id: generateId(),
-            campaignId: id,
-            customerPhone: cust.phone,
-            customerName: cust.name || null,
-            status: 'SENT',
-            sentAt: new Date(),
-          });
         } catch (err: any) {
           failedCount++;
           recipientRows.push({

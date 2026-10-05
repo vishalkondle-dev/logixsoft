@@ -146,19 +146,20 @@ app.post(
 
     const { db, close } = getDb(c);
     try {
-      const [order] = await db
-        .select()
-        .from(appSchema.saleOrder)
-        .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+      const [[order], [item]] = await Promise.all([
+        db
+          .select()
+          .from(appSchema.saleOrder)
+          .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId))),
+        db
+          .select()
+          .from(appSchema.saleOrderItem)
+          .where(and(eq(appSchema.saleOrderItem.id, orderItemId), eq(appSchema.saleOrderItem.orderId, orderId))),
+      ]);
       if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
       if (!assertOutletAccess(tenant, order.outletId)) {
         return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
       }
-
-      const [item] = await db
-        .select()
-        .from(appSchema.saleOrderItem)
-        .where(and(eq(appSchema.saleOrderItem.id, orderItemId), eq(appSchema.saleOrderItem.orderId, orderId)));
       if (!item) return c.json({ error: 'Not Found', message: 'Order item not found' }, 404);
 
       let nextStatus: OrderItemStatus;
@@ -183,43 +184,43 @@ app.post(
       const actorRole = tenant.role || 'KITCHEN';
 
       await db.transaction(async (tx: any) => {
-        await tx
-          .update(appSchema.saleOrderItem)
-          .set({ status: nextStatus, updatedAt: now, updatedBy: actorIdentity })
-          .where(eq(appSchema.saleOrderItem.id, orderItemId));
-
-        await tx.insert(appSchema.orderItemAudit).values({
-          id: generateId('audit'),
-          orderId,
-          orderItemId,
-          fromStatus: item.status,
-          toStatus: nextStatus,
-          changedBy: actorIdentity,
-          changedByRole: actorRole,
-          createdAt: now,
-        });
+        await Promise.all([
+          tx
+            .update(appSchema.saleOrderItem)
+            .set({ status: nextStatus, updatedAt: now, updatedBy: actorIdentity })
+            .where(eq(appSchema.saleOrderItem.id, orderItemId)),
+          tx.insert(appSchema.orderItemAudit).values({
+            id: generateId('audit'),
+            orderId,
+            orderItemId,
+            fromStatus: item.status,
+            toStatus: nextStatus,
+            changedBy: actorIdentity,
+            changedByRole: actorRole,
+            createdAt: now,
+          }),
+        ]);
 
         const allItems = await tx
-          .select({ status: appSchema.saleOrderItem.status })
+          .select({
+            id: appSchema.saleOrderItem.id,
+            status: appSchema.saleOrderItem.status,
+            pricePaiseSnapshot: appSchema.saleOrderItem.pricePaiseSnapshot,
+            qty: appSchema.saleOrderItem.qty,
+          })
           .from(appSchema.saleOrderItem)
           .where(eq(appSchema.saleOrderItem.orderId, orderId));
+
         const newOrderStatus = computeOrderStatus(allItems.map((i: any) => i.status));
         const updateOrderFields: Record<string, any> = { orderStatus: newOrderStatus, updatedAt: now, updatedBy: actorIdentity };
         if (newOrderStatus === 'PREPARED' && !order.readyAt) {
           updateOrderFields.readyAt = now;
         }
 
-        const activeItems = allItems.filter((i: any) => i.status !== 'CANCELLED');
-        const [existingOrder] = await tx
-          .select({ packagingChargePaise: appSchema.saleOrder.packagingChargePaise, deliveryChargePaise: appSchema.saleOrder.deliveryChargePaise })
-          .from(appSchema.saleOrder)
-          .where(eq(appSchema.saleOrder.id, orderId));
-        const activeItemsWithPrice = await tx
-          .select({ pricePaiseSnapshot: appSchema.saleOrderItem.pricePaiseSnapshot, qty: appSchema.saleOrderItem.qty })
-          .from(appSchema.saleOrderItem)
-          .where(and(eq(appSchema.saleOrderItem.orderId, orderId), sql`${appSchema.saleOrderItem.status} != 'CANCELLED'`));
-        const itemsTotal = activeItemsWithPrice.reduce((sum: number, it: any) => sum + (it.pricePaiseSnapshot || 0) * (it.qty || 1), 0);
-        const subtotalPaise = itemsTotal + (existingOrder?.packagingChargePaise || 0) + (existingOrder?.deliveryChargePaise || 0);
+        const itemsTotal = allItems
+          .filter((i: any) => i.status !== 'CANCELLED')
+          .reduce((sum: number, it: any) => sum + (it.pricePaiseSnapshot || 0) * (it.qty || 1), 0);
+        const subtotalPaise = itemsTotal + (order.packagingChargePaise || 0) + (order.deliveryChargePaise || 0);
         updateOrderFields.subtotalPaise = subtotalPaise;
 
         await tx
@@ -233,7 +234,7 @@ app.post(
       }
 
       const result = await getOrderWithItems(db, orderId, restaurantId);
-      await broadcastToOutlet(
+      const broadcastPromise = broadcastToOutlet(
         c.env,
         order.outletId,
         {
@@ -243,6 +244,11 @@ app.post(
         },
         order.customerPhone
       );
+      if (c.executionCtx?.waitUntil) {
+        c.executionCtx.waitUntil(broadcastPromise);
+      } else {
+        await broadcastPromise;
+      }
 
       return c.json(result);
     } finally {
@@ -286,19 +292,20 @@ app.post(
 
     const { db, close } = getDb(c);
     try {
-      const [order] = await db
-        .select()
-        .from(appSchema.saleOrder)
-        .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
+      const [[order], [item]] = await Promise.all([
+        db
+          .select()
+          .from(appSchema.saleOrder)
+          .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId))),
+        db
+          .select()
+          .from(appSchema.saleOrderItem)
+          .where(and(eq(appSchema.saleOrderItem.id, orderItemId), eq(appSchema.saleOrderItem.orderId, orderId))),
+      ]);
       if (!order) return c.json({ error: 'Not Found', message: 'Order not found' }, 404);
       if (!assertOutletAccess(tenant, order.outletId)) {
         return c.json({ error: 'Forbidden', message: 'You do not have access to this outlet' }, 403);
       }
-
-      const [item] = await db
-        .select()
-        .from(appSchema.saleOrderItem)
-        .where(and(eq(appSchema.saleOrderItem.id, orderItemId), eq(appSchema.saleOrderItem.orderId, orderId)));
       if (!item) return c.json({ error: 'Not Found', message: 'Item not found' }, 404);
 
       const now = new Date();
@@ -306,27 +313,28 @@ app.post(
       const actorRole = tenant.role || 'KITCHEN';
 
       await db.transaction(async (tx: any) => {
-        await tx
-          .update(appSchema.saleOrderItem)
-          .set({ status: 'CANCELLED', updatedAt: now, updatedBy: actorIdentity })
-          .where(eq(appSchema.saleOrderItem.id, orderItemId));
-
-        await tx.insert(appSchema.orderItemAudit).values({
-          id: generateId('audit'),
-          orderId,
-          orderItemId,
-          fromStatus: item.status,
-          toStatus: 'CANCELLED',
-          changedBy: actorIdentity,
-          changedByRole: actorRole,
-          createdAt: now,
-        });
+        await Promise.all([
+          tx
+            .update(appSchema.saleOrderItem)
+            .set({ status: 'CANCELLED', updatedAt: now, updatedBy: actorIdentity })
+            .where(eq(appSchema.saleOrderItem.id, orderItemId)),
+          tx.insert(appSchema.orderItemAudit).values({
+            id: generateId('audit'),
+            orderId,
+            orderItemId,
+            fromStatus: item.status,
+            toStatus: 'CANCELLED',
+            changedBy: actorIdentity,
+            changedByRole: actorRole,
+            createdAt: now,
+          }),
+        ]);
 
         await recomputeTotal(tx, orderId);
       });
 
       const result = await getOrderWithItems(db, orderId, restaurantId);
-      await broadcastToOutlet(
+      const broadcastPromise = broadcastToOutlet(
         c.env,
         order.outletId,
         {
@@ -336,6 +344,11 @@ app.post(
         },
         order.customerPhone
       );
+      if (c.executionCtx?.waitUntil) {
+        c.executionCtx.waitUntil(broadcastPromise);
+      } else {
+        await broadcastPromise;
+      }
 
       return c.json(result);
     } finally {
@@ -433,7 +446,7 @@ app.post(
       });
 
       const result = await getOrderWithItems(db, orderId, restaurantId);
-      await broadcastToOutlet(
+      const broadcastPromise = broadcastToOutlet(
         c.env,
         order.outletId,
         {
@@ -443,6 +456,11 @@ app.post(
         },
         order.customerPhone
       );
+      if (c.executionCtx?.waitUntil) {
+        c.executionCtx.waitUntil(broadcastPromise);
+      } else {
+        await broadcastPromise;
+      }
 
       if (order.outletId && order.customerPhone) {
         c.executionCtx?.waitUntil?.(

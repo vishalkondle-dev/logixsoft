@@ -156,20 +156,21 @@ export async function getOrderWithItems(db: any, orderId: string, restaurantId: 
     .from(appSchema.saleOrder)
     .where(and(eq(appSchema.saleOrder.id, orderId), eq(appSchema.saleOrder.restaurantId, restaurantId)));
   if (!order) return null;
-  const items = await db
-    .select()
-    .from(appSchema.saleOrderItem)
-    .where(eq(appSchema.saleOrderItem.orderId, orderId));
-  const audits = await db
-    .select()
-    .from(appSchema.orderItemAudit)
-    .where(eq(appSchema.orderItemAudit.orderId, orderId))
-    .orderBy(appSchema.orderItemAudit.createdAt);
-
-  const [del] = await db
-    .select()
-    .from(appSchema.deliveryOrder)
-    .where(eq(appSchema.deliveryOrder.orderId, orderId));
+  const [items, audits, [del]] = await Promise.all([
+    db
+      .select()
+      .from(appSchema.saleOrderItem)
+      .where(eq(appSchema.saleOrderItem.orderId, orderId)),
+    db
+      .select()
+      .from(appSchema.orderItemAudit)
+      .where(eq(appSchema.orderItemAudit.orderId, orderId))
+      .orderBy(appSchema.orderItemAudit.createdAt),
+    db
+      .select()
+      .from(appSchema.deliveryOrder)
+      .where(eq(appSchema.deliveryOrder.orderId, orderId)),
+  ]);
 
   const auditsByItem = new Map<string, any[]>();
   for (const a of audits) {

@@ -245,20 +245,43 @@ export default function WaiterPage() {
 
   const handleServeItem = async (orderId: string, orderItemId: string, dishName: string, tableNo: string) => {
     setServingItemId(orderItemId);
+
+    // Snapshot previous orders data for rollback if network fails
+    const previousOrders = queryClient.getQueriesData({ queryKey: ["orders", restaurantId] });
+
+    // Optimistically mark item as SERVED in React Query cache (0ms instant UI feedback)
+    queryClient.setQueriesData({ queryKey: ["orders", restaurantId] }, (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((entry) => {
+        if (entry.order?.id !== orderId) return entry;
+        const updatedItems = (entry.items || []).map((it: any) =>
+          it.id === orderItemId ? { ...it, status: "SERVED", updatedAt: new Date().toISOString() } : it
+        );
+        return { ...entry, items: updatedItems };
+      });
+    });
+
+    notifications.show({
+      id: `serve-${orderItemId}`,
+      title: "Dish Served!",
+      message: `${dishName} marked as SERVED for ${tableNo}`,
+      color: "green",
+      icon: <IconCheck size={16} />,
+      autoClose: 2500,
+    });
+
     try {
       await updateOrderItemStatus(restaurantId, orderId, orderItemId, { action: "next" }, outletId);
-      notifications.show({
-        title: "Dish Served!",
-        message: `${dishName} marked as SERVED for ${tableNo}`,
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
       queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
       queryClient.invalidateQueries({ queryKey: qk.waiterStats(restaurantId, outletId) });
     } catch (err: any) {
+      // Rollback on error
+      for (const [key, data] of previousOrders) {
+        queryClient.setQueryData(key, data);
+      }
       notifications.show({
         title: "Error",
-        message: err.message || "Failed to serve dish",
+        message: err.message || "Failed to serve dish. Reverted.",
         color: "red",
       });
     } finally {

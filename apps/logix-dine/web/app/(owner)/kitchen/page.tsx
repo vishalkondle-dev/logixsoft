@@ -165,17 +165,46 @@ export default function KitchenPage() {
 
   const handleMarkReady = async (orderId: string) => {
     setMarking(orderId);
+    const previousOrders = queryClient.getQueryData<any[]>(qk.kitchenOrders(restaurantId, outletId));
+
+    // Instant optimistic update: mark all items as prepared and order ready immediately
+    queryClient.setQueryData<any[]>(qk.kitchenOrders(restaurantId, outletId), (old = []) => {
+      return old.map((entry) => {
+        if (entry.order?.id !== orderId) return entry;
+        const updatedItems = (entry.items || []).map((it: any) =>
+          it.status === "ORDERED" || it.status === "PREPARING"
+            ? { ...it, status: "PREPARED", updatedAt: new Date().toISOString() }
+            : it
+        );
+        return {
+          ...entry,
+          order: {
+            ...entry.order,
+            orderStatus: "PREPARED",
+            readyAt: new Date().toISOString(),
+          },
+          items: updatedItems,
+        };
+      });
+    });
+
+    notifications.show({
+      id: `ready-${orderId}`,
+      title: "Order marked ready",
+      message: "All items set to Prepared and runners notified",
+      color: "teal",
+      icon: <IconCheck size={16} />,
+      autoClose: 2500,
+    });
+
     try {
       await markOrderReady(restaurantId, orderId, outletId);
-      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
-      notifications.show({
-        title: "Order marked ready",
-        message: "All items set to Prepared and runners notified",
-        color: "teal",
-        icon: <IconCheck size={16} />,
-      });
+      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId), refetchType: "none" });
     } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
+      if (previousOrders) {
+        queryClient.setQueryData(qk.kitchenOrders(restaurantId, outletId), previousOrders);
+      }
+      notifications.show({ title: "Error", message: err.message || "Failed to mark ready", color: "red" });
     } finally {
       setMarking(null);
     }
@@ -187,23 +216,59 @@ export default function KitchenPage() {
     actionPayload: { status?: string; action?: "next" | "close" | "cancel" },
   ) => {
     const itemId = item.id;
-    const actionType = actionPayload.action === "close" || actionPayload.action === "cancel" ? "close" : "next";
-    setUpdatingAction({ itemId, action: actionType });
+    const isCancel = actionPayload.action === "close" || actionPayload.action === "cancel";
+    const nextStatus = isCancel ? "CANCELLED" : (actionPayload.status || getNextItemStatus(item.status));
+    if (!nextStatus) return;
+
+    // Snapshot previous query data for instant rollback on error
+    const previousOrders = queryClient.getQueryData<any[]>(qk.kitchenOrders(restaurantId, outletId));
+
+    // Instant optimistic update (0ms latency feedback)
+    queryClient.setQueryData<any[]>(qk.kitchenOrders(restaurantId, outletId), (old = []) => {
+      return old.map((entry) => {
+        if (entry.order?.id !== orderId) return entry;
+        const updatedItems = (entry.items || []).map((it: any) =>
+          it.id === itemId
+            ? { ...it, status: nextStatus, updatedAt: new Date().toISOString() }
+            : it
+        );
+        const activeStatuses = updatedItems.filter((i: any) => i.status !== "CANCELLED").map((i: any) => i.status);
+        const allCancelled = updatedItems.length > 0 && activeStatuses.length === 0;
+        const allServed = activeStatuses.length > 0 && activeStatuses.every((s: string) => s === "SERVED");
+        const allPrepared = activeStatuses.length > 0 && activeStatuses.every((s: string) => s === "PREPARED" || s === "SERVED");
+        const anyPreparing = activeStatuses.some((s: string) => s === "PREPARING");
+        const newOrderStatus = allCancelled ? "CANCELLED" : allServed ? "SERVED" : allPrepared ? "PREPARED" : anyPreparing ? "PREPARING" : "ORDERED";
+        const newReadyAt = (newOrderStatus === "PREPARED" || allPrepared) && !entry.order.readyAt ? new Date().toISOString() : entry.order.readyAt;
+
+        return {
+          ...entry,
+          order: {
+            ...entry.order,
+            orderStatus: newOrderStatus,
+            readyAt: newReadyAt,
+          },
+          items: updatedItems,
+        };
+      });
+    });
+
+    notifications.show({
+      id: `item-${itemId}`,
+      title: isCancel ? "Item cancelled" : "Item status updated",
+      message: `${item.nameSnapshot || item.name}: ${isCancel ? "Cancelled" : `Advanced to ${nextStatus}`}`,
+      color: isCancel ? "red" : "teal",
+      icon: isCancel ? <IconBan size={16} /> : <IconCheck size={16} />,
+      autoClose: 2000,
+    });
+
     try {
       await updateOrderItemStatus(restaurantId, orderId, itemId, actionPayload, outletId);
-      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
-
-      const isCancel = actionPayload.action === "close" || actionPayload.action === "cancel";
-      notifications.show({
-        title: isCancel ? "Item cancelled" : "Item status updated",
-        message: `${item.nameSnapshot || item.name}: ${isCancel ? "Cancelled" : "Advanced to next stage"}`,
-        color: isCancel ? "red" : "teal",
-        icon: isCancel ? <IconBan size={16} /> : <IconCheck size={16} />,
-      });
+      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId), refetchType: "none" });
     } catch (err: any) {
+      if (previousOrders) {
+        queryClient.setQueryData(qk.kitchenOrders(restaurantId, outletId), previousOrders);
+      }
       notifications.show({ title: "Failed to update item", message: err.message || "Error", color: "red" });
-    } finally {
-      setUpdatingAction(null);
     }
   };
 

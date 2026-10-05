@@ -15,6 +15,7 @@ import {
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useOrders } from "@/lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
@@ -38,6 +39,7 @@ export default function OrdersPage() {
   const { restaurant, activeOutlet, allOutlets, outlets } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? null;
+  const queryClient = useQueryClient();
 
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<any>(null);
@@ -232,36 +234,74 @@ export default function OrdersPage() {
   const executeUpdateItemStatus = async (item: any, actionPayload: { status?: string; action?: "next" | "close" | "cancel" }) => {
     if (!selected) return;
     const itemId = item.id;
-    const actionType = actionPayload.action === "close" || actionPayload.action === "cancel" ? "close" : "next";
-    setUpdatingAction({ itemId, action: actionType });
+    const isCancel = actionPayload.action === "close" || actionPayload.action === "cancel";
+    const nextStatus = isCancel ? "CANCELLED" : (actionPayload.status || getNextItemStatus(item.status));
+    if (!nextStatus) return;
+
+    const prevSelected = selected;
+    const orderId = selected.order.id;
+
+    // Instant optimistic update on selected order in modal (0ms latency feedback)
+    setSelected((prev: any) => {
+      if (!prev) return prev;
+      const updatedItems = (prev.items || []).map((it: any) =>
+        it.id === itemId ? { ...it, status: nextStatus, updatedAt: new Date().toISOString() } : it
+      );
+      const activeStatuses = updatedItems.filter((i: any) => i.status !== "CANCELLED").map((i: any) => i.status);
+      const allCancelled = updatedItems.length > 0 && activeStatuses.length === 0;
+      const allServed = activeStatuses.length > 0 && activeStatuses.every((s: string) => s === "SERVED");
+      const allPrepared = activeStatuses.length > 0 && activeStatuses.every((s: string) => s === "PREPARED" || s === "SERVED");
+      const anyPreparing = activeStatuses.some((s: string) => s === "PREPARING");
+      const newOrderStatus = allCancelled ? "CANCELLED" : allServed ? "SERVED" : allPrepared ? "PREPARED" : anyPreparing ? "PREPARING" : "ORDERED";
+
+      return {
+        ...prev,
+        order: { ...prev.order, orderStatus: newOrderStatus },
+        items: updatedItems,
+      };
+    });
+
+    // Also optimistically update orders in list cache
+    queryClient.setQueriesData({ queryKey: ["orders", restaurantId] }, (old: any) => {
+      if (!Array.isArray(old)) return old;
+      return old.map((entry) => {
+        if (entry.order?.id !== orderId) return entry;
+        const updatedItems = (entry.items || []).map((it: any) =>
+          it.id === itemId ? { ...it, status: nextStatus, updatedAt: new Date().toISOString() } : it
+        );
+        return { ...entry, items: updatedItems };
+      });
+    });
+
+    const actionText = isCancel ? "Cancelled" : `Moved to ${nextStatus}`;
+    notifications.show({
+      id: `item-${itemId}`,
+      title: "Item status updated",
+      message: `${item.nameSnapshot || item.name}: ${actionText}`,
+      color: isCancel ? "red" : "green",
+      icon: isCancel ? <IconBan size={16} /> : <IconCheck size={16} />,
+      autoClose: 2000,
+    });
+
     try {
       const updatedOrderWithItems = await updateOrderItemStatus(
         restaurantId,
-        selected.order.id,
+        orderId,
         itemId,
         actionPayload,
         outletId,
       );
-      setSelected(updatedOrderWithItems);
+      if (updatedOrderWithItems) {
+        setSelected(updatedOrderWithItems);
+      }
       refetch();
-
-      const actionText = actionPayload.action === "close"
-        ? "Cancelled"
-        : `Moved to ${actionPayload.status || "next stage"}`;
-      notifications.show({
-        title: "Item status updated",
-        message: `${item.nameSnapshot || item.name}: ${actionText}`,
-        color: actionPayload.action === "close" ? "red" : "green",
-        icon: actionPayload.action === "close" ? <IconBan size={16} /> : <IconCheck size={16} />,
-      });
     } catch (err: any) {
+      setSelected(prevSelected);
       notifications.show({
         title: "Failed to update item",
-        message: err.message || "An error occurred",
+        message: err.message || "An error occurred. Reverted.",
         color: "red",
       });
-    } finally {
-      setUpdatingAction(null);
     }
   };
 

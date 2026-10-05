@@ -123,6 +123,11 @@ export const GRANULAR_PERMISSIONS = [
   // 18. WhatsApp Alerts & Automation
   'whatsapp:view',
   'whatsapp:manage',
+
+  // 19. Finance & Petty Cash Tracking
+  'finance:view',
+  'finance:record',
+  'finance:manage',
 ] as const;
 
 /**
@@ -154,6 +159,8 @@ export const LEGACY_PERMISSIONS = [
   'inventory:write',
   'feedback:read',
   'feedback:reply',
+  'finance:read',
+  'finance:write',
 ] as const;
 
 export const PERMISSIONS = [
@@ -191,6 +198,8 @@ export const LEGACY_TO_GRANULAR_MAP: Record<string, readonly Permission[]> = {
   'inventory:write': ['inventory:adjust_stock', 'inventory:manage_recipes'],
   'feedback:read': ['feedback:view'],
   'feedback:reply': ['feedback:reply'],
+  'finance:read': ['finance:view'],
+  'finance:write': ['finance:record', 'finance:manage'],
 };
 
 /**
@@ -220,6 +229,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'tax:view', 'tax:manage',
     'qr_menu:view', 'qr_menu:manage',
     'whatsapp:view', 'whatsapp:manage',
+    'finance:view', 'finance:record', 'finance:manage',
   ],
   CASHIER: [
     'pos:view', 'pos:order_create', 'pos:bill_settle', 'pos:table_transfer', 'pos:reprint_bill', 'pos:kiosk_lock',
@@ -229,6 +239,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRestaurantRole, readonly Per
     'menu:view',
     'customers:view', 'customers:manage',
     'reservations:view',
+    'finance:view', 'finance:record',
   ],
   CAPTAIN: [
     'waiter:view', 'waiter:punch_order', 'waiter:attend_call', 'waiter:request_bill', 'waiter:settle_bill',
@@ -482,6 +493,17 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     permissions: [
       { key: 'whatsapp:view', label: 'View WhatsApp Automation', description: 'View WhatsApp bill sharing logs, OTP notifications, and templates', badge: 'Read Only' },
       { key: 'whatsapp:manage', label: 'Configure WhatsApp Alerts', description: 'Connect WhatsApp Business API, toggle bill dispatch, and order status pings', badge: 'Operational' },
+    ],
+  },
+  {
+    id: 'finance',
+    label: 'Finance & Petty Cash',
+    icon: 'IconReceipt2',
+    description: 'Expense tracking, petty cash drawer, cash reconciliation, and net profit analytics',
+    permissions: [
+      { key: 'finance:view', label: 'View Finance & Expenses', description: 'View expense lists, petty cash drawer, category breakdown, and profit metrics', badge: 'Read Only' },
+      { key: 'finance:record', label: 'Record Petty Cash / Expense', description: 'Record daily petty cash outflows and vendor expense vouchers', badge: 'Financial' },
+      { key: 'finance:manage', label: 'Manage Finance & Cash Drawer', description: 'Edit/delete expenses, configure opening float, and cash reconciliation', badge: 'High Risk' },
     ],
   },
 ];

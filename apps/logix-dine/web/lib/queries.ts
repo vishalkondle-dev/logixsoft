@@ -92,12 +92,29 @@ import {
   updateRole,
   deleteRole,
   resetRolePermissions,
+  getExpenseSummary,
+  getExpenses,
+  createExpense,
+  updateExpense,
+  deleteExpense,
+  getCashRegister,
+  setCashRegister,
+  sendClosingReportWhatsApp,
+  getClosingReportPreview,
 } from "@/lib/api-client";
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 
 export const qk = {
   roles: (restaurantId: string) => ["roles", restaurantId] as const,
+  expenseSummary: (restaurantId: string, outletId?: string | null, date?: string) =>
+    ["expenseSummary", restaurantId, outletId ?? "all", date ?? "today"] as const,
+  expenses: (restaurantId: string, params?: Record<string, any>) =>
+    ["expenses", restaurantId, params ?? {}] as const,
+  cashRegister: (restaurantId: string, outletId?: string | null, date?: string) =>
+    ["cashRegister", restaurantId, outletId ?? "all", date ?? "today"] as const,
+  closingReportPreview: (restaurantId: string, outletId: string, date?: string) =>
+    ["closingReportPreview", restaurantId, outletId, date ?? "today"] as const,
   bootstrap: (restaurantId: string, outletId: string | null) =>
     ["bootstrap", restaurantId, outletId] as const,
   orders: (restaurantId: string, params?: Record<string, any>) =>
@@ -1168,6 +1185,127 @@ export function useResetRole(restaurantId: string) {
     },
   });
 }
+
+// ─── Finance & Expenses ──────────────────────────────────────────────────────
+
+export function useExpenseSummary(
+  restaurantId: string,
+  outletId?: string | null,
+  date?: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.expenseSummary(restaurantId, outletId, date),
+    queryFn: () => getExpenseSummary(restaurantId, outletId, date),
+    enabled: !!restaurantId && enabled,
+    staleTime: 15_000,
+  });
+}
+
+export function useExpenses(
+  restaurantId: string,
+  params?: {
+    outletId?: string | null;
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    paymentMode?: string;
+    limit?: number;
+    offset?: number;
+  },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.expenses(restaurantId, params),
+    queryFn: () => getExpenses(restaurantId, params),
+    enabled: !!restaurantId && enabled,
+    staleTime: 15_000,
+  });
+}
+
+export function useCreateExpense(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ data, outletId }: { data: Parameters<typeof createExpense>[1]; outletId?: string | null }) =>
+      createExpense(restaurantId, data, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["expenseSummary", restaurantId] });
+    },
+  });
+}
+
+export function useUpdateExpense(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data, outletId }: { id: string; data: Parameters<typeof updateExpense>[2]; outletId?: string | null }) =>
+      updateExpense(restaurantId, id, data, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["expenseSummary", restaurantId] });
+    },
+  });
+}
+
+export function useDeleteExpense(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, outletId }: { id: string; outletId?: string | null }) =>
+      deleteExpense(restaurantId, id, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["expenseSummary", restaurantId] });
+    },
+  });
+}
+
+export function useCashRegister(
+  restaurantId: string,
+  outletId?: string | null,
+  date?: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.cashRegister(restaurantId, outletId, date),
+    queryFn: () => getCashRegister(restaurantId, outletId, date),
+    enabled: !!restaurantId && enabled,
+    staleTime: 30_000,
+  });
+}
+
+export function useSetCashRegister(restaurantId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ data, outletId }: { data: Parameters<typeof setCashRegister>[1]; outletId?: string | null }) =>
+      setCashRegister(restaurantId, data, outletId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cashRegister", restaurantId] });
+      qc.invalidateQueries({ queryKey: ["expenseSummary", restaurantId] });
+    },
+  });
+}
+
+export function useSendClosingReport(restaurantId: string) {
+  return useMutation({
+    mutationFn: ({ outletId, phone, date }: { outletId: string; phone?: string; date?: string }) =>
+      sendClosingReportWhatsApp(restaurantId, outletId, phone, date),
+  });
+}
+
+export function useClosingReportPreview(
+  restaurantId: string,
+  outletId: string,
+  date?: string,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: qk.closingReportPreview(restaurantId, outletId, date),
+    queryFn: () => getClosingReportPreview(restaurantId, outletId, date),
+    enabled: !!restaurantId && !!outletId && enabled,
+    staleTime: 30_000,
+  });
+}
+
 
 
 

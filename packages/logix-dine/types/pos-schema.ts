@@ -23,6 +23,8 @@ import {
   purchaseOrderItem,
   orderFeedback,
   orderItemFeedback,
+  restaurantExpense,
+  cashRegisterLog,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -269,4 +271,20 @@ export type JsonOrderItemFeedbackRow = Omit<OrderItemFeedbackRow, 'createdAt' | 
   createdAt: string;
   updatedAt: string;
 };
+
+export type RestaurantExpenseRow = InferSelectModel<typeof restaurantExpense>;
+export type NewRestaurantExpenseRow = InferInsertModel<typeof restaurantExpense>;
+export type JsonRestaurantExpenseRow = Omit<RestaurantExpenseRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CashRegisterLogRow = InferSelectModel<typeof cashRegisterLog>;
+export type NewCashRegisterLogRow = InferInsertModel<typeof cashRegisterLog>;
+export type JsonCashRegisterLogRow = Omit<CashRegisterLogRow, 'createdAt' | 'updatedAt' | 'closedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+};
+
 

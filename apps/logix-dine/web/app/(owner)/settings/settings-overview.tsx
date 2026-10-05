@@ -40,6 +40,7 @@ import {
   IconPackages,
   IconStar,
   IconShieldLock,
+  IconWallet,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useAuth } from "@/lib/auth-context";
@@ -265,6 +266,16 @@ export function SettingsOverview() {
     {
       category: "Financials & Billing",
       items: [
+        {
+          id: "finance",
+          title: "Finance & Petty Cash",
+          description: "Expense tracking, counter cash drawer float, and WhatsApp EOD closing digests",
+          icon: IconWallet,
+          color: "teal",
+          href: "/finance",
+          isAvailable: true,
+          badge: "New",
+        },
         {
           id: "invoice-settings",
           title: "Invoice & Tax",

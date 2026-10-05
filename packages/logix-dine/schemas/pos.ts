@@ -740,3 +740,52 @@ export const UpdateInventorySettingsSchema = z.object({
   auto86OnDepletion: z.boolean().default(false),
 });
 
+// ─── Expenses & Petty Cash ───────────────────────────────────────────────────
+
+export const EXPENSE_CATEGORIES = [
+  'RAW_MATERIAL',
+  'STAFF',
+  'UTILITIES',
+  'MAINTENANCE',
+  'PACKAGING',
+  'MARKETING',
+  'RENT',
+  'OTHER',
+] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export const EXPENSE_PAYMENT_MODES = [
+  'CASH',
+  'UPI',
+  'BANK_TRANSFER',
+  'CARD',
+  'OTHER',
+] as const;
+
+export type ExpensePaymentMode = (typeof EXPENSE_PAYMENT_MODES)[number];
+
+export const CreateExpenseSchema = z.object({
+  title: z.string().min(1).max(100),
+  category: z.enum(EXPENSE_CATEGORIES).default('OTHER'),
+  amountPaise: z.number().int().positive(),
+  paymentMode: z.enum(EXPENSE_PAYMENT_MODES).default('CASH'),
+  paidTo: z.string().max(100).nullable().optional(),
+  expenseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  notes: z.string().max(500).nullable().optional(),
+  receiptUrl: z.string().nullable().optional(),
+  outletId: z.string().optional(),
+});
+
+export const UpdateExpenseSchema = CreateExpenseSchema.partial();
+
+export const SetCashRegisterSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  openingFloatPaise: z.number().int().nonnegative().optional(),
+  cashWithdrawnPaise: z.number().int().nonnegative().optional(),
+  closingCountedPaise: z.number().int().nonnegative().nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
+  outletId: z.string().optional(),
+});
+
+

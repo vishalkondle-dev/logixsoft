@@ -30,6 +30,7 @@ export const PLAN_MODULE_IDS = [
   'qr_menu',       // QR menu view & table ordering
   'settings',      // Store profile & outlet settings
   'billing',       // Subscription & SaaS billing (always accessible)
+  'finance',       // Expense tracking & petty cash drawer
 
   // ─── Pro Modules (₹1,499/mo) ───
   'kitchen',       // Kitchen Display System (KDS) bump screens & stations
@@ -71,6 +72,7 @@ export const MODULE_MIN_PLAN: Record<PlanModuleId, PlanTier> = {
   qr_menu: 'BASIC',
   settings: 'BASIC',
   billing: 'BASIC',
+  finance: 'BASIC',
 
   // Pro
   kitchen: 'PRO',
@@ -219,6 +221,15 @@ export const MODULE_INFO_CATALOG: Record<PlanModuleId, PlanModuleInfo> = {
     minPlanPrice: 999,
     description: 'Per-branch subscription plans, license renewals, payment invoices, and plan upgrades.',
     highlights: ['Independent branch plans', 'Monthly & annual billing', 'Downloadable tax receipts', 'Instant module unlocking'],
+  },
+  finance: {
+    id: 'finance',
+    name: 'Finance & Petty Cash Tracking',
+    minPlan: 'BASIC',
+    minPlanLabel: 'Starter Plan',
+    minPlanPrice: 999,
+    description: 'Daily expense logging, petty cash drawer, cash reconciliation, and net profit analytics.',
+    highlights: ['Petty cash drawer float', 'Expense vouchers & categories', 'Cash drawer reconciliation', 'Daily net profit metrics'],
   },
 
   // ─── PRO MODULES ───

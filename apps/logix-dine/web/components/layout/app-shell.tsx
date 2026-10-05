@@ -15,7 +15,7 @@ import {
   IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
   IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages, IconTruckDelivery,
-  IconStar, IconShieldLock, IconArrowRight, IconSparkles,
+  IconStar, IconShieldLock, IconArrowRight, IconSparkles, IconWallet,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -27,6 +27,7 @@ const STAFF_NAV_ITEMS = [
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view", moduleId: "tables" },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
+  { label: "Finance", href: "/finance", icon: IconWallet, roles: ["OWNER", "MANAGER", "CASHIER"], permission: "finance:view", moduleId: "finance" },
   { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view", moduleId: "kitchen" },
   { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view", moduleId: "waiter" },
   { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view", moduleId: "delivery" },
@@ -62,6 +63,7 @@ const SETTINGS_SIDEBAR_ITEMS = [
   { id: "reports", label: "Analytics & Reports", href: "/settings/reports", icon: IconChartBar, section: "TEAM & ANALYTICS", moduleId: "reports" },
 
   // ─── 6. Financials & Billing ───
+  { id: "finance", label: "Finance & Petty Cash", href: "/finance", icon: IconWallet, section: "ACCOUNT & BILLING", moduleId: "finance" },
   { id: "tax", label: "Invoice & Tax", href: "/settings/tax", icon: IconReceiptTax, section: "ACCOUNT & BILLING", moduleId: "tax" },
   { id: "billing", label: "Subscription & Billing", href: "/settings/billing", icon: IconCreditCard, section: "ACCOUNT & BILLING", ownerOnly: true, moduleId: "billing" },
 ];

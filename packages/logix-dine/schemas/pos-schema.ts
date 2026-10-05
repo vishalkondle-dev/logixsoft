@@ -747,6 +747,69 @@ export const restaurantRole = pgTable(
   ],
 );
 
+// ─── Restaurant Expense & Petty Cash ──────────────────────────────────────────
+
+export const restaurantExpense = pgTable(
+  'restaurantExpense',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    category: text('category').notNull().default('OTHER'), // 'RAW_MATERIAL' | 'STAFF' | 'UTILITIES' | 'MAINTENANCE' | 'PACKAGING' | 'MARKETING' | 'RENT' | 'OTHER'
+    amountPaise: integer('amountPaise').notNull(),
+    paymentMode: text('paymentMode').notNull().default('CASH'), // 'CASH' (Petty Cash Drawer) | 'UPI' | 'BANK_TRANSFER' | 'CARD' | 'OTHER'
+    paidTo: text('paidTo'),
+    expenseDate: text('expenseDate').notNull(), // 'YYYY-MM-DD'
+    notes: text('notes'),
+    receiptUrl: text('receiptUrl'),
+    createdById: text('createdById').references(() => user.id, { onDelete: 'set null' }),
+    createdBy: text('createdBy'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('restaurantExpense_outletId_idx').on(t.outletId),
+    index('restaurantExpense_restaurantId_idx').on(t.restaurantId),
+    index('restaurantExpense_date_idx').on(t.expenseDate),
+    index('restaurantExpense_category_idx').on(t.category),
+    index('restaurantExpense_paymentMode_idx').on(t.paymentMode),
+  ],
+);
+
+// ─── Daily Cash Drawer Register ───────────────────────────────────────────────
+
+export const cashRegisterLog = pgTable(
+  'cashRegisterLog',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(), // 'YYYY-MM-DD'
+    openingFloatPaise: integer('openingFloatPaise').notNull().default(0),
+    cashWithdrawnPaise: integer('cashWithdrawnPaise').notNull().default(0),
+    closingCountedPaise: integer('closingCountedPaise'),
+    notes: text('notes'),
+    closedAt: timestamp('closedAt'),
+    closedById: text('closedById').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+  },
+  (t) => [
+    index('cashRegisterLog_outletId_date_idx').on(t.outletId, t.date),
+    unique('cashRegisterLog_outletId_date_uniq').on(t.outletId, t.date),
+  ],
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
@@ -774,6 +837,9 @@ export const posSchema = {
   purchaseOrderItem,
   orderFeedback,
   orderItemFeedback,
+  restaurantExpense,
+  cashRegisterLog,
 };
+
 
 

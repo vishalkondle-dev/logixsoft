@@ -1742,6 +1742,245 @@ export const getOrderFeedback = (orderId: string) =>
     ""
   );
 
+// ─── Finance & Petty Cash ────────────────────────────────────────────────────
+
+export interface ExpenseRecord {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  title: string;
+  category: string;
+  amountPaise: number;
+  paymentMode: string;
+  paidTo?: string | null;
+  expenseDate: string;
+  notes?: string | null;
+  receiptUrl?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceSummary {
+  date: string;
+  formattedDate: string;
+  restaurantName: string;
+  outletName: string;
+  ownerPhone: string | null;
+
+  grossSalesPaise: number;
+  netSalesPaise: number;
+  totalOrdersSettled: number;
+  averageOrderValuePaise: number;
+
+  cashSalesPaise: number;
+  cashOrdersCount: number;
+  upiSalesPaise: number;
+  upiOrdersCount: number;
+  cardSalesPaise: number;
+  cardOrdersCount: number;
+
+  dineInOrdersCount: number;
+  dineInSalesPaise: number;
+  takeawayOrdersCount: number;
+  takeawaySalesPaise: number;
+  deliveryOrdersCount: number;
+  deliverySalesPaise: number;
+
+  voidOrdersCount: number;
+  voidSalesPaise: number;
+
+  totalExpensesPaise: number;
+  cashExpensesPaise: number;
+  onlineExpensesPaise: number;
+  categoryExpenses: Array<{ category: string; label: string; amountPaise: number; count: number }>;
+
+  openingFloatPaise: number;
+  cashInHandPaise: number;
+  netProfitPaise: number;
+
+  topItems: Array<{ name: string; qty: number; totalPaise: number }>;
+}
+
+export interface CashRegisterData {
+  id?: string;
+  outletId: string;
+  date: string;
+  openingFloatPaise: number;
+  cashWithdrawnPaise: number;
+  closingCountedPaise?: number | null;
+  notes?: string | null;
+}
+
+export const getExpenseSummary = (
+  restaurantId: string,
+  outletId?: string | null,
+  date?: string
+) => {
+  const q = new URLSearchParams();
+  if (outletId) q.set("outletId", outletId);
+  if (date) q.set("date", date);
+  const qs = q.toString();
+  return apiFetch<FinanceSummary>(
+    `/expenses/summary${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+export const getExpenses = (
+  restaurantId: string,
+  params?: {
+    outletId?: string | null;
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    paymentMode?: string;
+    limit?: number;
+    offset?: number;
+  }
+) => {
+  const q = new URLSearchParams();
+  if (params?.outletId) q.set("outletId", params.outletId);
+  if (params?.startDate) q.set("startDate", params.startDate);
+  if (params?.endDate) q.set("endDate", params.endDate);
+  if (params?.category) q.set("category", params.category);
+  if (params?.paymentMode) q.set("paymentMode", params.paymentMode);
+  if (params?.limit) q.set("limit", String(params.limit));
+  if (params?.offset) q.set("offset", String(params.offset));
+  const qs = q.toString();
+  return apiFetch<{ expenses: ExpenseRecord[]; totalPaise: number; count: number }>(
+    `/expenses${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    params?.outletId
+  );
+};
+
+export const createExpense = (
+  restaurantId: string,
+  data: {
+    title: string;
+    category: string;
+    amountPaise: number;
+    paymentMode: string;
+    paidTo?: string | null;
+    expenseDate: string;
+    notes?: string | null;
+    receiptUrl?: string | null;
+    outletId?: string;
+  },
+  outletId?: string | null
+) =>
+  apiFetch<ExpenseRecord>(
+    `/expenses`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const updateExpense = (
+  restaurantId: string,
+  id: string,
+  data: Partial<{
+    title: string;
+    category: string;
+    amountPaise: number;
+    paymentMode: string;
+    paidTo?: string | null;
+    expenseDate: string;
+    notes?: string | null;
+    receiptUrl?: string | null;
+  }>,
+  outletId?: string | null
+) =>
+  apiFetch<ExpenseRecord>(
+    `/expenses/${id}`,
+    restaurantId,
+    { method: "PUT", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const deleteExpense = (
+  restaurantId: string,
+  id: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; id: string }>(
+    `/expenses/${id}`,
+    restaurantId,
+    { method: "DELETE" },
+    outletId
+  );
+
+export const getCashRegister = (
+  restaurantId: string,
+  outletId?: string | null,
+  date?: string
+) => {
+  const q = new URLSearchParams();
+  if (outletId) q.set("outletId", outletId);
+  if (date) q.set("date", date);
+  const qs = q.toString();
+  return apiFetch<CashRegisterData>(
+    `/expenses/cash-register${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+export const setCashRegister = (
+  restaurantId: string,
+  data: {
+    date: string;
+    openingFloatPaise?: number;
+    cashWithdrawnPaise?: number;
+    closingCountedPaise?: number | null;
+    notes?: string | null;
+    outletId?: string;
+  },
+  outletId?: string | null
+) =>
+  apiFetch<CashRegisterData>(
+    `/expenses/cash-register`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const sendClosingReportWhatsApp = (
+  restaurantId: string,
+  outletId: string,
+  phone?: string,
+  date?: string
+) =>
+  apiFetch<{ success: boolean; recipientPhone: string; message: string; summary: FinanceSummary }>(
+    `/expenses/send-closing-report`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ outletId, phone, date }) },
+    outletId
+  );
+
+export const getClosingReportPreview = (
+  restaurantId: string,
+  outletId: string,
+  date?: string
+) => {
+  const q = new URLSearchParams();
+  if (outletId) q.set("outletId", outletId);
+  if (date) q.set("date", date);
+  const qs = q.toString();
+  return apiFetch<{ summary: FinanceSummary; message: string; recipientPhone: string | null }>(
+    `/expenses/closing-report-preview${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+
 
 
 

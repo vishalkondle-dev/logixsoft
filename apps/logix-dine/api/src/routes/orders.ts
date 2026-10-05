@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, ne, and, or, sql, desc, inArray } from 'drizzle-orm';
+import { eq, ne, and, or, sql, desc, inArray, asc } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { appSchema } from '../db';
@@ -210,11 +210,13 @@ app.post(
             .where(eq(appSchema.menuItem.restaurantId, restaurantId));
           const menuMap = new Map(menuItems.map((m: any) => [m.id, m]));
 
+          let idx = 0;
           for (const item of parsed.data.items) {
             const menuItem = menuMap.get(item.itemId) as any;
             if (!menuItem) continue;
             const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, item);
             subtotalPaise += pricePaiseSnapshot * item.qty;
+            const itemCreatedAt = new Date(now.getTime() + idx++);
             orderItemsToInsert.push({
               id: generateId('orderItem'),
               orderId: id,
@@ -230,8 +232,8 @@ app.post(
               settledMethod: null,
               settledAt: null,
               note: item.note ? item.note.trim() : null,
-              createdAt: now,
-              updatedAt: now,
+              createdAt: itemCreatedAt,
+              updatedAt: itemCreatedAt,
               createdBy: actorPhone,
               updatedBy: actorPhone,
             });
@@ -675,10 +677,12 @@ app.post(
       const menuMap = new Map(menuItems.map((m: any) => [m.id, m]));
 
       const itemsToInsert: any[] = [];
+      let roundIdx = 0;
       for (const item of newItems) {
         const menuItem = menuMap.get(item.itemId) as any;
         if (!menuItem) continue;
         const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, item);
+        const itemCreatedAt = new Date(now.getTime() + roundIdx++);
         itemsToInsert.push({
           id: generateId('orderItem'),
           orderId,
@@ -692,8 +696,8 @@ app.post(
           status: 'ORDERED',
           paymentStatus: 'UNPAID',
           note: item.note ? item.note.trim() : null,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: itemCreatedAt,
+          updatedAt: itemCreatedAt,
           createdBy: actorPhone,
           updatedBy: actorPhone,
         });
@@ -1330,7 +1334,11 @@ app.get(
 
       const orderIds = orders.map((o: any) => o.id);
       const items = orderIds.length
-        ? await db.select().from(appSchema.saleOrderItem).where(inArray(appSchema.saleOrderItem.orderId, orderIds))
+        ? await db
+            .select()
+            .from(appSchema.saleOrderItem)
+            .where(inArray(appSchema.saleOrderItem.orderId, orderIds))
+            .orderBy(asc(appSchema.saleOrderItem.createdAt), asc(appSchema.saleOrderItem.id))
         : [];
       const allDeliveries = orderIds.length
         ? await db.select().from(appSchema.deliveryOrder).where(inArray(appSchema.deliveryOrder.orderId, orderIds))
@@ -1410,7 +1418,11 @@ app.get(
 
       const orderIds = orders.map((o: any) => o.id);
       const items = orderIds.length
-        ? await db.select().from(appSchema.saleOrderItem).where(inArray(appSchema.saleOrderItem.orderId, orderIds))
+        ? await db
+            .select()
+            .from(appSchema.saleOrderItem)
+            .where(inArray(appSchema.saleOrderItem.orderId, orderIds))
+            .orderBy(asc(appSchema.saleOrderItem.createdAt), asc(appSchema.saleOrderItem.id))
         : [];
       const itemsByOrder = new Map<string, any[]>();
       for (const item of items) {

@@ -605,13 +605,7 @@ export default function KitchenPage() {
 
                     {/* Items List */}
                     <Stack gap={6} mb="md">
-                      {([...(items || [])]
-                        .sort(
-                          (a: any, b: any) =>
-                            (a.round || 1) - (b.round || 1) ||
-                            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                        ))
-                        .map((item: any) => {
+                      {(items || []).map((item: any) => {
                           const itemStatus = item.status || "ORDERED";
                           const isCancelled = itemStatus === "CANCELLED";
                           const isServed = itemStatus === "SERVED";

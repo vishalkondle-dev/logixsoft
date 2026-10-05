@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { sql, eq, and, desc, inArray, or, isNull } from 'drizzle-orm';
+import { sql, eq, and, desc, inArray, or, isNull, asc } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
@@ -89,6 +89,7 @@ async function handleGetPortalSession(c: any) {
           .select()
           .from(appSchema.saleOrderItem)
           .where(inArray(appSchema.saleOrderItem.orderId, orderIds))
+          .orderBy(asc(appSchema.saleOrderItem.createdAt), asc(appSchema.saleOrderItem.id))
       : [];
 
     const deliveryRows = orderIds.length > 0
@@ -475,12 +476,14 @@ app.post(
 
       let subtotalPaise = 0;
       const itemsToInsert: any[] = [];
+      let idx = 0;
 
       for (const item of parsed.data.items) {
         const menuItem = menuMap.get(item.itemId) as any;
         if (!menuItem) continue;
         const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, item);
         subtotalPaise += pricePaiseSnapshot * item.qty;
+        const itemCreatedAt = new Date(now.getTime() + idx++);
         itemsToInsert.push({
           id: generateId('orderItem'),
           orderId,
@@ -494,8 +497,8 @@ app.post(
           status: 'ORDERED',
           paymentStatus: 'UNPAID',
           note: item.note ? item.note.trim() : null,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: itemCreatedAt,
+          updatedAt: itemCreatedAt,
           createdBy: customerPhone,
           updatedBy: customerPhone,
         });
@@ -642,10 +645,12 @@ app.post(
       const menuMap = new Map(menuItems.map((m: any) => [m.id, m]));
 
       const itemsToInsert: any[] = [];
+      let roundIdx = 0;
       for (const item of newItems) {
         const menuItem = menuMap.get(item.itemId) as any;
         if (!menuItem) continue;
         const { nameSnapshot, pricePaiseSnapshot, variant, addons } = resolveOrderItemDetails(menuItem, item);
+        const itemCreatedAt = new Date(now.getTime() + roundIdx++);
         itemsToInsert.push({
           id: generateId('orderItem'),
           orderId,
@@ -659,8 +664,8 @@ app.post(
           status: 'ORDERED',
           paymentStatus: 'UNPAID',
           note: item.note ? item.note.trim() : null,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: itemCreatedAt,
+          updatedAt: itemCreatedAt,
           createdBy: customerPhone,
           updatedBy: customerPhone,
         });

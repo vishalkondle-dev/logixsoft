@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, or, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, inArray, asc } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { appSchema } from '../db';
@@ -86,7 +86,11 @@ app.get(
 
       const orderIds = orders.map((o: any) => o.id);
       const items = orderIds.length
-        ? await db.select().from(appSchema.saleOrderItem).where(sql`${appSchema.saleOrderItem.orderId} IN ${orderIds}`)
+        ? await db
+            .select()
+            .from(appSchema.saleOrderItem)
+            .where(sql`${appSchema.saleOrderItem.orderId} IN ${orderIds}`)
+            .orderBy(asc(appSchema.saleOrderItem.createdAt), asc(appSchema.saleOrderItem.id))
         : [];
       const allDeliveries = orderIds.length
         ? await db.select().from(appSchema.deliveryOrder).where(sql`${appSchema.deliveryOrder.orderId} IN ${orderIds}`)

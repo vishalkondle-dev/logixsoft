@@ -1,4 +1,4 @@
-import { eq, and, sql, or } from 'drizzle-orm';
+import { eq, and, sql, or, asc } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { computeOrderStatus } from '@logixsoft/logix-dine/types/pos-schema';
@@ -160,7 +160,8 @@ export async function getOrderWithItems(db: any, orderId: string, restaurantId: 
     db
       .select()
       .from(appSchema.saleOrderItem)
-      .where(eq(appSchema.saleOrderItem.orderId, orderId)),
+      .where(eq(appSchema.saleOrderItem.orderId, orderId))
+      .orderBy(asc(appSchema.saleOrderItem.createdAt), asc(appSchema.saleOrderItem.id)),
     db
       .select()
       .from(appSchema.orderItemAudit)

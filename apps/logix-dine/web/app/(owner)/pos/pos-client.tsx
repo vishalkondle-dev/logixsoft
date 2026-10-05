@@ -16,7 +16,7 @@ import {
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
   IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
   IconTruckDelivery, IconShoppingBag, IconQrcode, IconUsers, IconNotes, IconCircleFilled,
-  IconReceiptTax, IconDiscount2, IconPercentage, IconWallet,
+  IconReceiptTax, IconDiscount2, IconPercentage, IconWallet, IconCurrencyRupee,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -2164,21 +2164,20 @@ export default function POSPage() {
                   </Indicator>
                 </Tooltip>
 
-                {/* Fast Petty Cash / Expense Outflow Button */}
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="orange"
-                  leftSection={<IconWallet size={15} />}
-                  onClick={() => setPettyCashModalOpen(true)}
-                  style={{
-                    flexShrink: 0,
-                    fontWeight: 600,
-                    height: 29,
-                  }}
-                >
-                  Petty Cash
-                </Button>
+                {/* Fast Petty Cash / Expense Outflow ActionIcon */}
+                <Tooltip label="Petty Cash" withArrow>
+                  <ActionIcon
+                    size={29}
+                    variant="subtle"
+                    color="orange"
+                    radius="md"
+                    onClick={() => setPettyCashModalOpen(true)}
+                    aria-label="Petty Cash"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <IconCurrencyRupee size={17} />
+                  </ActionIcon>
+                </Tooltip>
 
                 {/* Thermal Printer Status / Connect */}
                 <PrinterButton compact />

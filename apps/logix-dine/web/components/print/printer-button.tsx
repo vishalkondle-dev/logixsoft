@@ -9,6 +9,7 @@ import {
   Stack,
   ActionIcon,
   Tooltip,
+  Indicator,
   Modal,
   Paper,
   TextInput,
@@ -178,36 +179,41 @@ export function PrinterButton({ compact = false }: { compact?: boolean } = {}) {
   if (compact) {
     if (!isSupported()) {
       return (
-        <Tooltip label="Web Bluetooth requires Google Chrome or Microsoft Edge">
-          <Button
-            size="xs"
+        <Tooltip label="Web Bluetooth requires Google Chrome or Microsoft Edge" withArrow>
+          <ActionIcon
+            size={29}
             variant="subtle"
             color="gray"
-            leftSection={<IconBluetooth size={14} />}
             disabled
-            style={{ flexShrink: 0, fontWeight: 600, height: 29 }}
+            radius="md"
+            aria-label="Thermal Printer Unsupported"
+            style={{ flexShrink: 0 }}
           >
-            Bluetooth N/A
-          </Button>
+            <IconPrinter size={17} />
+          </ActionIcon>
         </Tooltip>
       );
     }
     return status === "paired" ? (
       <Menu shadow="md" width={220} position="bottom-end">
         <Menu.Target>
-          <Button
-            size="xs"
-            variant="light"
-            color="green"
-            leftSection={<IconBluetooth size={14} />}
-            rightSection={<IconChevronDown size={12} />}
-            style={{ flexShrink: 0, fontWeight: 600, height: 29 }}
-          >
-            {name || "Thermal Printer"}
-          </Button>
+          <Tooltip label={`Thermal Printer: ${name || "Connected"}`} withArrow>
+            <Indicator size={8} offset={2} color="green" withBorder processing>
+              <ActionIcon
+                size={29}
+                variant="light"
+                color="green"
+                radius="md"
+                aria-label={`Thermal Printer: ${name || "Connected"}`}
+                style={{ flexShrink: 0 }}
+              >
+                <IconPrinter size={17} />
+              </ActionIcon>
+            </Indicator>
+          </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Label>Thermal Printer Connected</Menu.Label>
+          <Menu.Label>{name || "Thermal Printer Connected"}</Menu.Label>
           <Menu.Item leftSection={<IconPrinter size={14} />} onClick={handleTest} disabled={testing}>
             Test Print
           </Menu.Item>
@@ -221,17 +227,20 @@ export function PrinterButton({ compact = false }: { compact?: boolean } = {}) {
         </Menu.Dropdown>
       </Menu>
     ) : (
-      <Button
-        size="xs"
-        variant="light"
-        color="orange"
-        leftSection={<IconBluetooth size={14} />}
-        loading={pairing}
-        onClick={handlePair}
-        style={{ flexShrink: 0, fontWeight: 600, height: 29 }}
-      >
-        Connect Thermal Printer
-      </Button>
+      <Tooltip label="Connect Thermal Printer" withArrow>
+        <ActionIcon
+          size={29}
+          variant="light"
+          color="orange"
+          radius="md"
+          loading={pairing}
+          onClick={handlePair}
+          aria-label="Connect Thermal Printer"
+          style={{ flexShrink: 0 }}
+        >
+          <IconPrinter size={17} />
+        </ActionIcon>
+      </Tooltip>
     );
   }
 

@@ -2195,7 +2195,7 @@ export default function POSPage() {
             </ScrollArea>
 
             {/* Item Grid - scrollable with uniform card dimensions */}
-            <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }} pb={{ base: 100, md: "xs" }}>
+            <ScrollArea flex={1} type="auto" style={{ minHeight: 0 }} pb="xs">
               <SimpleGrid cols={{ base: 2, xs: 3, sm: 2, md: 3, lg: 4 }} spacing="sm" verticalSpacing="sm">
                 {filteredItems.map((item: any) => {
                   const inCartQty = cartItems

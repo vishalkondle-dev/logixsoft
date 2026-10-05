@@ -157,7 +157,7 @@ export default function TablesPage() {
     const seenIds = new Set<string>();
     for (const entry of orders) {
       if (entry.order?.tableNo && isTableMatch(table.name, entry.order.tableNo)) {
-        if (!seenIds.has(entry.order.id)) {
+        if (!entry.order?.tableFreedAt && !seenIds.has(entry.order.id)) {
           seenIds.add(entry.order.id);
           matched.push(entry);
         }
@@ -194,8 +194,11 @@ export default function TablesPage() {
       return sum + (o.order?.status === "PAID" ? Math.max(p, o.order?.subtotalPaise || 0) : p);
     }, 0);
     const duePaise = Math.max(0, totalPaise - paidPaise);
-    const maxItemRound = allItems.reduce((m: number, it: any) => Math.max(m, it.round || 1), 1);
-    const roundsCount = Math.max(tableOrders.length, maxItemRound);
+    
+    // Group and count rounds strictly based on distinct item rounds
+    const roundNumbers = Array.from(new Set(allItems.map((it: any) => it.round || 1))).sort((a: number, b: number) => a - b);
+    const roundsCount = roundNumbers.length > 0 ? Math.max(...roundNumbers) : (tableOrders.length > 0 ? 1 : 0);
+    
     const tokensStr = tableOrders.map((o: any) => `#${o.order.orderNo}`).join(", ");
     const oldestCreatedAt = tableOrders.reduce(
       (oldest: string, o: any) => (!oldest || new Date(o.order.createdAt) < new Date(oldest) ? o.order.createdAt : oldest),
@@ -436,11 +439,25 @@ export default function TablesPage() {
         subtotalPaise: session.totalPaise,
       });
       const result = await printTicket(payload);
-      notifications.show({
-        title: "Bill Printed",
-        message: result === "ble" ? "Sent to Bluetooth printer" : "Sent to browser print",
-        color: "green",
-      });
+      if (result === "ble") {
+        notifications.show({
+          title: "Bill Printed",
+          message: "Sent to Bluetooth printer",
+          color: "green",
+        });
+      } else if (result === "browser") {
+        notifications.show({
+          title: "Bill Printed",
+          message: "Sent to default printer",
+          color: "green",
+        });
+      } else {
+        notifications.show({
+          title: "Print Failed",
+          message: "Could not send to printer. Please check printer connection.",
+          color: "red",
+        });
+      }
     } catch (err: any) {
       notifications.show({ title: "Print Failed", message: err.message || "Could not print bill", color: "red" });
     } finally {

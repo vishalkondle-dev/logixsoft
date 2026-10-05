@@ -4,9 +4,11 @@ import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient } from '../db';
 import { appSchema } from '../db';
-import { requireAuth } from '../lib/tenancy';
+import { requireAuth, invalidateStaffSessions } from '../lib/tenancy';
+import { extractSessionToken, deleteSessionPayload } from '../lib/cache';
 import { CreateRestaurantSchema, RestaurantSchema, RestaurantOutletSchema } from '@logixsoft/logix-dine/schemas/pos';
 import { toRestaurant, toOutlet } from '@logixsoft/logix-dine/mappers/pos';
+import { DEFAULT_FREE_TRIAL_DAYS } from '@logixsoft/logix-dine/types/plans';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
 import { ensureDefaultRoles } from './roles';
@@ -87,6 +89,8 @@ app.post(
         updatedBy: actorPhone,
       });
 
+      const trialEndsAt = new Date(now.getTime() + DEFAULT_FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
       await tx.insert(appSchema.restaurantOutlet).values({
         id: outletId,
         restaurantId,
@@ -95,7 +99,8 @@ app.post(
         status: 'ACTIVE',
         planTier: 'BASIC',
         billingCycle: 'MONTHLY',
-        trialEndsAt: null,
+        trialEndsAt,
+        subscriptionExpiresAt: trialEndsAt,
         createdAt: now,
         updatedAt: now,
         createdBy: actorPhone,
@@ -127,6 +132,19 @@ app.post(
 
     // Seed default system roles for the new restaurant
     await ensureDefaultRoles(db, restaurantId, actorPhone || 'system');
+
+    // Invalidate user sessions in KV so newly assigned OWNER role & restaurant memberships are live instantly
+    const kvNamespace = (c.env as any)?.CACHE;
+    if (kvNamespace) {
+      await invalidateStaffSessions(db, kvNamespace, [{ userId: user.id, phone: actorPhone }]);
+      const token = extractSessionToken(c.req.header('Cookie') || '', c.req.header('Authorization') || '');
+      if (token) {
+        await deleteSessionPayload(kvNamespace, token).catch(() => {});
+        if (token.includes('.')) {
+          await deleteSessionPayload(kvNamespace, token.split('.')[0]).catch(() => {});
+        }
+      }
+    }
 
     const [newRestaurant] = await db
       .select()

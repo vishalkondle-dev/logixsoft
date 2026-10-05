@@ -13,8 +13,8 @@ import { notifications } from '@mantine/notifications';
 import { useAuthStore } from './auth-store';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://dine-api.logixsoft.in';
-const RESTAURANT_COOKIE = 'dine.restaurantId';
-const OUTLET_COOKIE = 'dine.outletId';
+export const RESTAURANT_COOKIE = 'dine.restaurantId';
+export const OUTLET_COOKIE = 'dine.outletId';
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -22,7 +22,7 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match[2]) : null;
 }
 
-function setCookie(name: string, value: string, days = 365) {
+export function setCookie(name: string, value: string, days = 365) {
   if (typeof document === 'undefined') return;
   const expires = new Date(Date.now() + days * 86400000).toUTCString();
   const isSubdomain = typeof window !== 'undefined' && window.location.hostname.includes('logixsoft.in');
@@ -70,7 +70,7 @@ export interface RestaurantState {
   // Actions
   can: (permission: string) => boolean;
   isModuleAllowed: (moduleId: PlanModuleId) => boolean;
-  setActiveRestaurant: (restaurantId: string) => void;
+  setActiveRestaurant: (restaurantId: string, preferredOutletId?: string) => Promise<void>;
   setActiveOutlet: (outletId: string) => void;
   fetchData: (restaurantId: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -219,10 +219,14 @@ export const useRestaurantStore = create<RestaurantState>((set, get) => ({
     }
   },
 
-  setActiveRestaurant: (restaurantId: string) => {
+  setActiveRestaurant: async (restaurantId: string, preferredOutletId?: string) => {
     setCookie(RESTAURANT_COOKIE, restaurantId);
+    if (preferredOutletId) {
+      setCookie(OUTLET_COOKIE, preferredOutletId);
+      updateUrlOutletId(preferredOutletId);
+    }
     set({ activeRestaurantId: restaurantId });
-    get().fetchData(restaurantId);
+    await get().fetchData(restaurantId);
   },
 
   setActiveOutlet: (outletId: string) => {

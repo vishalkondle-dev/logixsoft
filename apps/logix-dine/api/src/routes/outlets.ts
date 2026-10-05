@@ -14,6 +14,7 @@ import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 import { invalidateRestaurant, invalidateUserSession, extractSessionToken } from '../lib/cache';
 import { getSubscriptionPlans, resolveOutletPlanPricing, calculateUpgradePricing } from '../lib/plan-helpers';
+import { DEFAULT_FREE_TRIAL_DAYS } from '@logixsoft/logix-dine/types/plans';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -92,6 +93,11 @@ app.get(
         const upgradeMonthly = proPlan ? calculateUpgradePricing(o, plan, proPlan, 'MONTHLY') : null;
         const upgradeAnnual = proPlan ? calculateUpgradePricing(o, plan, proPlan, 'ANNUAL') : null;
 
+        const trialDaysRemaining = o.trialEndsAt
+          ? Math.max(0, Math.ceil((new Date(o.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+          : null;
+        const isTrial = Boolean(o.trialEndsAt && new Date(o.trialEndsAt).getTime() > Date.now());
+
         return {
           ...toOutlet(o),
           planName: plan.name,
@@ -99,6 +105,8 @@ app.get(
           annualPrice: pricing.annualPrice,
           effectivePrice: pricing.effectivePrice,
           isCustomPrice: pricing.isCustom,
+          trialDaysRemaining,
+          isTrial,
           upgradeCredit: upgradeMonthly?.isUpgrade && upgradeMonthly.unusedCredit > 0 ? {
             remainingDays: upgradeMonthly.remainingDays,
             unusedCredit: upgradeMonthly.unusedCredit,
@@ -168,6 +176,8 @@ app.post(
     const billingCycle = parsed.data.billingCycle || 'MONTHLY';
     const status = parsed.data.status || 'ACTIVE';
 
+    const trialEndsAt = new Date(now.getTime() + DEFAULT_FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
     await db.insert(appSchema.restaurantOutlet).values({
       id,
       restaurantId,
@@ -178,7 +188,8 @@ app.post(
       status,
       planTier,
       billingCycle,
-      trialEndsAt: null,
+      trialEndsAt,
+      subscriptionExpiresAt: trialEndsAt,
       isDefault: false,
       createdAt: now,
       updatedAt: now,

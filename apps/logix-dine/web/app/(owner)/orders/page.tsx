@@ -93,11 +93,25 @@ export default function OrdersPage() {
         ? buildKotPayload(selected, restaurant)
         : buildBillPayload(selected, restaurant);
       const result = await printTicket(payload);
-      notifications.show({
-        title: `${type} reprinted`,
-        message: result === "ble" ? "Sent to printer" : result === "browser" ? "Sent to browser print" : "Print failed",
-        color: result === "error" ? "red" : "green",
-      });
+      if (result === "ble") {
+        notifications.show({
+          title: `${type} Reprinted`,
+          message: "Sent to Bluetooth printer",
+          color: "green",
+        });
+      } else if (result === "browser") {
+        notifications.show({
+          title: `${type} Reprinted`,
+          message: "Sent to default printer",
+          color: "green",
+        });
+      } else {
+        notifications.show({
+          title: "Print Failed",
+          message: "Could not send to printer. Please check printer connection.",
+          color: "red",
+        });
+      }
     } finally {
       setReprinting(null);
     }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   AppShell, Group, Text, Button, ActionIcon, Avatar, Menu,
-  Tooltip, Badge, Loader, Box, UnstyledButton, ScrollArea, Stack, Divider, Burger,
+  Tooltip, Badge, Loader, Box, UnstyledButton, ScrollArea, Stack, Divider, Burger, ThemeIcon,
 } from "@mantine/core";
 import {
   IconLogin, IconLogout, IconShoppingCart, IconHome,
@@ -15,12 +15,12 @@ import {
   IconToolsKitchen2, IconClock, IconReceiptTax, IconUsers,
   IconPrinter, IconCreditCard, IconCoffee, IconQrcode,
   IconBrandWhatsapp, IconCalendarEvent, IconLayoutGrid, IconPackages, IconTruckDelivery,
-  IconStar, IconShieldLock, IconArrowRight,
+  IconStar, IconShieldLock, IconArrowRight, IconSparkles,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
-import { isModuleAllowedForOutlet, type PlanModuleId } from "@logixsoft/logix-dine/types/plans";
+import { isModuleAllowedForOutlet, type PlanModuleId, DEFAULT_FREE_TRIAL_DAYS } from "@logixsoft/logix-dine/types/plans";
 
 // Staff navigation items (Settings removed from menu — now in left sidebar via top-left hamburger)
 const STAFF_NAV_ITEMS = [
@@ -142,6 +142,13 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   );
   const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
   const isCustomer = isAuthenticated && !isStaffOrOwner;
+
+  const isTrial = Boolean(
+    activeOutlet?.trialEndsAt && new Date(activeOutlet.trialEndsAt).getTime() > Date.now()
+  );
+  const trialDaysLeft = isTrial
+    ? Math.max(1, Math.ceil((new Date(activeOutlet!.trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   const isSettingsPath = Boolean(pathname?.startsWith("/settings"));
   const [desktopSidebarOpen, setDesktopSidebarOpen] = React.useState<boolean>(isSettingsPath);
@@ -797,6 +804,43 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
             >
               Admin Portal
             </Button>
+          </Box>
+        )}
+        {!isLanding && !isPortal && !pathname?.startsWith("/admin") && isTrial && isStaffOrOwner && (
+          <Box
+            bg="#f3f0ff"
+            px={{ base: "xs", sm: "md" }}
+            py={6}
+            style={{
+              borderBottom: "1px solid #d0bfff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+              <ThemeIcon size={20} radius="xl" color="dinePrimary" variant="light" style={{ flexShrink: 0 }}>
+                <IconSparkles size={13} />
+              </ThemeIcon>
+              <Text size="xs" fw={600} c="indigo.9" lineClamp={1}>
+                {DEFAULT_FREE_TRIAL_DAYS}-Day Free Trial Active: {trialDaysLeft} {trialDaysLeft === 1 ? "day" : "days"} remaining for {activeOutlet?.name || "your branch"}.
+              </Text>
+            </Group>
+            {canAccessSettings && (
+              <Button
+                component={Link}
+                href={`/settings/billing${activeOutlet ? `?outletId=${activeOutlet.id}` : ""}`}
+                size="compact-xs"
+                variant="light"
+                color="dinePrimary"
+                radius="xl"
+                style={{ flexShrink: 0 }}
+              >
+                Setup AutoPay / Subscribe
+              </Button>
+            )}
           </Box>
         )}
         {children}

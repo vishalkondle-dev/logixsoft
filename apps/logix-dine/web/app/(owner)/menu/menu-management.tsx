@@ -460,13 +460,8 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
           )}
         </Paper>
       ) : (() => {
-        // Active category always first
-        const sortedCategories = activeCatId
-          ? [
-              ...categories.filter((c) => c.id === activeCatId),
-              ...categories.filter((c) => c.id !== activeCatId),
-            ]
-          : categories;
+        // Keep category order constant (do not move active category to first)
+        const sortedCategories = categories;
         const activeCat = categories.find((c) => c.id === activeCatId) ?? null;
         const catItems = activeCat ? items.filter((i: any) => i.categoryId === activeCat.id) : [];
 

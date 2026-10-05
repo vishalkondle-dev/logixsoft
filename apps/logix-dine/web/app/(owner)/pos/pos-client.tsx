@@ -29,6 +29,7 @@ import {
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
+import { PrinterButton } from "@/components/print/printer-button";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
 import { useOutletSync } from "@/lib/use-outlet-sync";
 import { getOrderChannel } from "@/lib/channel-helpers";
@@ -1349,7 +1350,7 @@ export default function POSPage() {
           .then((printResult) => {
             notifications.show({
               title: `Round ${currentRoundNum} sent to kitchen!`,
-              message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "KOT dispatched"}`,
+              message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) · ${printResult === "ble" ? "KOT printed" : "KOT dispatched"}`,
               color: "dinePrimary",
               icon: <IconCheck size={16} />,
             });
@@ -1463,7 +1464,7 @@ export default function POSPage() {
           const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
           notifications.show({
             title: `Order #${created.order.orderNo} sent to kitchen`,
-            message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
+            message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed" : "Order placed"}`,
             color: "dinePrimary",
             icon: <IconCheck size={16} />,
           });
@@ -1510,12 +1511,27 @@ export default function POSPage() {
               addonIds: i.addons?.map((a) => a.id),
             })),
             adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
-            settle: { method: settleMethod },
           },
           activeOutlet.id
         );
 
         const currentRoundNum = addedRound.round || nextRound;
+
+        let settledOrder = addedRound;
+        try {
+          settledOrder = await settleOrder(
+            restaurantId,
+            activeTableOrder.order.id,
+            {
+              method: settleMethod,
+              customerPhone: customerPhone.trim() || undefined,
+              adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
+            },
+            activeOutlet.id
+          );
+        } catch (settleErr) {
+          console.error("[pos] settleOrder failed:", settleErr);
+        }
 
         setCartItems([]);
         setAdjustments([]);
@@ -1523,13 +1539,9 @@ export default function POSPage() {
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
 
-        // Print KOT for newly added round
-        const kotPayload = buildKotPayload(
-          { order: activeTableOrder.order, items: addedRound.addedItems || cartItems },
-          restaurant,
-          { round: currentRoundNum }
-        );
-        printTicketSilent(kotPayload).catch(() => {});
+        // Automatically print Bill to default paired printer after Settle & Send
+        const billPayload = buildBillPayload(settledOrder || addedRound, restaurant);
+        printTicket(billPayload).catch(() => {});
 
         notifications.show({
           title: `Round ${currentRoundNum} Settled & Sent!`,
@@ -1634,9 +1646,8 @@ export default function POSPage() {
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
 
-        // Print KOT + Bill silently (BLE only — no browser popup after settle)
-        printTicketSilent(buildKotPayload(result, restaurant, { round: 1 })).catch(() => {});
-        printTicketSilent(buildBillPayload(result, restaurant)).catch(() => {});
+        // Automatically print Bill to default paired printer!
+        printTicket(buildBillPayload(result, restaurant)).catch(() => {});
 
         const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
         notifications.show({
@@ -2070,6 +2081,9 @@ export default function POSPage() {
                 >
                   Deliveries {activeDeliveryOrders.length > 0 ? `(${activeDeliveryOrders.length})` : ""}
                 </Button>
+
+                {/* Thermal Printer Status / Connect */}
+                <PrinterButton compact />
               </Group>
             </Group>
 

@@ -9,6 +9,11 @@ export type PlanTier = (typeof PLAN_TIERS)[number];
 export const OUTLET_STATUSES = ['ACTIVE', 'SUSPENDED', 'EXPIRED'] as const;
 export type OutletStatus = (typeof OUTLET_STATUSES)[number];
 
+/**
+ * Standard free trial duration (in days) granted to newly onboarded outlets.
+ */
+export const DEFAULT_FREE_TRIAL_DAYS = 7;
+
 export const PLAN_MODULE_IDS = [
   // ─── Starter / Basic Modules (₹999/mo) ───
   'pos',           // POS Counter Terminal & Billing
@@ -486,6 +491,7 @@ export interface OutletSubscriptionState {
   status: string; // 'ACTIVE' | 'SUSPENDED' | 'EXPIRED'
   planTier: string; // 'BASIC' | 'PRO'
   subscriptionExpiresAt?: string | null;
+  trialEndsAt?: string | null;
 }
 
 /**
@@ -500,6 +506,7 @@ export function isPlanSufficient(currentPlan: string | undefined | null, require
 
 /**
  * Checks if an outlet subscription is active and not expired/suspended.
+ * Verifies both paid subscription expiration and free trial expiration.
  */
 export function isSubscriptionActive(outlet: OutletSubscriptionState | null | undefined): boolean {
   if (!outlet) return true;
@@ -508,11 +515,33 @@ export function isSubscriptionActive(outlet: OutletSubscriptionState | null | un
   const now = Date.now();
   if (outlet.subscriptionExpiresAt) {
     if (new Date(outlet.subscriptionExpiresAt).getTime() < now) {
-      return false; // Paid subscription expired
+      return false; // Paid subscription or trial expired
+    }
+  } else if (outlet.trialEndsAt) {
+    if (new Date(outlet.trialEndsAt).getTime() < now) {
+      return false; // Free trial expired
     }
   }
 
   return true;
+}
+
+/**
+ * Checks if an outlet is currently operating within its active free trial period.
+ */
+export function isOutletInFreeTrial(outlet: OutletSubscriptionState | null | undefined): boolean {
+  if (!outlet || !outlet.trialEndsAt) return false;
+  return new Date(outlet.trialEndsAt).getTime() > Date.now();
+}
+
+/**
+ * Returns the number of days remaining in the free trial period (minimum 0).
+ */
+export function getTrialDaysRemaining(outlet: OutletSubscriptionState | null | undefined): number {
+  if (!outlet || !outlet.trialEndsAt) return 0;
+  const diffMs = new Date(outlet.trialEndsAt).getTime() - Date.now();
+  if (diffMs <= 0) return 0;
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
 /**

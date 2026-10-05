@@ -51,6 +51,7 @@ import {
   initiateOutletAutopay,
   cancelOutletAutopay,
 } from "@/lib/api-client";
+import { DEFAULT_FREE_TRIAL_DAYS } from "@logixsoft/logix-dine/types/plans";
 
 export function BillingManagement() {
   const { restaurant, activeOutlet, outlets: ctxOutlets } = useRestaurant();
@@ -319,6 +320,13 @@ export function BillingManagement() {
     !isExpired &&
     Boolean(currentOutlet.subscriptionExpiresAt);
 
+  const isTrial = Boolean(
+    currentOutlet.trialEndsAt && new Date(currentOutlet.trialEndsAt).getTime() > Date.now()
+  );
+  const trialDaysLeft = isTrial
+    ? Math.max(1, Math.ceil((new Date(currentOutlet.trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
   // Filter invoices strictly to the active outlet
   const outletInvoices = invoices.filter(
     (inv: any) =>
@@ -358,8 +366,8 @@ export function BillingManagement() {
               </Group>
             </div>
             <Group gap={6} mt="xs" align="center">
-              <Badge size="xs" color={isExpired ? "red" : "teal"} variant="light">
-                {currentOutlet.status || "ACTIVE"}
+              <Badge size="xs" color={isExpired ? "red" : isTrial ? "violet" : "teal"} variant="light">
+                {isExpired ? "EXPIRED" : isTrial ? `${trialDaysLeft}d Trial` : (currentOutlet.status || "ACTIVE")}
               </Badge>
               {currentOutlet.isDefault && (
                 <Badge size="xs" color="dinePrimary" variant="outline">
@@ -461,22 +469,79 @@ export function BillingManagement() {
                     mt={4}
                     style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                   >
-                    {currentOutlet.billingCycle === "ANNUAL" ? "Annual" : "Monthly"} SaaS
+                    {isTrial ? `${DEFAULT_FREE_TRIAL_DAYS}-Day Trial` : `${currentOutlet.billingCycle === "ANNUAL" ? "Annual" : "Monthly"} SaaS`}
                   </Title>
                 </Box>
-                <ThemeIcon size={40} radius="md" color="orange" variant="light" style={{ flexShrink: 0 }}>
+                <ThemeIcon size={40} radius="md" color={isTrial ? "violet" : "orange"} variant="light" style={{ flexShrink: 0 }}>
                   <IconCalendar size={22} />
                 </ThemeIcon>
               </Group>
             </div>
-            <Text size="xs" c="dimmed" mt="xs" truncate>
-              {currentOutlet.subscriptionExpiresAt
+            <Text size="xs" c={isTrial ? "violet" : "dimmed"} mt="xs" truncate>
+              {isTrial
+                ? `Trial ends: ${new Date(currentOutlet.trialEndsAt!).toLocaleDateString("en-IN")}`
+                : currentOutlet.subscriptionExpiresAt
                 ? `Expires: ${new Date(currentOutlet.subscriptionExpiresAt).toLocaleDateString("en-IN")}`
                 : "Active period"}
             </Text>
           </Paper>
         </Grid.Col>
       </Grid>
+
+      {/* 2. Free Trial Banner if active */}
+      {isTrial && (
+        <Paper
+          p="md"
+          radius="md"
+          withBorder
+          style={{
+            background: "linear-gradient(135deg, rgba(121, 80, 242, 0.08) 0%, rgba(243, 240, 255, 0.5) 100%)",
+            borderColor: "rgba(121, 80, 242, 0.3)",
+          }}
+        >
+          <Group justify="space-between" align="center" wrap="wrap" gap="md">
+            <Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+              <ThemeIcon size={42} radius="md" color="dinePrimary" variant="light" style={{ flexShrink: 0 }}>
+                <IconSparkles size={22} />
+              </ThemeIcon>
+              <div>
+                <Group gap="xs" align="center">
+                  <Text fw={700} size="sm">
+                    {DEFAULT_FREE_TRIAL_DAYS}-Day Free Trial Active
+                  </Text>
+                  <Badge color="dinePrimary" variant="filled" size="xs">
+                    {trialDaysLeft} {trialDaysLeft === 1 ? "Day" : "Days"} Remaining
+                  </Badge>
+                </Group>
+                <Text size="xs" c="dimmed" mt={2}>
+                  Full access to Starter POS counter, digital receipts, and floor tables until {new Date(currentOutlet.trialEndsAt!).toLocaleDateString("en-IN")}. Set up AutoPay or pay to avoid service disruption.
+                </Text>
+              </div>
+            </Group>
+            <Group gap="xs">
+              <Button
+                size="xs"
+                color="dinePrimary"
+                leftSection={<IconSparkles size={14} />}
+                onClick={() => handleStartAutopay()}
+                loading={initiatingAutopay}
+              >
+                Setup AutoPay
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                color="teal"
+                leftSection={<IconCreditCard size={14} />}
+                onClick={() => handleStartOneTimePay()}
+                loading={initiatingPayment}
+              >
+                Pay Once
+              </Button>
+            </Group>
+          </Group>
+        </Paper>
+      )}
 
       {/* 2. Active Outlet License & Subscription Card */}
       <Card withBorder radius="md" p="lg">

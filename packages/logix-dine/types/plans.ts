@@ -9,6 +9,11 @@ export type PlanTier = (typeof PLAN_TIERS)[number];
 export const OUTLET_STATUSES = ['ACTIVE', 'SUSPENDED', 'EXPIRED'] as const;
 export type OutletStatus = (typeof OUTLET_STATUSES)[number];
 
+/**
+ * Standard free trial duration (in days) granted to newly onboarded outlets.
+ */
+export const DEFAULT_FREE_TRIAL_DAYS = 7;
+
 export const PLAN_MODULE_IDS = [
   // ─── Starter / Basic Modules (₹999/mo) ───
   'pos',           // POS Counter Terminal & Billing
@@ -25,6 +30,7 @@ export const PLAN_MODULE_IDS = [
   'qr_menu',       // QR menu view & table ordering
   'settings',      // Store profile & outlet settings
   'billing',       // Subscription & SaaS billing (always accessible)
+  'finance',       // Expense tracking & petty cash drawer
 
   // ─── Pro Modules (₹1,499/mo) ───
   'kitchen',       // Kitchen Display System (KDS) bump screens & stations
@@ -33,6 +39,7 @@ export const PLAN_MODULE_IDS = [
   'delivery',      // In-house delivery fleet & rider dispatch
   'aggregators',   // Online aggregators relay (Swiggy, Zomato, Magicpin, ONDC)
   'whatsapp',      // WhatsApp automated bills & order notifications
+  'campaigns',     // WhatsApp promotional campaigns & broadcasts
   'reservations',  // Table reservations & bookings
   'roles',         // Custom team roles & granular permissions matrix
 ] as const;
@@ -66,6 +73,7 @@ export const MODULE_MIN_PLAN: Record<PlanModuleId, PlanTier> = {
   qr_menu: 'BASIC',
   settings: 'BASIC',
   billing: 'BASIC',
+  finance: 'BASIC',
 
   // Pro
   kitchen: 'PRO',
@@ -74,6 +82,7 @@ export const MODULE_MIN_PLAN: Record<PlanModuleId, PlanTier> = {
   delivery: 'PRO',
   aggregators: 'PRO',
   whatsapp: 'PRO',
+  campaigns: 'PRO',
   reservations: 'PRO',
   roles: 'PRO',
 };
@@ -215,6 +224,15 @@ export const MODULE_INFO_CATALOG: Record<PlanModuleId, PlanModuleInfo> = {
     description: 'Per-branch subscription plans, license renewals, payment invoices, and plan upgrades.',
     highlights: ['Independent branch plans', 'Monthly & annual billing', 'Downloadable tax receipts', 'Instant module unlocking'],
   },
+  finance: {
+    id: 'finance',
+    name: 'Finance & Petty Cash Tracking',
+    minPlan: 'BASIC',
+    minPlanLabel: 'Starter Plan',
+    minPlanPrice: 999,
+    description: 'Daily expense logging, petty cash drawer, cash reconciliation, and net profit analytics.',
+    highlights: ['Petty cash drawer float', 'Expense vouchers & categories', 'Cash drawer reconciliation', 'Daily net profit metrics'],
+  },
 
   // ─── PRO MODULES ───
   kitchen: {
@@ -299,6 +317,20 @@ export const MODULE_INFO_CATALOG: Record<PlanModuleId, PlanModuleInfo> = {
       'Save thermal roll costs & delight customers',
       'Order dispatch & delivery arrival pings',
       'Secure WhatsApp OTP for staff logins',
+    ],
+  },
+  campaigns: {
+    id: 'campaigns',
+    name: 'WhatsApp Promotional Broadcasts',
+    minPlan: 'PRO',
+    minPlanLabel: 'Pro Plan',
+    minPlanPrice: 1499,
+    description: 'Broadcast promotional offers, festive discounts, and event updates directly to your customer base on WhatsApp.',
+    highlights: [
+      'Broadcast to all registered customer phone numbers',
+      'Personalized customer name and restaurant tags',
+      'Promo flyers and image banner attachments',
+      'Scheduled automated delivery and live WhatsApp preview',
     ],
   },
   reservations: {
@@ -486,6 +518,7 @@ export interface OutletSubscriptionState {
   status: string; // 'ACTIVE' | 'SUSPENDED' | 'EXPIRED'
   planTier: string; // 'BASIC' | 'PRO'
   subscriptionExpiresAt?: string | null;
+  trialEndsAt?: string | null;
 }
 
 /**
@@ -500,6 +533,7 @@ export function isPlanSufficient(currentPlan: string | undefined | null, require
 
 /**
  * Checks if an outlet subscription is active and not expired/suspended.
+ * Verifies both paid subscription expiration and free trial expiration.
  */
 export function isSubscriptionActive(outlet: OutletSubscriptionState | null | undefined): boolean {
   if (!outlet) return true;
@@ -508,11 +542,33 @@ export function isSubscriptionActive(outlet: OutletSubscriptionState | null | un
   const now = Date.now();
   if (outlet.subscriptionExpiresAt) {
     if (new Date(outlet.subscriptionExpiresAt).getTime() < now) {
-      return false; // Paid subscription expired
+      return false; // Paid subscription or trial expired
+    }
+  } else if (outlet.trialEndsAt) {
+    if (new Date(outlet.trialEndsAt).getTime() < now) {
+      return false; // Free trial expired
     }
   }
 
   return true;
+}
+
+/**
+ * Checks if an outlet is currently operating within its active free trial period.
+ */
+export function isOutletInFreeTrial(outlet: OutletSubscriptionState | null | undefined): boolean {
+  if (!outlet || !outlet.trialEndsAt) return false;
+  return new Date(outlet.trialEndsAt).getTime() > Date.now();
+}
+
+/**
+ * Returns the number of days remaining in the free trial period (minimum 0).
+ */
+export function getTrialDaysRemaining(outlet: OutletSubscriptionState | null | undefined): number {
+  if (!outlet || !outlet.trialEndsAt) return 0;
+  const diffMs = new Date(outlet.trialEndsAt).getTime() - Date.now();
+  if (diffMs <= 0) return 0;
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
 /**

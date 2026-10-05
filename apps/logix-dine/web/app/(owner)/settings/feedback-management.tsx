@@ -51,7 +51,7 @@ export function FeedbackManagement() {
   const { restaurant, outlets, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id || "";
 
-  const [selectedOutletId, setSelectedOutletId] = useState<string | null>(activeOutlet?.id || null);
+  const outletId = activeOutlet?.id || outlets[0]?.id || null;
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [selectedOrderType, setSelectedOrderType] = useState<string | null>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,12 +60,12 @@ export function FeedbackManagement() {
   const [replyingReview, setReplyingReview] = useState<OrderFeedbackData | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  const replyMutation = useReplyFeedback(restaurantId, selectedOutletId);
+  const replyMutation = useReplyFeedback(restaurantId, outletId);
 
   const { data, isLoading, refetch } = useOwnerFeedback(
     restaurantId,
     {
-      outletId: selectedOutletId,
+      outletId: outletId,
       rating: selectedRating,
       orderType: selectedOrderType === "ALL" ? null : selectedOrderType,
       search: searchQuery || null,
@@ -144,20 +144,9 @@ export function FeedbackManagement() {
             </div>
           </Group>
 
-          {outlets.length > 1 && (
-            <Select
-              size="xs"
-              placeholder="All Outlets"
-              data={[
-                { value: "ALL", label: "All Outlets" },
-                ...outlets.map((o) => ({ value: o.id, label: o.name })),
-              ]}
-              value={selectedOutletId || "ALL"}
-              onChange={(v) => setSelectedOutletId(v === "ALL" ? null : v)}
-              style={{ width: 190 }}
-              leftSection={<IconBuildingStore size={14} />}
-            />
-          )}
+          <Badge size="md" color="dinePrimary" variant="light" leftSection={<IconBuildingStore size={14} />}>
+            {activeOutlet?.name || outlets[0]?.name || "Active Outlet"}
+          </Badge>
         </Group>
       </Paper>
 

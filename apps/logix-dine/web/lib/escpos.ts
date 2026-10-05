@@ -1,10 +1,10 @@
-// ─── ESC/POS encoder for 58mm thermal printers (32 chars/line) ───────────────
-// ₹ is encoded as UTF-8 (3 bytes). Most modern 58mm printers handle it;
-// if yours doesn't, swap RUPEE below to "Rs." and adjust column math.
+// ─── ESC/POS encoder for 58mm thermal printers (30 chars/line) ───────────────
+// Uses standard ASCII and pure hardware alignment for 100% printer compatibility.
 
 import type { TicketPayload } from "./ticket";
 
 const ESC_INIT:     number[] = [0x1b, 0x40];           // Initialize
+const MARGIN_ZERO:  number[] = [0x1d, 0x4c, 0x00, 0x00]; // GS L 0 0: Set left margin to 0
 const ALIGN_CENTER: number[] = [0x1b, 0x61, 0x01];    // Center
 const ALIGN_LEFT:   number[] = [0x1b, 0x61, 0x00];    // Left
 const BOLD_ON:      number[] = [0x1b, 0x45, 0x01];    // Bold on
@@ -21,10 +21,9 @@ function row(s: string): number[] {
   return [...enc.encode(padded), 0x0a];
 }
 
-function centered(s: string): number[] {
-  const t = s.slice(0, COLS);
-  const pad = Math.max(0, Math.floor((COLS - t.length) / 2));
-  return [...enc.encode(" ".repeat(pad) + t), 0x0a];
+// Native hardware center alignment without artificial space offsets
+function centerText(s: string): number[] {
+  return [...ALIGN_CENTER, ...enc.encode(s.trim()), 0x0a, ...ALIGN_LEFT];
 }
 
 function dashes(): number[] { return row("-".repeat(COLS)); }
@@ -32,7 +31,7 @@ function equals(): number[]  { return row("=".repeat(COLS)); }
 
 // Lay out two strings at left and right within COLS, clamping to fit
 function twoCol(left: string, right: string): number[] {
-  const maxLeft = COLS - right.length;
+  const maxLeft = Math.max(0, COLS - right.length);
   const l = left.slice(0, maxLeft).padEnd(maxLeft, " ");
   return [...enc.encode((l + right).slice(0, COLS)), 0x0a];
 }
@@ -42,22 +41,22 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
   const push = (...chunks: number[][]) => parts.push(...chunks);
 
   push(ESC_INIT);
+  push(MARGIN_ZERO);
 
   // ── Header ──
-  push(ALIGN_CENTER, BOLD_ON);
-  push(centered(p.restaurantName.toUpperCase()));
+  push(BOLD_ON);
+  push(centerText(p.restaurantName.toUpperCase()));
   push(BOLD_OFF);
   if (p.restaurantAddress) {
-    // Wrap address naively at COLS chars
     for (let i = 0; i < p.restaurantAddress.length; i += COLS) {
-      push(centered(p.restaurantAddress.slice(i, i + COLS).trim()));
+      push(centerText(p.restaurantAddress.slice(i, i + COLS)));
     }
   }
   push(equals());
 
   // ── Type label ──
   push(BOLD_ON);
-  push(centered(p.type === "KOT" ? (p.round && p.round > 1 ? `KOT - ROUND ${p.round}` : "KOT - KITCHEN ORDER") : "TAX INVOICE"));
+  push(centerText(p.type === "KOT" ? (p.round && p.round > 1 ? `KOT - ROUND ${p.round}` : "KOT - KITCHEN ORDER") : "TAX INVOICE"));
   push(BOLD_OFF);
   push(equals());
 
@@ -66,12 +65,12 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
   const tablePart = p.tableNo ? `Table: ${p.tableNo}` : "";
   push(twoCol(`Token #: ${p.orderNo}${p.round && p.round > 1 ? ` (R${p.round})` : ""}`, tablePart));
   if (p.orderId) push(row(`Order ID: ${p.orderId}`));
-  push(twoCol(`Time: ${p.time}`, `Date: ${p.date}`));
+  push(twoCol(`Date: ${p.date}`, `Time: ${p.time}`));
   push(dashes());
 
   if (p.orderType === "DELIVERY" || p.delivery) {
     push(BOLD_ON);
-    push(centered("*** DELIVERY ORDER ***"));
+    push(centerText("*** DELIVERY ORDER ***"));
     push(BOLD_OFF);
     if (p.delivery?.customerName) push(row(`Cust: ${p.delivery.customerName}`));
     if (p.delivery?.customerPhone) push(row(`Phone: ${p.delivery.customerPhone}`));
@@ -92,48 +91,56 @@ export function encodeTicket(p: TicketPayload): Uint8Array {
     }
   } else {
     // ── Bill items: Name | Qty | Amt ──
-    // Columns: name=17, qty=4, amt=9, padding=2 → 32
-    push(row("Item".padEnd(17) + "Qty".padStart(4) + "Amt".padStart(9) + "  "));
+    // Columns: name=16, qty=4, amt=12 → 32
+    push(row("Item".padEnd(16) + "Qty".padStart(4) + "Amt".padStart(12)));
     push(dashes());
     for (const item of p.items) {
-      const name = item.name.slice(0, 17).padEnd(17);
+      const name = item.name.slice(0, 16).padEnd(16);
       const qty = String(item.qty).padStart(4);
-      const amtNum = (item.pricePaise * item.qty / 100).toFixed(0);
-      const amt = `Rs${amtNum}`.padStart(9);
-      push(row(name + qty + amt + "  "));
+      const amtNum = (item.pricePaise * item.qty / 100).toFixed(2);
+      const amt = `Rs.${amtNum}`.padStart(12);
+      push(row(name + qty + amt));
     }
     push(dashes());
 
     if (p.packagingChargePaise && p.packagingChargePaise > 0) {
-      const pkgAmt = `Rs${(p.packagingChargePaise / 100).toFixed(0)}`;
+      const pkgAmt = `Rs.${(p.packagingChargePaise / 100).toFixed(2)}`;
       push(twoCol("Packaging:", pkgAmt));
     }
     if (p.deliveryChargePaise && p.deliveryChargePaise > 0) {
-      const delAmt = `Rs${(p.deliveryChargePaise / 100).toFixed(0)}`;
+      const delAmt = `Rs.${(p.deliveryChargePaise / 100).toFixed(2)}`;
       push(twoCol("Delivery:", delAmt));
     }
     if (p.adjustments && Array.isArray(p.adjustments) && p.adjustments.length > 0) {
       for (const adj of p.adjustments) {
         const sign = adj.amountPaise < 0 ? "-" : "";
-        const amtStr = `${sign}Rs${(Math.abs(adj.amountPaise) / 100).toFixed(0)}`;
+        const amtStr = `${sign}Rs.${(Math.abs(adj.amountPaise) / 100).toFixed(2)}`;
         push(twoCol(`${adj.label}:`, amtStr));
       }
     }
 
-    // Total
-    const totalAmt = `Rs${(p.subtotalPaise / 100).toFixed(0)}`;
+    // Total - guaranteed single line within 30 cols
+    const totalAmt = `Rs.${(p.subtotalPaise / 100).toFixed(2)}`;
     push(BOLD_ON);
-    push(twoCol("TOTAL:".padStart(COLS - totalAmt.length - 1), totalAmt));
+    push(twoCol("TOTAL:", totalAmt));
     push(BOLD_OFF);
 
-    push(equals());
-    if (p.method) push(centered(`Payment: ${p.method}`));
+    if (p.method) {
+      push(equals());
+      push(centerText(`Payment: ${p.method}`));
+    }
   }
 
   push(equals());
-  push(centered("Thank you! Please visit again"));
+  push(centerText("Thank you! Please visit again"));
+  push(centerText("LogixDine by LogixSoft"));
+  push(centerText("Contact: 7276718848"));
   push(equals());
-  push(LF, LF, LF);
+  if (p.type === "KOT") {
+    push(LF, LF);
+  } else {
+    push(LF, LF);
+  }
   push(CUT);
 
   const flat = parts.flat();

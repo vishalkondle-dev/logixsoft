@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconBook,
   IconPlus,
@@ -179,19 +180,31 @@ function MenuContent() {
     }
   };
 
-  const handleDeleteItem = async (itemId: string) => {
-    if (!confirm("Are you sure you want to delete this menu dish?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/menu/items/${itemId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      notifications.show({ title: "Dish Deleted", message: "Item removed from catalog.", color: "teal" });
-      loadData();
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDeleteItem = (itemId: string) => {
+    modals.openConfirmModal({
+      title: "Delete Menu Dish",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this menu dish? This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: "Delete Dish", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/menu/items/${itemId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Delete failed");
+          notifications.show({ title: "Dish Deleted", message: "Item removed from catalog.", color: "teal" });
+          loadData();
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const handleCreateCategory = async () => {

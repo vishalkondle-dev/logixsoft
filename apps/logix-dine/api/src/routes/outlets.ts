@@ -13,6 +13,8 @@ import { toOutlet } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 import { invalidateRestaurant, invalidateUserSession, extractSessionToken } from '../lib/cache';
+import { getSubscriptionPlans, resolveOutletPlanPricing, calculateUpgradePricing } from '../lib/plan-helpers';
+import { DEFAULT_FREE_TRIAL_DAYS } from '@logixsoft/logix-dine/types/plans';
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -82,47 +84,37 @@ app.get(
         .from(appSchema.restaurantOutlet)
         .where(eq(appSchema.restaurantOutlet.restaurantId, restaurantId));
 
-      const plans = [
-        {
-          id: 'BASIC',
-          name: 'Starter Plan',
-          monthlyPrice: 999,
-          annualPrice: 9990,
-          features: [
-            'Standard POS Terminal',
-            'KOT Generation & Printing',
-            'Table & Section Layouts',
-            'GST Invoicing & Thermal Bills',
-            'Unlimited Orders',
-            'Email & Chat Support',
-          ],
-        },
-        {
-          id: 'PRO',
-          name: 'Pro Plan',
-          monthlyPrice: 1499,
-          annualPrice: 14990,
-          popular: true,
-          features: [
-            'Everything in Starter',
-            'Unlimited Waiter Mobile Apps',
-            'Kitchen Display System (KDS)',
-            'Inventory & Recipe BOM Costing',
-            'WhatsApp Instant e-Bills',
-            'Advanced Analytics & Tax Audit',
-            'Online Aggregators (Swiggy, Zomato)',
-            'Table Reservations & Custom Roles Matrix',
-          ],
-        },
-      ];
+      const plans = await getSubscriptionPlans(c);
 
       const enrichedOutlets = outlets.map((o: any) => {
         const plan = plans.find((p) => p.id === o.planTier) || plans[0];
+        const pricing = resolveOutletPlanPricing(o, plan, o.billingCycle || 'MONTHLY');
+        const proPlan = plans.find((p) => p.id === 'PRO');
+        const upgradeMonthly = proPlan ? calculateUpgradePricing(o, plan, proPlan, 'MONTHLY') : null;
+        const upgradeAnnual = proPlan ? calculateUpgradePricing(o, plan, proPlan, 'ANNUAL') : null;
+
+        const trialDaysRemaining = o.trialEndsAt
+          ? Math.max(0, Math.ceil((new Date(o.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+          : null;
+        const isTrial = Boolean(o.trialEndsAt && new Date(o.trialEndsAt).getTime() > Date.now());
+
         return {
           ...toOutlet(o),
           planName: plan.name,
-          monthlyPrice: plan.monthlyPrice,
-          annualPrice: plan.annualPrice,
+          monthlyPrice: pricing.monthlyPrice,
+          annualPrice: pricing.annualPrice,
+          effectivePrice: pricing.effectivePrice,
+          isCustomPrice: pricing.isCustom,
+          trialDaysRemaining,
+          isTrial,
+          upgradeCredit: upgradeMonthly?.isUpgrade && upgradeMonthly.unusedCredit > 0 ? {
+            remainingDays: upgradeMonthly.remainingDays,
+            unusedCredit: upgradeMonthly.unusedCredit,
+            proPayableMonthly: upgradeMonthly.payableAmount,
+            proOriginalMonthly: upgradeMonthly.targetPrice,
+            proPayableAnnual: upgradeAnnual?.payableAmount ?? (proPlan?.annualPrice || 14990),
+            proOriginalAnnual: upgradeAnnual?.targetPrice ?? (proPlan?.annualPrice || 14990),
+          } : null,
         };
       });
 
@@ -130,6 +122,7 @@ app.get(
         {
           id: `INV-${new Date().getFullYear()}-001`,
           date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+          outletId: enrichedOutlets[0]?.id,
           outletName: enrichedOutlets[0]?.name || 'Main Branch',
           planName: 'Pro SaaS Plan',
           billingCycle: 'Monthly',
@@ -183,6 +176,8 @@ app.post(
     const billingCycle = parsed.data.billingCycle || 'MONTHLY';
     const status = parsed.data.status || 'ACTIVE';
 
+    const trialEndsAt = new Date(now.getTime() + DEFAULT_FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000);
+
     await db.insert(appSchema.restaurantOutlet).values({
       id,
       restaurantId,
@@ -193,7 +188,8 @@ app.post(
       status,
       planTier,
       billingCycle,
-      trialEndsAt: null,
+      trialEndsAt,
+      subscriptionExpiresAt: trialEndsAt,
       isDefault: false,
       createdAt: now,
       updatedAt: now,
@@ -405,6 +401,19 @@ app.put(
     const { db, close } = getDb(c);
     try {
       const now = new Date();
+      const [existing] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId),
+        ))
+        .limit(1);
+
+      if (!existing) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
       const updates: any = {
         planTier: parsed.data.planTier,
         updatedAt: now,
@@ -414,12 +423,21 @@ app.put(
         updates.billingCycle = parsed.data.billingCycle;
       }
 
+      const effectiveCycle = parsed.data.billingCycle || existing.billingCycle || 'MONTHLY';
+      const days = effectiveCycle === 'ANNUAL' ? 365 : 30;
+
       if (parsed.data.status) {
         updates.status = parsed.data.status;
       } else {
         updates.status = 'ACTIVE';
-        const days = parsed.data.billingCycle === 'ANNUAL' ? 365 : 30;
-        updates.subscriptionExpiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      }
+
+      // In Option 2: When upgrading from BASIC to PRO, start a fresh 30-day (or 365-day) cycle from now!
+      const isUpgrading = existing.planTier === 'BASIC' && parsed.data.planTier === 'PRO';
+      if (updates.status === 'ACTIVE') {
+        if (isUpgrading || !existing.subscriptionExpiresAt || new Date(existing.subscriptionExpiresAt).getTime() < now.getTime()) {
+          updates.subscriptionExpiresAt = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+        }
       }
 
       const [updated] = await db
@@ -431,9 +449,295 @@ app.put(
         ))
         .returning();
 
-      if (!updated) {
+      await invalidateRestaurant(kv(c), restaurantId);
+
+      const cookieHeader = c.req.header('Cookie') || c.req.header('cookie') || '';
+      const authHeader = c.req.header('Authorization') || c.req.header('authorization') || '';
+      const token = extractSessionToken(cookieHeader, authHeader);
+      if (token) {
+        await invalidateUserSession(kv(c), token);
+      }
+
+      return c.json(toOutlet(updated));
+    } finally {
+      await close();
+    }
+  }
+);
+
+// POST /outlets/:id/payment/one-time — create a one-time subscription payment order via logix-pg
+const InitiateOneTimePaymentSchema = z.object({
+  planTier: z.enum(['BASIC', 'PRO']),
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL']).default('MONTHLY'),
+});
+
+app.post(
+  '/:id/payment/one-time',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = InitiateOneTimePaymentSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+    }
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
         return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
       }
+
+      const [restaurant] = await db
+        .select()
+        .from(appSchema.restaurant)
+        .where(eq(appSchema.restaurant.id, restaurantId))
+        .limit(1);
+
+      const planTier = parsed.data.planTier;
+      const billingCycle = parsed.data.billingCycle;
+
+      // Option 2: Calculate prorated upgrade credit if upgrading from Starter to Pro mid-cycle
+      const plans = await getSubscriptionPlans(c);
+      const currentPlan = plans.find((p) => p.id === outlet.planTier) || plans[0];
+      const targetPlan = plans.find((p) => p.id === planTier) || plans[0];
+      const upgradePricing = calculateUpgradePricing(outlet, currentPlan, targetPlan, billingCycle);
+
+      const finalAmount = upgradePricing.isUpgrade ? upgradePricing.payableAmount : upgradePricing.targetPrice;
+      const amountInPaise = Math.round(finalAmount * 100);
+
+      const ownerPhone = restaurant?.phone || outlet.phone || c.get('actorPhone') || '9876543210';
+      const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+      const pgWebUrl = (c.env as any)?.PG_WEB_URL || 'https://payment.logixsoft.in';
+
+      const description = upgradePricing.isUpgrade && upgradePricing.unusedCredit > 0
+        ? `Logix Dine - ${outlet.name} (Upgrade to ${planTier} with ₹${upgradePricing.unusedCredit} Starter credit)`
+        : `Logix Dine - ${outlet.name} (${planTier} Plan - ${billingCycle === 'ANNUAL' ? '1 Year' : '1 Month'})`;
+
+      // Call Logix PG Order Creation
+      const pgRes = await fetch(`${pgApiUrl}/api/v1/orders/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amountInPaise,
+          customerPhone: ownerPhone,
+          customerName: restaurant?.name || 'Restaurant Owner',
+          merchantId: c.get('sessionUser')?.id || tenant.member?.userId || undefined,
+          description,
+          metadata: {
+            type: 'OUTLET_SUBSCRIPTION_ONE_TIME',
+            restaurantId,
+            outletId,
+            planTier,
+            billingCycle,
+            isUpgrade: upgradePricing.isUpgrade,
+            unusedCredit: upgradePricing.unusedCredit,
+            remainingDays: upgradePricing.remainingDays,
+            resetCycle: upgradePricing.isUpgrade, // Option 2 resets to full 30 days of Pro from today
+            webhookUrl: `${(c.env as any)?.API_URL || 'https://dine-api.logixsoft.in'}/api/webhooks/pg`,
+          },
+        }),
+      });
+
+      if (!pgRes.ok) {
+        const errText = await pgRes.text();
+        return c.json({ error: 'Payment Gateway Error', message: `Failed to initiate payment with logix-pg: ${errText}` }, 502);
+      }
+
+      const pgData = (await pgRes.json()) as any;
+
+      return c.json({
+        success: true,
+        orderId: pgData.orderId,
+        checkoutUrl: `${pgWebUrl}/pay/${pgData.orderId}`,
+        upiString: pgData.upiString,
+        amount: finalAmount,
+        originalAmount: upgradePricing.targetPrice,
+        unusedCredit: upgradePricing.unusedCredit,
+        remainingDays: upgradePricing.remainingDays,
+        isUpgrade: upgradePricing.isUpgrade,
+        frequency: billingCycle === 'ANNUAL' ? 'Annual' : 'Monthly',
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
+// POST /outlets/:id/autopay/initiate — create recurring mandate via logix-pg
+const InitiateAutopaySchema = z.object({
+  planTier: z.enum(['BASIC', 'PRO']),
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL']).default('MONTHLY'),
+});
+
+app.post(
+  '/:id/autopay/initiate',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = InitiateAutopaySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: 'Validation Error', issues: parsed.error.issues }, 400);
+    }
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      const [restaurant] = await db
+        .select()
+        .from(appSchema.restaurant)
+        .where(eq(appSchema.restaurant.id, restaurantId))
+        .limit(1);
+
+      const planTier = parsed.data.planTier;
+      const billingCycle = parsed.data.billingCycle;
+
+      // Price matrix in paise from configured plans & custom outlet override
+      const plans = await getSubscriptionPlans(c);
+      const targetPlan = plans.find((p) => p.id === planTier) || plans[0];
+      const pricing = resolveOutletPlanPricing(outlet, targetPlan, billingCycle);
+      const recurringAmountInPaise = Math.round(pricing.effectivePrice * 100);
+
+      const ownerPhone = restaurant?.phone || outlet.phone || c.get('actorPhone') || '9876543210';
+      const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+
+      // Call Logix PG Mandate Creation
+      const pgRes = await fetch(`${pgApiUrl}/api/v1/mandates/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerPhone: ownerPhone,
+          customerName: restaurant?.name || 'Restaurant Owner',
+          mandateName: `Logix Dine - ${outlet.name} (${planTier} Plan)`,
+          recurringAmount: recurringAmountInPaise,
+          maxAmount: 1500000, // ₹15,000 NPCI limit
+          frequency: billingCycle === 'ANNUAL' ? 'ANNUAL' : 'MONTHLY',
+          metadata: {
+            restaurantId,
+            outletId,
+            planTier,
+            billingCycle,
+            webhookUrl: `${(c.env as any)?.API_URL || 'https://dine-api.logixsoft.in'}/api/webhooks/pg`,
+          },
+        }),
+      });
+
+      if (!pgRes.ok) {
+        const errText = await pgRes.text();
+        return c.json({ error: 'Payment Gateway Error', message: `Failed to initiate mandate with logix-pg: ${errText}` }, 502);
+      }
+
+      const pgData = (await pgRes.json()) as any;
+
+      // Save pending mandate info on the outlet
+      await db
+        .update(appSchema.restaurantOutlet)
+        .set({
+          autopayStatus: 'PENDING',
+          autopayMandateId: pgData.mandateId,
+          updatedAt: new Date(),
+        })
+        .where(eq(appSchema.restaurantOutlet.id, outletId));
+
+      await invalidateRestaurant(kv(c), restaurantId);
+
+      return c.json({
+        success: true,
+        mandateId: pgData.mandateId,
+        checkoutUrl: pgData.checkoutUrl,
+        upiString: pgData.upiString,
+        recurringAmount: pgData.recurringAmount,
+        frequency: pgData.frequency,
+      });
+    } finally {
+      await close();
+    }
+  }
+);
+
+// POST /outlets/:id/autopay/cancel — cancel active UPI AutoPay mandate
+app.post(
+  '/:id/autopay/cancel',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      if (outlet.autopayMandateId) {
+        const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+        await fetch(`${pgApiUrl}/api/v1/mandates/${outlet.autopayMandateId}/cancel`, {
+          method: 'POST',
+        }).catch(() => {});
+      }
+
+      const [updated] = await db
+        .update(appSchema.restaurantOutlet)
+        .set({
+          autopayStatus: 'REVOKED',
+          autopayMandateId: null,
+          autopayUmn: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(appSchema.restaurantOutlet.id, outletId))
+        .returning();
 
       await invalidateRestaurant(kv(c), restaurantId);
       return c.json(toOutlet(updated));
@@ -443,4 +747,69 @@ app.put(
   }
 );
 
+// POST /outlets/:id/autopay/sync — query PG mandate status and sync to outlet
+app.post(
+  '/:id/autopay/sync',
+  requirePermission('outlet:write'),
+  async (c) => {
+    const tenant = c.get('tenant');
+    const { restaurantId } = tenant;
+    const outletId = c.req.param('id');
+
+    if (!assertOutletAccess(tenant, outletId)) {
+      return c.json({ error: 'Forbidden', message: `You do not have access to outlet '${outletId}'` }, 403);
+    }
+
+    const { db, close } = getDb(c);
+    try {
+      const [outlet] = await db
+        .select()
+        .from(appSchema.restaurantOutlet)
+        .where(and(
+          eq(appSchema.restaurantOutlet.id, outletId),
+          eq(appSchema.restaurantOutlet.restaurantId, restaurantId)
+        ))
+        .limit(1);
+
+      if (!outlet) {
+        return c.json({ error: 'Not Found', message: 'Outlet not found' }, 404);
+      }
+
+      if (!outlet.autopayMandateId) {
+        return c.json(toOutlet(outlet));
+      }
+
+      const pgApiUrl = (c.env as any)?.PG_API_URL || 'https://payment-api.logixsoft.in';
+      const pgRes = await fetch(`${pgApiUrl}/api/v1/mandates/${outlet.autopayMandateId}`).catch(() => null);
+
+      if (pgRes && pgRes.ok) {
+        const pgData = (await pgRes.json()) as any;
+        if (pgData.status === 'ACTIVE') {
+          const nextBilling = pgData.nextBillingDate ? new Date(pgData.nextBillingDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          const [updated] = await db
+            .update(appSchema.restaurantOutlet)
+            .set({
+              autopayStatus: 'ACTIVE',
+              autopayUmn: pgData.umn || outlet.autopayUmn,
+              autopayNextBillingAt: nextBilling,
+              subscriptionExpiresAt: nextBilling,
+              status: 'ACTIVE',
+              updatedAt: new Date(),
+            })
+            .where(eq(appSchema.restaurantOutlet.id, outletId))
+            .returning();
+
+          await invalidateRestaurant(kv(c), restaurantId);
+          return c.json(toOutlet(updated));
+        }
+      }
+
+      return c.json(toOutlet(outlet));
+    } finally {
+      await close();
+    }
+  }
+);
+
 export { app as outletRoutes };
+

@@ -135,7 +135,7 @@ async function initRenderer() {
           <div class="row"><span>CGST (2.5%):</span><span>22.00</span></div>
           <div class="row"><span>SGST (2.5%):</span><span>22.00</span></div>
           <div class="divider"></div>
-          <div class="row bold" style="font-size: 14px;"><span>GRAND TOTAL:</span><span>Rs. 924.00</span></div>
+          <div class="row bold" style="font-size: 14px;"><span>GRAND TOTAL:</span><span>₹924.00</span></div>
           <div class="divider"></div>
           <div class="center">*** TEST PRINT SUCCESSFUL ***</div>
           <div class="center">Thank you for dining with us!</div>

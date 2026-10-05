@@ -19,6 +19,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconStar,
   IconSearch,
@@ -108,19 +109,31 @@ function FeedbackContent() {
     }
   };
 
-  const handleDelete = async (fbId: string) => {
-    if (!confirm("Are you sure you want to delete this customer review?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/feedback/${fbId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      notifications.show({ title: "Deleted", message: "Review removed.", color: "teal" });
-      loadData();
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDelete = (fbId: string) => {
+    modals.openConfirmModal({
+      title: "Delete Customer Review",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this customer review?
+        </Text>
+      ),
+      labels: { confirm: "Delete", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/feedback/${fbId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Delete failed");
+          notifications.show({ title: "Deleted", message: "Review removed.", color: "teal" });
+          loadData();
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   // Server-side filtered

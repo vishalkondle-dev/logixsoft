@@ -86,6 +86,7 @@ export function toOutlet(o: RestaurantOutletRow): JsonRestaurantOutletRow {
     ...o,
     trialEndsAt: toIso(o.trialEndsAt),
     subscriptionExpiresAt: toIso(o.subscriptionExpiresAt),
+    autopayNextBillingAt: toIso(o.autopayNextBillingAt),
     createdAt: toIsoRequired(o.createdAt),
     updatedAt: toIsoRequired(o.updatedAt),
   };

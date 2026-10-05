@@ -30,7 +30,7 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useRestaurant } from "@/lib/restaurant-context";
-import { useUpdateOutlet } from "@/lib/queries";
+import { useUpdateOutlet, useSendClosingReport } from "@/lib/queries";
 import { sendCustomerWhatsApp } from "@/lib/api-client";
 
 export interface WhatsappSettingsConfig {
@@ -40,6 +40,9 @@ export interface WhatsappSettingsConfig {
   sendOnBillSettled: boolean;
   sendOnDispatched: boolean;
   customFooterNote: string;
+  // End of Day Closing Report to Owner
+  sendDailyClosingReport: boolean;
+  ownerClosingReportPhone: string;
 }
 
 const DEFAULT_WA_CONFIG: WhatsappSettingsConfig = {
@@ -49,6 +52,8 @@ const DEFAULT_WA_CONFIG: WhatsappSettingsConfig = {
   sendOnBillSettled: true,
   sendOnDispatched: true,
   customFooterNote: "Thank you for dining with us! For feedback or queries, reply directly to this message.",
+  sendDailyClosingReport: true,
+  ownerClosingReportPhone: "",
 };
 
 export function WhatsappManagement() {
@@ -63,6 +68,48 @@ export function WhatsappManagement() {
   // Test WhatsApp sending
   const [testPhone, setTestPhone] = useState("");
   const [testing, setTesting] = useState(false);
+
+  // Closing Report testing
+  const sendClosingReportMut = useSendClosingReport(restaurantId);
+  const [testingClosing, setTestingClosing] = useState(false);
+
+  const handleSendClosingTest = async () => {
+    if (!currentOutlet) return;
+    const rawPhone = config.ownerClosingReportPhone || currentOutlet?.phone || restaurant?.phone || "";
+    const cleanDigits = rawPhone.replace(/\D/g, "");
+    if (!cleanDigits || cleanDigits.length < 10) {
+      notifications.show({
+        title: "Missing Owner Phone",
+        message: "Please enter a valid 10-digit mobile number for the owner closing report.",
+        color: "orange",
+      });
+      return;
+    }
+
+    setTestingClosing(true);
+    try {
+      await sendClosingReportMut.mutateAsync({
+        outletId: currentOutlet.id,
+        phone: cleanDigits,
+      });
+
+      notifications.show({
+        title: "Closing Report Dispatched! 🌙",
+        message: `Today's closing summary sent via WhatsApp to ${cleanDigits}.`,
+        color: "teal",
+        icon: <IconBrandWhatsapp size={18} />,
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: "Dispatch Failed",
+        message: err.message || "Failed to send closing report",
+        color: "red",
+        icon: <IconAlertCircle size={16} />,
+      });
+    } finally {
+      setTestingClosing(false);
+    }
+  };
 
   useEffect(() => {
     if (currentOutlet?.whatsappSettings) {
@@ -305,6 +352,61 @@ export function WhatsappManagement() {
             onChange={(e) => setConfig((p) => ({ ...p, customFooterNote: e.target.value }))}
             placeholder="e.g. Thank you for dining with us! Review us on Google."
           />
+        </Stack>
+      </Paper>
+
+      {/* Owner End-of-Day Business Closing Report */}
+      <Paper withBorder p="md" radius="md">
+        <Stack gap="md">
+          <Group justify="space-between" align="center">
+            <Group gap="sm">
+              <ThemeIcon color="teal" size="lg" variant="light" radius="md">
+                <IconReceipt size={22} />
+              </ThemeIcon>
+              <div>
+                <Group gap="xs">
+                  <Text fw={700} size="md">Owner End-of-Day Business Closing Report</Text>
+                  <Badge color="green" size="xs" variant="light">11:59 PM Daily</Badge>
+                </Group>
+                <Text size="xs" c="dimmed">
+                  Sends an informative, simple-to-understand daily closing digest with total sales, cash vs UPI, expenses, net cash in drawer, and top 5 dishes directly to the owner.
+                </Text>
+              </div>
+            </Group>
+            <Switch
+              disabled={!config.enabled}
+              checked={config.sendDailyClosingReport}
+              onChange={(e) => {
+                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                setConfig((p) => ({ ...p, sendDailyClosingReport: checked }));
+              }}
+              color="teal"
+            />
+          </Group>
+
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <TextInput
+              label="Owner WhatsApp Mobile Number"
+              placeholder="e.g. 9876543210"
+              description="10-digit mobile number for daily closing reports"
+              value={config.ownerClosingReportPhone}
+              onChange={(e) => setConfig((p) => ({ ...p, ownerClosingReportPhone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+              leftSection={<IconBrandWhatsapp size={16} color="green" />}
+            />
+
+            <Box pt={{ base: 0, sm: "lg" }}>
+              <Button
+                color="teal"
+                variant="light"
+                loading={testingClosing}
+                onClick={handleSendClosingTest}
+                leftSection={<IconSend size={16} />}
+                fullWidth
+              >
+                Send Today's Closing Report Now (Test)
+              </Button>
+            </Box>
+          </SimpleGrid>
         </Stack>
       </Paper>
 

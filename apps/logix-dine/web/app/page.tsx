@@ -40,6 +40,7 @@ import {
   IconSparkles,
   IconTruckDelivery,
   IconPackages,
+  IconDownload,
 } from "@tabler/icons-react";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -54,6 +55,8 @@ export default function HomePage() {
   const primaryDashboardHref =
     user?.role === "ADMIN"
       ? "/admin/overview"
+      : user?.role === "CUSTOMER"
+      ? "/portal"
       : role === "WAITER" || role === "CAPTAIN"
       ? `/waiter${outletQuery}`
       : role === "KITCHEN"
@@ -323,6 +326,18 @@ export default function HomePage() {
                 >
                   Pricing
                 </a>
+                <Link
+                  href="/download"
+                  style={{
+                    color: "#ced4da",
+                    textDecoration: "none",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    transition: "color 0.2s",
+                  }}
+                >
+                  Download Apps
+                </Link>
               </Group>
 
               {/* Right Action */}
@@ -1046,6 +1061,20 @@ export default function HomePage() {
                         </Text>
                       </Box>
                     </SimpleGrid>
+
+                    <Group mt="xs">
+                      <Button
+                        component={Link}
+                        href="/download"
+                        variant="gradient"
+                        gradient={{ from: "#7950F2", to: "#4C6EF5", deg: 135 }}
+                        radius="md"
+                        size="md"
+                        leftSection={<IconDownload size={18} />}
+                      >
+                        Download Apps for Windows, Mac, Linux & Android
+                      </Button>
+                    </Group>
                   </Stack>
                 </Grid.Col>
 
@@ -1448,6 +1477,12 @@ export default function HomePage() {
               </Group>
 
               <Group gap="lg">
+                <Link
+                  href="/download"
+                  style={{ color: "#adb5bd", fontSize: 13, textDecoration: "none" }}
+                >
+                  Download Desktop & Mobile Apps
+                </Link>
                 <Text size="xs" c="#868e96">
                   © {new Date().getFullYear()} Logix Soft. All rights reserved.
                 </Text>

@@ -17,3 +17,6 @@ out/
 .open-next/
 test-results/
 playwright-report/
+dist-packages/
+release/
+scratch/

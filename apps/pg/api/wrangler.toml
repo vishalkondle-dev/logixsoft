@@ -17,3 +17,7 @@ id = "21d770a176254310990534eb1f814faf"
 NODE_ENV = "production"
 API_URL = "https://payment-api.logixsoft.in"
 FRONTEND_URL = "https://payment.logixsoft.in"
+
+[[env.production.services]]
+binding = "DINE_API"
+service = "logix-dine-api"

@@ -41,14 +41,15 @@
       return new LogixsoftCheckout(options);
     }
 
-    if (!options || !options.orderId) {
-      throw new Error('[LogixsoftCheckout] orderId is required.');
+    if (!options || (!options.orderId && !options.mandateId)) {
+      throw new Error('[LogixsoftCheckout] orderId or mandateId is required.');
     }
 
     this.options = Object.assign(
       {
         host: DEFAULT_HOST,
         orderId: '',
+        mandateId: '',
         theme: {
           color: '#4f46e5',
         },
@@ -98,11 +99,20 @@
     iframe.setAttribute('allow', 'payment; clipboard-write; camera');
     iframe.setAttribute('title', 'Logixsoft UPI Payment Checkout');
 
-    var embedUrl =
-      this.options.host.replace(/\/+$/, '') +
-      '/pay/' +
-      encodeURIComponent(this.options.orderId) +
-      '?embed=true';
+    var embedUrl;
+    if (this.options.mandateId) {
+      embedUrl =
+        this.options.host.replace(/\/+$/, '') +
+        '/mandate/' +
+        encodeURIComponent(this.options.mandateId) +
+        '?embed=true';
+    } else {
+      embedUrl =
+        this.options.host.replace(/\/+$/, '') +
+        '/pay/' +
+        encodeURIComponent(this.options.orderId) +
+        '?embed=true';
+    }
     iframe.src = embedUrl;
 
     iframe.onload = function () {
@@ -129,7 +139,7 @@
       var type = event.data.type;
       var data = event.data.data || event.data;
 
-      if (type === 'LOGIXSOFT_PAYMENT_SUCCESS') {
+      if (type === 'LOGIXSOFT_PAYMENT_SUCCESS' || type === 'LOGIXSOFT_MANDATE_SUCCESS') {
         if (typeof self.options.onSuccess === 'function') {
           self.options.onSuccess(data);
         }
@@ -140,7 +150,7 @@
         if (typeof self.options.onFailure === 'function') {
           self.options.onFailure(data);
         }
-      } else if (type === 'LOGIXSOFT_MODAL_CLOSE') {
+      } else if (type === 'LOGIXSOFT_MODAL_CLOSE' || type === 'LOGIXSOFT_CHECKOUT_CLOSE') {
         self.close();
       }
     };

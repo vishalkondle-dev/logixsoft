@@ -6,7 +6,7 @@ import {
   Grid, Paper, Title, Text, Group, Stack, Badge, Button, ActionIcon,
   TextInput, Textarea, Loader, Center, Modal, Select, Divider, Menu,
   Drawer, Box, ScrollArea, CloseButton, SegmentedControl, Checkbox, SimpleGrid,
-  UnstyledButton, Tooltip, Alert, ThemeIcon, Collapse,
+  UnstyledButton, Tooltip, Alert, ThemeIcon, Collapse, NumberInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,12 +16,12 @@ import {
   IconNote, IconEdit, IconX, IconClock, IconToolsKitchen2, IconSearch,
   IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
   IconTruckDelivery, IconShoppingBag, IconQrcode, IconUsers, IconNotes, IconCircleFilled,
-  IconReceiptTax, IconDiscount2, IconPercentage,
+  IconReceiptTax, IconDiscount2, IconPercentage, IconWallet,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useCategories, useItems, useTables, useOrders, qk,
-  useDeliveryRiders, useCustomerAddresses,
+  useDeliveryRiders, useCustomerAddresses, useCreateExpense,
 } from "@/lib/queries";
 import {
   startOrder, settleOrder, markKotPrinted, createSettledOrder, addOrderRound,
@@ -29,9 +29,11 @@ import {
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
+import { PrinterButton } from "@/components/print/printer-button";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
 import { useOutletSync } from "@/lib/use-outlet-sync";
 import { getOrderChannel } from "@/lib/channel-helpers";
+import { usePosStore } from "@/lib/stores";
 
 interface LocalCartItem {
   cartKey: string;
@@ -836,9 +838,11 @@ export default function POSPage() {
   const [filterVeg, setFilterVeg] = useState(false);
   const [filterNonVeg, setFilterNonVeg] = useState(false);
 
-  // Local cart state — orders are only created upon clicking Send
-  const [cartItems, setCartItems] = useState<LocalCartItem[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
+  // Local cart state managed via Zustand usePosStore
+  const cartItems = usePosStore((s) => s.cart);
+  const setCartItems = usePosStore((s) => s.setCartItems);
+  const cartOpen = usePosStore((s) => s.cartOpen);
+  const setCartOpen = usePosStore((s) => s.setCartOpen);
   const [tableNo, setTableNo] = useState<string>("Takeaway");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
@@ -879,6 +883,73 @@ export default function POSPage() {
   const [packagingCharge, setPackagingCharge] = useState(15);
   const [deliveryCharge, setDeliveryCharge] = useState(40);
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
+
+  // Quick Petty Cash Outflow state
+  const [pettyCashModalOpen, setPettyCashModalOpen] = useState(false);
+  const [pcTitle, setPcTitle] = useState("");
+  const [pcAmount, setPcAmount] = useState<number | "">("");
+  const [pcCategory, setPcCategory] = useState("RAW_MATERIAL");
+  const [pcPaidTo, setPcPaidTo] = useState("");
+  const [pcNotes, setPcNotes] = useState("");
+  const [pcSaving, setPcSaving] = useState(false);
+  const createExpenseMut = useCreateExpense(restaurantId);
+
+  const handleRecordPettyCash = async () => {
+    if (!pcTitle.trim()) {
+      notifications.show({ title: "Title Required", message: "Enter an expense description.", color: "orange" });
+      return;
+    }
+    const val = Number(pcAmount);
+    if (!val || val <= 0) {
+      notifications.show({ title: "Invalid Amount", message: "Enter a valid amount.", color: "orange" });
+      return;
+    }
+
+    setPcSaving(true);
+    try {
+      const todayIST = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+
+      await createExpenseMut.mutateAsync({
+        data: {
+          title: pcTitle.trim(),
+          amountPaise: Math.round(val * 100),
+          category: pcCategory as any,
+          paymentMode: "CASH",
+          paidTo: pcPaidTo.trim() || null,
+          expenseDate: todayIST,
+          notes: pcNotes.trim() || null,
+          outletId: outletId || undefined,
+        },
+        outletId,
+      });
+
+      notifications.show({
+        title: "Petty Cash Recorded",
+        message: `₹${val} deducted from Cash Drawer.`,
+        color: "teal",
+        icon: <IconCheck size={16} />,
+      });
+
+      setPettyCashModalOpen(false);
+      setPcTitle("");
+      setPcAmount("");
+      setPcPaidTo("");
+      setPcNotes("");
+    } catch (err: any) {
+      notifications.show({
+        title: "Failed to record expense",
+        message: err.message || "An error occurred",
+        color: "red",
+      });
+    } finally {
+      setPcSaving(false);
+    }
+  };
 
   // Track whether we've applied the initial default from settings
   const defaultAppliedRef = useRef(false);
@@ -1346,7 +1417,7 @@ export default function POSPage() {
           .then((printResult) => {
             notifications.show({
               title: `Round ${currentRoundNum} sent to kitchen!`,
-              message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "KOT dispatched"}`,
+              message: `${activeTableOrder.order.tableNo} (Token #${activeTableOrder.order.orderNo}) · ${printResult === "ble" ? "KOT printed" : "KOT dispatched"}`,
               color: "dinePrimary",
               icon: <IconCheck size={16} />,
             });
@@ -1460,7 +1531,7 @@ export default function POSPage() {
           const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
           notifications.show({
             title: `Order #${created.order.orderNo} sent to kitchen`,
-            message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed via Bluetooth" : printResult === "browser" ? "KOT sent to print" : "Order placed"}`,
+            message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed" : "Order placed"}`,
             color: "dinePrimary",
             icon: <IconCheck size={16} />,
           });
@@ -1507,12 +1578,27 @@ export default function POSPage() {
               addonIds: i.addons?.map((a) => a.id),
             })),
             adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
-            settle: { method: settleMethod },
           },
           activeOutlet.id
         );
 
         const currentRoundNum = addedRound.round || nextRound;
+
+        let settledOrder = addedRound;
+        try {
+          settledOrder = await settleOrder(
+            restaurantId,
+            activeTableOrder.order.id,
+            {
+              method: settleMethod,
+              customerPhone: customerPhone.trim() || undefined,
+              adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
+            },
+            activeOutlet.id
+          );
+        } catch (settleErr) {
+          console.error("[pos] settleOrder failed:", settleErr);
+        }
 
         setCartItems([]);
         setAdjustments([]);
@@ -1520,13 +1606,9 @@ export default function POSPage() {
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
 
-        // Print KOT for newly added round
-        const kotPayload = buildKotPayload(
-          { order: activeTableOrder.order, items: addedRound.addedItems || cartItems },
-          restaurant,
-          { round: currentRoundNum }
-        );
-        printTicketSilent(kotPayload).catch(() => {});
+        // Automatically print Bill to default paired printer after Settle & Send
+        const billPayload = buildBillPayload(settledOrder || addedRound, restaurant);
+        printTicket(billPayload).catch(() => {});
 
         notifications.show({
           title: `Round ${currentRoundNum} Settled & Sent!`,
@@ -1631,9 +1713,8 @@ export default function POSPage() {
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
 
-        // Print KOT + Bill silently (BLE only — no browser popup after settle)
-        printTicketSilent(buildKotPayload(result, restaurant, { round: 1 })).catch(() => {});
-        printTicketSilent(buildBillPayload(result, restaurant)).catch(() => {});
+        // Automatically print Bill to default paired printer!
+        printTicket(buildBillPayload(result, restaurant)).catch(() => {});
 
         const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
         notifications.show({
@@ -2067,6 +2148,25 @@ export default function POSPage() {
                 >
                   Deliveries {activeDeliveryOrders.length > 0 ? `(${activeDeliveryOrders.length})` : ""}
                 </Button>
+
+                {/* Fast Petty Cash / Expense Outflow Button */}
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="orange"
+                  leftSection={<IconWallet size={15} />}
+                  onClick={() => setPettyCashModalOpen(true)}
+                  style={{
+                    flexShrink: 0,
+                    fontWeight: 600,
+                    height: 29,
+                  }}
+                >
+                  Petty Cash
+                </Button>
+
+                {/* Thermal Printer Status / Connect */}
+                <PrinterButton compact />
               </Group>
             </Group>
 
@@ -3662,6 +3762,94 @@ export default function POSPage() {
               onClick={handleCreateRider}
             >
               Add Rider
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Quick Petty Cash Outflow Modal */}
+      <Modal
+        opened={pettyCashModalOpen}
+        onClose={() => setPettyCashModalOpen(false)}
+        title={
+          <Group gap="xs">
+            <ThemeIcon color="orange" size="md" radius="md">
+              <IconCash size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Quick Petty Cash Outflow</Text>
+          </Group>
+        }
+        size="sm"
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Record cash paid out from counter cash drawer for milk, vegetables, fuel, or wages.
+          </Text>
+
+          <TextInput
+            label="Reason / Description *"
+            placeholder="e.g. Milk & curd, Fresh coriander, Gas refill"
+            required
+            value={pcTitle}
+            onChange={(e) => setPcTitle(e.currentTarget.value)}
+          />
+
+          <NumberInput
+            label="Cash Amount (₹) *"
+            placeholder="e.g. 150"
+            required
+            min={1}
+            prefix="₹ "
+            value={pcAmount}
+            onChange={(val) => setPcAmount(val as any)}
+          />
+
+          <Select
+            label="Category"
+            data={[
+              { value: "RAW_MATERIAL", label: "Raw Materials & Groceries" },
+              { value: "STAFF", label: "Staff Wages / Advance" },
+              { value: "UTILITIES", label: "Gas, Power & Water" },
+              { value: "MAINTENANCE", label: "Repairs & Maintenance" },
+              { value: "PACKAGING", label: "Packaging & Bags" },
+              { value: "OTHER", label: "Miscellaneous Petty Cash" },
+            ]}
+            value={pcCategory}
+            onChange={(v) => setPcCategory(v || "RAW_MATERIAL")}
+          />
+
+          <TextInput
+            label="Paid To (Vendor/Person)"
+            placeholder="e.g. Mother Dairy, Delivery Boy"
+            value={pcPaidTo}
+            onChange={(e) => setPcPaidTo(e.currentTarget.value)}
+          />
+
+          <Textarea
+            label="Notes (Optional)"
+            placeholder="Voucher or invoice note..."
+            rows={2}
+            value={pcNotes}
+            onChange={(e) => setPcNotes(e.currentTarget.value)}
+          />
+
+          <Alert color="orange" icon={<IconCash size={16} />}>
+            <Text size="xs">
+              This amount will be instantly deducted from today's <b>Counter Cash in Hand</b>.
+            </Text>
+          </Alert>
+
+          <Group justify="flex-end" mt="xs">
+            <Button variant="default" onClick={() => setPettyCashModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="orange"
+              loading={pcSaving}
+              onClick={handleRecordPettyCash}
+              leftSection={<IconCheck size={16} />}
+            >
+              Record Cash Out
             </Button>
           </Group>
         </Stack>

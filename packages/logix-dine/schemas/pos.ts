@@ -91,6 +91,10 @@ export const RestaurantOutletSchema = z.object({
   billingCycle: z.string(),
   trialEndsAt: z.string().nullable().optional(),
   subscriptionExpiresAt: z.string().nullable().optional(),
+  autopayStatus: z.string().nullable(),
+  autopayMandateId: z.string().nullable(),
+  autopayUmn: z.string().nullable(),
+  autopayNextBillingAt: z.string().nullable().optional(),
   isDefault: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -735,4 +739,114 @@ export const UpdateInventorySettingsSchema = z.object({
   lowStockAlerts: z.boolean().default(true),
   auto86OnDepletion: z.boolean().default(false),
 });
+
+// ─── Expenses & Petty Cash ───────────────────────────────────────────────────
+
+export const EXPENSE_CATEGORIES = [
+  'RAW_MATERIAL',
+  'STAFF',
+  'UTILITIES',
+  'MAINTENANCE',
+  'PACKAGING',
+  'MARKETING',
+  'RENT',
+  'OTHER',
+] as const;
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export const EXPENSE_PAYMENT_MODES = [
+  'CASH',
+  'UPI',
+  'BANK_TRANSFER',
+  'CARD',
+  'OTHER',
+] as const;
+
+export type ExpensePaymentMode = (typeof EXPENSE_PAYMENT_MODES)[number];
+
+export const CreateExpenseSchema = z.object({
+  title: z.string().min(1).max(100),
+  category: z.enum(EXPENSE_CATEGORIES).default('OTHER'),
+  amountPaise: z.number().int().positive(),
+  paymentMode: z.enum(EXPENSE_PAYMENT_MODES).default('CASH'),
+  paidTo: z.string().max(100).nullable().optional(),
+  expenseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  notes: z.string().max(500).nullable().optional(),
+  receiptUrl: z.string().nullable().optional(),
+  outletId: z.string().optional(),
+});
+
+export const UpdateExpenseSchema = CreateExpenseSchema.partial();
+
+export const SetCashRegisterSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  openingFloatPaise: z.number().int().nonnegative().optional(),
+  cashWithdrawnPaise: z.number().int().nonnegative().optional(),
+  closingCountedPaise: z.number().int().nonnegative().nullable().optional(),
+  notes: z.string().max(500).nullable().optional(),
+  outletId: z.string().optional(),
+});
+
+// ─── Customer CRM & Directory Schemas ─────────────────────────────────────────
+
+export const CUSTOMER_SEGMENTS = [
+  'ALL',
+  'VIP',
+  'REGULAR',
+  'NEW',
+  'AT_RISK',
+  'INACTIVE',
+  'HIGH_SPEND',
+  'VEG',
+  'NON_VEG',
+  'DELIVERY',
+] as const;
+
+export type CustomerSegment = (typeof CUSTOMER_SEGMENTS)[number];
+
+export const CreateCustomerSchema = z.object({
+  phone: z.string().min(8).max(20),
+  name: z.string().max(100).nullable().optional(),
+  email: z.string().email().nullable().optional().or(z.literal('')),
+  dob: z.string().max(20).nullable().optional(),
+  anniversary: z.string().max(20).nullable().optional(),
+  gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).nullable().optional(),
+  address: z.string().max(300).nullable().optional(),
+  tags: z.array(z.string()).optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  dietaryPreference: z.enum(['VEG', 'NON_VEG', 'MIXED', 'UNKNOWN']).optional(),
+  preferredChannel: z.enum(['DINE_IN', 'TAKEAWAY', 'DELIVERY']).nullable().optional(),
+});
+
+export const UpdateCustomerSchema = CreateCustomerSchema.partial();
+
+export const BroadcastWhatsAppSchema = z.object({
+  message: z.string().min(1).max(2000),
+  segment: z.enum(CUSTOMER_SEGMENTS).optional(),
+  phoneNumbers: z.array(z.string()).optional(),
+  testOnly: z.boolean().optional(),
+});
+
+// ─── WhatsApp Promotional Broadcasts (Campaigns) ─────────────────────────────
+
+export const CreateCampaignSchema = z.object({
+  title: z.string().min(1).max(100),
+  message: z.string().min(1).max(2000),
+  mediaUrl: z.string().url().nullable().optional().or(z.literal('')),
+  offerCode: z.string().max(30).nullable().optional(),
+  targetAudience: z.enum(['ALL', 'OUTLET']).default('ALL'),
+  outletId: z.string().nullable().optional(),
+  scheduledAt: z.string().nullable().optional(),
+  sendImmediately: z.boolean().default(true),
+});
+
+export const TestCampaignSchema = z.object({
+  message: z.string().min(1).max(2000),
+  mediaUrl: z.string().url().nullable().optional().or(z.literal('')),
+  offerCode: z.string().max(30).nullable().optional(),
+  testPhone: z.string().min(8).max(20).optional(),
+});
+
+
 

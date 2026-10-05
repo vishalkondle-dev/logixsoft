@@ -28,17 +28,23 @@ import {
   IconLock,
 } from '@tabler/icons-react';
 import { pgApi } from '@/lib/api';
+import { useCheckoutStore } from '@/stores';
 
 function CheckoutContent({ orderId }: { orderId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEmbed = searchParams.get('embed') === 'true';
 
-  const [order, setOrder] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [simulating, setSimulating] = useState(false);
-  const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(600); // 10 minutes default
-  const [paymentSuccess, setPaymentSuccess] = useState<any>(null);
+  const order = useCheckoutStore((s) => s.order);
+  const setOrder = useCheckoutStore((s) => s.setOrder);
+  const loading = useCheckoutStore((s) => s.loading);
+  const setLoading = useCheckoutStore((s) => s.setLoading);
+  const simulating = useCheckoutStore((s) => s.simulating);
+  const setSimulating = useCheckoutStore((s) => s.setSimulating);
+  const timeLeftSeconds = useCheckoutStore((s) => s.timeLeftSeconds);
+  const setTimeLeftSeconds = useCheckoutStore((s) => s.setTimeLeftSeconds);
+  const paymentSuccess = useCheckoutStore((s) => s.paymentSuccess);
+  const setPaymentSuccess = useCheckoutStore((s) => s.setPaymentSuccess);
 
   // Initial fetch and auto-polling
   useEffect(() => {

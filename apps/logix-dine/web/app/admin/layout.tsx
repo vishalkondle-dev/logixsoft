@@ -67,8 +67,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/admin/restaurants", label: "Restaurants & Stores", icon: IconBuildingStore },
       { href: "/admin/outlets", label: "All Outlets", icon: IconBuildingStore },
-      { href: "/admin/users", label: "Users & Staff Directory", icon: IconUsers },
       { href: "/admin/subscriptions", label: "Subscriptions & Plans", icon: IconCreditCard },
+      { href: "/admin/users", label: "Users & Staff Directory", icon: IconUsers },
     ],
   },
   {
@@ -255,6 +255,18 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
 
           {/* Right Header: Global Scope Filter & Profile */}
           <Group gap="xs">
+            <Button
+              component={Link}
+              href="/pos"
+              variant="subtle"
+              color="gray"
+              size="xs"
+              leftSection={<IconBuildingStore size={14} />}
+              visibleFrom="sm"
+            >
+              Storefront / POS
+            </Button>
+
             <Suspense fallback={<Loader size="xs" />}>
               <AdminHeaderStoreScope />
             </Suspense>
@@ -278,6 +290,14 @@ function AdminShellContent({ children }: { children: React.ReactNode }) {
                       {user?.phoneNumber || "Platform Root"}
                     </Text>
                   </div>
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  component={Link}
+                  href="/pos"
+                  leftSection={<IconBuildingStore size={16} color="#7950f2" />}
+                >
+                  Return to Restaurant POS
                 </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item leftSection={<IconLogout size={16} />} color="red" onClick={() => signOut()}>

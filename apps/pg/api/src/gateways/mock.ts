@@ -19,3 +19,28 @@ export function createMockOrder(params: {
   };
 }
 
+export function createMockMandate(params: {
+  mandateId: string;
+  recurringAmountInPaise: number;
+  maxAmountInPaise: number;
+  frequency: string;
+  merchantName?: string;
+  vpa?: string;
+}) {
+  const merchantName = encodeURIComponent(params.merchantName || 'Logixsoft Merchant');
+  const vpa = params.vpa || 'autopay@logixsoft';
+  const recurringAmountRupees = (params.recurringAmountInPaise / 100).toFixed(2);
+  const maxAmountRupees = (params.maxAmountInPaise / 100).toFixed(2);
+  const note = encodeURIComponent(`Mandate ${params.mandateId}`);
+
+  // NPCI UPI AutoPay Recurring Mandate URI specification
+  const upiString = `upi://mandate?pa=${vpa}&pn=${merchantName}&mc=5812&tr=${params.mandateId}&am=${recurringAmountRupees}&cu=INR&recur=${params.frequency}&rule=MAX&cap=${maxAmountRupees}&tn=${note}`;
+
+  return {
+    success: true,
+    providerSubscriptionId: `MOCK_SUB_${Date.now()}`,
+    upiString,
+  };
+}
+
+

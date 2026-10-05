@@ -8,6 +8,7 @@ import {
   Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Center, Divider,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconBuildingStore, IconCheck, IconTrash,
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
@@ -18,15 +19,15 @@ import {
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useAuth } from "@/lib/auth-context";
 import {
-  useStaff, useTables, useRoles,
+  useStaff, useRoles,
   useAddStaff, useInviteStaff, useUpdateStaff, useRemoveStaff,
-  useCreateTable, useUpdateTable, useToggleTable, useDeleteTable,
   useCreateOutlet, useUpdateOutlet, useDeleteOutlet, useSetDefaultOutlet,
 } from "@/lib/queries";
 import dynamic from "next/dynamic";
 import {
   updateRestaurant,
 } from "@/lib/api-client";
+import { TablesManagement } from "./tables-management";
 import { PrinterButton } from "@/components/print/printer-button";
 import { MenuManagement } from "../menu/menu-management";
 import { StoreHoursManagement } from "./store-hours-management";
@@ -163,17 +164,17 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
   // Staff — React Query
   const { data: staff = [], isLoading: staffLoading } = useStaff(restaurantId, isOwner);
+  const scopedStaff = React.useMemo(() => {
+    if (!activeOutlet) return staff;
+    return staff.filter((m: any) =>
+      m.allOutlets === true ||
+      !m.outletIds ||
+      m.outletIds.length === 0 ||
+      m.outletIds.includes(activeOutlet.id)
+    );
+  }, [staff, activeOutlet]);
   const [staffModal, setStaffModal] = useState(false);
   const [staffForm, setStaffForm] = useState({ name: "", phone: "", role: "WAITER", outletIds: [] as string[] });
-
-  // Table — React Query (shared cache with POS page)
-  const tableOutletId = activeOutlet?.id ?? (ctxOutlets[0]?.id || null);
-  const { data: tables = [], isLoading: tablesLoading } = useTables(restaurantId, tableOutletId, { includeInactive: true });
-  const [tableModal, setTableModal] = useState<{ open: boolean; editing: any | null }>({ open: false, editing: null });
-  const [tableForm, setTableForm] = useState({ name: "", section: "", capacity: "" });
-  const [tableFormError, setTableFormError] = useState<string | null>(null);
-  const [tableToDelete, setTableToDelete] = useState<any | null>(null);
-
   // Outlet mutations
   const createOutletMut = useCreateOutlet(restaurantId);
   const updateOutletMut = useUpdateOutlet(restaurantId);
@@ -185,12 +186,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const inviteStaffMut = addStaffMut;
   const updateStaffMut = useUpdateStaff(restaurantId);
   const removeStaffMut = useRemoveStaff(restaurantId);
-
-  // Table mutations
-  const createTableMut = useCreateTable(restaurantId, tableOutletId);
-  const updateTableMut = useUpdateTable(restaurantId, tableOutletId);
-  const toggleTableMut = useToggleTable(restaurantId, tableOutletId);
-  const deleteTableMut = useDeleteTable(restaurantId, tableOutletId);
 
   // Outlets from context (still managed there for the header switcher)
   const outlets = ctxOutlets;
@@ -283,15 +278,27 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     }
   };
 
-  const handleDeleteOutlet = async (outlet: any) => {
-    if (!confirm(`Delete outlet "${outlet.name}"?`)) return;
-    try {
-      await deleteOutletMut.mutateAsync(outlet.id);
-      await refresh();
-      notifications.show({ title: "Deleted", message: `Outlet ${outlet.name} removed`, color: "green", icon: <IconCheck size={16} /> });
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDeleteOutlet = (outlet: any) => {
+    modals.openConfirmModal({
+      title: "Delete Outlet",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete outlet &quot;{outlet.name}&quot;? All associated orders and tables will be affected.
+        </Text>
+      ),
+      labels: { confirm: "Delete Outlet", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await deleteOutletMut.mutateAsync(outlet.id);
+          await refresh();
+          notifications.show({ title: "Deleted", message: `Outlet ${outlet.name} removed`, color: "green", icon: <IconCheck size={16} /> });
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   // ─── Staff handlers ─────────────────────────────────────────────────────
@@ -358,76 +365,28 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     }
   };
 
-  const handleRemoveStaff = async (member: any) => {
-    if (!confirm(`Remove ${member.name || member.phone} from staff?`)) return;
-    try {
-      await removeStaffMut.mutateAsync(member.id);
-    } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
+  const handleRemoveStaff = (member: any) => {
+    modals.openConfirmModal({
+      title: "Remove Staff Member",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Remove {member.name || member.phone} from staff? They will immediately lose access to this restaurant.
+        </Text>
+      ),
+      labels: { confirm: "Remove Staff", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await removeStaffMut.mutateAsync(member.id);
+          notifications.show({ title: "Staff Removed", message: `${member.name || member.phone} has been removed.`, color: "gray" });
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
-  // ─── Table handlers ─────────────────────────────────────────────────────
-
-  const openCreateTable = () => {
-    setTableForm({ name: "", section: "", capacity: "" });
-    setTableFormError(null);
-    setTableModal({ open: true, editing: null });
-  };
-  const openEditTable = (t: any) => {
-    setTableForm({ name: t.name, section: t.section ?? "", capacity: t.capacity ? String(t.capacity) : "" });
-    setTableFormError(null);
-    setTableModal({ open: true, editing: t });
-  };
-
-  const saveTable = async () => {
-    if (!tableForm.name.trim()) {
-      setTableFormError("Table name is required");
-      return;
-    }
-    if (!tableOutletId) {
-      notifications.show({ title: "Error", message: "Please select an outlet first", color: "orange" });
-      return;
-    }
-    setTableFormError(null);
-    try {
-      const body = {
-        name: tableForm.name.trim(),
-        section: tableForm.section || undefined,
-        capacity: tableForm.capacity ? Number(tableForm.capacity) : undefined,
-      };
-      if (tableModal.editing) {
-        await updateTableMut.mutateAsync({ id: tableModal.editing.id, body });
-      } else {
-        await createTableMut.mutateAsync({ outletId: tableOutletId, ...body });
-      }
-      setTableModal({ open: false, editing: null });
-      notifications.show({ title: "Saved", message: "Table saved", color: "green", icon: <IconCheck size={16} /> });
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
-  };
-
-  const handleToggleTable = async (t: any) => {
-    try {
-      await toggleTableMut.mutateAsync(t.id);
-    } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
-  };
-
-  const handleDeleteTable = (t: any) => {
-    setTableToDelete(t);
-  };
-
-  const handleConfirmDeleteTable = async () => {
-    if (!tableToDelete) return;
-    try {
-      await deleteTableMut.mutateAsync(tableToDelete.id);
-      notifications.show({ title: "Removed", message: `Table "${tableToDelete.name}" removed`, color: "green" });
-      setTableToDelete(null);
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
-  };
-
-  const tableSaving = createTableMut.isPending || updateTableMut.isPending;
   const staffSaving = addStaffMut.isPending;
   const inviteSaving = staffSaving;
 
@@ -612,8 +571,17 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
                     Add Outlet
                   </Button>
                 </Group>
-                {outlets.map((o) => <OutletCard key={o.id} outlet={o} />)}
+                {activeOutlet ? (
+                  outlets.filter((o) => o.id === activeOutlet.id).map((o) => <OutletCard key={o.id} outlet={o} />)
+                ) : (
+                  outlets.map((o) => <OutletCard key={o.id} outlet={o} />)
+                )}
                 {!outlets.length && <Text size="sm" c="dimmed">No outlets yet.</Text>}
+                {outlets.length > 1 && (
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Showing settings for &quot;{activeOutlet?.name || outlets[0]?.name}&quot;. Switch branches in the top navigation bar to configure other outlets.
+                  </Text>
+                )}
               </Stack>
             </Grid.Col>
           </Grid>
@@ -631,54 +599,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
 
         {/* Tables tab */}
         <Tabs.Panel value="tables">
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              {activeOutlet ? (
-                <Badge variant="light" color="dinePrimary" size="md">
-                  {activeOutlet.name}
-                </Badge>
-              ) : <div />}
-              <Button color="dinePrimary" leftSection={<IconPlus size={14} />} onClick={openCreateTable} disabled={!tableOutletId}>
-                Add Table
-              </Button>
-            </Group>
-
-            {tablesLoading ? (
-              <Loader size="sm" />
-            ) : (
-              <Grid gap="sm">
-                {tables.map((t) => (
-                  <Grid.Col key={t.id} span={{ base: 12, sm: 6, md: 4 }}>
-                    <Paper p="md" radius="md">
-                      <Group justify="space-between">
-                        <div>
-                          <Group gap="xs">
-                            <Text fw={600}>{t.name}</Text>
-                            <Badge size="xs" color={t.active ? "green" : "gray"}>
-                              {t.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </Group>
-                          <Text size="xs" c="dimmed">
-                            {[t.section, t.capacity ? `${t.capacity} seats` : null].filter(Boolean).join(" · ") || "—"}
-                          </Text>
-                        </div>
-                        <Group gap={4}>
-                          <ActionIcon size="sm" variant="light" onClick={() => openEditTable(t)}><IconEdit size={14} /></ActionIcon>
-                          <ActionIcon size="sm" variant="light" color={t.active ? "gray" : "green"} onClick={() => handleToggleTable(t)} title={t.active ? "Deactivate" : "Activate"}>
-                            {t.active ? <IconPlayerPause size={14} /> : <IconPlayerPlay size={14} />}
-                          </ActionIcon>
-                          <ActionIcon size="sm" variant="light" color="red" onClick={() => handleDeleteTable(t)}><IconTrash size={14} /></ActionIcon>
-                        </Group>
-                      </Group>
-                    </Paper>
-                  </Grid.Col>
-                ))}
-                {!tables.length && (
-                  <Grid.Col span={12}><Text size="sm" c="dimmed" ta="center" py="md">No tables yet for this outlet.</Text></Grid.Col>
-                )}
-              </Grid>
-            )}
-          </Stack>
+          <TablesManagement />
         </Tabs.Panel>
 
         {/* Store Hours tab */}
@@ -709,18 +630,20 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
               </Group>
               {staffLoading ? (
                 <Loader size="sm" />
-              ) : !staff.length ? (
+              ) : !scopedStaff.length ? (
                 <Paper p="xl" radius="md" ta="center">
                   <Text size="sm" c="dimmed">
-                    No staff members yet. Add a Manager, Waiter, Cashier, or Kitchen member to get started.
+                    {activeOutlet
+                      ? `No staff members assigned to "${activeOutlet.name}" yet.`
+                      : "No staff members yet. Add a Manager, Waiter, Cashier, or Kitchen member to get started."}
                   </Text>
                   <Button size="xs" variant="light" color="dinePrimary" mt="md" leftSection={<IconPlus size={14} />} onClick={openAddStaff}>
-                    Add First Staff Member
+                    Add Staff Member
                   </Button>
                 </Paper>
               ) : (
                 <Stack gap="sm">
-                  {staff.map((m: any) => (
+                  {scopedStaff.map((m: any) => (
                     <Paper key={m.id} p="md" radius="md">
                       {/* Row 1 — identity & status */}
                       <Group justify="space-between" mb="sm" wrap="nowrap">
@@ -935,57 +858,6 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
           <Group justify="flex-end">
             <Button variant="default" onClick={() => setStaffModal(false)}>Cancel</Button>
             <Button color="dinePrimary" onClick={saveStaff} loading={staffSaving}>Add Staff Member</Button>
-          </Group>
-        </Stack>
-      </Modal>
-
-      <Modal opened={tableModal.open} onClose={() => setTableModal({ open: false, editing: null })} title={tableModal.editing ? "Edit Table" : "Add Table"}>
-        <Stack gap="md">
-          <TextInput
-            label="Name"
-            required
-            placeholder="T1, Window 3, Bar 2..."
-            value={tableForm.name}
-            error={tableFormError}
-            onChange={(e) => {
-              setTableForm((f) => ({ ...f, name: e.target.value }));
-              if (tableFormError) setTableFormError(null);
-            }}
-          />
-          <TextInput label="Section" placeholder="Ground Floor, Terrace..." value={tableForm.section} onChange={(e) => setTableForm((f) => ({ ...f, section: e.target.value }))} />
-          <TextInput label="Capacity" placeholder="4" value={tableForm.capacity} onChange={(e) => setTableForm((f) => ({ ...f, capacity: e.target.value.replace(/\D/g, "") }))} />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setTableModal({ open: false, editing: null })}>Cancel</Button>
-            <Button color="dinePrimary" onClick={saveTable} loading={tableSaving}>Save</Button>
-          </Group>
-        </Stack>
-      </Modal>
-
-      {/* Delete Table Confirmation Modal */}
-      <Modal
-        opened={Boolean(tableToDelete)}
-        onClose={() => setTableToDelete(null)}
-        title="Delete Table Confirmation"
-        size="sm"
-      >
-        <Stack gap="md">
-          <Text size="sm">
-            Are you sure you want to delete table <b>"{tableToDelete?.name}"</b>?
-            This will remove it from the floor layout.
-          </Text>
-          <Group justify="flex-end" gap="xs">
-            <Button variant="default" size="sm" onClick={() => setTableToDelete(null)} disabled={deleteTableMut.isPending}>
-              Cancel
-            </Button>
-            <Button
-              color="red"
-              size="sm"
-              loading={deleteTableMut.isPending}
-              onClick={handleConfirmDeleteTable}
-              leftSection={<IconTrash size={16} />}
-            >
-              Delete Table
-            </Button>
           </Group>
         </Stack>
       </Modal>

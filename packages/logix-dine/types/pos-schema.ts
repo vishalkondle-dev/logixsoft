@@ -23,6 +23,11 @@ import {
   purchaseOrderItem,
   orderFeedback,
   orderItemFeedback,
+  restaurantExpense,
+  cashRegisterLog,
+  restaurantCustomer,
+  marketingCampaign,
+  campaignRecipient,
 } from '../schemas/pos-schema';
 
 export const ORDER_ITEM_STATUSES = [
@@ -107,9 +112,10 @@ export type JsonMemberOutletAccessRow = any;
 
 export type RestaurantOutletRow = InferSelectModel<typeof restaurantOutlet>;
 export type NewRestaurantOutletRow = InferInsertModel<typeof restaurantOutlet>;
-export type JsonRestaurantOutletRow = Omit<RestaurantOutletRow, 'createdAt' | 'updatedAt' | 'trialEndsAt' | 'subscriptionExpiresAt'> & {
+export type JsonRestaurantOutletRow = Omit<RestaurantOutletRow, 'createdAt' | 'updatedAt' | 'trialEndsAt' | 'subscriptionExpiresAt' | 'autopayNextBillingAt'> & {
   trialEndsAt?: string | null;
   subscriptionExpiresAt?: string | null;
+  autopayNextBillingAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -268,4 +274,44 @@ export type JsonOrderItemFeedbackRow = Omit<OrderItemFeedbackRow, 'createdAt' | 
   createdAt: string;
   updatedAt: string;
 };
+
+export type RestaurantExpenseRow = InferSelectModel<typeof restaurantExpense>;
+export type NewRestaurantExpenseRow = InferInsertModel<typeof restaurantExpense>;
+export type JsonRestaurantExpenseRow = Omit<RestaurantExpenseRow, 'createdAt' | 'updatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CashRegisterLogRow = InferSelectModel<typeof cashRegisterLog>;
+export type NewCashRegisterLogRow = InferInsertModel<typeof cashRegisterLog>;
+export type JsonCashRegisterLogRow = Omit<CashRegisterLogRow, 'createdAt' | 'updatedAt' | 'closedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+};
+
+export type RestaurantCustomerRow = InferSelectModel<typeof restaurantCustomer>;
+export type NewRestaurantCustomerRow = InferInsertModel<typeof restaurantCustomer>;
+export type JsonRestaurantCustomerRow = Omit<RestaurantCustomerRow, 'createdAt' | 'updatedAt' | 'firstVisitAt' | 'lastVisitAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  firstVisitAt: string | null;
+  lastVisitAt: string | null;
+};
+
+export type MarketingCampaignRow = InferSelectModel<typeof marketingCampaign>;
+export type NewMarketingCampaignRow = InferInsertModel<typeof marketingCampaign>;
+export type JsonMarketingCampaignRow = Omit<MarketingCampaignRow, 'createdAt' | 'updatedAt' | 'scheduledAt' | 'sentAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  scheduledAt: string | null;
+  sentAt: string | null;
+};
+
+export type CampaignRecipientRow = InferSelectModel<typeof campaignRecipient>;
+export type NewCampaignRecipientRow = InferInsertModel<typeof campaignRecipient>;
+export type JsonCampaignRecipientRow = Omit<CampaignRecipientRow, 'sentAt'> & {
+  sentAt: string | null;
+};
+
 

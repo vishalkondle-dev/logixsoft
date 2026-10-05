@@ -11,11 +11,13 @@ import { IconBuildingStore, IconCheck, IconAlertCircle, IconLock, IconBrandWhats
 import { createRestaurant } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useRestaurant } from "@/lib/restaurant-context";
+import { setCookie, RESTAURANT_COOKIE, OUTLET_COOKIE, useRestaurantStore } from "@/lib/stores/restaurant-store";
+import { DEFAULT_FREE_TRIAL_DAYS } from "@logixsoft/logix-dine/types/plans";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
-  const { restaurant, isLoading: restLoading, setActiveRestaurant } = useRestaurant();
+  const { user, isAuthenticated, isLoading: authLoading, openLoginModal, refreshSession } = useAuth();
+  const { restaurant, isLoading: restLoading } = useRestaurant();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -26,10 +28,8 @@ export default function OnboardingPage() {
     if (authLoading || restLoading) return;
     if (restaurant) {
       router.replace("/pos");
-    } else if (user?.role === "CUSTOMER") {
-      router.replace("/portal");
     }
-  }, [authLoading, restLoading, restaurant, user, router]);
+  }, [authLoading, restLoading, restaurant, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,18 +46,31 @@ export default function OnboardingPage() {
         phone: form.phone.trim() || undefined,
         outletName: form.outletName.trim() || "Main",
       });
-      // Save restaurant id and redirect
-      setActiveRestaurant(result.restaurant.id);
+
+      // 1. Explicitly persist both restaurant and outlet cookies
+      setCookie(RESTAURANT_COOKIE, result.restaurant.id);
+      if (result.outlet?.id) {
+        setCookie(OUTLET_COOKIE, result.outlet.id);
+      }
+
+      // 2. Refresh auth session so user.role is immediately updated to OWNER
+      await refreshSession();
+
+      // 3. Populate restaurant store with both restaurant and outlet
+      await useRestaurantStore.getState().setActiveRestaurant(result.restaurant.id, result.outlet?.id);
+
       notifications.show({
         title: "Restaurant created!",
-        message: `Welcome to ${result.restaurant.name}`,
+        message: `Welcome to ${result.restaurant.name}! Your ${DEFAULT_FREE_TRIAL_DAYS}-day free trial is now active.`,
         color: "dinePrimary",
         icon: <IconCheck size={18} />,
       });
-      router.push("/pos");
+
+      // 4. Clean navigation to POS with outletId in query parameter
+      const targetUrl = result.outlet?.id ? `/pos?outletId=${encodeURIComponent(result.outlet.id)}` : "/pos";
+      window.location.href = targetUrl;
     } catch (err: any) {
       setError(err?.message || "Failed to create restaurant");
-    } finally {
       setIsLoading(false);
     }
   };

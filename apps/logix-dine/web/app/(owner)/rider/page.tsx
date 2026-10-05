@@ -13,7 +13,7 @@ import {
   IconMotorbike, IconCheck, IconClock, IconPhoneCall, IconBrandWhatsapp,
   IconMapPin, IconNavigation, IconVolume, IconVolumeOff, IconRefresh,
   IconAlertCircle, IconUser, IconCash, IconReceipt, IconChevronDown,
-  IconChevronUp, IconCircleDot, IconPlus, IconNotes, IconCircleFilled,
+  IconChevronUp, IconCircleDot, IconPlus, IconNotes, IconCircleFilled, IconBuildingStore,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -295,26 +295,14 @@ export default function RiderPage() {
               </Badge>
             </Group>
             <Text size="sm" c="dimmed">
-              {activeOutlet ? activeOutlet.name : "All Outlets"} · Real-time order dispatch, navigation & OTP verification
+              {activeOutlet?.name || "Active Branch"} · Real-time order dispatch, navigation & OTP verification
             </Text>
           </div>
 
           <Group gap="xs" align="center" wrap="wrap">
-            {outlets.length > 0 && (
-              <Select
-                size="sm"
-                data={outlets.map((o) => ({ value: o.id, label: o.name }))}
-                value={activeOutlet?.id ?? outlets[0]?.id ?? null}
-                readOnly={outlets.length <= 1}
-                rightSection={outlets.length <= 1 ? null : undefined}
-                styles={outlets.length <= 1 ? { input: { cursor: "default" } } : undefined}
-                onChange={(val) => {
-                  const found = outlets.find((o) => o.id === val);
-                  if (found) setActiveOutlet(found.id);
-                }}
-                w={180}
-              />
-            )}
+            <Badge size="md" color="dinePrimary" variant="light" leftSection={<IconBuildingStore size={14} />}>
+              {activeOutlet?.name || outlets[0]?.name || "Rider Delivery"}
+            </Badge>
 
             {/* Rider Selector */}
             {riders.length > 0 && (

@@ -7,6 +7,7 @@ import { pgSchema } from './db/schema';
 import { createOrdersRouter } from './routes/orders';
 import { createWebhooksRouter } from './routes/webhooks';
 import { createMerchantRouter } from './routes/merchant';
+import { createMandatesRouter } from './routes/mandates';
 
 type Bindings = {
   HYPERDRIVE?: { connectionString: string };
@@ -110,6 +111,13 @@ app.route('/api/v1/webhooks', createWebhooksRouter((c) => getDbConnection(c)));
 app.route(
   '/api/v1/merchant',
   createMerchantRouter(
+    (c) => getDbConnection(c),
+    (c) => getAuthInstance(c)
+  )
+);
+app.route(
+  '/api/v1/mandates',
+  createMandatesRouter(
     (c) => getDbConnection(c),
     (c) => getAuthInstance(c)
   )

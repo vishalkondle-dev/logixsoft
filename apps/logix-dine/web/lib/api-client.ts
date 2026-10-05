@@ -452,6 +452,45 @@ export const updateOutletSubscription = (
     body: JSON.stringify(body),
   });
 
+export const initiateOutletOneTimePay = (
+  restaurantId: string,
+  outletId: string,
+  body: { planTier: 'BASIC' | 'PRO'; billingCycle?: 'MONTHLY' | 'ANNUAL' }
+) =>
+  apiFetch<{
+    success: boolean;
+    orderId: string;
+    checkoutUrl: string;
+    upiString: string;
+    amount: number;
+    frequency: string;
+  }>(`/outlets/${outletId}/payment/one-time`, restaurantId, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const initiateOutletAutopay = (
+  restaurantId: string,
+  outletId: string,
+  body: { planTier: 'BASIC' | 'PRO'; billingCycle?: 'MONTHLY' | 'ANNUAL' }
+) =>
+  apiFetch<{
+    success: boolean;
+    mandateId: string;
+    checkoutUrl: string;
+    upiString: string;
+    recurringAmount: number;
+    frequency: string;
+  }>(`/outlets/${outletId}/autopay/initiate`, restaurantId, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const cancelOutletAutopay = (restaurantId: string, outletId: string) =>
+  apiFetch<any>(`/outlets/${outletId}/autopay/cancel`, restaurantId, {
+    method: "POST",
+  });
+
 // ─── Roles & Permissions ──────────────────────────────────────────────────
 
 export interface RoleItem {
@@ -738,6 +777,127 @@ export const sendCustomerWhatsApp = (
     { method: "POST", body: JSON.stringify(body) },
     outletId
   );
+
+export interface CrmCustomerItem {
+  id: string;
+  phone: string;
+  displayPhone: string;
+  name: string | null;
+  email: string | null;
+  dob: string | null;
+  anniversary: string | null;
+  gender: string | null;
+  address: string | null;
+  tags: string[];
+  notes: string | null;
+  dietaryPreference: "VEG" | "NON_VEG" | "MIXED" | "UNKNOWN";
+  preferredChannel: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | null;
+  totalOrders: number;
+  totalSpendPaise: number;
+  avgOrderPaise: number;
+  firstVisitAt: string | null;
+  lastVisitAt: string | null;
+  daysSinceLastVisit: number;
+  isBlacklisted: boolean;
+  createdAt: string | null;
+  segments: string[];
+  isVip: boolean;
+  isRegular: boolean;
+  isNew: boolean;
+  isAtRisk: boolean;
+  isInactive: boolean;
+  isHighSpend: boolean;
+  isVeg: boolean;
+  isNonVeg: boolean;
+  isDelivery: boolean;
+}
+
+export interface CrmDirectoryResponse {
+  customers: CrmCustomerItem[];
+  totalCount: number;
+  metrics: {
+    totalGuests: number;
+    vipGuests: number;
+    regularGuests: number;
+    newGuests: number;
+    atRiskGuests: number;
+    inactiveGuests: number;
+    highSpendGuests: number;
+    repeatRate: number;
+    totalLifetimeSpendPaise: number;
+    avgGuestSpendPaise: number;
+  };
+  segmentCounts: Record<string, number>;
+  limit: number;
+  offset: number;
+}
+
+export interface CreateCustomerInput {
+  phone: string;
+  name?: string | null;
+  email?: string | null;
+  dob?: string | null;
+  anniversary?: string | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY" | null;
+  address?: string | null;
+  tags?: string[];
+  notes?: string | null;
+  dietaryPreference?: "VEG" | "NON_VEG" | "MIXED" | "UNKNOWN";
+  preferredChannel?: "DINE_IN" | "TAKEAWAY" | "DELIVERY" | null;
+}
+
+export interface BroadcastWhatsAppInput {
+  message: string;
+  segment?: string;
+  phoneNumbers?: string[];
+  testOnly?: boolean;
+}
+
+export const getCustomersDirectory = (
+  restaurantId: string,
+  params?: {
+    search?: string;
+    segment?: string;
+    outletId?: string | null;
+    sortBy?: string;
+    limit?: number;
+    offset?: number;
+  },
+  outletId?: string | null
+) => {
+  const q = new URLSearchParams();
+  if (params?.search) q.set("search", params.search);
+  if (params?.segment) q.set("segment", params.segment);
+  if (params?.outletId || outletId) q.set("outletId", (params?.outletId || outletId)!);
+  if (params?.sortBy) q.set("sortBy", params.sortBy);
+  if (params?.limit) q.set("limit", String(params.limit));
+  if (params?.offset) q.set("offset", String(params.offset));
+  const qs = q.toString() ? `?${q.toString()}` : "";
+  return apiFetch<CrmDirectoryResponse>(`/customers${qs}`, restaurantId, {}, outletId);
+};
+
+export const createCrmCustomer = (
+  restaurantId: string,
+  body: CreateCustomerInput,
+  outletId?: string | null
+) =>
+  apiFetch<CrmCustomerItem>("/customers", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
+export const updateCrmCustomer = (
+  restaurantId: string,
+  id: string,
+  body: Partial<CreateCustomerInput>,
+  outletId?: string | null
+) =>
+  apiFetch<CrmCustomerItem>(`/customers/${id}`, restaurantId, { method: "PUT", body: JSON.stringify(body) }, outletId);
+
+export const broadcastWhatsApp = (
+  restaurantId: string,
+  body: BroadcastWhatsAppInput,
+  outletId?: string | null
+) =>
+  apiFetch<any>("/customers/broadcast-whatsapp", restaurantId, { method: "POST", body: JSON.stringify(body) }, outletId);
+
 
 // ─── Customer Portal API ─────────────────────────────────────────────────────
 
@@ -1702,6 +1862,403 @@ export const getOrderFeedback = (orderId: string) =>
     `/feedback/order/${orderId}`,
     ""
   );
+
+// ─── Finance & Petty Cash ────────────────────────────────────────────────────
+
+export interface ExpenseRecord {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  title: string;
+  category: string;
+  amountPaise: number;
+  paymentMode: string;
+  paidTo?: string | null;
+  expenseDate: string;
+  notes?: string | null;
+  receiptUrl?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceSummary {
+  date: string;
+  formattedDate: string;
+  restaurantName: string;
+  outletName: string;
+  ownerPhone: string | null;
+
+  grossSalesPaise: number;
+  netSalesPaise: number;
+  totalOrdersSettled: number;
+  averageOrderValuePaise: number;
+
+  cashSalesPaise: number;
+  cashOrdersCount: number;
+  upiSalesPaise: number;
+  upiOrdersCount: number;
+  cardSalesPaise: number;
+  cardOrdersCount: number;
+
+  dineInOrdersCount: number;
+  dineInSalesPaise: number;
+  takeawayOrdersCount: number;
+  takeawaySalesPaise: number;
+  deliveryOrdersCount: number;
+  deliverySalesPaise: number;
+
+  voidOrdersCount: number;
+  voidSalesPaise: number;
+
+  totalExpensesPaise: number;
+  cashExpensesPaise: number;
+  onlineExpensesPaise: number;
+  categoryExpenses: Array<{ category: string; label: string; amountPaise: number; count: number }>;
+
+  openingFloatPaise: number;
+  cashInHandPaise: number;
+  netProfitPaise: number;
+
+  topItems: Array<{ name: string; qty: number; totalPaise: number }>;
+}
+
+export interface CashRegisterData {
+  id?: string;
+  outletId: string;
+  date: string;
+  openingFloatPaise: number;
+  cashWithdrawnPaise: number;
+  closingCountedPaise?: number | null;
+  notes?: string | null;
+}
+
+export const getExpenseSummary = (
+  restaurantId: string,
+  outletId?: string | null,
+  date?: string
+) => {
+  const q = new URLSearchParams();
+  if (outletId) q.set("outletId", outletId);
+  if (date) q.set("date", date);
+  const qs = q.toString();
+  return apiFetch<FinanceSummary>(
+    `/expenses/summary${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+export const getExpenses = (
+  restaurantId: string,
+  params?: {
+    outletId?: string | null;
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    paymentMode?: string;
+    limit?: number;
+    offset?: number;
+  }
+) => {
+  const q = new URLSearchParams();
+  if (params?.outletId) q.set("outletId", params.outletId);
+  if (params?.startDate) q.set("startDate", params.startDate);
+  if (params?.endDate) q.set("endDate", params.endDate);
+  if (params?.category) q.set("category", params.category);
+  if (params?.paymentMode) q.set("paymentMode", params.paymentMode);
+  if (params?.limit) q.set("limit", String(params.limit));
+  if (params?.offset) q.set("offset", String(params.offset));
+  const qs = q.toString();
+  return apiFetch<{ expenses: ExpenseRecord[]; totalPaise: number; count: number }>(
+    `/expenses${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    params?.outletId
+  );
+};
+
+export const createExpense = (
+  restaurantId: string,
+  data: {
+    title: string;
+    category: string;
+    amountPaise: number;
+    paymentMode: string;
+    paidTo?: string | null;
+    expenseDate: string;
+    notes?: string | null;
+    receiptUrl?: string | null;
+    outletId?: string;
+  },
+  outletId?: string | null
+) =>
+  apiFetch<ExpenseRecord>(
+    `/expenses`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const updateExpense = (
+  restaurantId: string,
+  id: string,
+  data: Partial<{
+    title: string;
+    category: string;
+    amountPaise: number;
+    paymentMode: string;
+    paidTo?: string | null;
+    expenseDate: string;
+    notes?: string | null;
+    receiptUrl?: string | null;
+  }>,
+  outletId?: string | null
+) =>
+  apiFetch<ExpenseRecord>(
+    `/expenses/${id}`,
+    restaurantId,
+    { method: "PUT", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const deleteExpense = (
+  restaurantId: string,
+  id: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; id: string }>(
+    `/expenses/${id}`,
+    restaurantId,
+    { method: "DELETE" },
+    outletId
+  );
+
+export const getCashRegister = (
+  restaurantId: string,
+  outletId?: string | null,
+  date?: string
+) => {
+  const q = new URLSearchParams();
+  if (outletId) q.set("outletId", outletId);
+  if (date) q.set("date", date);
+  const qs = q.toString();
+  return apiFetch<CashRegisterData>(
+    `/expenses/cash-register${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+export const setCashRegister = (
+  restaurantId: string,
+  data: {
+    date: string;
+    openingFloatPaise?: number;
+    cashWithdrawnPaise?: number;
+    closingCountedPaise?: number | null;
+    notes?: string | null;
+    outletId?: string;
+  },
+  outletId?: string | null
+) =>
+  apiFetch<CashRegisterData>(
+    `/expenses/cash-register`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const sendClosingReportWhatsApp = (
+  restaurantId: string,
+  outletId: string,
+  phone?: string,
+  date?: string
+) =>
+  apiFetch<{ success: boolean; recipientPhone: string; message: string; summary: FinanceSummary }>(
+    `/expenses/send-closing-report`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify({ outletId, phone, date }) },
+    outletId
+  );
+
+export const getClosingReportPreview = (
+  restaurantId: string,
+  outletId: string,
+  date?: string
+) => {
+  const q = new URLSearchParams();
+  if (outletId) q.set("outletId", outletId);
+  if (date) q.set("date", date);
+  const qs = q.toString();
+  return apiFetch<{ summary: FinanceSummary; message: string; recipientPhone: string | null }>(
+    `/expenses/closing-report-preview${qs ? `?${qs}` : ""}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+// ─── Marketing Campaigns ──────────────────────────────────────────────────────
+
+export interface MarketingCampaign {
+  id: string;
+  restaurantId: string;
+  outletId?: string | null;
+  title: string;
+  message: string;
+  mediaUrl?: string | null;
+  offerCode?: string | null;
+  targetAudience: string;
+  status: "DRAFT" | "SCHEDULED" | "SENDING" | "COMPLETED" | "FAILED" | "CANCELLED";
+  scheduledAt?: string | null;
+  sentAt?: string | null;
+  completedAt?: string | null;
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  recipientCount?: number;
+}
+
+export interface CampaignRecipient {
+  id: string;
+  campaignId: string;
+  customerId?: string | null;
+  customerName?: string | null;
+  phone: string;
+  status: "PENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
+  whatsappMessageId?: string | null;
+  errorMessage?: string | null;
+  sentAt?: string | null;
+  deliveredAt?: string | null;
+  createdAt: string;
+}
+
+export interface CampaignsResponse {
+  campaigns: MarketingCampaign[];
+  summary: {
+    totalCampaigns: number;
+    totalMessagesSent: number;
+    totalFailed: number;
+    scheduledCount: number;
+    successRate: number;
+  };
+}
+
+export interface CampaignDetailResponse {
+  campaign: MarketingCampaign;
+  recipients: CampaignRecipient[];
+}
+
+export interface CreateCampaignInput {
+  title: string;
+  message: string;
+  mediaUrl?: string;
+  offerCode?: string;
+  targetAudience?: "ALL" | "OUTLET";
+  outletId?: string;
+  scheduledAt?: string;
+  sendImmediately?: boolean;
+}
+
+export interface TestCampaignInput {
+  message: string;
+  mediaUrl?: string;
+  offerCode?: string;
+  testPhone: string;
+}
+
+export const getCampaigns = (
+  restaurantId: string,
+  outletId?: string | null
+) => {
+  const q = outletId ? `?outletId=${encodeURIComponent(outletId)}` : "";
+  return apiFetch<CampaignsResponse>(
+    `/campaigns${q}`,
+    restaurantId,
+    {},
+    outletId
+  );
+};
+
+export const getCampaign = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<CampaignDetailResponse>(
+    `/campaigns/${campaignId}`,
+    restaurantId,
+    {},
+    outletId
+  );
+
+export const createCampaign = (
+  restaurantId: string,
+  data: CreateCampaignInput,
+  outletId?: string | null
+) =>
+  apiFetch<MarketingCampaign>(
+    `/campaigns`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const testCampaign = (
+  restaurantId: string,
+  data: TestCampaignInput,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; recipient: string; message: string; mediaUrl?: string | null }>(
+    `/campaigns/test`,
+    restaurantId,
+    { method: "POST", body: JSON.stringify(data) },
+    outletId
+  );
+
+export const sendCampaignNow = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean; sentCount: number; failedCount: number }>(
+    `/campaigns/${campaignId}/send`,
+    restaurantId,
+    { method: "POST" },
+    outletId
+  );
+
+export const cancelCampaign = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean }>(
+    `/campaigns/${campaignId}/cancel`,
+    restaurantId,
+    { method: "POST" },
+    outletId
+  );
+
+export const deleteCampaign = (
+  restaurantId: string,
+  campaignId: string,
+  outletId?: string | null
+) =>
+  apiFetch<{ success: boolean }>(
+    `/campaigns/${campaignId}`,
+    restaurantId,
+    { method: "DELETE" },
+    outletId
+  );
+
+
 
 
 

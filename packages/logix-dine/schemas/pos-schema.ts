@@ -84,13 +84,20 @@ export const restaurantOutlet = pgTable(
     billingCycle: text('billingCycle').notNull().default('MONTHLY'), // 'MONTHLY' | 'ANNUAL'
     trialEndsAt: timestamp('trialEndsAt'),
     subscriptionExpiresAt: timestamp('subscriptionExpiresAt'),
+    autopayStatus: text('autopayStatus'), // 'PENDING' | 'ACTIVE' | 'REVOKED'
+    autopayMandateId: text('autopayMandateId'),
+    autopayUmn: text('autopayUmn'),
+    autopayNextBillingAt: timestamp('autopayNextBillingAt'),
     isDefault: boolean('isDefault').notNull().default(false),
     createdAt: timestamp('createdAt').notNull().defaultNow(),
     updatedAt: timestamp('updatedAt').notNull().defaultNow(),
     createdBy: text('createdBy'),
     updatedBy: text('updatedBy'),
   },
-  (t) => [index('restaurantOutlet_restaurantId_idx').on(t.restaurantId)],
+  (t) => [
+    index('restaurantOutlet_restaurantId_idx').on(t.restaurantId),
+    index('restaurantOutlet_autopayMandateId_idx').on(t.autopayMandateId),
+  ],
 );
 
 // ─── POS Table (dine-in table registry) ───────────────────────────────────────
@@ -419,6 +426,95 @@ export const customerAddress = pgTable(
   ]
 );
 
+// ─── Restaurant Customer (Central CRM Directory) ─────────────────────────────
+
+export const restaurantCustomer = pgTable(
+  'restaurantCustomer',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    phone: text('phone').notNull(),
+    name: text('name'),
+    email: text('email'),
+    dob: text('dob'),
+    anniversary: text('anniversary'),
+    gender: text('gender'),
+    address: text('address'),
+    tags: jsonb('tags').$type<string[]>().default([]),
+    notes: text('notes'),
+    dietaryPreference: text('dietaryPreference').default('UNKNOWN'),
+    preferredChannel: text('preferredChannel'),
+    totalOrders: integer('totalOrders').notNull().default(0),
+    totalSpendPaise: integer('totalSpendPaise').notNull().default(0),
+    avgOrderPaise: integer('avgOrderPaise').notNull().default(0),
+    firstVisitAt: timestamp('firstVisitAt'),
+    lastVisitAt: timestamp('lastVisitAt'),
+    isBlacklisted: boolean('isBlacklisted').notNull().default(false),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    unique('restaurantCustomer_restaurantId_phone_unique').on(t.restaurantId, t.phone),
+    index('restaurantCustomer_restaurantId_idx').on(t.restaurantId),
+    index('restaurantCustomer_phone_idx').on(t.phone),
+    index('restaurantCustomer_lastVisitAt_idx').on(t.lastVisitAt),
+    index('restaurantCustomer_totalSpendPaise_idx').on(t.totalSpendPaise),
+  ]
+);
+
+// ─── WhatsApp Promotional Broadcasts & Marketing Campaigns ──────────────────
+
+export const marketingCampaign = pgTable(
+  'marketingCampaign',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .references(() => restaurantOutlet.id, { onDelete: 'set null' }),
+    title: text('title').notNull(),
+    message: text('message').notNull(),
+    mediaUrl: text('mediaUrl'),
+    offerCode: text('offerCode'),
+    targetAudience: text('targetAudience').notNull().default('ALL'),
+    status: text('status').notNull().default('DRAFT'), // DRAFT | SCHEDULED | SENDING | COMPLETED | CANCELLED
+    scheduledAt: timestamp('scheduledAt'),
+    sentAt: timestamp('sentAt'),
+    totalRecipients: integer('totalRecipients').notNull().default(0),
+    sentCount: integer('sentCount').notNull().default(0),
+    failedCount: integer('failedCount').notNull().default(0),
+    createdByName: text('createdByName'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('marketingCampaign_restaurantId_idx').on(t.restaurantId),
+    index('marketingCampaign_status_idx').on(t.status),
+    index('marketingCampaign_scheduledAt_idx').on(t.scheduledAt),
+  ]
+);
+
+export const campaignRecipient = pgTable(
+  'campaignRecipient',
+  {
+    id: text('id').primaryKey(),
+    campaignId: text('campaignId')
+      .notNull()
+      .references(() => marketingCampaign.id, { onDelete: 'cascade' }),
+    customerPhone: text('customerPhone').notNull(),
+    customerName: text('customerName'),
+    status: text('status').notNull().default('PENDING'), // PENDING | SENT | FAILED
+    sentAt: timestamp('sentAt'),
+    error: text('error'),
+  },
+  (t) => [
+    index('campaignRecipient_campaignId_idx').on(t.campaignId),
+  ]
+);
+
 // ─── Delivery Rider (Fleet) ──────────────────────────────────────────────────
 
 export const deliveryRider = pgTable(
@@ -740,6 +836,69 @@ export const restaurantRole = pgTable(
   ],
 );
 
+// ─── Restaurant Expense & Petty Cash ──────────────────────────────────────────
+
+export const restaurantExpense = pgTable(
+  'restaurantExpense',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    category: text('category').notNull().default('OTHER'), // 'RAW_MATERIAL' | 'STAFF' | 'UTILITIES' | 'MAINTENANCE' | 'PACKAGING' | 'MARKETING' | 'RENT' | 'OTHER'
+    amountPaise: integer('amountPaise').notNull(),
+    paymentMode: text('paymentMode').notNull().default('CASH'), // 'CASH' (Petty Cash Drawer) | 'UPI' | 'BANK_TRANSFER' | 'CARD' | 'OTHER'
+    paidTo: text('paidTo'),
+    expenseDate: text('expenseDate').notNull(), // 'YYYY-MM-DD'
+    notes: text('notes'),
+    receiptUrl: text('receiptUrl'),
+    createdById: text('createdById').references(() => user.id, { onDelete: 'set null' }),
+    createdBy: text('createdBy'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (t) => [
+    index('restaurantExpense_outletId_idx').on(t.outletId),
+    index('restaurantExpense_restaurantId_idx').on(t.restaurantId),
+    index('restaurantExpense_date_idx').on(t.expenseDate),
+    index('restaurantExpense_category_idx').on(t.category),
+    index('restaurantExpense_paymentMode_idx').on(t.paymentMode),
+  ],
+);
+
+// ─── Daily Cash Drawer Register ───────────────────────────────────────────────
+
+export const cashRegisterLog = pgTable(
+  'cashRegisterLog',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(), // 'YYYY-MM-DD'
+    openingFloatPaise: integer('openingFloatPaise').notNull().default(0),
+    cashWithdrawnPaise: integer('cashWithdrawnPaise').notNull().default(0),
+    closingCountedPaise: integer('closingCountedPaise'),
+    notes: text('notes'),
+    closedAt: timestamp('closedAt'),
+    closedById: text('closedById').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+  },
+  (t) => [
+    index('cashRegisterLog_outletId_date_idx').on(t.outletId, t.date),
+    unique('cashRegisterLog_outletId_date_uniq').on(t.outletId, t.date),
+  ],
+);
+
 // ─── Combined schema export ───────────────────────────────────────────────────
 
 export const posSchema = {
@@ -767,6 +926,12 @@ export const posSchema = {
   purchaseOrderItem,
   orderFeedback,
   orderItemFeedback,
+  restaurantExpense,
+  cashRegisterLog,
+  restaurantCustomer,
+  marketingCampaign,
+  campaignRecipient,
 };
+
 
 

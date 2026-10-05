@@ -50,5 +50,14 @@ export default async function SettingsTabPage({
   if (tab === "delivery-partners") {
     redirect("/settings/aggregators");
   }
+  if (tab === "finance" || tab === "expenses") {
+    redirect("/finance");
+  }
+  if (tab === "customers" || tab === "crm") {
+    redirect("/customers");
+  }
+  if (tab === "campaigns" || tab === "broadcasts") {
+    redirect("/campaigns");
+  }
   return <SettingsView currentTab={tab} />;
 }

@@ -46,6 +46,9 @@ import { reservationRoutes } from './routes/reservations';
 import { inventoryRoutes } from './routes/inventory';
 import feedbackRoutes from './routes/feedback';
 import { rolesRouter } from './routes/roles';
+import { webhookRoutes } from './routes/webhooks';
+import { expenseRoutes } from './routes/expenses';
+import { campaignRoutes } from './routes/campaigns';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -597,6 +600,15 @@ app.route('/api/feedback', feedbackRoutes);
 app.route('/roles', rolesRouter);
 app.route('/api/roles', rolesRouter);
 
+app.route('/webhooks', webhookRoutes);
+app.route('/api/webhooks', webhookRoutes);
+
+app.route('/expenses', expenseRoutes);
+app.route('/api/expenses', expenseRoutes);
+
+app.route('/campaigns', campaignRoutes);
+app.route('/api/campaigns', campaignRoutes);
+
 
 
 // Real-time Outlet Live Sync via Durable Objects
@@ -800,4 +812,66 @@ app.onError((err, c) => {
 });
 
 export { OutletRoomDO } from './durable-objects/outlet-room';
-export default app;
+
+export default {
+  fetch: app.fetch,
+  async scheduled(event: any, env: Bindings, ctx: any) {
+    console.log('[Scheduled] Cron triggered at:', new Date().toISOString(), event?.cron);
+    const { createDbWithClient } = await import('./db');
+    const { sendOutletDailyClosingReport, getTodayISTDateString } = await import('./lib/closing-report');
+    const hyperdriveUrl = (env as any)?.HYPERDRIVE?.connectionString;
+    const dbUrl = hyperdriveUrl || (env as any)?.DATABASE_URL || '';
+    const { db, close } = createDbWithClient({ connectionString: dbUrl, schema: appSchema, maxConnections: 1 });
+    try {
+      const activeOutlets = await db
+        .select({
+          id: appSchema.restaurantOutlet.id,
+          restaurantId: appSchema.restaurantOutlet.restaurantId,
+          name: appSchema.restaurantOutlet.name,
+          phone: appSchema.restaurantOutlet.phone,
+          status: appSchema.restaurantOutlet.status,
+          whatsappSettings: appSchema.restaurantOutlet.whatsappSettings,
+        })
+        .from(appSchema.restaurantOutlet)
+        .where(eq(appSchema.restaurantOutlet.status, 'ACTIVE'));
+
+      console.log(`[Scheduled] Processing EOD closing reports for ${activeOutlets.length} active outlet(s)...`);
+      const todayIST = getTodayISTDateString();
+
+      for (const outlet of activeOutlets) {
+        try {
+          const ws = (outlet.whatsappSettings as any) || {};
+          const enabled = ws.enabled !== false && ws.sendDailyClosingReport !== false;
+          if (!enabled) {
+            console.log(`[Scheduled] Skipping outlet ${outlet.name} (${outlet.id}) - closing report disabled`);
+            continue;
+          }
+
+          const targetPhone = ws.ownerClosingReportPhone || outlet.phone;
+          if (!targetPhone) {
+            console.log(`[Scheduled] Skipping outlet ${outlet.name} (${outlet.id}) - no phone found`);
+            continue;
+          }
+
+          console.log(`[Scheduled] Dispatching closing report to ${targetPhone} for ${outlet.name}...`);
+          const res = await sendOutletDailyClosingReport(
+            db,
+            env,
+            outlet.restaurantId,
+            outlet.id,
+            targetPhone,
+            todayIST
+          );
+          console.log(`[Scheduled] Successfully dispatched closing report to ${res.recipientPhone}`);
+        } catch (outletErr) {
+          console.error(`[Scheduled] Failed to dispatch closing report for outlet ${outlet.id}:`, outletErr);
+        }
+      }
+    } catch (cronErr) {
+      console.error('[Scheduled] Fatal error in scheduled cron runner:', cronErr);
+    } finally {
+      await close();
+    }
+  },
+};
+

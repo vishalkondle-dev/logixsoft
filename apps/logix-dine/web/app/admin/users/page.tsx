@@ -18,6 +18,7 @@ import {
   Loader,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconUsers,
   IconUserPlus,
@@ -146,19 +147,31 @@ function UsersContent() {
     }
   };
 
-  const handleDelete = async (userId: string) => {
-    if (!confirm("Are you sure you want to remove this user from the platform?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to delete user");
-      notifications.show({ title: "User Removed", message: "User deleted from platform.", color: "teal" });
-      loadData();
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDelete = (userId: string) => {
+    modals.openConfirmModal({
+      title: "Remove User",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to remove this user from the platform?
+        </Text>
+      ),
+      labels: { confirm: "Remove User", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Failed to delete user");
+          notifications.show({ title: "User Removed", message: "User deleted from platform.", color: "teal" });
+          loadData();
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const filtered = users;

@@ -90,9 +90,8 @@ export default function CustomerProfilePage() {
   const { restaurant, activeOutlet } = useRestaurant();
   const restaurantId = restaurant?.id || "";
 
-  // Outlet scope filter: "current" (activeOutlet.id) vs "all" (null)
-  const [scopeMode, setScopeMode] = useState<"current" | "all">("current");
-  const selectedOutletId = scopeMode === "current" ? activeOutlet?.id || null : null;
+  // Outlet scope filter: strictly scoped to active outlet
+  const selectedOutletId = activeOutlet?.id || null;
 
   // Fetch customer profile
   const { data: profile, isLoading, isError, refetch } = useCustomerProfile(
@@ -447,32 +446,15 @@ export default function CustomerProfilePage() {
 
             {/* Desktop Actions (sm+) */}
             <Group gap="sm" wrap="nowrap" visibleFrom="sm">
-              {/* Scope Switcher */}
-              <SegmentedControl
-                size="xs"
-                radius="md"
-                value={scopeMode}
-                onChange={(val) => setScopeMode(val as "current" | "all")}
-                data={[
-                  {
-                    value: "current",
-                    label: (
-                      <Group gap={5} wrap="nowrap">
-                        <IconBuildingStore size={14} />
-                        <span>{activeOutlet?.name || "This Outlet"}</span>
-                      </Group>
-                    ),
-                  },
-                  {
-                    value: "all",
-                    label: (
-                      <Group gap={5} wrap="nowrap">
-                        <span>All Outlets</span>
-                      </Group>
-                    ),
-                  },
-                ]}
-              />
+              {/* Active Outlet Scope Badge */}
+              <Badge
+                size="md"
+                variant="light"
+                color="dinePrimary"
+                leftSection={<IconBuildingStore size={14} />}
+              >
+                {activeOutlet?.name || "Active Outlet"}
+              </Badge>
 
               <Button
                 color="dinePrimary"
@@ -562,31 +544,14 @@ export default function CustomerProfilePage() {
 
           {/* Mobile Scope Switcher Bar */}
           <Group justify="space-between" align="center" mt="xs" hiddenFrom="sm">
-            <SegmentedControl
-              size="xs"
-              radius="md"
-              value={scopeMode}
-              onChange={(val) => setScopeMode(val as "current" | "all")}
-              data={[
-                {
-                  value: "current",
-                  label: (
-                    <Group gap={4} wrap="nowrap">
-                      <IconBuildingStore size={13} />
-                      <span>{activeOutlet?.name || "This Outlet"}</span>
-                    </Group>
-                  ),
-                },
-                {
-                  value: "all",
-                  label: (
-                    <Group gap={4} wrap="nowrap">
-                      <span>All Outlets</span>
-                    </Group>
-                  ),
-                },
-              ]}
-            />
+            <Badge
+              size="sm"
+              variant="light"
+              color="dinePrimary"
+              leftSection={<IconBuildingStore size={12} />}
+            >
+              {activeOutlet?.name || "Active Outlet"}
+            </Badge>
             <Badge
               size="sm"
               variant="light"
@@ -926,9 +891,7 @@ export default function CustomerProfilePage() {
               ₹{(metrics.lifetimeSpendPaise / 100).toLocaleString("en-IN")}
             </Title>
             <Text size="10px" c="dimmed" mt={2} lineClamp={1}>
-              {scopeMode === "current"
-                ? `Total Chain: ₹${(overallChainMetrics.totalChainSpendPaise / 100).toLocaleString("en-IN")}`
-                : "Across all settled orders"}
+              At {activeOutlet?.name || "this outlet"}
             </Text>
           </Paper>
 
@@ -1179,11 +1142,6 @@ export default function CustomerProfilePage() {
                                       ? "Takeaway"
                                       : `Table ${order.tableNo}`}
                                   </Badge>
-                                  {scopeMode === "all" && (
-                                    <Badge size="xs" variant="default" visibleFrom="xs">
-                                      {order.outletName}
-                                    </Badge>
-                                  )}
                                 </Group>
 
                                 <Group gap={6} align="center" mt={3} wrap="nowrap" style={{ overflow: "hidden" }}>
@@ -1196,11 +1154,6 @@ export default function CustomerProfilePage() {
                                   <Text size="11px" c="dimmed" style={{ whiteSpace: "nowrap" }}>
                                     • {order.method || "Cash"}
                                   </Text>
-                                  {scopeMode === "all" && (
-                                    <Text size="11px" c="dimmed" hiddenFrom="xs" style={{ whiteSpace: "nowrap" }}>
-                                      • {order.outletName}
-                                    </Text>
-                                  )}
                                 </Group>
                               </Box>
 

@@ -321,7 +321,7 @@ export function SettingsOverview() {
   ];
 
   return (
-    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       {/* Header */}
       <Box mb="md">
         <Group justify="space-between" align="flex-end" wrap="wrap" gap="xs">

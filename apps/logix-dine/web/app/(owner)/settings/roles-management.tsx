@@ -457,7 +457,7 @@ export function RolesManagement({ embedded = false }: { embedded?: boolean } = {
     if (embedded) return alertContent;
 
     return (
-      <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+      <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
         {alertContent}
       </Box>
     );
@@ -1105,7 +1105,7 @@ export function RolesManagement({ embedded = false }: { embedded?: boolean } = {
   }
 
   return (
-    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       {content}
     </Box>
   );

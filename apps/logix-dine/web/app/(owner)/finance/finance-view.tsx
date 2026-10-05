@@ -371,7 +371,7 @@ export function FinanceView() {
   const profitMargin = grossSales > 0 ? ((netProfit / grossSales) * 100).toFixed(1) : "0";
 
   return (
-    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       <Stack gap="lg" w="100%">
         {/* ─── Top Header & Controls ─── */}
       <Paper withBorder p="md" radius="md">

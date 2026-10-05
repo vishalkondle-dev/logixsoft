@@ -531,7 +531,7 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
   const currentTabMeta = TAB_TITLES[activeTab] || TAB_TITLES.restaurant;
 
   return (
-    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       <Group justify="space-between" align="center" mb="lg">
         <div>
           <Title order={2}>{currentTabMeta.title}</Title>

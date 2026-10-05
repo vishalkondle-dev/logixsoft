@@ -384,7 +384,7 @@ export function CampaignsView() {
   }
 
   return (
-    <Box pt="md" pb={120} px={{ base: "md", sm: "xl" }}>
+    <Box pt="md" pb="xl" px={{ base: "md", sm: "xl" }}>
       <Stack gap="lg" w="100%">
         {campaignsError && (
           <Alert

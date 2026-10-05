@@ -268,7 +268,7 @@ export default function OrdersPage() {
   if (!restaurant) return null;
 
   return (
-    <Box pt="sm" pb={100} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       <Group justify="space-between" mb="lg">
         <div>
           <Group gap="xs" align="center">

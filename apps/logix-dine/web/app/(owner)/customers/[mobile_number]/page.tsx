@@ -396,7 +396,7 @@ export default function CustomerProfilePage() {
       }}
       px={{ base: "xs", sm: "md", md: "lg" }}
       py="md"
-      pb={{ base: 120, sm: "xl" }}
+      pb="xl"
     >
       <Stack gap="lg" maw={1440} mx="auto">
         {/* ─── 1. TOP HEADER & QUICK ACTIONS ────────────────────────────── */}

@@ -1024,7 +1024,7 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
   }
 
   return (
-    <Box pt="sm" pb={100} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       {content}
     </Box>
   );

@@ -577,7 +577,7 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
   }
 
   return (
-    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       <Stack gap="lg" w="100%">
         {/* Header Bar */}
         <Paper p="md" radius="md" withBorder>
@@ -713,7 +713,7 @@ export function ReportsManagement({ embedded = false, reportType }: { embedded?:
   }
   if (!embedded) {
     return (
-      <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+      <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
         <ReportsCardsList />
       </Box>
     );

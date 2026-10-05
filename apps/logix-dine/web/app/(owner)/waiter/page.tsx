@@ -312,7 +312,7 @@ export default function WaiterPage() {
   }
 
   return (
-    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+    <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
       <Stack gap="lg">
       {/* ─── Top Header ─── */}
       <Group justify="space-between" align="center" wrap="wrap" gap="md" mb="xs">

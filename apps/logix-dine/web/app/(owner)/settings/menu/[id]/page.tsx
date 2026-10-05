@@ -343,7 +343,7 @@ export default function MenuItemPage() {
   const categoryName = categories.find((c) => c.id === form.categoryId)?.name;
 
   return (
-    <Box py="lg" pb={100} px={{ base: "xs", sm: "md" }}>
+    <Box py="lg" pb="xl" px={{ base: "xs", sm: "md" }}>
       {/* Top Navigation & Actions Bar */}
       <Group justify="space-between" align="center" mb="lg" wrap="wrap" gap="xs">
         <Group gap="xs" align="center">

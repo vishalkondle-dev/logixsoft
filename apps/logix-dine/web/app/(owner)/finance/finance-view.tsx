@@ -358,8 +358,9 @@ export function FinanceView() {
   const profitMargin = grossSales > 0 ? ((netProfit / grossSales) * 100).toFixed(1) : "0";
 
   return (
-    <Stack gap="lg" w="100%">
-      {/* ─── Top Header & Controls ─── */}
+    <Box pt="sm" pb={120} px={{ base: "xs", sm: "md" }}>
+      <Stack gap="lg" w="100%">
+        {/* ─── Top Header & Controls ─── */}
       <Paper withBorder p="md" radius="md">
         <Group justify="space-between" align="center" wrap="wrap" gap="md">
           <div>
@@ -1024,5 +1025,6 @@ export function FinanceView() {
         </Stack>
       </Modal>
     </Stack>
-  );
+  </Box>
+);
 }

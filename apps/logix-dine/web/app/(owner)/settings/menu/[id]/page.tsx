@@ -9,6 +9,7 @@ import {
   Loader, Center, Divider, SimpleGrid, Box, Grid,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconArrowLeft, IconTrash, IconCheck, IconPlus,
   IconAlertCircle, IconPhoto, IconUpload, IconChefHat, IconInfoCircle,
@@ -92,23 +93,35 @@ export default function MenuItemPage() {
     }
   };
 
-  const handleDeleteImage = async () => {
-    if (!confirm("Are you sure you want to remove the image for this item?")) return;
-    try {
-      await deleteImageMutation.mutateAsync(id);
-      notifications.show({
-        title: "Image Removed",
-        message: "Dish image removed",
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
-    } catch (err: any) {
-      notifications.show({
-        title: "Remove Failed",
-        message: err.message || "Failed to remove image",
-        color: "red",
-      });
-    }
+  const handleDeleteImage = () => {
+    modals.openConfirmModal({
+      title: "Remove Dish Image",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to remove the image for this item?
+        </Text>
+      ),
+      labels: { confirm: "Remove Image", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await deleteImageMutation.mutateAsync(id);
+          notifications.show({
+            title: "Image Removed",
+            message: "Dish image removed",
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
+        } catch (err: any) {
+          notifications.show({
+            title: "Remove Failed",
+            message: err.message || "Failed to remove image",
+            color: "red",
+          });
+        }
+      },
+    });
   };
 
   const [form, setForm] = useState<{

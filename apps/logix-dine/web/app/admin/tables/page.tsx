@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconTableAlias,
   IconPlus,
@@ -143,19 +144,31 @@ function TablesContent() {
     }
   };
 
-  const handleDelete = async (tableId: string) => {
-    if (!confirm("Are you sure you want to delete this dining table?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/tables/${tableId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      notifications.show({ title: "Table Removed", message: "Dining table deleted.", color: "teal" });
-      loadData();
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDelete = (tableId: string) => {
+    modals.openConfirmModal({
+      title: "Delete Dining Table",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this dining table?
+        </Text>
+      ),
+      labels: { confirm: "Delete Table", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/tables/${tableId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Delete failed");
+          notifications.show({ title: "Table Removed", message: "Dining table deleted.", color: "teal" });
+          loadData();
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const distinctSections = Array.from(new Set(tables.map((t) => t.section).filter(Boolean)));

@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconBuildingStore,
   IconPlus,
@@ -144,21 +145,33 @@ function OutletsContent() {
     }
   };
 
-  const handleDelete = async (outletId: string) => {
-    if (!confirm("Are you sure you want to delete this outlet?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/outlets/${outletId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to delete outlet");
-      notifications.show({ title: "Outlet Deleted", message: "Outlet record removed.", color: "teal" });
-      invalidateClientOutletCache();
-      loadData();
-      fetchGlobalMetadata();
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDelete = (outletId: string) => {
+    modals.openConfirmModal({
+      title: "Delete Outlet",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this outlet? All related tables and orders will be affected.
+        </Text>
+      ),
+      labels: { confirm: "Delete Outlet", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/outlets/${outletId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Failed to delete outlet");
+          notifications.show({ title: "Outlet Deleted", message: "Outlet record removed.", color: "teal" });
+          invalidateClientOutletCache();
+          loadData();
+          fetchGlobalMetadata();
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const filtered = outlets;

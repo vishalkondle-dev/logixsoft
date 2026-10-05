@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconUserCheck,
   IconUserPlus,
@@ -130,19 +131,31 @@ function CustomersContent() {
     }
   };
 
-  const handleDelete = async (cId: string) => {
-    if (!confirm("Permanently delete this customer record?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/customers/${cId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      notifications.show({ title: "Deleted", message: "Customer removed.", color: "teal" });
-      loadData();
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDelete = (cId: string) => {
+    modals.openConfirmModal({
+      title: "Delete Customer Record",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Permanently delete this customer record? All associated points and order history linkages will be removed.
+        </Text>
+      ),
+      labels: { confirm: "Delete Customer", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/customers/${cId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Delete failed");
+          notifications.show({ title: "Deleted", message: "Customer removed.", color: "teal" });
+          loadData();
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   // Server-side filtered and sorted

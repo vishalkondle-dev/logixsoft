@@ -9,6 +9,7 @@ import {
   Radio, Alert, Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconTableAlias, IconPlus, IconSearch, IconUsers, IconClock,
   IconReceipt, IconCheck, IconDotsVertical, IconEdit, IconTrash,
@@ -398,34 +399,47 @@ export default function TablesPage() {
   };
 
   // Action: Void order(s) and release table immediately
-  const handleVoidAndReleaseTable = async () => {
+  const handleVoidAndReleaseTable = () => {
     if (!freeModalSession || freeModalSession.orders.length === 0) return;
-    if (!confirm(`Release table "${freeModalSession.table.name}" and void active orders (${freeModalSession.tokensStr})?`)) return;
-    setIsFreeing(true);
-    try {
-      await Promise.all(
-        freeModalSession.orders.map((o: any) =>
-          voidOrder(restaurantId, o.order.id, outletId)
-        )
-      );
+    const session = freeModalSession;
+    modals.openConfirmModal({
+      title: "Release Table & Void Orders",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Release table &quot;{session.table.name}&quot; and void active orders ({session.tokensStr})? This action cannot be reversed.
+        </Text>
+      ),
+      labels: { confirm: "Release & Void", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        setIsFreeing(true);
+        try {
+          await Promise.all(
+            session.orders.map((o: any) =>
+              voidOrder(restaurantId, o.order.id, outletId)
+            )
+          );
 
-      queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
-      queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
-      queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+          queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+          queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
+          queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
 
-      notifications.show({
-        title: "Table Released",
-        message: `Table "${freeModalSession.table.name}" is now Free.`,
-        color: "blue",
-        icon: <IconCheck size={16} />,
-      });
+          notifications.show({
+            title: "Table Released",
+            message: `Table "${session.table.name}" is now Free.`,
+            color: "blue",
+            icon: <IconCheck size={16} />,
+          });
 
-      setFreeModalSession(null);
-    } catch (err: any) {
-      notifications.show({ title: "Failed to release table", message: err.message || "Error voiding order", color: "red" });
-    } finally {
-      setIsFreeing(false);
-    }
+          setFreeModalSession(null);
+        } catch (err: any) {
+          notifications.show({ title: "Failed to release table", message: err.message || "Error voiding order", color: "red" });
+        } finally {
+          setIsFreeing(false);
+        }
+      },
+    });
   };
 
   // Print consolidated bill from modal

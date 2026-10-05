@@ -30,6 +30,7 @@ import {
   SegmentedControl,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconSpeakerphone,
   IconBrandWhatsapp,
@@ -830,26 +831,37 @@ export function CampaignsView() {
                                 variant="subtle"
                                 color="red"
                                 size="sm"
-                                onClick={async () => {
-                                  if (confirm("Are you sure you want to delete this campaign?")) {
-                                    try {
-                                      await deleteMutation.mutateAsync({
-                                        campaignId: camp.id,
-                                        outletId,
-                                      });
-                                      notifications.show({
-                                        title: "Campaign Deleted",
-                                        message: "Campaign record removed.",
-                                        color: "gray",
-                                      });
-                                    } catch (err: any) {
-                                      notifications.show({
-                                        title: "Delete Failed",
-                                        message: err?.message || "Could not delete campaign.",
-                                        color: "red",
-                                      });
-                                    }
-                                  }
+                                onClick={() => {
+                                  modals.openConfirmModal({
+                                    title: "Delete Campaign",
+                                    centered: true,
+                                    children: (
+                                      <Text size="sm">
+                                        Are you sure you want to delete campaign &quot;{camp.title}&quot;? This action cannot be undone.
+                                      </Text>
+                                    ),
+                                    labels: { confirm: "Delete Campaign", cancel: "Keep Campaign" },
+                                    confirmProps: { color: "red" },
+                                    onConfirm: async () => {
+                                      try {
+                                        await deleteMutation.mutateAsync({
+                                          campaignId: camp.id,
+                                          outletId,
+                                        });
+                                        notifications.show({
+                                          title: "Campaign Deleted",
+                                          message: "Campaign record removed.",
+                                          color: "gray",
+                                        });
+                                      } catch (err: any) {
+                                        notifications.show({
+                                          title: "Delete Failed",
+                                          message: err?.message || "Could not delete campaign.",
+                                          color: "red",
+                                        });
+                                      }
+                                    },
+                                  });
                                 }}
                               >
                                 <IconTrash size={15} />

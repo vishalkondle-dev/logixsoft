@@ -8,6 +8,7 @@ import {
   Paper, Badge, ActionIcon, Modal, Loader, Grid, Select, MultiSelect, ScrollArea, ThemeIcon, Center, Divider,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconBuildingStore, IconCheck, IconTrash,
   IconEdit, IconPlus, IconStar, IconPrinter, IconUsers, IconTableAlias,
@@ -277,15 +278,27 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     }
   };
 
-  const handleDeleteOutlet = async (outlet: any) => {
-    if (!confirm(`Delete outlet "${outlet.name}"?`)) return;
-    try {
-      await deleteOutletMut.mutateAsync(outlet.id);
-      await refresh();
-      notifications.show({ title: "Deleted", message: `Outlet ${outlet.name} removed`, color: "green", icon: <IconCheck size={16} /> });
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDeleteOutlet = (outlet: any) => {
+    modals.openConfirmModal({
+      title: "Delete Outlet",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete outlet &quot;{outlet.name}&quot;? All associated orders and tables will be affected.
+        </Text>
+      ),
+      labels: { confirm: "Delete Outlet", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await deleteOutletMut.mutateAsync(outlet.id);
+          await refresh();
+          notifications.show({ title: "Deleted", message: `Outlet ${outlet.name} removed`, color: "green", icon: <IconCheck size={16} /> });
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   // ─── Staff handlers ─────────────────────────────────────────────────────
@@ -352,11 +365,26 @@ export function SettingsView({ currentTab }: { currentTab?: string }) {
     }
   };
 
-  const handleRemoveStaff = async (member: any) => {
-    if (!confirm(`Remove ${member.name || member.phone} from staff?`)) return;
-    try {
-      await removeStaffMut.mutateAsync(member.id);
-    } catch (err: any) { notifications.show({ title: "Error", message: err.message, color: "red" }); }
+  const handleRemoveStaff = (member: any) => {
+    modals.openConfirmModal({
+      title: "Remove Staff Member",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Remove {member.name || member.phone} from staff? They will immediately lose access to this restaurant.
+        </Text>
+      ),
+      labels: { confirm: "Remove Staff", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await removeStaffMut.mutateAsync(member.id);
+          notifications.show({ title: "Staff Removed", message: `${member.name || member.phone} has been removed.`, color: "gray" });
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const staffSaving = addStaffMut.isPending;

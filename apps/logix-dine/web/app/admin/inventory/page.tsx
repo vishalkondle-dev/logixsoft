@@ -19,6 +19,7 @@ import {
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconPackages,
   IconPlus,
@@ -157,19 +158,31 @@ function InventoryContent() {
     }
   };
 
-  const handleDelete = async (invId: string) => {
-    if (!confirm("Are you sure you want to delete this inventory item?")) return;
-    try {
-      const res = await fetch(`${API_BASE}/admin/inventory/${invId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      notifications.show({ title: "Deleted", message: "Stock item removed.", color: "teal" });
-      loadData();
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDelete = (invId: string) => {
+    modals.openConfirmModal({
+      title: "Delete Inventory Item",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete this inventory item?
+        </Text>
+      ),
+      labels: { confirm: "Delete Item", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_BASE}/admin/inventory/${invId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error("Delete failed");
+          notifications.show({ title: "Deleted", message: "Stock item removed.", color: "teal" });
+          loadData();
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const filtered = inventory;

@@ -51,6 +51,7 @@ import {
   IconFileInvoice,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useExpenseSummary,
@@ -245,25 +246,37 @@ export function FinanceView() {
   };
 
   // Handle Delete Expense
-  const handleDeleteExpense = async (id: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
-    try {
-      await deleteExpenseMut.mutateAsync({ id, outletId });
-      notifications.show({
-        title: "Expense Removed",
-        message: `Voucher "${title}" deleted.`,
-        color: "teal",
-        icon: <IconCheck size={16} />,
-      });
-      refetchSummary();
-      refetchExpenses();
-    } catch (err: any) {
-      notifications.show({
-        title: "Delete Failed",
-        message: err.message || "Could not delete expense",
-        color: "red",
-      });
-    }
+  const handleDeleteExpense = (id: string, title: string) => {
+    modals.openConfirmModal({
+      title: "Delete Expense Voucher",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete expense voucher &quot;{title}&quot;?
+        </Text>
+      ),
+      labels: { confirm: "Delete Expense", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await deleteExpenseMut.mutateAsync({ id, outletId });
+          notifications.show({
+            title: "Expense Removed",
+            message: `Voucher "${title}" deleted.`,
+            color: "teal",
+            icon: <IconCheck size={16} />,
+          });
+          refetchSummary();
+          refetchExpenses();
+        } catch (err: any) {
+          notifications.show({
+            title: "Delete Failed",
+            message: err.message || "Could not delete expense",
+            color: "red",
+          });
+        }
+      },
+    });
   };
 
   // Handle Save Float / Cash Register

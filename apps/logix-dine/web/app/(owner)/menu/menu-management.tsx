@@ -8,6 +8,7 @@ import {
   Divider, Anchor, Loader, ScrollArea,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { modals } from "@mantine/modals";
 import {
   IconPlus, IconEdit, IconTrash, IconCheck, IconPhoto, IconCamera, IconUpload,
   IconStar,
@@ -320,13 +321,25 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
     }
   };
 
-  const handleDeleteCat = async (cat: any) => {
-    if (!confirm(`Delete category "${cat.name}"?`)) return;
-    try {
-      await deleteCat.mutateAsync(cat.id);
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDeleteCat = (cat: any) => {
+    modals.openConfirmModal({
+      title: "Delete Category",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete category &quot;{cat.name}&quot;?
+        </Text>
+      ),
+      labels: { confirm: "Delete Category", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await deleteCat.mutateAsync(cat.id);
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const handleToggleActive = async (cat: any) => {
@@ -402,13 +415,25 @@ export function MenuManagement({ embedded = false }: { embedded?: boolean }) {
     }
   };
 
-  const handleDeleteItem = async (item: any) => {
-    if (!confirm(`Delete item "${item.name}"?`)) return;
-    try {
-      await deleteItm.mutateAsync(item.id);
-    } catch (err: any) {
-      notifications.show({ title: "Error", message: err.message, color: "red" });
-    }
+  const handleDeleteItem = (item: any) => {
+    modals.openConfirmModal({
+      title: "Delete Menu Item",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete dish &quot;{item.name}&quot;?
+        </Text>
+      ),
+      labels: { confirm: "Delete Item", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await deleteItm.mutateAsync(item.id);
+        } catch (err: any) {
+          notifications.show({ title: "Error", message: err.message, color: "red" });
+        }
+      },
+    });
   };
 
   const handleToggle = async (item: any) => {

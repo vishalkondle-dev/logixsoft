@@ -2031,107 +2031,81 @@ export default function POSPage() {
 
               {/* Veg / Non-Veg Checkboxes Filter */}
               <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
-                {/* Veg Filter Checkbox */}
-                <UnstyledButton
-                  role="checkbox"
-                  aria-checked={filterVeg}
-                  onClick={() => setFilterVeg((prev) => !prev)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "4px 8px",
-                    borderRadius: 6,
-                    border: `1.5px solid ${filterVeg ? "#2e7d32" : "#ced4da"}`,
-                    backgroundColor: filterVeg ? "#e8f5e9" : "#ffffff",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    transition: "all 120ms ease",
-                  }}
-                >
-                  {/* Single Checkbox with Veg Icon inside */}
-                  <Box
+                {/* Veg Filter Icon Only */}
+                <Tooltip label={filterVeg ? "Veg Filter: Active (Click to clear)" : "Filter Veg items only"} withArrow>
+                  <ActionIcon
+                    size={29}
+                    variant={filterVeg ? "filled" : "default"}
+                    color={filterVeg ? "green" : undefined}
+                    radius="md"
+                    onClick={() => setFilterVeg((prev) => !prev)}
+                    aria-label="Filter Veg items"
                     style={{
-                      width: 17,
-                      height: 17,
-                      borderRadius: 3.5,
-                      border: "1.5px solid #2e7d32",
+                      flexShrink: 0,
+                      borderColor: filterVeg ? "#2e7d32" : "#dee2e6",
                       backgroundColor: filterVeg ? "#2e7d32" : "#ffffff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      transition: "all 120ms ease",
                     }}
                   >
-                    {filterVeg ? (
-                      <IconCheck size={12} stroke={3.5} color="#ffffff" />
-                    ) : (
+                    <Box
+                      style={{
+                        width: 15,
+                        height: 15,
+                        borderRadius: 3,
+                        border: `1.5px solid ${filterVeg ? "#ffffff" : "#2e7d32"}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
                       <Box
                         style={{
                           width: 6,
                           height: 6,
                           borderRadius: "50%",
-                          backgroundColor: "#2e7d32",
+                          backgroundColor: filterVeg ? "#ffffff" : "#2e7d32",
                         }}
                       />
-                    )}
-                  </Box>
-                  <Text size="xs" fw={filterVeg ? 700 : 500} c={filterVeg ? "green.9" : "dark.4"}>
-                    Veg
-                  </Text>
-                </UnstyledButton>
+                    </Box>
+                  </ActionIcon>
+                </Tooltip>
 
-                {/* Non-Veg Filter Checkbox */}
-                <UnstyledButton
-                  role="checkbox"
-                  aria-checked={filterNonVeg}
-                  onClick={() => setFilterNonVeg((prev) => !prev)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "4px 8px",
-                    borderRadius: 6,
-                    border: `1.5px solid ${filterNonVeg ? "#c62828" : "#ced4da"}`,
-                    backgroundColor: filterNonVeg ? "#ffebee" : "#ffffff",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    transition: "all 120ms ease",
-                  }}
-                >
-                  {/* Single Checkbox with Non-Veg Icon inside */}
-                  <Box
+                {/* Non-Veg Filter Icon Only */}
+                <Tooltip label={filterNonVeg ? "Non-Veg Filter: Active (Click to clear)" : "Filter Non-Veg items only"} withArrow>
+                  <ActionIcon
+                    size={29}
+                    variant={filterNonVeg ? "filled" : "default"}
+                    color={filterNonVeg ? "red" : undefined}
+                    radius="md"
+                    onClick={() => setFilterNonVeg((prev) => !prev)}
+                    aria-label="Filter Non-Veg items"
                     style={{
-                      width: 17,
-                      height: 17,
-                      borderRadius: 3.5,
-                      border: "1.5px solid #c62828",
-                      backgroundColor: filterNonVeg ? "#c62828" : "#ffffff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
                       flexShrink: 0,
-                      transition: "all 120ms ease",
+                      borderColor: filterNonVeg ? "#c62828" : "#dee2e6",
+                      backgroundColor: filterNonVeg ? "#c62828" : "#ffffff",
                     }}
                   >
-                    {filterNonVeg ? (
-                      <IconCheck size={12} stroke={3.5} color="#ffffff" />
-                    ) : (
+                    <Box
+                      style={{
+                        width: 15,
+                        height: 15,
+                        borderRadius: 3,
+                        border: `1.5px solid ${filterNonVeg ? "#ffffff" : "#c62828"}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
                       <Box
                         style={{
                           width: 6,
                           height: 6,
                           borderRadius: "50%",
-                          backgroundColor: "#c62828",
+                          backgroundColor: filterNonVeg ? "#ffffff" : "#c62828",
                         }}
                       />
-                    )}
-                  </Box>
-                  <Text size="xs" fw={filterNonVeg ? 700 : 500} c={filterNonVeg ? "red.9" : "dark.4"}>
-                    Non-Veg
-                  </Text>
-                </UnstyledButton>
+                    </Box>
+                  </ActionIcon>
+                </Tooltip>
 
                 {/* Delivery Quick Drawer ActionIcon with Badge */}
                 <Tooltip
@@ -2145,10 +2119,17 @@ export default function POSPage() {
                   <Indicator
                     label={activeDeliveryOrders.length}
                     size={16}
-                    offset={2}
                     color="teal"
-                    disabled={activeDeliveryOrders.length === 0}
                     withBorder
+                    styles={{
+                      indicator: {
+                        top: "6px",
+                        right: "0px",
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        lineHeight: 1,
+                      },
+                    }}
                   >
                     <ActionIcon
                       size={29}
@@ -2168,7 +2149,7 @@ export default function POSPage() {
                 <Tooltip label="Petty Cash" withArrow>
                   <ActionIcon
                     size={29}
-                    variant="subtle"
+                    variant="light"
                     color="orange"
                     radius="md"
                     onClick={() => setPettyCashModalOpen(true)}

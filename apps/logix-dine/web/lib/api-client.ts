@@ -2139,8 +2139,20 @@ export interface CampaignRecipient {
   createdAt: string;
 }
 
-export interface CampaignDetail extends MarketingCampaign {
-  recipients?: CampaignRecipient[];
+export interface CampaignsResponse {
+  campaigns: MarketingCampaign[];
+  summary: {
+    totalCampaigns: number;
+    totalMessagesSent: number;
+    totalFailed: number;
+    scheduledCount: number;
+    successRate: number;
+  };
+}
+
+export interface CampaignDetailResponse {
+  campaign: MarketingCampaign;
+  recipients: CampaignRecipient[];
 }
 
 export interface CreateCampaignInput {
@@ -2164,20 +2176,22 @@ export interface TestCampaignInput {
 export const getCampaigns = (
   restaurantId: string,
   outletId?: string | null
-) =>
-  apiFetch<MarketingCampaign[]>(
-    `/campaigns`,
+) => {
+  const q = outletId ? `?outletId=${encodeURIComponent(outletId)}` : "";
+  return apiFetch<CampaignsResponse>(
+    `/campaigns${q}`,
     restaurantId,
     {},
     outletId
   );
+};
 
 export const getCampaign = (
   restaurantId: string,
   campaignId: string,
   outletId?: string | null
 ) =>
-  apiFetch<CampaignDetail>(
+  apiFetch<CampaignDetailResponse>(
     `/campaigns/${campaignId}`,
     restaurantId,
     {},

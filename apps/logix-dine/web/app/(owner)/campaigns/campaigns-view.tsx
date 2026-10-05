@@ -90,17 +90,28 @@ const STARTER_TEMPLATES = [
 ];
 
 export function CampaignsView() {
-  const { restaurant, outlets, activeOutlet, setActiveOutlet, role } = useRestaurant();
+  const { restaurant, outlets, activeOutlet, setActiveOutlet, role, isLoading: restLoading } = useRestaurant();
   const restaurantId = restaurant?.id || "";
   const outletId = activeOutlet?.id || null;
 
   // Campaigns query
   const {
-    data: campaigns = [],
+    data: campaignsData,
     isLoading,
     refetch,
     isFetching,
+    error: campaignsError,
   } = useCampaigns(restaurantId, outletId);
+
+  // Safely extract campaigns array no matter what shape is returned
+  const campaigns: MarketingCampaign[] = useMemo(() => {
+    if (!campaignsData) return [];
+    if (Array.isArray(campaignsData)) return campaignsData;
+    if (Array.isArray((campaignsData as any).campaigns)) return (campaignsData as any).campaigns;
+    return [];
+  }, [campaignsData]);
+
+  const apiSummary = (campaignsData as any)?.summary;
 
   // Total customer count query (strictly directory count, no segments)
   const { data: customerData } = useCustomers(restaurantId, { limit: 1 });
@@ -142,15 +153,16 @@ export function CampaignsView() {
 
   // Filtered campaigns
   const filteredCampaigns = useMemo(() => {
+    if (!Array.isArray(campaigns)) return [];
     return campaigns.filter((c) => {
       const matchesSearch =
         searchQuery.trim() === "" ||
-        c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.offerCode && c.offerCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        c.message.toLowerCase().includes(searchQuery.toLowerCase());
+        (c.message || "").toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus =
-        statusFilter === "ALL" || c.status.toUpperCase() === statusFilter;
+        statusFilter === "ALL" || (c.status || "").toUpperCase() === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -158,6 +170,15 @@ export function CampaignsView() {
 
   // Aggregate Metrics
   const metrics = useMemo(() => {
+    if (apiSummary) {
+      return {
+        totalCampaigns: apiSummary.totalCampaigns || 0,
+        totalMessagesDelivered: apiSummary.totalMessagesSent || 0,
+        scheduledCount: apiSummary.scheduledCount || 0,
+        successRate: apiSummary.successRate ?? 100,
+      };
+    }
+
     let totalMessagesDelivered = 0;
     let scheduledCount = 0;
     let totalSent = 0;
@@ -179,7 +200,7 @@ export function CampaignsView() {
       scheduledCount,
       successRate,
     };
-  }, [campaigns]);
+  }, [campaigns, apiSummary]);
 
   // Handle inserting tag into message textarea
   const insertTag = (tag: string) => {
@@ -348,9 +369,40 @@ export function CampaignsView() {
     }
   };
 
+  if (restLoading && !restaurantId) {
+    return (
+      <Center py={100}>
+        <Stack align="center" gap="sm">
+          <Loader size="lg" color="green" />
+          <Text size="sm" c="dimmed">
+            Loading restaurant profile...
+          </Text>
+        </Stack>
+      </Center>
+    );
+  }
+
   return (
     <Box pt="md" pb={120} px={{ base: "md", sm: "xl" }}>
       <Stack gap="lg" w="100%">
+        {campaignsError && (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            title="Unable to load campaigns"
+            color="red"
+            variant="light"
+          >
+            <Group justify="space-between" align="center">
+              <Text size="xs">
+                {(campaignsError as any)?.message || "Failed to fetch campaigns ledger."}
+              </Text>
+              <Button size="xs" variant="outline" color="red" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </Group>
+          </Alert>
+        )}
+
         {/* ─── Top Header & Controls ─── */}
         <Paper withBorder p="md" radius="md">
           <Group justify="space-between" align="center" wrap="wrap" gap="md">
@@ -1168,54 +1220,58 @@ export function CampaignsView() {
           <Text size="sm" c="dimmed">
             No campaign logs available.
           </Text>
-        ) : (
-          <Stack gap="md">
-            {/* Summary Banner */}
-            <Paper withBorder p="sm" radius="md" style={{ background: "var(--mantine-color-gray-0)" }}>
-              <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-                <div>
-                  <Text size="xs" c="dimmed">Campaign Title</Text>
-                  <Text size="sm" fw={700}>{selectedCampaignDetail.title}</Text>
-                </div>
-                <div>
-                  <Text size="xs" c="dimmed">Status</Text>
-                  <Box mt={2}>{getStatusBadge(selectedCampaignDetail.status)}</Box>
-                </div>
-                <div>
-                  <Text size="xs" c="dimmed">Delivered / Total</Text>
-                  <Text size="sm" fw={700} c="green.7">
-                    {selectedCampaignDetail.sentCount || 0} / {selectedCampaignDetail.totalRecipients || 0}
-                  </Text>
-                </div>
-                <div>
-                  <Text size="xs" c="dimmed">Offer Code</Text>
-                  <Text size="sm" fw={700}>{selectedCampaignDetail.offerCode || "None"}</Text>
-                </div>
-              </SimpleGrid>
-            </Paper>
+        ) : (() => {
+          const detailCampaign = (selectedCampaignDetail as any)?.campaign || (selectedCampaignDetail as any);
+          const detailRecipients = (selectedCampaignDetail as any)?.recipients || [];
 
-            {/* Recipient Breakdown */}
-            <Table.ScrollContainer minWidth={600}>
-              <Table verticalSpacing="xs" striped highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Customer</Table.Th>
-                    <Table.Th>WhatsApp Phone</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Sent Timestamp</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {!selectedCampaignDetail.recipients || selectedCampaignDetail.recipients.length === 0 ? (
+          return (
+            <Stack gap="md">
+              {/* Summary Banner */}
+              <Paper withBorder p="sm" radius="md" style={{ background: "var(--mantine-color-gray-0)" }}>
+                <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+                  <div>
+                    <Text size="xs" c="dimmed">Campaign Title</Text>
+                    <Text size="sm" fw={700}>{detailCampaign?.title || "Campaign"}</Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">Status</Text>
+                    <Box mt={2}>{getStatusBadge(detailCampaign?.status || "UNKNOWN")}</Box>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">Delivered / Total</Text>
+                    <Text size="sm" fw={700} c="green.7">
+                      {detailCampaign?.sentCount || 0} / {detailCampaign?.totalRecipients || 0}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">Offer Code</Text>
+                    <Text size="sm" fw={700}>{detailCampaign?.offerCode || "None"}</Text>
+                  </div>
+                </SimpleGrid>
+              </Paper>
+
+              {/* Recipient Breakdown */}
+              <Table.ScrollContainer minWidth={600}>
+                <Table verticalSpacing="xs" striped highlightOnHover>
+                  <Table.Thead>
                     <Table.Tr>
-                      <Table.Td colSpan={4} style={{ textAlign: "center" }}>
-                        <Text size="xs" c="dimmed" p="sm">
-                          No recipient records logged yet.
-                        </Text>
-                      </Table.Td>
+                      <Table.Th>Customer</Table.Th>
+                      <Table.Th>WhatsApp Phone</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th>Sent Timestamp</Table.Th>
                     </Table.Tr>
-                  ) : (
-                    selectedCampaignDetail.recipients.map((rec) => (
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {!detailRecipients || detailRecipients.length === 0 ? (
+                      <Table.Tr>
+                        <Table.Td colSpan={4} style={{ textAlign: "center" }}>
+                          <Text size="xs" c="dimmed" p="sm">
+                            No recipient records logged yet.
+                          </Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    ) : (
+                      detailRecipients.map((rec: any) => (
                       <Table.Tr key={rec.id}>
                         <Table.Td>
                           <Text size="xs" fw={600}>
@@ -1252,8 +1308,9 @@ export function CampaignsView() {
               </Table>
             </Table.ScrollContainer>
           </Stack>
-        )}
-      </Modal>
+        );
+      })()}
+    </Modal>
     </Box>
   );
 }

@@ -471,7 +471,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       header={isLanding ? undefined : { height: { base: 60, sm: 64 } }}
       footer={
         visibleNav.length > 0 && !isPortal && !isLanding
-          ? { height: { base: 56, md: 0 } }
+          ? { height: { base: 84, md: 0 } }
           : undefined
       }
       navbar={
@@ -1092,94 +1092,115 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           hiddenFrom="md"
           withBorder={false}
           style={{
-            backgroundColor: "#ffffff",
-            borderTop: "1px solid #e9ecef",
-            boxShadow: "0 -2px 10px rgba(0, 0, 0, 0.05)",
-            zIndex: 100,
+            backgroundColor: "transparent",
+            border: "none",
+            boxShadow: "none",
+            pointerEvents: "none",
+            zIndex: 120,
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
+            padding: "0 12px",
+            paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))",
           }}
         >
-          <Group
-            justify="space-around"
-            align="center"
-            wrap="nowrap"
-            gap={0}
+          <Box
             style={{
+              pointerEvents: "auto",
               width: "100%",
-              maxWidth: 500,
-              margin: "0 auto",
-              height: "100%",
+              maxWidth: Math.min(500, Math.max(180, visibleNav.length * 80 + 36)),
+              height: 58,
+              backgroundColor: "rgba(255, 255, 255, 0.94)",
+              backdropFilter: "blur(20px) saturate(180%)",
+              WebkitBackdropFilter: "blur(20px) saturate(180%)",
+              borderRadius: 30,
+              border: "1px solid rgba(175, 115, 215, 0.22)",
+              boxShadow: "0 10px 30px -4px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(175, 115, 215, 0.14)",
+              display: "flex",
+              alignItems: "center",
+              padding: "4px 6px",
             }}
           >
-            {visibleNav.map((item) => {
-              const Icon = item.icon;
-              const isPortalItem = item.href.includes("?tab=");
-              const targetTab = isPortalItem ? item.href.split("?tab=")[1] : "";
-              const isActive = isPortalItem
-                ? pathname === "/portal" && currentTab === targetTab
-                : item.href === "/"
-                  ? pathname === "/"
-                  : item.href === "/tables"
-                    ? pathname === "/tables" || (pathname.startsWith("/tables/") && !pathname.startsWith("/settings/tables"))
-                    : item.href.startsWith("/settings")
-                      ? pathname.startsWith("/settings")
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const itemHref = isPortalItem
-                ? item.href
-                : activeOutlet && item.href !== "/"
-                  ? `${item.href}?outletId=${activeOutlet.id}`
-                  : item.href;
-              return (
-                <UnstyledButton
-                  key={item.href}
-                  component={Link}
-                  href={itemHref}
-                  aria-label={item.label}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flex: 1,
-                    height: "100%",
-                    padding: "4px 2px",
-                    color: isActive ? "#af73d7" : "#6c757d",
-                    textDecoration: "none",
-                    userSelect: "none",
-                    transition: "color 0.15s ease",
-                  }}
-                >
-                  <Box
+            <Group
+              justify="space-around"
+              align="center"
+              wrap="nowrap"
+              gap={2}
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              {visibleNav.map((item) => {
+                const Icon = item.icon;
+                const isPortalItem = item.href.includes("?tab=");
+                const targetTab = isPortalItem ? item.href.split("?tab=")[1] : "";
+                const isActive = isPortalItem
+                  ? pathname === "/portal" && currentTab === targetTab
+                  : item.href === "/"
+                    ? pathname === "/"
+                    : item.href === "/tables"
+                      ? pathname === "/tables" || (pathname.startsWith("/tables/") && !pathname.startsWith("/settings/tables"))
+                      : item.href.startsWith("/settings")
+                        ? pathname.startsWith("/settings")
+                        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const itemHref = isPortalItem
+                  ? item.href
+                  : activeOutlet && item.href !== "/"
+                    ? `${item.href}?outletId=${activeOutlet.id}`
+                    : item.href;
+                return (
+                  <UnstyledButton
+                    key={item.href}
+                    component={Link}
+                    href={itemHref}
+                    aria-label={item.label}
                     style={{
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      padding: "3px 8px",
-                      borderRadius: 16,
-                      backgroundColor: isActive ? "rgba(175, 115, 215, 0.12)" : "transparent",
-                      transition: "background-color 0.15s ease",
+                      flex: 1,
+                      height: "100%",
+                      padding: "2px 2px",
+                      borderRadius: 20,
+                      color: isActive ? "#af73d7" : "#6c757d",
+                      textDecoration: "none",
+                      userSelect: "none",
+                      transition: "all 0.15s ease",
                     }}
                   >
-                    <Icon size={20} stroke={isActive ? 2.3 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
-                  </Box>
-                  <Text
-                    size="xs"
-                    fw={isActive ? 700 : 500}
-                    c={isActive ? "dinePrimary" : "dimmed"}
-                    style={{
-                      fontSize: 11,
-                      lineHeight: 1.1,
-                      marginTop: 2,
-                      letterSpacing: "-0.2px",
-                    }}
-                  >
-                    {item.label}
-                  </Text>
-                </UnstyledButton>
-              );
-            })}
-          </Group>
+                    <Box
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "3px 8px",
+                        borderRadius: 14,
+                        backgroundColor: isActive ? "rgba(175, 115, 215, 0.16)" : "transparent",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      <Icon size={19} stroke={isActive ? 2.4 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
+                    </Box>
+                    <Text
+                      size="xs"
+                      fw={isActive ? 700 : 500}
+                      c={isActive ? "dinePrimary" : "dimmed"}
+                      style={{
+                        fontSize: 10.5,
+                        lineHeight: 1.1,
+                        marginTop: 2,
+                        letterSpacing: "-0.2px",
+                      }}
+                    >
+                      {item.label}
+                    </Text>
+                  </UnstyledButton>
+                );
+              })}
+            </Group>
+          </Box>
         </AppShell.Footer>
       )}
     </AppShell>

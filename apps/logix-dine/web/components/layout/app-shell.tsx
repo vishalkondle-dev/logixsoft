@@ -1106,21 +1106,39 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
         >
           <Box
             style={{
+              position: "relative",
               pointerEvents: "auto",
               width: "100%",
               maxWidth: Math.min(500, Math.max(180, visibleNav.length * 80 + 36)),
-              height: 58,
-              backgroundColor: "rgba(255, 255, 255, 0.94)",
-              backdropFilter: "blur(20px) saturate(180%)",
-              WebkitBackdropFilter: "blur(20px) saturate(180%)",
-              borderRadius: 30,
-              border: "1px solid rgba(175, 115, 215, 0.22)",
-              boxShadow: "0 10px 30px -4px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(175, 115, 215, 0.14)",
+              height: 60,
+              background:
+                "linear-gradient(135deg, rgba(255, 255, 255, 0.76) 0%, rgba(255, 255, 255, 0.46) 50%, rgba(246, 238, 255, 0.6) 100%)",
+              backdropFilter: "blur(24px) saturate(210%) brightness(105%)",
+              WebkitBackdropFilter: "blur(24px) saturate(210%) brightness(105%)",
+              borderRadius: 32,
+              border: "1px solid rgba(255, 255, 255, 0.85)",
+              boxShadow:
+                "0 20px 45px -10px rgba(150, 85, 205, 0.24), 0 8px 24px -4px rgba(0, 0, 0, 0.08), inset 0 2px 2px 0 rgba(255, 255, 255, 0.95), inset 0 -1.5px 2px 0 rgba(175, 115, 215, 0.18), inset 0 0 12px 0 rgba(255, 255, 255, 0.35)",
               display: "flex",
               alignItems: "center",
               padding: "4px 6px",
+              overflow: "hidden",
             }}
           >
+            {/* Top liquid glass curvature specular highlight */}
+            <Box
+              style={{
+                position: "absolute",
+                top: 0,
+                left: "12%",
+                right: "12%",
+                height: "38%",
+                background: "linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 100%)",
+                borderRadius: "32px 32px 0 0",
+                pointerEvents: "none",
+                opacity: 0.85,
+              }}
+            />
             <Group
               justify="space-around"
               align="center"
@@ -1129,6 +1147,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
               style={{
                 width: "100%",
                 height: "100%",
+                position: "relative",
+                zIndex: 1,
               }}
             >
               {visibleNav.map((item) => {
@@ -1156,6 +1176,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     href={itemHref}
                     aria-label={item.label}
                     style={{
+                      position: "relative",
+                      zIndex: 1,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
@@ -1164,10 +1186,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       height: "100%",
                       padding: "2px 2px",
                       borderRadius: 20,
-                      color: isActive ? "#af73d7" : "#6c757d",
+                      color: isActive ? "#8e3ec8" : "#495057",
                       textDecoration: "none",
                       userSelect: "none",
-                      transition: "all 0.15s ease",
+                      transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                      transform: isActive ? "scale(1.02)" : "scale(1)",
                     }}
                   >
                     <Box
@@ -1175,23 +1198,34 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        padding: "3px 8px",
+                        padding: "3px 9px",
                         borderRadius: 14,
-                        backgroundColor: isActive ? "rgba(175, 115, 215, 0.16)" : "transparent",
-                        transition: "all 0.15s ease",
+                        background: isActive
+                          ? "linear-gradient(135deg, rgba(175, 115, 215, 0.32) 0%, rgba(147, 51, 234, 0.16) 100%)"
+                          : "transparent",
+                        border: isActive ? "1px solid rgba(255, 255, 255, 0.72)" : "1px solid transparent",
+                        boxShadow: isActive
+                          ? "0 4px 12px rgba(175, 115, 215, 0.26), inset 0 1px 1.5px rgba(255, 255, 255, 0.9), inset 0 -1px 2px rgba(147, 51, 234, 0.18)"
+                          : "none",
+                        transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
                       }}
                     >
-                      <Icon size={19} stroke={isActive ? 2.4 : 1.8} color={isActive ? "#af73d7" : "currentColor"} />
+                      <Icon
+                        size={19}
+                        stroke={isActive ? 2.5 : 1.8}
+                        color={isActive ? "#8e3ec8" : "#495057"}
+                      />
                     </Box>
                     <Text
                       size="xs"
                       fw={isActive ? 700 : 500}
-                      c={isActive ? "dinePrimary" : "dimmed"}
+                      c={isActive ? "#8e3ec8" : "#495057"}
                       style={{
                         fontSize: 10.5,
                         lineHeight: 1.1,
                         marginTop: 2,
                         letterSpacing: "-0.2px",
+                        textShadow: isActive ? "0 1px 4px rgba(175, 115, 215, 0.25)" : "none",
                       }}
                     >
                       {item.label}

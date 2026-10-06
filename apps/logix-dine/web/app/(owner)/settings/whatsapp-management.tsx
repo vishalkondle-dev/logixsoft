@@ -489,18 +489,6 @@ export function WhatsappManagement() {
           </Stack>
         </Paper>
       </SimpleGrid>
-
-      <Group justify="flex-end">
-        <Button
-          color="dinePrimary"
-          size="md"
-          loading={saving}
-          onClick={handleSave}
-          leftSection={<IconCheck size={18} />}
-        >
-          Save WhatsApp Settings
-        </Button>
-      </Group>
     </Stack>
   );
 }

@@ -814,7 +814,17 @@ export default function TablesPage() {
                               <Menu.Item
                                 color="grape"
                                 leftSection={<IconArmchair size={14} />}
+                                disabled={isOccupied}
                                 onClick={async () => {
+                                  if (isOccupied) {
+                                    notifications.show({
+                                      title: "Table Not Free",
+                                      message: `Cannot seat guest: Table "${table.name}" is currently occupied. Please free or settle the table first.`,
+                                      color: "red",
+                                      icon: <IconAlertCircle size={16} />,
+                                    });
+                                    return;
+                                  }
                                   try {
                                     await updateReservationMut.mutateAsync({
                                       id: activeRes.id,
@@ -835,12 +845,22 @@ export default function TablesPage() {
                                   }
                                 }}
                               >
-                                Seat Reserved Guest ({activeRes.guestName})
+                                {isOccupied ? `Table Occupied (${activeRes.guestName})` : `Seat Reserved Guest (${activeRes.guestName})`}
                               </Menu.Item>
                               <Menu.Item
                                 color="dinePrimary"
                                 leftSection={<IconShoppingCart size={14} />}
+                                disabled={isOccupied || isDineInDisabled}
                                 onClick={async () => {
+                                  if (isOccupied) {
+                                    notifications.show({
+                                      title: "Table Not Free",
+                                      message: `Cannot seat guest: Table "${table.name}" is currently occupied. Please free or settle the table first.`,
+                                      color: "red",
+                                      icon: <IconAlertCircle size={16} />,
+                                    });
+                                    return;
+                                  }
                                   if (isDineInDisabled) return;
                                   try {
                                     await updateReservationMut.mutateAsync({

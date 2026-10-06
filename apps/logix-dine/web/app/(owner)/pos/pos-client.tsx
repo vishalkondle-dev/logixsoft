@@ -1246,12 +1246,20 @@ export default function POSPage() {
   const activeTableReservation = useMemo(() => {
     if (orderType !== "DINE_IN" || !tableNo || tableNo === "Takeaway" || tableNo === "Delivery") return null;
     return (reservations as any[]).find(
-      (r: any) =>
-        (r.status === "SEATED" || r.status === "CONFIRMED") &&
-        ((r.tableName && isTableMatch(tableNo, r.tableName)) ||
-         (r.tableId && (isTableMatch(tableNo, r.tableId) || tables.some((t: any) => t.id === r.tableId && isTableMatch(tableNo, t.name)))))
+      (r: any) => {
+        const matchesTable =
+          (r.tableName && isTableMatch(tableNo, r.tableName)) ||
+          (r.tableId && (isTableMatch(tableNo, r.tableId) || tables.some((t: any) => t.id === r.tableId && isTableMatch(tableNo, t.name))));
+        if (!matchesTable) return false;
+        if (r.status === "SEATED") return true;
+        // If status is CONFIRMED, the table MUST be free (not occupied by an active order)
+        if (r.status === "CONFIRMED") {
+          return !activeTableOrder;
+        }
+        return false;
+      }
     );
-  }, [orderType, tableNo, reservations, tables]);
+  }, [orderType, tableNo, reservations, tables, activeTableOrder]);
 
   const lastAutoFilledPhoneRef = useRef<string | null>(null);
 

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, inArray, ne, or, isNull, sql } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { appSchema } from '../db';
 import { requirePermission, assertOutletAccess } from '../lib/tenancy';
@@ -248,6 +248,110 @@ app.patch(
           .from(appSchema.posTable)
           .where(and(eq(appSchema.posTable.id, parsed.data.tableId), eq(appSchema.posTable.restaurantId, restaurantId)));
         if (table) updateData.tableName = table.name;
+      }
+
+      if (parsed.data.status === 'SEATED' && existing.status !== 'SEATED') {
+        const targetTableName = updateData.tableName !== undefined ? updateData.tableName : existing.tableName;
+        const targetTableId = updateData.tableId !== undefined ? updateData.tableId : existing.tableId;
+
+        if (!targetTableName && !targetTableId) {
+          return c.json({ error: 'Bad Request', message: 'Please assign a table before marking reservation as seated.' }, 400);
+        }
+
+        let resolvedName = targetTableName;
+        let resolvedId = targetTableId;
+        if (resolvedId && !resolvedName) {
+          const [t] = await db
+            .select({ name: appSchema.posTable.name })
+            .from(appSchema.posTable)
+            .where(and(eq(appSchema.posTable.id, resolvedId), eq(appSchema.posTable.restaurantId, restaurantId)));
+          if (t) resolvedName = t.name;
+        } else if (resolvedName && !resolvedId) {
+          const [t] = await db
+            .select({ id: appSchema.posTable.id })
+            .from(appSchema.posTable)
+            .where(
+              and(
+                eq(appSchema.posTable.restaurantId, restaurantId),
+                eq(appSchema.posTable.outletId, existing.outletId),
+                sql`LOWER(TRIM(${appSchema.posTable.name})) = LOWER(TRIM(${resolvedName}))`
+              )
+            );
+          if (t) resolvedId = t.id;
+        }
+
+        // Check 1: Does this table have an active un-freed order?
+        const tableOrderConditions = [];
+        if (resolvedName) {
+          tableOrderConditions.push(sql`LOWER(TRIM(${appSchema.saleOrder.tableNo})) = LOWER(TRIM(${resolvedName}))`);
+        }
+        if (resolvedId) {
+          tableOrderConditions.push(eq(appSchema.saleOrder.tableNo, resolvedId));
+        }
+
+        const [activeOrder] = await db
+          .select({
+            id: appSchema.saleOrder.id,
+            orderNo: appSchema.saleOrder.orderNo,
+            tableNo: appSchema.saleOrder.tableNo,
+          })
+          .from(appSchema.saleOrder)
+          .where(
+            and(
+              eq(appSchema.saleOrder.restaurantId, restaurantId),
+              eq(appSchema.saleOrder.outletId, existing.outletId),
+              isNull(appSchema.saleOrder.tableFreedAt),
+              ne(appSchema.saleOrder.status, 'VOID'),
+              or(...tableOrderConditions)
+            )
+          )
+          .limit(1);
+
+        if (activeOrder) {
+          return c.json(
+            {
+              error: 'Conflict',
+              message: `Cannot seat reservation: Table "${resolvedName || resolvedId}" is not free (occupied by Token #${activeOrder.orderNo}). Please free or settle the table before seating new guests.`,
+            },
+            409
+          );
+        }
+
+        // Check 2: Does this table have another reservation currently SEATED?
+        const resvConditions = [];
+        if (resolvedName) {
+          resvConditions.push(sql`LOWER(TRIM(${appSchema.tableReservation.tableName})) = LOWER(TRIM(${resolvedName}))`);
+        }
+        if (resolvedId) {
+          resvConditions.push(eq(appSchema.tableReservation.tableId, resolvedId));
+        }
+
+        const [otherSeated] = await db
+          .select({
+            id: appSchema.tableReservation.id,
+            guestName: appSchema.tableReservation.guestName,
+          })
+          .from(appSchema.tableReservation)
+          .where(
+            and(
+              eq(appSchema.tableReservation.restaurantId, restaurantId),
+              eq(appSchema.tableReservation.outletId, existing.outletId),
+              ne(appSchema.tableReservation.id, id),
+              eq(appSchema.tableReservation.status, 'SEATED'),
+              or(...resvConditions)
+            )
+          )
+          .limit(1);
+
+        if (otherSeated) {
+          return c.json(
+            {
+              error: 'Conflict',
+              message: `Cannot seat reservation: Table "${resolvedName || resolvedId}" is already seated with guest "${otherSeated.guestName}".`,
+            },
+            409
+          );
+        }
       }
 
       await db

@@ -292,16 +292,30 @@ export async function seatActiveReservation(
     );
 
   if (activeReservations.length > 0) {
-    const ids = activeReservations.map((r: any) => r.id);
-    const now = new Date();
-    await dbOrTx
-      .update(appSchema.tableReservation)
-      .set({
-        status: 'SEATED',
-        updatedAt: now,
-        updatedBy: actorPhone || 'system',
-      })
-      .where(inArray(appSchema.tableReservation.id, ids));
+    let matched = activeReservations;
+    if (customerPhone) {
+      const { variants } = getPhoneVariants(customerPhone);
+      const phoneMatched = activeReservations.filter((r: any) => variants.includes(r.guestPhone));
+      if (phoneMatched.length > 0) {
+        matched = phoneMatched;
+      } else {
+        // Customer phone provided does not match reservation guest phone (different walk-in guest)
+        return;
+      }
+    }
+
+    const ids = matched.map((r: any) => r.id);
+    if (ids.length > 0) {
+      const now = new Date();
+      await dbOrTx
+        .update(appSchema.tableReservation)
+        .set({
+          status: 'SEATED',
+          updatedAt: now,
+          updatedBy: actorPhone || 'system',
+        })
+        .where(inArray(appSchema.tableReservation.id, ids));
+    }
   }
 }
 

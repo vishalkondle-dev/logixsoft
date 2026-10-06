@@ -23,6 +23,7 @@ import {
   Loader,
   Center,
   Divider,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconCalendarEvent,
@@ -37,6 +38,7 @@ import {
   IconDotsVertical,
   IconTrash,
   IconSearch,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useRestaurant } from "@/lib/restaurant-context";
@@ -46,7 +48,18 @@ import {
   useUpdateReservation,
   useDeleteReservation,
   useTables,
+  useOrders,
 } from "@/lib/queries";
+
+function isTableMatch(tableName?: string | null, orderTableNo?: string | null): boolean {
+  if (!tableName || !orderTableNo) return false;
+  const a = tableName.trim().toLowerCase();
+  const b = orderTableNo.trim().toLowerCase();
+  if (a === b) return true;
+  const numA = a.replace(/\D/g, "");
+  const numB = b.replace(/\D/g, "");
+  return numA !== "" && numA === numB;
+}
 
 export function ReservationsManagement() {
   const { restaurant, outlets, activeOutlet } = useRestaurant();
@@ -72,6 +85,41 @@ export function ReservationsManagement() {
   });
 
   const { data: tables = [] } = useTables(restaurantId, outletId);
+  const { data: openOrders = [] } = useOrders(restaurantId);
+
+  const isReservationTableOccupied = (res: any) => {
+    const tableName = res.tableName || tables.find((t: any) => t.id === res.tableId)?.name;
+    const tableId = res.tableId;
+    if (!tableName && !tableId) return false;
+
+    // Check 1: Open dining order on this table
+    const hasOpenOrder = (openOrders as any[]).some((entry: any) => {
+      const order = entry.order ?? entry;
+      if (order.status !== "OPEN" && order.status !== "PARTIAL") return false;
+      if (order.tableFreedAt) return false;
+      const orderTable = order.tableNo;
+      if (!orderTable || orderTable === "Takeaway" || orderTable === "Delivery") return false;
+      return (
+        (tableName && isTableMatch(orderTable, tableName)) ||
+        (tableId && (isTableMatch(orderTable, tableId) || tables.some((t: any) => t.id === tableId && isTableMatch(orderTable, t.name))))
+      );
+    });
+    if (hasOpenOrder) return true;
+
+    // Check 2: Another reservation is currently SEATED on this table
+    const hasAnotherSeatedRes = (reservations as any[]).some((other: any) => {
+      if (other.id === res.id) return false;
+      if (other.status !== "SEATED") return false;
+      return (
+        (tableName && other.tableName && isTableMatch(tableName, other.tableName)) ||
+        (tableId && other.tableId && tableId === other.tableId) ||
+        (tableName && other.tableId && tables.some((t: any) => t.id === other.tableId && isTableMatch(tableName, t.name))) ||
+        (tableId && other.tableName && tables.some((t: any) => t.id === tableId && isTableMatch(t.name, other.tableName)))
+      );
+    });
+
+    return hasAnotherSeatedRes;
+  };
 
   const createResMut = useCreateReservation(restaurantId, outletId);
   const updateResMut = useUpdateReservation(restaurantId, outletId);
@@ -153,6 +201,19 @@ export function ReservationsManagement() {
   };
 
   const handleStatusChange = async (id: string, newStatus: "CONFIRMED" | "SEATED" | "CANCELLED" | "COMPLETED") => {
+    const res = reservations.find((r: any) => r.id === id);
+    if (newStatus === "SEATED" && res) {
+      if (isReservationTableOccupied(res)) {
+        const tblName = res.tableName || tables.find((t: any) => t.id === res.tableId)?.name || "assigned table";
+        notifications.show({
+          title: "Table Not Free",
+          message: `Cannot seat reservation: Table "${tblName}" is currently occupied. Please free or settle the table first.`,
+          color: "red",
+          icon: <IconAlertCircle size={16} />,
+        });
+        return;
+      }
+    }
     try {
       await updateResMut.mutateAsync({ id, body: { status: newStatus } });
       notifications.show({
@@ -351,14 +412,20 @@ export function ReservationsManagement() {
                     <Table.Td style={{ textAlign: "right" }}>
                       <Group gap={4} justify="flex-end">
                         {res.status === "CONFIRMED" && (
-                          <Button
-                            size="xs"
-                            color="teal"
-                            variant="light"
-                            onClick={() => handleStatusChange(res.id, "SEATED")}
+                          <Tooltip
+                            label={isReservationTableOccupied(res) ? `Table is currently occupied` : undefined}
+                            disabled={!isReservationTableOccupied(res)}
                           >
-                            Seat Guest
-                          </Button>
+                            <Button
+                              size="xs"
+                              color={isReservationTableOccupied(res) ? "gray" : "teal"}
+                              variant="light"
+                              disabled={isReservationTableOccupied(res)}
+                              onClick={() => handleStatusChange(res.id, "SEATED")}
+                            >
+                              {isReservationTableOccupied(res) ? "Table Occupied" : "Seat Guest"}
+                            </Button>
+                          </Tooltip>
                         )}
                         {res.status === "SEATED" && (
                           <Button
@@ -381,8 +448,11 @@ export function ReservationsManagement() {
                             <Menu.Item onClick={() => handleStatusChange(res.id, "CONFIRMED")}>
                               Mark Confirmed
                             </Menu.Item>
-                            <Menu.Item onClick={() => handleStatusChange(res.id, "SEATED")}>
-                              Mark Seated
+                            <Menu.Item
+                              disabled={isReservationTableOccupied(res)}
+                              onClick={() => handleStatusChange(res.id, "SEATED")}
+                            >
+                              {isReservationTableOccupied(res) ? "Mark Seated (Table Occupied)" : "Mark Seated"}
                             </Menu.Item>
                             <Menu.Item onClick={() => handleStatusChange(res.id, "COMPLETED")}>
                               Mark Completed

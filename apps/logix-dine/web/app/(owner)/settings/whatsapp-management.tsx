@@ -355,94 +355,99 @@ export function WhatsappManagement() {
         </Stack>
       </Paper>
 
-      {/* Owner End-of-Day Business Closing Report */}
-      <Paper withBorder p="md" radius="md">
-        <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Group gap="sm">
-              <ThemeIcon color="teal" size="lg" variant="light" radius="md">
-                <IconReceipt size={22} />
-              </ThemeIcon>
-              <div>
-                <Group gap="xs">
-                  <Text fw={700} size="md">Owner End-of-Day Business Closing Report</Text>
-                  <Badge color="green" size="xs" variant="light">11:59 PM Daily</Badge>
+      {/* Side-by-side cards for large screens */}
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+        {/* Owner End-of-Day Business Closing Report */}
+        <Paper withBorder p="md" radius="md" style={{ display: "flex", flexDirection: "column" }}>
+          <Stack gap="md" justify="space-between" style={{ flex: 1 }}>
+            <Stack gap="sm">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Group gap="sm" wrap="nowrap" align="flex-start">
+                  <ThemeIcon color="teal" size="lg" variant="light" radius="md">
+                    <IconReceipt size={22} />
+                  </ThemeIcon>
+                  <div>
+                    <Group gap="xs" wrap="wrap">
+                      <Text fw={700} size="md">Owner End-of-Day Business Closing Report</Text>
+                      <Badge color="green" size="xs" variant="light">11:59 PM Daily</Badge>
+                    </Group>
+                    <Text size="xs" c="dimmed" mt={2}>
+                      Sends an informative daily closing digest with total sales, cash vs UPI, expenses, net cash in drawer, and top dishes directly to the owner.
+                    </Text>
+                  </div>
                 </Group>
-                <Text size="xs" c="dimmed">
-                  Sends an informative, simple-to-understand daily closing digest with total sales, cash vs UPI, expenses, net cash in drawer, and top 5 dishes directly to the owner.
-                </Text>
-              </div>
-            </Group>
-            <Switch
-              disabled={!config.enabled}
-              checked={config.sendDailyClosingReport}
-              onChange={(e) => {
-                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
-                setConfig((p) => ({ ...p, sendDailyClosingReport: checked }));
-              }}
+                <Switch
+                  disabled={!config.enabled}
+                  checked={config.sendDailyClosingReport}
+                  onChange={(e) => {
+                    const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                    setConfig((p) => ({ ...p, sendDailyClosingReport: checked }));
+                  }}
+                  color="teal"
+                />
+              </Group>
+
+              <TextInput
+                label="Owner WhatsApp Mobile Number"
+                placeholder="e.g. 9876543210"
+                description="10-digit mobile number for daily closing reports"
+                value={config.ownerClosingReportPhone}
+                onChange={(e) => setConfig((p) => ({ ...p, ownerClosingReportPhone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                leftSection={<IconBrandWhatsapp size={16} color="green" />}
+              />
+            </Stack>
+
+            <Button
               color="teal"
-            />
-          </Group>
+              variant="light"
+              loading={testingClosing}
+              onClick={handleSendClosingTest}
+              leftSection={<IconSend size={16} />}
+              fullWidth
+            >
+              Send Today's Closing Report Now (Test)
+            </Button>
+          </Stack>
+        </Paper>
 
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <TextInput
-              label="Owner WhatsApp Mobile Number"
-              placeholder="e.g. 9876543210"
-              description="10-digit mobile number for daily closing reports"
-              value={config.ownerClosingReportPhone}
-              onChange={(e) => setConfig((p) => ({ ...p, ownerClosingReportPhone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
-              leftSection={<IconBrandWhatsapp size={16} color="green" />}
-            />
+        {/* Interactive Test WhatsApp Messenger */}
+        <Paper withBorder p="md" radius="md" style={{ backgroundColor: "#f9fcf9", display: "flex", flexDirection: "column" }}>
+          <Stack gap="md" justify="space-between" style={{ flex: 1 }}>
+            <Stack gap="sm">
+              <Group gap="sm" wrap="nowrap" align="flex-start">
+                <ThemeIcon color="green" size="lg" variant="light" radius="md">
+                  <IconSend size={20} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="md">Test WhatsApp Notification</Text>
+                  <Text size="xs" c="dimmed" mt={2}>
+                    Verify real-time delivery by dispatching a sample message to your phone number.
+                  </Text>
+                </div>
+              </Group>
 
-            <Box pt={{ base: 0, sm: "lg" }}>
-              <Button
-                color="teal"
-                variant="light"
-                loading={testingClosing}
-                onClick={handleSendClosingTest}
-                leftSection={<IconSend size={16} />}
-                fullWidth
-              >
-                Send Today's Closing Report Now (Test)
-              </Button>
-            </Box>
-          </SimpleGrid>
-        </Stack>
-      </Paper>
+              <TextInput
+                label="Recipient Mobile Number"
+                description="10-digit mobile number to receive test message"
+                placeholder="e.g. 9876543210"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                leftSection={<IconBrandWhatsapp size={16} color="green" />}
+              />
+            </Stack>
 
-      {/* Interactive Test WhatsApp Messenger */}
-      <Paper withBorder p="md" radius="md" style={{ backgroundColor: "#f9fcf9" }}>
-        <Stack gap="sm">
-          <Group gap="xs">
-            <ThemeIcon color="green" size="md" variant="light" radius="md">
-              <IconSend size={16} />
-            </ThemeIcon>
-            <Text fw={600}>Test WhatsApp Notification</Text>
-          </Group>
-          <Text size="xs" c="dimmed">
-            Verify real-time delivery by dispatching a sample message to your phone number.
-          </Text>
-
-          <Group gap="sm">
-            <TextInput
-              placeholder="10-digit mobile number"
-              value={testPhone}
-              onChange={(e) => setTestPhone(e.target.value)}
-              maw={240}
-              size="sm"
-            />
             <Button
               color="green"
-              size="sm"
               loading={testing}
               onClick={handleSendTest}
               leftSection={<IconBrandWhatsapp size={16} />}
+              fullWidth
             >
               Send Test Message
             </Button>
-          </Group>
-        </Stack>
-      </Paper>
+          </Stack>
+        </Paper>
+      </SimpleGrid>
 
       <Group justify="flex-end">
         <Button

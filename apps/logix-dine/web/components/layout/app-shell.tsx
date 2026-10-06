@@ -23,82 +23,19 @@ import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
 import { isModuleAllowedForOutlet, type PlanModuleId, DEFAULT_FREE_TRIAL_DAYS } from "@logixsoft/logix-dine/types/plans";
 
-// Top horizontal header navbar items: strictly 4 operational links only
+// Top horizontal header navbar items: operational links
 const TOP_NAV_ITEMS = [
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
   { label: "Tables", href: "/tables", icon: IconTableAlias, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "tables:view", moduleId: "tables" },
   { label: "Orders", href: "/orders", icon: IconReceipt, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
-  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view", moduleId: "kitchen" },
+  { label: "Kitchen", href: "/kitchen", icon: IconToolsKitchen2, roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"], permission: "kitchen:view", moduleId: "kitchen", requiredPlan: "PRO" },
+  { label: "Waiter", href: "/waiter", icon: IconBellRinging, roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"], permission: "waiter:view", moduleId: "waiter", requiredPlan: "PRO" },
+  { label: "Rider", href: "/rider", icon: IconMotorbike, roles: ["OWNER", "MANAGER", "RIDER"], permission: "delivery:view", moduleId: "delivery", requiredPlan: "PRO" },
 ];
 
 // All modules and pages organized in the left sidebar navigation
 const ALL_SIDEBAR_ITEMS = [
-  // ─── 1. OPERATIONS ───
-  {
-    id: "pos",
-    label: "POS Billing",
-    href: "/pos",
-    icon: IconShoppingCart,
-    section: "OPERATIONS",
-    roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"],
-    permission: "pos:view",
-    moduleId: "pos",
-  },
-  {
-    id: "tables-floor",
-    label: "Tables & Floor",
-    href: "/tables",
-    icon: IconTableAlias,
-    section: "OPERATIONS",
-    roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"],
-    permission: "tables:view",
-    moduleId: "tables",
-  },
-  {
-    id: "orders",
-    label: "Orders & Tokens",
-    href: "/orders",
-    icon: IconReceipt,
-    section: "OPERATIONS",
-    roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"],
-    permission: "pos:view",
-    moduleId: "pos",
-  },
-  {
-    id: "kitchen",
-    label: "Kitchen KDS",
-    href: "/kitchen",
-    icon: IconToolsKitchen2,
-    section: "OPERATIONS",
-    roles: ["OWNER", "MANAGER", "CAPTAIN", "KITCHEN"],
-    permission: "kitchen:view",
-    moduleId: "kitchen",
-    requiredPlan: "PRO",
-  },
-  {
-    id: "waiter",
-    label: "Waiter Floor Calls",
-    href: "/waiter",
-    icon: IconBellRinging,
-    section: "OPERATIONS",
-    roles: ["OWNER", "MANAGER", "CAPTAIN", "WAITER"],
-    permission: "waiter:view",
-    moduleId: "waiter",
-    requiredPlan: "PRO",
-  },
-  {
-    id: "rider",
-    label: "Rider Deliveries",
-    href: "/rider",
-    icon: IconMotorbike,
-    section: "OPERATIONS",
-    roles: ["OWNER", "MANAGER", "RIDER"],
-    permission: "delivery:view",
-    moduleId: "delivery",
-    requiredPlan: "PRO",
-  },
-
-  // ─── 2. GUEST & MARKETING ───
+  // ─── 1. GUEST & MARKETING ───
   {
     id: "customers",
     label: "Customer Directory",
@@ -390,8 +327,28 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const isStaffOrOwner = Boolean(
     effectiveRole && (ALL_STAFF_ROLES.includes(effectiveRole) || effectiveRole !== "CUSTOMER")
   );
+
+  const visibleSidebarItems = React.useMemo(() => {
+    return ALL_SIDEBAR_ITEMS.filter((item) => {
+      if ((user as any)?.role === "ADMIN") return true;
+      if (effectiveRole === "OWNER") return true;
+
+      if (item.ownerOnly) return false;
+      if (item.roles && effectiveRole && !item.roles.includes(effectiveRole)) {
+        if (!item.permission || !can(item.permission)) {
+          return false;
+        }
+      }
+      if (item.permission && !can(item.permission)) return false;
+      if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, item.moduleId as PlanModuleId)) {
+        return false;
+      }
+      return true;
+    });
+  }, [user, effectiveRole, can, activeOutlet]);
+
   const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
-  const canAccessSidebar = Boolean(isStaffOrOwner && !isPortal);
+  const canAccessSidebar = Boolean(isStaffOrOwner && !isPortal && visibleSidebarItems.length > 0);
   const isCustomer = isAuthenticated && !isStaffOrOwner;
 
   const isTrial = Boolean(
@@ -401,13 +358,13 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     ? Math.max(1, Math.ceil((new Date(activeOutlet!.trialEndsAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
 
-  const isFullWidthPage = pathname === "/pos" || pathname === "/kitchen";
+  const isFullWidthPage = pathname === "/pos" || pathname === "/kitchen" || pathname === "/waiter" || pathname === "/rider";
   const [desktopSidebarOpen, setDesktopSidebarOpen] = React.useState<boolean>(!isFullWidthPage);
   const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     setMobileSidebarOpen(false);
-    if (pathname === "/pos" || pathname === "/kitchen") {
+    if (pathname === "/pos" || pathname === "/kitchen" || pathname === "/waiter" || pathname === "/rider") {
       setDesktopSidebarOpen(false);
     } else if (
       pathname?.startsWith("/settings") ||
@@ -953,26 +910,9 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           <ScrollArea style={{ height: "100%" }} scrollbarSize={4} type="hover">
             <Stack gap={2}>
               {(() => {
-                const visibleItems = ALL_SIDEBAR_ITEMS.filter((item) => {
-                  if ((user as any)?.role === "ADMIN") return true;
-                  if (effectiveRole === "OWNER") return true;
-
-                  if (item.ownerOnly) return false;
-                  if (item.roles && effectiveRole && !item.roles.includes(effectiveRole)) {
-                    if (!item.permission || !can(item.permission)) {
-                      return false;
-                    }
-                  }
-                  if (item.permission && !can(item.permission)) return false;
-                  if (activeOutlet && !isModuleAllowedForOutlet(activeOutlet as any, item.moduleId as PlanModuleId)) {
-                    return false;
-                  }
-                  return true;
-                });
-
                 let lastSection: string | undefined = undefined;
 
-                return visibleItems.map((item, index) => {
+                return visibleSidebarItems.map((item, index) => {
                   const Icon = item.icon;
                   const isActive = isItemActive(item);
                   const isProGated =
@@ -1215,7 +1155,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      padding: "3px 14px",
+                      padding: "3px 8px",
                       borderRadius: 16,
                       backgroundColor: isActive ? "rgba(175, 115, 215, 0.12)" : "transparent",
                       transition: "background-color 0.15s ease",

@@ -131,6 +131,9 @@ interface CartPanelProps {
   setPackagingCharge: (charge: number) => void;
   deliveryCharge: number;
   setDeliveryCharge: (charge: number) => void;
+  effectiveDeliveryFee?: number;
+  defaultPackagingCharge?: number;
+  defaultDeliveryCharge?: number;
   savedAddresses?: any[];
   riders?: any[];
   tableSelectData: { value: string; label: string }[];
@@ -182,7 +185,12 @@ function CartPanel({
   selectedRiderId,
   setSelectedRiderId,
   packagingCharge,
+  setPackagingCharge,
   deliveryCharge,
+  setDeliveryCharge,
+  effectiveDeliveryFee,
+  defaultPackagingCharge,
+  defaultDeliveryCharge,
   savedAddresses,
   riders,
   tableSelectData,
@@ -274,11 +282,25 @@ function CartPanel({
           onChange={(val) => {
             const nextType = val as "DINE_IN" | "TAKEAWAY" | "DELIVERY";
             setOrderType(nextType);
-            if (nextType === "TAKEAWAY") setTableNo("Takeaway");
-            else if (nextType === "DELIVERY") setTableNo("Delivery");
-            else if (tableNo === "Takeaway" || tableNo === "Delivery" || !tableNo) {
-              const firstTable = tableSelectData[0]?.value;
-              setTableNo(firstTable || "");
+            if (nextType === "TAKEAWAY") {
+              setTableNo("Takeaway");
+              if (packagingCharge === 0 && (defaultPackagingCharge ?? 15) > 0) {
+                setPackagingCharge(defaultPackagingCharge ?? 15);
+              }
+            } else if (nextType === "DELIVERY") {
+              setTableNo("Delivery");
+              if (packagingCharge === 0 && (defaultPackagingCharge ?? 15) > 0) {
+                setPackagingCharge(defaultPackagingCharge ?? 15);
+              }
+              if (deliveryCharge === 0 && (defaultDeliveryCharge ?? 40) > 0) {
+                setDeliveryCharge(defaultDeliveryCharge ?? 40);
+              }
+            } else {
+              setPackagingCharge(0);
+              if (tableNo === "Takeaway" || tableNo === "Delivery" || !tableNo) {
+                const firstTable = tableSelectData[0]?.value;
+                setTableNo(firstTable || "");
+              }
             }
           }}
           data={currentModes}
@@ -640,23 +662,71 @@ function CartPanel({
 
             {effectiveOrderType === "DELIVERY" && (
               <>
-                {packagingCharge > 0 && (
-                  <Group justify="space-between">
-                    <Text size="xs" c="dimmed">Packaging Fee</Text>
-                    <Text size="xs" fw={500}>₹{packagingCharge}</Text>
+                <Group justify="space-between" align="center" py={1}>
+                  <Group gap={4} align="center">
+                    <Text size="xs" c="dimmed">Standard Packaging Fee</Text>
+                    {packagingCharge === 0 && (
+                      <Badge size="xs" color="gray" variant="subtle">₹0</Badge>
+                    )}
                   </Group>
-                )}
-                <Group justify="space-between">
-                  <Text size="xs" c="dimmed">Delivery Fee</Text>
-                  {isFreeDelivery ? (
-                    <Group gap={4}>
-                      <Text size="xs" td="line-through" c="dimmed">₹{deliveryCharge}</Text>
-                      <Badge size="xs" color="teal" variant="light">FREE</Badge>
-                    </Group>
-                  ) : (
-                    <Text size="xs" fw={500}>₹{deliveryCharge}</Text>
-                  )}
+                  <NumberInput
+                    size="xs"
+                    w={85}
+                    min={0}
+                    max={9999}
+                    step={5}
+                    value={packagingCharge}
+                    onChange={(val) => setPackagingCharge(Math.max(0, Number(val || 0)))}
+                    prefix="₹"
+                    styles={{
+                      input: {
+                        textAlign: "right",
+                        fontWeight: 600,
+                        height: 24,
+                        minHeight: 24,
+                        paddingRight: 6,
+                        paddingLeft: 6,
+                        fontSize: 12,
+                      },
+                    }}
+                    aria-label="Standard Packaging Fee"
+                  />
                 </Group>
+
+                <Group justify="space-between" align="center" py={1}>
+                  <Group gap={4} align="center">
+                    <Text size="xs" c="dimmed">Standard Delivery Fee</Text>
+                    {isFreeDelivery && (
+                      <Badge size="xs" color="teal" variant="light">FREE</Badge>
+                    )}
+                  </Group>
+                  <NumberInput
+                    size="xs"
+                    w={85}
+                    min={0}
+                    max={9999}
+                    step={10}
+                    value={effectiveDeliveryFee !== undefined ? effectiveDeliveryFee : deliveryCharge}
+                    onChange={(val) => {
+                      const num = Math.max(0, Number(val || 0));
+                      setDeliveryCharge(num);
+                    }}
+                    prefix="₹"
+                    styles={{
+                      input: {
+                        textAlign: "right",
+                        fontWeight: 600,
+                        height: 24,
+                        minHeight: 24,
+                        paddingRight: 6,
+                        paddingLeft: 6,
+                        fontSize: 12,
+                      },
+                    }}
+                    aria-label="Standard Delivery Fee"
+                  />
+                </Group>
+
                 {isMinDeliveryBlocked && minDeliveryOrder != null && (
                   <Alert color="orange" p="xs" py={4} radius="sm" icon={<IconAlertCircle size={14} />}>
                     <Text size="xs">Min delivery order ₹{minDeliveryOrder} (add ₹{Math.max(0, minDeliveryOrder - Math.round(itemsSubtotal / 100))} more)</Text>
@@ -665,10 +735,75 @@ function CartPanel({
               </>
             )}
 
-            {effectiveOrderType === "TAKEAWAY" && packagingCharge > 0 && (
-              <Group justify="space-between">
-                <Text size="xs" c="dimmed">Packaging Fee</Text>
-                <Text size="xs" fw={500}>₹{packagingCharge}</Text>
+            {effectiveOrderType === "TAKEAWAY" && (
+              <Group justify="space-between" align="center" py={1}>
+                <Group gap={4} align="center">
+                  <Text size="xs" c="dimmed">Standard Packaging Fee</Text>
+                  {packagingCharge === 0 && (
+                    <Badge size="xs" color="gray" variant="subtle">₹0</Badge>
+                  )}
+                </Group>
+                <NumberInput
+                  size="xs"
+                  w={85}
+                  min={0}
+                  max={9999}
+                  step={5}
+                  value={packagingCharge}
+                  onChange={(val) => setPackagingCharge(Math.max(0, Number(val || 0)))}
+                  prefix="₹"
+                  styles={{
+                    input: {
+                      textAlign: "right",
+                      fontWeight: 600,
+                      height: 24,
+                      minHeight: 24,
+                      paddingRight: 6,
+                      paddingLeft: 6,
+                      fontSize: 12,
+                    },
+                  }}
+                  aria-label="Standard Packaging Fee"
+                />
+              </Group>
+            )}
+
+            {effectiveOrderType === "DINE_IN" && packagingCharge > 0 && (
+              <Group justify="space-between" align="center" py={1}>
+                <Group gap={4} align="center">
+                  <Text size="xs" c="dimmed">Standard Packaging Fee</Text>
+                  <ActionIcon
+                    size={16}
+                    variant="subtle"
+                    color="red"
+                    onClick={() => setPackagingCharge(0)}
+                    title="Remove packaging fee"
+                  >
+                    <IconX size={10} />
+                  </ActionIcon>
+                </Group>
+                <NumberInput
+                  size="xs"
+                  w={85}
+                  min={0}
+                  max={9999}
+                  step={5}
+                  value={packagingCharge}
+                  onChange={(val) => setPackagingCharge(Math.max(0, Number(val || 0)))}
+                  prefix="₹"
+                  styles={{
+                    input: {
+                      textAlign: "right",
+                      fontWeight: 600,
+                      height: 24,
+                      minHeight: 24,
+                      paddingRight: 6,
+                      paddingLeft: 6,
+                      fontSize: 12,
+                    },
+                  }}
+                  aria-label="Standard Packaging Fee"
+                />
               </Group>
             )}
 
@@ -678,23 +813,39 @@ function CartPanel({
                 <IconReceiptTax size={13} color="#868e96" />
                 <Text size="xs" fw={600} c="dimmed">Taxes & Discounts</Text>
               </Group>
-              {onOpenAdjustmentModal && (
-                <Button
-                  variant="subtle"
-                  color="dinePrimary"
-                  size="compact-xs"
-                  px={6}
-                  h={20}
-                  style={{ fontSize: 11, fontWeight: 600 }}
-                  leftSection={<IconPlus size={11} />}
-                  onClick={() => onOpenAdjustmentModal()}
-                  aria-label="Add tax or discount"
-                  disabled={!canDiscount}
-                  title={!canDiscount ? "Permission required: pos:discount_apply" : undefined}
-                >
-                  Add
-                </Button>
-              )}
+              <Group gap={4}>
+                {effectiveOrderType === "DINE_IN" && packagingCharge === 0 && (
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    size="compact-xs"
+                    px={6}
+                    h={20}
+                    style={{ fontSize: 11, fontWeight: 500 }}
+                    leftSection={<IconPlus size={10} />}
+                    onClick={() => setPackagingCharge(defaultPackagingCharge ?? 15)}
+                  >
+                    Packaging
+                  </Button>
+                )}
+                {onOpenAdjustmentModal && (
+                  <Button
+                    variant="subtle"
+                    color="dinePrimary"
+                    size="compact-xs"
+                    px={6}
+                    h={20}
+                    style={{ fontSize: 11, fontWeight: 600 }}
+                    leftSection={<IconPlus size={11} />}
+                    onClick={() => onOpenAdjustmentModal()}
+                    aria-label="Add tax or discount"
+                    disabled={!canDiscount}
+                    title={!canDiscount ? "Permission required: pos:discount_apply" : undefined}
+                  >
+                    Add
+                  </Button>
+                )}
+              </Group>
             </Group>
 
             {adjustments.map((adj) => {
@@ -880,8 +1031,15 @@ export default function POSPage() {
   const [deliveryPincode, setDeliveryPincode] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
-  const [packagingCharge, setPackagingCharge] = useState(15);
-  const [deliveryCharge, setDeliveryCharge] = useState(40);
+  const defaultPackagingCharge = diningSettings?.packagingChargePaise != null
+    ? Math.round(diningSettings.packagingChargePaise / 100)
+    : 15;
+  const defaultDeliveryCharge = diningSettings?.deliveryFeePaise != null
+    ? Math.round(diningSettings.deliveryFeePaise / 100)
+    : 40;
+  const [packagingCharge, setPackagingCharge] = useState(defaultPackagingCharge);
+  const [deliveryCharge, setDeliveryCharge] = useState(defaultDeliveryCharge);
+  const [deliveryFeeOverridden, setDeliveryFeeOverridden] = useState(false);
   const [deliveryExpanded, setDeliveryExpanded] = useState(false);
 
   // Quick Petty Cash Outflow state
@@ -1264,6 +1422,9 @@ export default function POSPage() {
     setDeliveryNotes("");
     setSelectedRiderId(null);
     setOrderType("TAKEAWAY");
+    setPackagingCharge(defaultPackagingCharge);
+    setDeliveryCharge(defaultDeliveryCharge);
+    setDeliveryFeeOverridden(false);
     if (cartOpen) setCartOpen(false);
   };
 
@@ -1497,7 +1658,7 @@ export default function POSPage() {
           tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
           customerPhone: customerPhone.trim() || undefined,
           orderType,
-          packagingChargePaise: (orderType === "DELIVERY" || orderType === "TAKEAWAY") ? packagingCharge * 100 : 0,
+          packagingChargePaise: packagingCharge > 0 ? packagingCharge * 100 : 0,
           deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
           adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
           delivery: deliveryPayload,
@@ -1522,6 +1683,9 @@ export default function POSPage() {
         setSelectedRiderId(null);
         setTableNo("Takeaway");
         setOrderType("TAKEAWAY");
+        setPackagingCharge(defaultPackagingCharge);
+        setDeliveryCharge(defaultDeliveryCharge);
+        setDeliveryFeeOverridden(false);
         if (cartOpen) setCartOpen(false);
 
         // Print KOT + mark printed in background (non-blocking)
@@ -1684,7 +1848,7 @@ export default function POSPage() {
           tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
           customerPhone: customerPhone.trim() || undefined,
           orderType,
-          packagingChargePaise: (orderType === "DELIVERY" || orderType === "TAKEAWAY") ? packagingCharge * 100 : 0,
+          packagingChargePaise: packagingCharge > 0 ? packagingCharge * 100 : 0,
           deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
           adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
           delivery: deliveryPayload,
@@ -1710,6 +1874,9 @@ export default function POSPage() {
         setSelectedRiderId(null);
         setTableNo("Takeaway");
         setOrderType("TAKEAWAY");
+        setPackagingCharge(defaultPackagingCharge);
+        setDeliveryCharge(defaultDeliveryCharge);
+        setDeliveryFeeOverridden(false);
         setSettleModal(false);
         if (cartOpen) setCartOpen(false);
 
@@ -1873,13 +2040,9 @@ export default function POSPage() {
     : 0;
   const isMinDeliveryBlocked = orderType === "DELIVERY" && minDeliveryOrder > 0 && (itemsSubtotal / 100) < minDeliveryOrder;
 
-  const effectiveDeliveryFee = isFreeDelivery ? 0 : deliveryCharge;
+  const effectiveDeliveryFee = (isFreeDelivery && !deliveryFeeOverridden) ? 0 : deliveryCharge;
   const extraCharges = cartItems.length > 0
-    ? orderType === "DELIVERY"
-      ? (packagingCharge + effectiveDeliveryFee) * 100
-      : orderType === "TAKEAWAY"
-      ? (packagingCharge > 0 ? packagingCharge * 100 : 0)
-      : 0
+    ? (orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0) + (packagingCharge > 0 ? packagingCharge * 100 : 0)
     : 0;
 
   const computedAdjustments = adjustments.map((adj) => {
@@ -1930,7 +2093,13 @@ export default function POSPage() {
     packagingCharge,
     setPackagingCharge,
     deliveryCharge,
-    setDeliveryCharge,
+    setDeliveryCharge: (charge: number) => {
+      setDeliveryFeeOverridden(true);
+      setDeliveryCharge(charge);
+    },
+    effectiveDeliveryFee,
+    defaultPackagingCharge,
+    defaultDeliveryCharge,
     savedAddresses,
     riders,
     tableSelectData,
@@ -2557,7 +2726,7 @@ export default function POSPage() {
                 <Text size="xs" fw={500}>₹{(itemsSubtotal / 100).toFixed(0)}</Text>
               </Group>
 
-              {packagingCharge > 0 && (orderType === "DELIVERY" || orderType === "TAKEAWAY") && (
+              {packagingCharge > 0 && (
                 <Group justify="space-between">
                   <Text size="xs" c="dimmed">Packaging Fee</Text>
                   <Text size="xs" fw={500}>₹{packagingCharge}</Text>

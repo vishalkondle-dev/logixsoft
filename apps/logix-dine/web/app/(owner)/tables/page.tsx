@@ -105,7 +105,7 @@ export default function TablesPage() {
   // ─── Filter States ────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSection, setSelectedSection] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "FREE" | "OCCUPIED">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "FREE" | "RESERVED" | "OCCUPIED">("ALL");
 
   // ─── Table Form / Modal States ────────────────────────────────────────────────
   const [modalOpen, setModalOpen] = useState(false);
@@ -227,6 +227,14 @@ export default function TablesPage() {
     };
   };
 
+  const getTableActiveReservation = (table: any) => {
+    return (reservations as any[]).find(
+      (r: any) =>
+        (r.tableId === table.id || (r.tableName && isTableMatch(table.name, r.tableName)) || isTableMatch(table.name, r.tableId)) &&
+        (r.status === "CONFIRMED" || r.status === "SEATED")
+    );
+  };
+
   // ─── Unique Sections ─────────────────────────────────────────────────────────
   const sections = useMemo(() => {
     const set = new Set<string>();
@@ -241,6 +249,7 @@ export default function TablesPage() {
   // ─── Statistics ───────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     let occupied = 0;
+    let reserved = 0;
     let free = 0;
     let totalSeats = 0;
 
@@ -248,16 +257,20 @@ export default function TablesPage() {
       if (t.active) {
         totalSeats += t.capacity || 0;
         const session = getTableSession(t);
+        const res = getTableActiveReservation(t);
+
         if (session.isOccupied) {
           occupied++;
+        } else if (res) {
+          reserved++;
         } else {
           free++;
         }
       }
     }
 
-    return { total: tables.length, occupied, free, totalSeats };
-  }, [tables, orders]);
+    return { total: tables.length, occupied, reserved, free, totalSeats };
+  }, [tables, orders, reservations]);
 
   // ─── Filtered Tables ──────────────────────────────────────────────────────────
   const filteredTables = useMemo(() => {
@@ -279,12 +292,14 @@ export default function TablesPage() {
 
       // Status filter
       const session = getTableSession(t);
-      if (statusFilter === "FREE" && session.isOccupied) return false;
+      const res = getTableActiveReservation(t);
+      if (statusFilter === "FREE" && (session.isOccupied || res)) return false;
+      if (statusFilter === "RESERVED" && (!res || session.isOccupied)) return false;
       if (statusFilter === "OCCUPIED" && !session.isOccupied) return false;
 
       return true;
     });
-  }, [tables, searchQuery, selectedSection, statusFilter, orders]);
+  }, [tables, searchQuery, selectedSection, statusFilter, orders, reservations]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
   const handleOpenCreate = () => {
@@ -499,7 +514,7 @@ export default function TablesPage() {
             </Badge>
           </Group>
           <Text size="sm" c="dimmed">
-            {activeOutlet?.name || "Active Outlet"} · {stats.occupied} Occupied · {stats.free} Free
+            {activeOutlet?.name || "Active Outlet"} · {stats.occupied} Occupied{stats.reserved > 0 ? ` · ${stats.reserved} Reserved` : ""} · {stats.free} Free
           </Text>
         </div>
 
@@ -520,7 +535,7 @@ export default function TablesPage() {
       </Group>
 
       {/* ─── KPI Counters ─────────────────────────────────────────────────────── */}
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm" mb="md">
+      <SimpleGrid cols={{ base: 2, sm: stats.reserved > 0 ? 5 : 4 }} spacing="sm" mb="md">
         {/* Total Tables */}
         <Paper p="sm" radius="md">
           <Group justify="space-between" align="center">
@@ -546,6 +561,21 @@ export default function TablesPage() {
             </ThemeIcon>
           </Group>
         </Paper>
+
+        {/* Reserved Tables */}
+        {stats.reserved > 0 && (
+          <Paper p="sm" radius="md">
+            <Group justify="space-between" align="center">
+              <div>
+                <Text size="xs" c="grape.7" fw={700} tt="uppercase">Reserved</Text>
+                <Text size="xl" fw={800} c="grape.7">{stats.reserved}</Text>
+              </div>
+              <ThemeIcon size={38} radius="md" variant="light" color="grape">
+                <IconArmchair size={20} />
+              </ThemeIcon>
+            </Group>
+          </Paper>
+        )}
 
         {/* Occupied Tables */}
         <Paper p="sm" radius="md">
@@ -596,6 +626,7 @@ export default function TablesPage() {
               data={[
                 { label: `All (${tables.length})`, value: "ALL" },
                 { label: `Free (${stats.free})`, value: "FREE" },
+                ...(stats.reserved > 0 ? [{ label: `Reserved (${stats.reserved})`, value: "RESERVED" }] : []),
                 { label: `Occupied (${stats.occupied})`, value: "OCCUPIED" },
               ]}
             />
@@ -675,11 +706,7 @@ export default function TablesPage() {
             const session = getTableSession(table);
             const isOccupied = session.isOccupied;
 
-            const activeRes = (reservations as any[]).find(
-              (r: any) =>
-                (r.tableId === table.id || (r.tableName && isTableMatch(table.name, r.tableName)) || isTableMatch(table.name, r.tableId)) &&
-                (r.status === "CONFIRMED" || r.status === "SEATED")
-            );
+            const activeRes = getTableActiveReservation(table);
 
             const orderVisual = isOccupied
               ? getStatusVisual(session.orderStatus || "ORDERED")
@@ -721,8 +748,29 @@ export default function TablesPage() {
                     </div>
 
                     <Group gap={4} align="center">
-                      {/* Active Reservation Badge */}
-                      {activeRes && (
+                      {/* Active Reservation Badge (only when occupied, so staff knows occupied table belongs to a reserved guest) */}
+                      {isOccupied && activeRes && (
+                        <Badge
+                          size="sm"
+                          variant="filled"
+                          color={activeRes.status === "CONFIRMED" ? "grape" : "indigo"}
+                          leftSection={<IconArmchair size={11} />}
+                        >
+                          {activeRes.guestName}
+                        </Badge>
+                      )}
+
+                      {/* Status Badge: Occupied vs Reserved vs Free */}
+                      {isOccupied ? (
+                        <Badge
+                          size="sm"
+                          variant="light"
+                          color={session.duePaise === 0 ? "teal" : "orange"}
+                          leftSection={session.duePaise === 0 ? <IconCheck size={11} /> : <IconClock size={11} />}
+                        >
+                          {session.duePaise === 0 ? "Occupied · Paid" : "Occupied"}
+                        </Badge>
+                      ) : activeRes ? (
                         <Badge
                           size="sm"
                           variant="filled"
@@ -730,20 +778,19 @@ export default function TablesPage() {
                           leftSection={<IconArmchair size={11} />}
                         >
                           {activeRes.status === "CONFIRMED"
-                            ? `Resv: ${activeRes.guestName} (${activeRes.reservationTime || "Today"})`
-                            : `Seated: ${activeRes.guestName}`}
+                            ? `Reserved · ${activeRes.guestName}`
+                            : `Seated · ${activeRes.guestName}`}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          size="sm"
+                          variant="light"
+                          color="teal"
+                          leftSection={<IconCheck size={11} />}
+                        >
+                          Free
                         </Badge>
                       )}
-
-                      {/* Status Badge: Free vs Occupied (Paid or Due) */}
-                      <Badge
-                        size="sm"
-                        variant="light"
-                        color={!isOccupied ? "teal" : session.duePaise === 0 ? "teal" : "orange"}
-                        leftSection={!isOccupied ? <IconCheck size={11} /> : session.duePaise === 0 ? <IconCheck size={11} /> : <IconClock size={11} />}
-                      >
-                        {!isOccupied ? "Free" : session.duePaise === 0 ? "Occupied · Paid" : "Occupied"}
-                      </Badge>
 
                       {/* Management & Actions Menu */}
                       <Menu position="bottom-end" withArrow>
@@ -864,6 +911,28 @@ export default function TablesPage() {
                         </Text>
                       )}
                     </Box>
+                  ) : activeRes ? (
+                    <Box
+                      p="xs"
+                      mb="sm"
+                      style={{
+                        backgroundColor: activeRes.status === "CONFIRMED" ? "rgba(190, 75, 219, 0.08)" : "rgba(76, 110, 245, 0.08)",
+                        borderRadius: "6px",
+                        textAlign: "center",
+                        border: `1px dashed ${activeRes.status === "CONFIRMED" ? "rgba(190, 75, 219, 0.3)" : "rgba(76, 110, 245, 0.3)"}`,
+                      }}
+                    >
+                      <Group gap={4} justify="center" align="center">
+                        <IconArmchair size={13} color={activeRes.status === "CONFIRMED" ? "var(--mantine-color-grape-7)" : "var(--mantine-color-indigo-7)"} />
+                        <Text size="xs" c={activeRes.status === "CONFIRMED" ? "grape.8" : "indigo.8"} fw={700}>
+                          {activeRes.status === "CONFIRMED" ? `Reserved: ${activeRes.guestName}` : `Guest Seated: ${activeRes.guestName}`}
+                        </Text>
+                      </Group>
+                      <Text size="11px" c="dimmed" mt={2}>
+                        {activeRes.partySize ? `${activeRes.partySize} Guests · ` : ""}{activeRes.startTime || activeRes.reservationTime || "Today"}
+                        {activeRes.notes ? ` · "${activeRes.notes}"` : ""}
+                      </Text>
+                    </Box>
                   ) : (
                     <Box
                       p="xs"
@@ -923,6 +992,47 @@ export default function TablesPage() {
                         </Button>
                       </Group>
                     </Stack>
+                  ) : activeRes && activeRes.status === "CONFIRMED" ? (
+                    <Group gap={6} grow>
+                      <Button
+                        size="sm"
+                        color="grape"
+                        variant="light"
+                        leftSection={<IconArmchair size={14} />}
+                        onClick={async () => {
+                          try {
+                            await updateReservationMut.mutateAsync({
+                              id: activeRes.id,
+                              body: { status: "SEATED" },
+                            });
+                            notifications.show({
+                              title: "Guest Seated",
+                              message: `${activeRes.guestName} (${activeRes.partySize} guests) seated at ${table.name}`,
+                              color: "teal",
+                              icon: <IconCheck size={16} />,
+                            });
+                          } catch (e: any) {
+                            notifications.show({
+                              title: "Failed to seat guest",
+                              message: e.message || "Could not update reservation",
+                              color: "red",
+                            });
+                          }
+                        }}
+                      >
+                        Seat Guest
+                      </Button>
+                      <Button
+                        size="sm"
+                        color={isDineInDisabled ? "gray" : "dinePrimary"}
+                        variant="filled"
+                        disabled={isDineInDisabled}
+                        leftSection={<IconShoppingCart size={14} />}
+                        onClick={() => !isDineInDisabled && router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
+                      >
+                        Take Order
+                      </Button>
+                    </Group>
                   ) : (
                     <Button
                       fullWidth

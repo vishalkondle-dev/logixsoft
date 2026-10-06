@@ -22,6 +22,7 @@ import { useRestaurant } from "@/lib/restaurant-context";
 import {
   useCategories, useItems, useTables, useOrders, qk,
   useDeliveryRiders, useCustomerAddresses, useCreateExpense,
+  useReservations, useUpdateReservation,
 } from "@/lib/queries";
 import {
   startOrder, settleOrder, markKotPrinted, createSettledOrder, addOrderRound,
@@ -159,6 +160,7 @@ interface CartPanelProps {
   onRemoveAdjustment?: (id: string) => void;
   deliveryExpanded?: boolean;
   setDeliveryExpanded?: React.Dispatch<React.SetStateAction<boolean>>;
+  activeTableReservation?: any;
 }
 
 function CartPanel({
@@ -216,6 +218,7 @@ function CartPanel({
   onRemoveAdjustment,
   deliveryExpanded,
   setDeliveryExpanded,
+  activeTableReservation,
 }: CartPanelProps) {
   const { can } = useRestaurant();
   const canOrderCreate = can("pos:order_create");
@@ -328,7 +331,16 @@ function CartPanel({
           )}
 
           <TextInput
-            label={effectiveOrderType === "DELIVERY" ? "Customer Phone (Required)" : "Customer Phone (optional)"}
+            label={
+              <Group gap={6} justify="space-between" wrap="nowrap">
+                <span>{effectiveOrderType === "DELIVERY" ? "Customer Phone (Required)" : "Customer Phone (optional)"}</span>
+                {activeTableReservation && (
+                  <Badge size="xs" variant="light" color="grape" style={{ textTransform: "none", fontWeight: 600 }}>
+                    Resv: {activeTableReservation.guestName}
+                  </Badge>
+                )}
+              </Group>
+            }
             placeholder="WhatsApp number (e.g. 9876543210)"
             type="tel"
             inputMode="numeric"
@@ -354,6 +366,12 @@ function CartPanel({
               ) : null
             }
           />
+          {activeTableReservation && activeTableReservation.guestPhone && (
+            <Text size="11px" c="grape.7" fw={500} mt={-4}>
+              Auto-filled WhatsApp number from reservation for {activeTableReservation.guestName}
+              {activeTableReservation.partySize ? ` (${activeTableReservation.partySize} guests)` : ""}
+            </Text>
+          )}
 
           {effectiveOrderType === "DELIVERY" && (
             <Paper p="xs" radius="sm" withBorder style={{ backgroundColor: "#fbfcfe" }}>
@@ -973,6 +991,14 @@ export default function POSPage() {
   const { data: tablesData } = useTables(restaurantId, outletId);
   const tables = (tablesData ?? []).filter((t: any) => t.active);
 
+  // Today's Reservations for active outlet
+  const todayStr = useMemo(
+    () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()),
+    []
+  );
+  const { data: reservations = [] } = useReservations(restaurantId, outletId, { date: todayStr });
+  const updateReservationMut = useUpdateReservation(restaurantId, outletId);
+
   // Real-time live sync via Cloudflare Durable Object
   const { isConnected } = useOutletSync(restaurantId, outletId);
 
@@ -1216,6 +1242,19 @@ export default function POSPage() {
     };
   }, [customerPhone, openOrders]);
 
+  // Active reservation for the selected table in DINE_IN mode
+  const activeTableReservation = useMemo(() => {
+    if (orderType !== "DINE_IN" || !tableNo || tableNo === "Takeaway" || tableNo === "Delivery") return null;
+    return (reservations as any[]).find(
+      (r: any) =>
+        (r.status === "SEATED" || r.status === "CONFIRMED") &&
+        ((r.tableName && isTableMatch(tableNo, r.tableName)) ||
+         (r.tableId && (isTableMatch(tableNo, r.tableId) || tables.some((t: any) => t.id === r.tableId && isTableMatch(tableNo, t.name)))))
+    );
+  }, [orderType, tableNo, reservations, tables]);
+
+  const lastAutoFilledPhoneRef = useRef<string | null>(null);
+
   // Sync table or customer phone from URL if provided (e.g. from Tables page or Customer Profile)
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -1235,10 +1274,38 @@ export default function POSPage() {
       }
       const phoneParam = params.get("phone");
       if (phoneParam) {
-        setCustomerPhone(phoneParam.replace(/\D/g, "").slice(0, 15));
+        const clean = phoneParam.replace(/\D/g, "").slice(0, 15);
+        setCustomerPhone(clean);
+        lastAutoFilledPhoneRef.current = clean;
       }
     }
   }, [isDineInEnabled]);
+
+  // Automatically add WhatsApp phone number when a seated or reserved table is selected for Dine-In
+  useEffect(() => {
+    if (orderType !== "DINE_IN" || !tableNo || tableNo === "Takeaway" || tableNo === "Delivery") {
+      if (lastAutoFilledPhoneRef.current && customerPhone === lastAutoFilledPhoneRef.current) {
+        setCustomerPhone("");
+        lastAutoFilledPhoneRef.current = null;
+      }
+      return;
+    }
+
+    if (activeTableReservation?.guestPhone) {
+      const cleanPhone = activeTableReservation.guestPhone.replace(/\D/g, "").slice(0, 15);
+      if (cleanPhone) {
+        if (!customerPhone || customerPhone === lastAutoFilledPhoneRef.current) {
+          setCustomerPhone(cleanPhone);
+          lastAutoFilledPhoneRef.current = cleanPhone;
+        }
+      }
+    } else {
+      if (lastAutoFilledPhoneRef.current && customerPhone === lastAutoFilledPhoneRef.current) {
+        setCustomerPhone("");
+        lastAutoFilledPhoneRef.current = null;
+      }
+    }
+  }, [orderType, tableNo, activeTableReservation]);
 
   // Auto-select first dining table when in DINE_IN mode if current tableNo is invalid
   useEffect(() => {
@@ -1425,6 +1492,7 @@ export default function POSPage() {
     setPackagingCharge(defaultPackagingCharge);
     setDeliveryCharge(defaultDeliveryCharge);
     setDeliveryFeeOverridden(false);
+    lastAutoFilledPhoneRef.current = null;
     if (cartOpen) setCartOpen(false);
   };
 
@@ -1671,6 +1739,11 @@ export default function POSPage() {
           })),
         });
 
+        // If this table had an active CONFIRMED reservation, mark as SEATED now that dine-in has started
+        if (activeTableReservation && activeTableReservation.status === "CONFIRMED") {
+          updateReservationMut.mutateAsync({ id: activeTableReservation.id, body: { status: "SEATED" } }).catch(() => {});
+        }
+
         // Reset cart immediately — don't wait for print
         setCartItems([]);
         setAdjustments([]);
@@ -1686,6 +1759,7 @@ export default function POSPage() {
         setPackagingCharge(defaultPackagingCharge);
         setDeliveryCharge(defaultDeliveryCharge);
         setDeliveryFeeOverridden(false);
+        lastAutoFilledPhoneRef.current = null;
         if (cartOpen) setCartOpen(false);
 
         // Print KOT + mark printed in background (non-blocking)
@@ -1863,6 +1937,10 @@ export default function POSPage() {
         });
 
         // Success — close modal and clear cart
+        if (activeTableReservation && activeTableReservation.status === "CONFIRMED") {
+          updateReservationMut.mutateAsync({ id: activeTableReservation.id, body: { status: "SEATED" } }).catch(() => {});
+        }
+        lastAutoFilledPhoneRef.current = null;
         setCartItems([]);
         setAdjustments([]);
         setCustomerPhone("");
@@ -2059,10 +2137,18 @@ export default function POSPage() {
 
   const tableSelectData = tables.map((t: any) => {
     const occ = openOrders.find((entry: any) => isTableMatch(t.name, entry.order?.tableNo));
+    const res = (reservations as any[]).find(
+      (r: any) =>
+        (r.status === "SEATED" || r.status === "CONFIRMED") &&
+        ((r.tableName && isTableMatch(t.name, r.tableName)) ||
+         (r.tableId && (isTableMatch(t.name, r.tableId) || t.id === r.tableId)))
+    );
     let label = t.section ? `${t.name} · ${t.section}` : t.name;
     if (occ) {
       const r = (occ.items ?? []).reduce((m: number, i: any) => Math.max(m, i.round || 1), 1);
       label += ` (Occupied · Round ${r})`;
+    } else if (res) {
+      label += ` (${res.status === "SEATED" ? "Seated" : "Reserved"} · ${res.guestName})`;
     }
     return { value: t.name, label };
   });
@@ -2124,6 +2210,7 @@ export default function POSPage() {
     customerActiveOrderConflict,
     deliveryExpanded,
     setDeliveryExpanded,
+    activeTableReservation,
   };
 
   return (

@@ -828,6 +828,39 @@ export default function TablesPage() {
                               >
                                 Seat Reserved Guest ({activeRes.guestName})
                               </Menu.Item>
+                              <Menu.Item
+                                color="dinePrimary"
+                                leftSection={<IconShoppingCart size={14} />}
+                                onClick={async () => {
+                                  if (isDineInDisabled) return;
+                                  try {
+                                    await updateReservationMut.mutateAsync({
+                                      id: activeRes.id,
+                                      body: { status: "SEATED" },
+                                    });
+                                  } catch {}
+                                  const phoneQuery = activeRes.guestPhone ? `&phone=${encodeURIComponent(activeRes.guestPhone)}` : "";
+                                  router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}${phoneQuery}`);
+                                }}
+                              >
+                                Seat & Take Order
+                              </Menu.Item>
+                              <Menu.Divider />
+                            </>
+                          )}
+                          {activeRes && activeRes.status === "SEATED" && !isOccupied && (
+                            <>
+                              <Menu.Item
+                                color="dinePrimary"
+                                leftSection={<IconShoppingCart size={14} />}
+                                onClick={() => {
+                                  if (isDineInDisabled) return;
+                                  const phoneQuery = activeRes.guestPhone ? `&phone=${encodeURIComponent(activeRes.guestPhone)}` : "";
+                                  router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}${phoneQuery}`);
+                                }}
+                              >
+                                Take Order ({activeRes.guestName})
+                              </Menu.Item>
                               <Menu.Divider />
                             </>
                           )}
@@ -1028,11 +1061,37 @@ export default function TablesPage() {
                         variant="filled"
                         disabled={isDineInDisabled}
                         leftSection={<IconShoppingCart size={14} />}
-                        onClick={() => !isDineInDisabled && router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}`)}
+                        onClick={async () => {
+                          if (isDineInDisabled) return;
+                          try {
+                            await updateReservationMut.mutateAsync({
+                              id: activeRes.id,
+                              body: { status: "SEATED" },
+                            });
+                          } catch {}
+                          const phoneQuery = activeRes.guestPhone ? `&phone=${encodeURIComponent(activeRes.guestPhone)}` : "";
+                          router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}${phoneQuery}`);
+                        }}
                       >
-                        Take Order
+                        Seat & Take Order
                       </Button>
                     </Group>
+                  ) : activeRes && activeRes.status === "SEATED" ? (
+                    <Button
+                      fullWidth
+                      size="sm"
+                      color={isDineInDisabled ? "gray" : "dinePrimary"}
+                      variant="filled"
+                      disabled={isDineInDisabled}
+                      leftSection={<IconShoppingCart size={16} />}
+                      onClick={() => {
+                        if (isDineInDisabled) return;
+                        const phoneQuery = activeRes.guestPhone ? `&phone=${encodeURIComponent(activeRes.guestPhone)}` : "";
+                        router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}${phoneQuery}`);
+                      }}
+                    >
+                      {isDineInDisabled ? "Dine-In Disabled" : `Take Order (${activeRes.guestName})`}
+                    </Button>
                   ) : (
                     <Button
                       fullWidth

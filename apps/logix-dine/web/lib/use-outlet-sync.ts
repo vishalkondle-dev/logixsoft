@@ -132,10 +132,12 @@ export function useOutletSync(
           if (topic === "TABLES" || topic === "ALL") {
             queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
           }
           if (topic === "ORDERS" || topic === "ALL") {
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["kitchenOrders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["deliveryOrders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["riders", restaurantId] });

@@ -141,6 +141,7 @@ export default function OrdersPage() {
         setSelected(null);
       }
       refetch();
+      queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
     } catch (err: any) {
       notifications.show({
         title: "Failed to settle order",
@@ -176,6 +177,7 @@ export default function OrdersPage() {
         setSelected(null);
       }
       refetch();
+      queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
     } catch (err: any) {
       notifications.show({
         title: "Failed to free table",

@@ -32,6 +32,8 @@ import {
   recomputeTotal,
   getOrderWithItems,
   formatOrderWhatsAppMessage,
+  seatActiveReservation,
+  completeActiveReservation,
 } from '../lib/order-helpers';
 
 const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
@@ -349,6 +351,14 @@ app.post(
           }));
           await tx.insert(appSchema.orderItemAudit).values(audits);
         }
+
+        await seatActiveReservation(tx, {
+          restaurantId,
+          outletId: parsed.data.outletId,
+          tableNo: parsed.data.tableNo,
+          customerPhone: parsed.data.customerPhone,
+          actorPhone,
+        });
       });
 
       c.executionCtx?.waitUntil?.(cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq));
@@ -543,6 +553,14 @@ app.post(
           }));
           await tx.insert(appSchema.orderItemAudit).values(audits);
         }
+
+        await completeActiveReservation(tx, {
+          restaurantId,
+          outletId: parsed.data.outletId,
+          tableNo: parsed.data.tableNo,
+          customerPhone: parsed.data.customerPhone,
+          actorPhone,
+        });
       });
 
       c.executionCtx?.waitUntil?.(cacheSet(kv(c), seqKey, tokenNo, TTL.outletSeq));
@@ -863,6 +881,14 @@ app.post(
             updatedBy: actorPhone,
           })
           .where(eq(appSchema.saleOrder.id, orderId));
+
+        await completeActiveReservation(tx, {
+          restaurantId,
+          outletId: order.outletId,
+          tableNo: order.tableNo,
+          customerPhone: customerPhone?.trim() || order.customerPhone,
+          actorPhone,
+        });
       });
 
       invalidateReports(kv(c), restaurantId);
@@ -1018,6 +1044,14 @@ app.post(
             .set({ orderStatus: 'SERVED', tableFreedAt: now, updatedAt: now, updatedBy: actorPhone })
             .where(eq(appSchema.saleOrder.id, orderId));
         }
+
+        await completeActiveReservation(tx, {
+          restaurantId,
+          outletId: order.outletId,
+          tableNo: order.tableNo,
+          customerPhone: order.customerPhone,
+          actorPhone,
+        });
       });
 
       invalidateReports(kv(c), restaurantId);

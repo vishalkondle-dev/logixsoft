@@ -1785,6 +1785,7 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
         queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+        queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
       }
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -1838,6 +1839,10 @@ export default function POSPage() {
           console.error("[pos] settleOrder failed:", settleErr);
         }
 
+        if (activeTableReservation && (activeTableReservation.status === "SEATED" || activeTableReservation.status === "CONFIRMED")) {
+          updateReservationMut.mutateAsync({ id: activeTableReservation.id, body: { status: "COMPLETED" } }).catch(() => {});
+        }
+        lastAutoFilledPhoneRef.current = null;
         setCartItems([]);
         setAdjustments([]);
         setCustomerPhone("");
@@ -1858,6 +1863,7 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
         queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+        queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
       } else {
         if (orderType === "DELIVERY") {
           if (isMinDeliveryBlocked) {
@@ -1937,8 +1943,8 @@ export default function POSPage() {
         });
 
         // Success — close modal and clear cart
-        if (activeTableReservation && activeTableReservation.status === "CONFIRMED") {
-          updateReservationMut.mutateAsync({ id: activeTableReservation.id, body: { status: "SEATED" } }).catch(() => {});
+        if (activeTableReservation && (activeTableReservation.status === "SEATED" || activeTableReservation.status === "CONFIRMED")) {
+          updateReservationMut.mutateAsync({ id: activeTableReservation.id, body: { status: "COMPLETED" } }).catch(() => {});
         }
         lastAutoFilledPhoneRef.current = null;
         setCartItems([]);
@@ -1972,6 +1978,7 @@ export default function POSPage() {
         queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
         queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
         queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+        queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
       }
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });

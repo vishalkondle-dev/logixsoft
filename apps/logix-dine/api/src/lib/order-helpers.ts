@@ -1,4 +1,4 @@
-import { eq, and, sql, or, asc } from 'drizzle-orm';
+import { eq, and, sql, or, asc, inArray } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
 import { computeOrderStatus } from '@logixsoft/logix-dine/types/pos-schema';
@@ -241,4 +241,133 @@ export function formatOrderWhatsAppMessage(
 
   const footer = customFooter?.trim() ? `\n\n${customFooter.trim()}` : '\n\nThank you!';
   return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}${deliveryAddrLine}${otpLine}\n\n*Items:*\n${itemsList}${chargesLine}\n\n*Total:* ₹${totalRupees}${footer}`;
+}
+
+export async function seatActiveReservation(
+  dbOrTx: any,
+  params: {
+    restaurantId: string;
+    outletId: string;
+    tableNo?: string | null;
+    customerPhone?: string | null;
+    actorPhone?: string;
+  }
+) {
+  const { restaurantId, outletId, tableNo, customerPhone, actorPhone } = params;
+  if (!restaurantId || !outletId) return;
+
+  const matchConditions = [];
+  if (tableNo && tableNo !== 'Takeaway' && tableNo !== 'Delivery') {
+    matchConditions.push(
+      sql`LOWER(TRIM(${appSchema.tableReservation.tableName})) = LOWER(TRIM(${tableNo}))`,
+      eq(appSchema.tableReservation.tableId, tableNo),
+      sql`EXISTS (
+        SELECT 1 FROM ${appSchema.posTable} pt 
+        WHERE pt.id = ${appSchema.tableReservation.tableId} 
+          AND LOWER(TRIM(pt.name)) = LOWER(TRIM(${tableNo}))
+      )`
+    );
+  }
+  if (customerPhone) {
+    const { variants } = getPhoneVariants(customerPhone);
+    if (variants.length > 0) {
+      matchConditions.push(inArray(appSchema.tableReservation.guestPhone, variants));
+    }
+  }
+
+  if (matchConditions.length === 0) return;
+
+  const todayStr = getTodayISTDateString();
+  const activeReservations = await dbOrTx
+    .select({ id: appSchema.tableReservation.id })
+    .from(appSchema.tableReservation)
+    .where(
+      and(
+        eq(appSchema.tableReservation.restaurantId, restaurantId),
+        eq(appSchema.tableReservation.outletId, outletId),
+        eq(appSchema.tableReservation.status, 'CONFIRMED'),
+        sql`${appSchema.tableReservation.reservationDate} <= ${todayStr}`,
+        or(...matchConditions)
+      )
+    );
+
+  if (activeReservations.length > 0) {
+    const ids = activeReservations.map((r: any) => r.id);
+    const now = new Date();
+    await dbOrTx
+      .update(appSchema.tableReservation)
+      .set({
+        status: 'SEATED',
+        updatedAt: now,
+        updatedBy: actorPhone || 'system',
+      })
+      .where(inArray(appSchema.tableReservation.id, ids));
+  }
+}
+
+export async function completeActiveReservation(
+  dbOrTx: any,
+  params: {
+    restaurantId: string;
+    outletId: string;
+    tableNo?: string | null;
+    customerPhone?: string | null;
+    actorPhone?: string;
+  }
+) {
+  const { restaurantId, outletId, tableNo, customerPhone, actorPhone } = params;
+  if (!restaurantId || !outletId) return;
+
+  const matchConditions = [];
+  if (tableNo && tableNo !== 'Takeaway' && tableNo !== 'Delivery') {
+    matchConditions.push(
+      sql`LOWER(TRIM(${appSchema.tableReservation.tableName})) = LOWER(TRIM(${tableNo}))`,
+      eq(appSchema.tableReservation.tableId, tableNo),
+      sql`EXISTS (
+        SELECT 1 FROM ${appSchema.posTable} pt 
+        WHERE pt.id = ${appSchema.tableReservation.tableId} 
+          AND LOWER(TRIM(pt.name)) = LOWER(TRIM(${tableNo}))
+      )`
+    );
+  }
+  if (customerPhone) {
+    const { variants } = getPhoneVariants(customerPhone);
+    if (variants.length > 0) {
+      matchConditions.push(inArray(appSchema.tableReservation.guestPhone, variants));
+    }
+  }
+
+  if (matchConditions.length === 0) return;
+
+  const todayStr = getTodayISTDateString();
+  const activeReservations = await dbOrTx
+    .select({ id: appSchema.tableReservation.id })
+    .from(appSchema.tableReservation)
+    .where(
+      and(
+        eq(appSchema.tableReservation.restaurantId, restaurantId),
+        eq(appSchema.tableReservation.outletId, outletId),
+        or(
+          eq(appSchema.tableReservation.status, 'SEATED'),
+          and(
+            eq(appSchema.tableReservation.status, 'CONFIRMED'),
+            sql`${appSchema.tableReservation.reservationDate} <= ${todayStr}`
+          )
+        ),
+        or(...matchConditions)
+      )
+    );
+
+  if (activeReservations.length > 0) {
+    const ids = activeReservations.map((r: any) => r.id);
+    const now = new Date();
+    await dbOrTx
+      .update(appSchema.tableReservation)
+      .set({
+        status: 'COMPLETED',
+        updatedAt: now,
+        updatedBy: actorPhone || 'system',
+      })
+      .where(inArray(appSchema.tableReservation.id, ids));
+  }
 }

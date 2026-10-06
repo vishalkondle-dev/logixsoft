@@ -12,9 +12,10 @@ import {
 import type { AuthEnv } from '../lib/auth';
 import { apiDoc, ErrorResponseSchema, SuccessResponseSchema } from '../lib/openapi';
 import { getDb } from '../lib/order-helpers';
+import { broadcastToOutlet } from '../lib/sync';
 import * as z from 'zod';
 
-const app = new Hono<{ Bindings: AuthEnv }>();
+const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
 
 // ─── GET /reservations ────────────────────────────────────────────────────────
 app.get(
@@ -145,6 +146,12 @@ app.post(
         .from(appSchema.tableReservation)
         .where(eq(appSchema.tableReservation.id, id));
 
+      broadcastToOutlet(c.env, outletId, {
+        topic: 'TABLES',
+        type: 'RESERVATION_CREATED',
+        data: { reservationId: id },
+      });
+
       return c.json(toReservation(created), 201);
     } finally {
       await close();
@@ -253,6 +260,12 @@ app.patch(
         .from(appSchema.tableReservation)
         .where(eq(appSchema.tableReservation.id, id));
 
+      broadcastToOutlet(c.env, existing.outletId, {
+        topic: 'TABLES',
+        type: 'RESERVATION_UPDATED',
+        data: { reservationId: id, status: updated?.status },
+      });
+
       return c.json(toReservation(updated));
     } finally {
       await close();
@@ -291,6 +304,12 @@ app.delete(
       }
 
       await db.delete(appSchema.tableReservation).where(eq(appSchema.tableReservation.id, id));
+
+      broadcastToOutlet(c.env, existing.outletId, {
+        topic: 'TABLES',
+        type: 'RESERVATION_DELETED',
+        data: { reservationId: id },
+      });
 
       return c.json({ success: true, message: 'Reservation removed' });
     } finally {

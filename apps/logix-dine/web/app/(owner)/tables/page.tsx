@@ -382,6 +382,14 @@ export default function TablesPage() {
     if (!freeModalSession || freeModalSession.orders.length === 0) return;
     setIsFreeing(true);
     try {
+      const activeRes = getTableActiveReservation(freeModalSession.table);
+      if (activeRes && (activeRes.status === "SEATED" || activeRes.status === "CONFIRMED")) {
+        await updateReservationMut.mutateAsync({
+          id: activeRes.id,
+          body: { status: "COMPLETED" },
+        }).catch(() => {});
+      }
+
       await Promise.all(
         freeModalSession.orders.map((o: any) =>
           freeTableOrder(
@@ -397,6 +405,7 @@ export default function TablesPage() {
       queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
       queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
       queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+      queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
 
       notifications.show({
         title: "Table Freed",
@@ -860,6 +869,36 @@ export default function TablesPage() {
                                 }}
                               >
                                 Take Order ({activeRes.guestName})
+                              </Menu.Item>
+                              <Menu.Divider />
+                            </>
+                          )}
+                          {activeRes && (
+                            <>
+                              <Menu.Item
+                                color="teal"
+                                leftSection={<IconCheck size={14} />}
+                                onClick={async () => {
+                                  try {
+                                    await updateReservationMut.mutateAsync({
+                                      id: activeRes.id,
+                                      body: { status: "COMPLETED" },
+                                    });
+                                    notifications.show({
+                                      title: "Reservation Completed",
+                                      message: `Reservation for ${activeRes.guestName} marked completed.`,
+                                      color: "teal",
+                                    });
+                                  } catch (e: any) {
+                                    notifications.show({
+                                      title: "Failed to complete reservation",
+                                      message: e.message || "Could not update reservation",
+                                      color: "red",
+                                    });
+                                  }
+                                }}
+                              >
+                                Complete Reservation ({activeRes.guestName})
                               </Menu.Item>
                               <Menu.Divider />
                             </>

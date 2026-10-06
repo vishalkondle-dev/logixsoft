@@ -208,152 +208,193 @@ export function WhatsappManagement() {
         </Button>
       </Group>
 
-      {/* Master Toggle */}
-      <Paper withBorder p="md" radius="md">
-        <Group justify="space-between" align="center">
-          <Group gap="md">
-            <ThemeIcon color="green" size="lg" radius="md" variant="light">
-              <IconBrandWhatsapp size={22} />
-            </ThemeIcon>
+      {/* Top Section: Customer Triggers & Service/Footer Settings side by side on large screens */}
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+        {/* Automated Notification Triggers */}
+        <Paper withBorder p="md" radius="md" style={{ display: "flex", flexDirection: "column" }}>
+          <Stack gap="md" justify="space-between" style={{ flex: 1 }}>
             <div>
-              <Text fw={600} size="md">Enable WhatsApp Notifications</Text>
-              <Text size="xs" c="dimmed">
-                Sends automated status updates and digital receipts via official WhatsApp Business API.
+              <Group justify="space-between" align="center" mb="xs">
+                <Text fw={700} size="md">Automated Notification Triggers</Text>
+                <Badge size="xs" variant="light" color={config.enabled ? "teal" : "gray"}>
+                  {config.enabled ? "4 Triggers Active" : "Disabled"}
+                </Badge>
+              </Group>
+              <Text size="xs" c="dimmed" mb="md">
+                Choose which lifecycle milestones automatically send a WhatsApp alert to the guest.
               </Text>
+
+              <Stack gap="sm">
+                <Group justify="space-between" align="center">
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon color="teal" size="md" variant="light" radius="md">
+                      <IconReceipt size={16} />
+                    </ThemeIcon>
+                    <div>
+                      <Text size="sm" fw={500}>Digital E-Bill on Payment</Text>
+                      <Text size="xs" c="dimmed">
+                        Sends interactive invoice link when bill is settled.
+                      </Text>
+                    </div>
+                  </Group>
+                  <Switch
+                    disabled={!config.enabled}
+                    checked={config.sendOnBillSettled}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, sendOnBillSettled: checked }));
+                    }}
+                    color="teal"
+                  />
+                </Group>
+
+                <Divider />
+
+                <Group justify="space-between" align="center">
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon color="blue" size="md" variant="light" radius="md">
+                      <IconMessageCircle size={16} />
+                    </ThemeIcon>
+                    <div>
+                      <Text size="sm" fw={500}>Order Confirmation</Text>
+                      <Text size="xs" c="dimmed">
+                        Token number & prep time when order is punched.
+                      </Text>
+                    </div>
+                  </Group>
+                  <Switch
+                    disabled={!config.enabled}
+                    checked={config.sendOnOrderCreated}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, sendOnOrderCreated: checked }));
+                    }}
+                    color="blue"
+                  />
+                </Group>
+
+                <Divider />
+
+                <Group justify="space-between" align="center">
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon color="orange" size="md" variant="light" radius="md">
+                      <IconToolsKitchen2 size={16} />
+                    </ThemeIcon>
+                    <div>
+                      <Text size="sm" fw={500}>Food Prepared / Pickup Ready</Text>
+                      <Text size="xs" c="dimmed">
+                        Alerts guest when KDS marks dishes ready.
+                      </Text>
+                    </div>
+                  </Group>
+                  <Switch
+                    disabled={!config.enabled}
+                    checked={config.sendOnKdsReady}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, sendOnKdsReady: checked }));
+                    }}
+                    color="orange"
+                  />
+                </Group>
+
+                <Divider />
+
+                <Group justify="space-between" align="center">
+                  <Group gap="sm" wrap="nowrap">
+                    <ThemeIcon color="violet" size="md" variant="light" radius="md">
+                      <IconMotorbike size={16} />
+                    </ThemeIcon>
+                    <div>
+                      <Text size="sm" fw={500}>Delivery Out for Drop-Off</Text>
+                      <Text size="xs" c="dimmed">
+                        Dispatches rider details & tracking link to guest.
+                      </Text>
+                    </div>
+                  </Group>
+                  <Switch
+                    disabled={!config.enabled}
+                    checked={config.sendOnDispatched}
+                    onChange={(e) => {
+                      const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                      setConfig((p) => ({ ...p, sendOnDispatched: checked }));
+                    }}
+                    color="violet"
+                  />
+                </Group>
+              </Stack>
             </div>
-          </Group>
-          <Switch
-            size="md"
-            checked={config.enabled}
-            onChange={(e) => {
-              const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
-              setConfig((p) => ({ ...p, enabled: checked }));
-            }}
-            color="green"
-            aria-label="Toggle WhatsApp Notifications"
-          />
-        </Group>
-      </Paper>
+          </Stack>
+        </Paper>
 
-      {/* Notification Event Triggers */}
-      <Paper withBorder p="md" radius="md">
-        <Stack gap="md">
-          <Text fw={600}>Automated Notification Triggers</Text>
+        {/* Master Service Status & Custom Footer Message */}
+        <Paper withBorder p="md" radius="md" style={{ display: "flex", flexDirection: "column" }}>
+          <Stack gap="md" justify="space-between" style={{ flex: 1 }}>
+            <Stack gap="md">
+              {/* Master Toggle */}
+              <Group justify="space-between" align="center">
+                <Group gap="sm" wrap="nowrap">
+                  <ThemeIcon color={config.enabled ? "green" : "gray"} size="lg" radius="md" variant="light">
+                    <IconBrandWhatsapp size={22} />
+                  </ThemeIcon>
+                  <div>
+                    <Group gap="xs">
+                      <Text fw={700} size="md">Enable WhatsApp Service</Text>
+                      <Badge color={config.enabled ? "green" : "gray"} size="xs" variant="light">
+                        {config.enabled ? "ACTIVE" : "PAUSED"}
+                      </Badge>
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      Toggle automated customer notifications on or off across this outlet.
+                    </Text>
+                  </div>
+                </Group>
+                <Switch
+                  size="md"
+                  checked={config.enabled}
+                  onChange={(e) => {
+                    const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
+                    setConfig((p) => ({ ...p, enabled: checked }));
+                  }}
+                  color="green"
+                  aria-label="Toggle WhatsApp Notifications"
+                />
+              </Group>
 
-          <Group justify="space-between" align="center">
-            <Group gap="sm">
-              <ThemeIcon color="teal" size="md" variant="light" radius="md">
-                <IconReceipt size={16} />
-              </ThemeIcon>
+              <Divider />
+
+              {/* Custom Footer Message */}
               <div>
-                <Text size="sm" fw={500}>Digital E-Bill Link on Payment</Text>
-                <Text size="xs" c="dimmed">
-                  Sends customer their interactive itemized invoice link as soon as bill is settled.
+                <Text fw={600} size="sm">Custom Message Footer Note</Text>
+                <Text size="xs" c="dimmed" mb="xs">
+                  Appended at the bottom of all automated WhatsApp messages (e.g. feedback links, review requests).
                 </Text>
+                <TextInput
+                  value={config.customFooterNote}
+                  onChange={(e) => setConfig((p) => ({ ...p, customFooterNote: e.target.value }))}
+                  placeholder="e.g. Thank you for dining with us! Review us on Google."
+                  disabled={!config.enabled}
+                />
               </div>
-            </Group>
-            <Switch
-              disabled={!config.enabled}
-              checked={config.sendOnBillSettled}
-              onChange={(e) => {
-                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
-                setConfig((p) => ({ ...p, sendOnBillSettled: checked }));
-              }}
-              color="teal"
-            />
-          </Group>
 
-          <Divider />
-
-          <Group justify="space-between" align="center">
-            <Group gap="sm">
-              <ThemeIcon color="blue" size="md" variant="light" radius="md">
-                <IconMessageCircle size={16} />
-              </ThemeIcon>
-              <div>
-                <Text size="sm" fw={500}>Order Placed / Confirmation</Text>
-                <Text size="xs" c="dimmed">
-                  Notifies customer with token number and estimated prep time when order is created.
+              {/* Message Footer Preview */}
+              <Box
+                p="xs"
+                style={{
+                  backgroundColor: "#f0fdf4",
+                  border: "1px dashed #86efac",
+                  borderRadius: 8,
+                }}
+              >
+                <Text size="11px" fw={600} c="teal.9" mb={2}>Message Preview Footer:</Text>
+                <Text size="xs" c="dark.7" fs="italic">
+                  "{config.customFooterNote || "Thank you for dining with us!"}"
                 </Text>
-              </div>
-            </Group>
-            <Switch
-              disabled={!config.enabled}
-              checked={config.sendOnOrderCreated}
-              onChange={(e) => {
-                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
-                setConfig((p) => ({ ...p, sendOnOrderCreated: checked }));
-              }}
-              color="blue"
-            />
-          </Group>
-
-          <Divider />
-
-          <Group justify="space-between" align="center">
-            <Group gap="sm">
-              <ThemeIcon color="orange" size="md" variant="light" radius="md">
-                <IconToolsKitchen2 size={16} />
-              </ThemeIcon>
-              <div>
-                <Text size="sm" fw={500}>Food Prepared / Pickup Ready</Text>
-                <Text size="xs" c="dimmed">
-                  Sends alert when kitchen marks ticket ready for dine-in serving or takeaway counter pickup.
-                </Text>
-              </div>
-            </Group>
-            <Switch
-              disabled={!config.enabled}
-              checked={config.sendOnKdsReady}
-              onChange={(e) => {
-                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
-                setConfig((p) => ({ ...p, sendOnKdsReady: checked }));
-              }}
-              color="orange"
-            />
-          </Group>
-
-          <Divider />
-
-          <Group justify="space-between" align="center">
-            <Group gap="sm">
-              <ThemeIcon color="violet" size="md" variant="light" radius="md">
-                <IconMotorbike size={16} />
-              </ThemeIcon>
-              <div>
-                <Text size="sm" fw={500}>Delivery Out for Drop-Off</Text>
-                <Text size="xs" c="dimmed">
-                  Dispatches rider contact details and live delivery tracking link to guest.
-                </Text>
-              </div>
-            </Group>
-            <Switch
-              disabled={!config.enabled}
-              checked={config.sendOnDispatched}
-              onChange={(e) => {
-                const checked = e?.currentTarget ? e.currentTarget.checked : Boolean((e?.target as any)?.checked);
-                setConfig((p) => ({ ...p, sendOnDispatched: checked }));
-              }}
-              color="violet"
-            />
-          </Group>
-        </Stack>
-      </Paper>
-
-      {/* Custom Footer Message */}
-      <Paper withBorder p="md" radius="md">
-        <Stack gap="xs">
-          <Text fw={600}>Custom Message Footer Note</Text>
-          <Text size="xs" c="dimmed">
-            Appended at the bottom of all automated WhatsApp messages (e.g. feedback links, review requests).
-          </Text>
-          <TextInput
-            value={config.customFooterNote}
-            onChange={(e) => setConfig((p) => ({ ...p, customFooterNote: e.target.value }))}
-            placeholder="e.g. Thank you for dining with us! Review us on Google."
-          />
-        </Stack>
-      </Paper>
+              </Box>
+            </Stack>
+          </Stack>
+        </Paper>
+      </SimpleGrid>
 
       {/* Side-by-side cards for large screens */}
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">

@@ -1052,13 +1052,20 @@ export function BillingManagement() {
 
             if (isUpgradeFromStarter && hasRemainingTime) {
               const remainingMs = expiresAt - now;
-              const totalDaysInCurrent = (currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL" ? 365 : 30;
+              const isCurrentAnnual = (currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL";
+              const totalDaysInCurrent = isCurrentAnnual ? 365 : 30;
               remainingDays = Math.min(totalDaysInCurrent, Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))));
-              const currentMonthly = currentOutlet?.monthlyPrice || 999;
-              const dailyRate = currentMonthly / totalDaysInCurrent;
+              const currentEffectivePrice = isCurrentAnnual
+                ? (currentOutlet?.annualPrice || 9990)
+                : (currentOutlet?.monthlyPrice || 999);
+              const dailyRate = currentEffectivePrice / totalDaysInCurrent;
               unusedCredit = Math.min(targetFullAmount - 1, Math.round(remainingDays * dailyRate));
               payableAmount = Math.max(1, targetFullAmount - unusedCredit);
             }
+
+            const rawTotalCredit = isUpgradeFromStarter && hasRemainingTime
+              ? Math.round(remainingDays * (((currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL" ? (currentOutlet?.annualPrice || 9990) : (currentOutlet?.monthlyPrice || 999)) / ((currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL" ? 365 : 30)))
+              : 0;
 
             return (
               <Stack gap="xs">
@@ -1087,8 +1094,15 @@ export function BillingManagement() {
                     </Group>
                     <Divider my={4} />
                     <Text size="xs" c="dimmed">
-                      Your unused {remainingDays} days of Starter plan are credited immediately today, starting a <strong>fresh 30-day Pro cycle</strong> with zero lost value.
+                      Your unused {remainingDays} days of Starter plan are credited immediately today, starting a <strong>fresh {selectedCycle === "ANNUAL" ? "1-year (365 days)" : "30-day"} Pro cycle</strong> with zero lost value.
                     </Text>
+                    {(currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL" && selectedCycle === "MONTHLY" && rawTotalCredit > targetFullAmount && (
+                      <Alert color="indigo" variant="light" p="xs" mt="xs" title="Recommended: Choose Annual Billing">
+                        <Text size="xs">
+                          You have ₹{rawTotalCredit.toLocaleString("en-IN")} in total annual Starter credit. Selecting <strong>Annual Billing</strong> applies your full credit toward 1 full year of Pro.
+                        </Text>
+                      </Alert>
+                    )}
                   </Paper>
                 )}
 

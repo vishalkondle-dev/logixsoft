@@ -18,10 +18,12 @@ import {
   IconCalendar, IconArrowLeft, IconChevronRight, IconDownload,
   IconSearch, IconChevronDown, IconChevronUp, IconTrendingUp,
   IconUsers, IconShoppingBag, IconToolsKitchen2, IconFilter,
+  IconFileSpreadsheet,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useReport } from "@/lib/queries";
 import type { ReportType } from "@/lib/api-client";
+import { AccountingExportModal } from "./accounting-export-modal";
 import dayjs from "dayjs";
 
 // ─── IST-aware preset -> date range translation ─────────────────────────────
@@ -278,6 +280,47 @@ export function ReportsCardsList() {
 
   return (
     <Stack gap="lg" w="100%">
+      {/* Tally & Marg ERP Accounting Export Banner */}
+      <Paper
+        p="md"
+        radius="md"
+        withBorder
+        style={{
+          background: "linear-gradient(135deg, rgba(20, 184, 166, 0.08) 0%, rgba(14, 165, 233, 0.08) 100%)",
+          borderColor: "rgba(20, 184, 166, 0.3)",
+        }}
+      >
+        <Group justify="space-between" align="center" wrap="wrap" gap="md">
+          <Group gap="md">
+            <ThemeIcon size={44} radius="md" color="teal" variant="filled">
+              <IconFileSpreadsheet size={24} />
+            </ThemeIcon>
+            <div>
+              <Group gap="xs" align="center">
+                <Text fw={700} size="sm">
+                  Tally Prime &amp; Marg ERP Accounting Export
+                </Text>
+                <Badge color="teal" variant="light" size="xs">
+                  CA &amp; Accountant Ready
+                </Badge>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Export sales vouchers, cash/bank splits, round off, and GST tax ledgers formatted for 1-click import into Tally or Marg ERP.
+              </Text>
+            </div>
+          </Group>
+          <Button
+            component={Link}
+            href="/settings/reports/invoice-detail"
+            color="teal"
+            size="xs"
+            leftSection={<IconDownload size={14} />}
+          >
+            Export in Invoices
+          </Button>
+        </Group>
+      </Paper>
+
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <TextInput
           placeholder="Search reports by name or topic..."
@@ -368,6 +411,7 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
   const [preset, setPreset] = useState<Preset>("month");
   const [customRange, setCustomRange] = useState<[Date | null, Date | null]>([null, null]);
   const [range, setRange] = useState(() => presetToRange("month"));
+  const [accountingModalOpen, setAccountingModalOpen] = useState(false);
 
   useEffect(() => {
     if (preset === "custom") {
@@ -661,6 +705,17 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
 
               <Button
                 variant="light"
+                color="teal"
+                size="sm"
+                leftSection={<IconFileSpreadsheet size={16} />}
+                onClick={() => setAccountingModalOpen(true)}
+                disabled={!data}
+              >
+                Tally / Marg ERP
+              </Button>
+
+              <Button
+                variant="light"
                 color="dinePrimary"
                 size="sm"
                 leftSection={<IconDownload size={16} />}
@@ -703,6 +758,17 @@ export function ReportDetailView({ reportType }: { reportType: ReportType }) {
           <ReportContentSwitch type={canonicalType} data={data} />
         )}
       </Stack>
+
+      <AccountingExportModal
+        opened={accountingModalOpen}
+        onClose={() => setAccountingModalOpen(false)}
+        invoices={data?.invoices || []}
+        itemInvoices={data?.itemInvoiceMatrix || []}
+        restaurantName={restaurant?.name || "Restaurant"}
+        outletName={activeOutlet?.name || "Outlet"}
+        from={range.from}
+        to={range.to}
+      />
     </Box>
   );
 }

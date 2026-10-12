@@ -17,8 +17,20 @@ import {
   IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
   IconTruckDelivery, IconShoppingBag, IconQrcode, IconUsers, IconNotes, IconCircleFilled,
   IconReceiptTax, IconDiscount2, IconPercentage, IconWallet, IconCurrencyRupee,
+  IconWifiOff, IconCloudUpload, IconRefresh,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
+import {
+  cachePosCatalog,
+  getCachedPosCatalog,
+  getNextOfflineOrderNo,
+  enqueueOfflineOrder,
+  getPendingOfflineOrders,
+  getQueuedOfflineOrders,
+  syncOfflineOrders,
+  type QueuedOfflineOrder,
+} from "@/lib/offline-pos";
+import { OfflineBillsModal } from "./offline-bills-modal";
 import {
   useCategories, useItems, useTables, useOrders, qk,
   useDeliveryRiders, useCustomerAddresses, useCreateExpense,
@@ -985,11 +997,140 @@ export default function POSPage() {
   const canView = can("pos:view");
 
   // Server data via React Query — same cache keys as MenuManagement → zero refetch on page switch
-  const { data: categories = [], isLoading: catsLoading } = useCategories(restaurantId, outletId);
-  const { data: items = [], isLoading: itemsLoading } = useItems(restaurantId, outletId);
+  const { data: rawCategories = [], isLoading: catsLoading } = useCategories(restaurantId, outletId);
+  const { data: rawItems = [], isLoading: itemsLoading } = useItems(restaurantId, outletId);
   const loading = catsLoading || itemsLoading;
-  const { data: tablesData } = useTables(restaurantId, outletId);
-  const tables = (tablesData ?? []).filter((t: any) => t.active);
+  const { data: rawTablesData } = useTables(restaurantId, outletId);
+  const rawTables = (rawTablesData ?? []).filter((t: any) => t.active);
+
+  // Offline Billing & Local Resilience States
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [pendingOfflineOrders, setPendingOfflineOrders] = useState<QueuedOfflineOrder[]>([]);
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
+  const [offlineBillsModalOpen, setOfflineBillsModalOpen] = useState(false);
+
+  // Initialize and track pending offline orders for current outlet
+  useEffect(() => {
+    if (activeOutlet?.id) {
+      setPendingOfflineOrders(getPendingOfflineOrders(activeOutlet.id));
+    }
+  }, [activeOutlet?.id]);
+
+  // Handler for syncing offline orders to cloud
+  const handleTriggerOfflineSync = async (notifyIfEmpty = true) => {
+    if (!restaurantId || !activeOutlet?.id || isSyncingOffline) return;
+    const pending = getPendingOfflineOrders(activeOutlet.id);
+    if (pending.length === 0) {
+      if (notifyIfEmpty) {
+        notifications.show({
+          title: "All Synced",
+          message: "No pending offline orders in queue.",
+          color: "teal",
+        });
+      }
+      return;
+    }
+
+    setIsSyncingOffline(true);
+    try {
+      const res = await syncOfflineOrders(restaurantId, activeOutlet.id);
+      setPendingOfflineOrders(getPendingOfflineOrders(activeOutlet.id));
+      if (res.synced > 0) {
+        notifications.show({
+          title: "Cloud Sync Complete! ☁️",
+          message: `${res.synced} offline order(s) successfully recorded in server database.`,
+          color: "teal",
+          icon: <IconCheck size={16} />,
+        });
+        queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+        queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+      }
+      if (res.failed > 0) {
+        notifications.show({
+          title: "Some Orders Failed Sync",
+          message: `${res.failed} order(s) could not sync. Check Offline Queue.`,
+          color: "red",
+        });
+      }
+    } catch (err: any) {
+      console.error("[pos] Offline sync error:", err);
+    } finally {
+      setIsSyncingOffline(false);
+    }
+  };
+
+  // Window network online / offline listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      notifications.show({
+        title: "Internet Restored 🟢",
+        message: "Device is back online. Auto-syncing pending offline bills...",
+        color: "teal",
+        icon: <IconCheck size={16} />,
+      });
+      handleTriggerOfflineSync(false);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      notifications.show({
+        title: "Offline Mode Active ⚡",
+        message: "No internet connection detected. Counter billing and thermal printing remain fully operational!",
+        color: "yellow",
+        icon: <IconWifiOff size={16} />,
+        autoClose: 6000,
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [restaurantId, activeOutlet?.id]);
+
+  // Fallback to locally cached catalog if offline or empty
+  const categories = useMemo(() => {
+    if (rawCategories.length > 0) return rawCategories;
+    if (restaurantId && activeOutlet?.id) {
+      const cached = getCachedPosCatalog(restaurantId, activeOutlet.id);
+      if (cached?.categories?.length) return cached.categories;
+    }
+    return [];
+  }, [rawCategories, restaurantId, activeOutlet?.id]);
+
+  const items = useMemo(() => {
+    if (rawItems.length > 0) return rawItems;
+    if (restaurantId && activeOutlet?.id) {
+      const cached = getCachedPosCatalog(restaurantId, activeOutlet.id);
+      if (cached?.items?.length) return cached.items;
+    }
+    return [];
+  }, [rawItems, restaurantId, activeOutlet?.id]);
+
+  const tables = useMemo(() => {
+    if (rawTables.length > 0) return rawTables;
+    if (restaurantId && activeOutlet?.id) {
+      const cached = getCachedPosCatalog(restaurantId, activeOutlet.id);
+      if (cached?.tables?.length) return cached.tables;
+    }
+    return [];
+  }, [rawTables, restaurantId, activeOutlet?.id]);
+
+  // Auto-cache catalog when data is fetched online
+  useEffect(() => {
+    if (isOnline && restaurantId && activeOutlet?.id && rawCategories.length > 0 && rawItems.length > 0) {
+      cachePosCatalog(restaurantId, activeOutlet.id, {
+        categories: rawCategories,
+        items: rawItems,
+        tables: rawTables,
+        taxSettings: activeOutlet.taxSettings,
+        diningSettings: activeOutlet.diningSettings,
+      });
+    }
+  }, [isOnline, restaurantId, activeOutlet?.id, rawCategories, rawItems, rawTables]);
 
   // Today's Reservations for active outlet
   const todayStr = useMemo(
@@ -1729,23 +1870,59 @@ export default function POSPage() {
           riderId: selectedRiderId || undefined,
         } : undefined;
 
-        const created = await startOrder(restaurantId, {
-          outletId: activeOutlet.id,
-          tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
-          customerPhone: customerPhone.trim() || undefined,
-          orderType,
-          packagingChargePaise: packagingCharge > 0 ? packagingCharge * 100 : 0,
-          deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
-          adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
-          delivery: deliveryPayload,
-          items: cartItems.map((i) => ({
-            itemId: i.itemId,
-            qty: i.qty,
-            note: i.note,
-            variantId: i.variant?.id,
-            addonIds: i.addons?.map((a) => a.id),
-          })),
-        });
+        let created: any = null;
+        let isOfflineKot = false;
+
+        if (!isOnline || (typeof navigator !== "undefined" && !navigator.onLine)) {
+          isOfflineKot = true;
+        } else {
+          try {
+            created = await startOrder(restaurantId, {
+              outletId: activeOutlet.id,
+              tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
+              customerPhone: customerPhone.trim() || undefined,
+              orderType,
+              packagingChargePaise: packagingCharge > 0 ? packagingCharge * 100 : 0,
+              deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
+              adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
+              delivery: deliveryPayload,
+              items: cartItems.map((i) => ({
+                itemId: i.itemId,
+                qty: i.qty,
+                note: i.note,
+                variantId: i.variant?.id,
+                addonIds: i.addons?.map((a) => a.id),
+              })),
+            });
+          } catch (netErr: any) {
+            console.warn("[pos] Network error on startOrder, falling back to offline KOT:", netErr);
+            isOfflineKot = true;
+          }
+        }
+
+        if (isOfflineKot) {
+          const offOrderNo = getNextOfflineOrderNo(activeOutlet.id);
+          const offId = `offline_kot_${Date.now()}`;
+          created = {
+            order: {
+              id: offId,
+              orderNo: offOrderNo,
+              tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
+              orderType,
+              createdAt: new Date().toISOString(),
+              isOffline: true,
+            },
+            items: cartItems.map((i) => ({
+              id: `${offId}_${i.itemId}`,
+              nameSnapshot: i.name,
+              pricePaiseSnapshot: i.pricePaise,
+              qty: i.qty,
+              variant: i.variant,
+              addons: i.addons,
+              note: i.note,
+            })),
+          };
+        }
 
         // If this table had an active CONFIRMED reservation, mark as SEATED now that dine-in has started
         if (activeTableReservation && activeTableReservation.status === "CONFIRMED") {
@@ -1773,13 +1950,15 @@ export default function POSPage() {
         // Print KOT + mark printed in background (non-blocking)
         const kotPayload = buildKotPayload(created, restaurant, { round: 1 });
         printTicketSilent(kotPayload).then((printResult) => {
-          markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
+          if (!isOfflineKot) {
+            markKotPrinted(restaurantId, created.order.id, activeOutlet.id).catch(() => {});
+          }
           const phoneNote = customerPhone.trim() ? ` · WA to ${customerPhone.trim()}` : "";
           notifications.show({
-            title: `Order #${created.order.orderNo} sent to kitchen`,
-            message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed" : "Order placed"}`,
-            color: "dinePrimary",
-            icon: <IconCheck size={16} />,
+            title: isOfflineKot ? `⚡ KOT #${created.order.orderNo} Printed Locally` : `Order #${created.order.orderNo} sent to kitchen`,
+            message: `${created.order.tableNo || "Takeaway"}${phoneNote} · ${printResult === "ble" ? "KOT printed" : isOfflineKot ? "Thermal KOT printed" : "Order placed"}`,
+            color: isOfflineKot ? "yellow" : "dinePrimary",
+            icon: isOfflineKot ? <IconAlertCircle size={16} /> : <IconCheck size={16} />,
           });
         }).catch(() => {
           notifications.show({
@@ -1931,24 +2110,110 @@ export default function POSPage() {
           riderId: selectedRiderId || undefined,
         } : undefined;
 
-        const result = await createSettledOrder(restaurantId, {
-          outletId: activeOutlet.id,
-          tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
-          customerPhone: customerPhone.trim() || undefined,
-          orderType,
-          packagingChargePaise: packagingCharge > 0 ? packagingCharge * 100 : 0,
-          deliveryChargePaise: orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0,
-          adjustments: computedAdjustments.map((a) => ({ id: a.id, label: a.label, value: a.value, amountPaise: a.amountPaise })),
-          delivery: deliveryPayload,
-          method: settleMethod,
-          items: cartItems.map((i) => ({
+        let result: any = null;
+        let isSavedOffline = false;
+
+        const effectivePackagingPaise = packagingCharge > 0 ? packagingCharge * 100 : 0;
+        const effectiveDeliveryPaise = orderType === "DELIVERY" ? effectiveDeliveryFee * 100 : 0;
+        const adjustmentsPayload = computedAdjustments.map((a) => ({
+          id: a.id,
+          label: a.label,
+          value: a.value,
+          amountPaise: a.amountPaise,
+        }));
+
+        if (!isOnline || (typeof navigator !== "undefined" && !navigator.onLine)) {
+          isSavedOffline = true;
+        } else {
+          try {
+            result = await createSettledOrder(restaurantId, {
+              outletId: activeOutlet.id,
+              tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
+              customerPhone: customerPhone.trim() || undefined,
+              orderType,
+              packagingChargePaise: effectivePackagingPaise,
+              deliveryChargePaise: effectiveDeliveryPaise,
+              adjustments: adjustmentsPayload,
+              delivery: deliveryPayload,
+              method: settleMethod,
+              items: cartItems.map((i) => ({
+                itemId: i.itemId,
+                qty: i.qty,
+                note: i.note,
+                variantId: i.variant?.id,
+                addonIds: i.addons?.map((a) => a.id),
+              })),
+            });
+          } catch (netErr: any) {
+            console.warn("[pos] Network error on createSettledOrder, switching to offline queue:", netErr);
+            isSavedOffline = true;
+          }
+        }
+
+        if (isSavedOffline) {
+          const offOrderNo = getNextOfflineOrderNo(activeOutlet.id);
+          const offId = `offline_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          const offCreatedAt = new Date().toISOString();
+
+          const offlineItems = cartItems.map((i) => ({
             itemId: i.itemId,
+            name: i.name,
+            pricePaise: i.pricePaise,
             qty: i.qty,
             note: i.note,
-            variantId: i.variant?.id,
-            addonIds: i.addons?.map((a) => a.id),
-          })),
-        });
+            variant: i.variant,
+            addons: i.addons,
+            lineTotalPaise: (i.pricePaise + (i.addons?.reduce((s, a) => s + a.pricePaise, 0) || 0)) * i.qty,
+          }));
+
+          const offlineOrder: QueuedOfflineOrder = {
+            id: offId,
+            offlineOrderNo: offOrderNo,
+            createdAt: offCreatedAt,
+            restaurantId,
+            outletId: activeOutlet.id,
+            tableNo: orderType === "DELIVERY" ? "Delivery" : (tableNo || "Takeaway"),
+            orderType,
+            customerPhone: customerPhone.trim() || undefined,
+            delivery: deliveryPayload,
+            method: settleMethod,
+            items: offlineItems,
+            packagingChargePaise: effectivePackagingPaise,
+            deliveryChargePaise: effectiveDeliveryPaise,
+            adjustments: adjustmentsPayload,
+            subtotalPaise: itemsSubtotal,
+            totalPaise: grandTotal,
+            synced: false,
+          };
+
+          enqueueOfflineOrder(offlineOrder);
+          setPendingOfflineOrders(getPendingOfflineOrders(activeOutlet.id));
+
+          result = {
+            order: {
+              id: offId,
+              orderNo: offOrderNo,
+              tableNo: offlineOrder.tableNo,
+              subtotalPaise: itemsSubtotal,
+              paidPaise: grandTotal,
+              method: settleMethod,
+              orderType,
+              createdAt: offCreatedAt,
+              status: "PAID",
+              isOffline: true,
+            },
+            items: offlineItems.map((i) => ({
+              id: `${offId}_${i.itemId}`,
+              nameSnapshot: i.name,
+              pricePaiseSnapshot: i.pricePaise,
+              qty: i.qty,
+              variant: i.variant,
+              addons: i.addons,
+              note: i.note,
+            })),
+            delivery: deliveryPayload,
+          };
+        }
 
         // Success — close modal and clear cart
         if (activeTableReservation && (activeTableReservation.status === "SEATED" || activeTableReservation.status === "CONFIRMED")) {
@@ -1975,18 +2240,28 @@ export default function POSPage() {
         // Automatically print Bill to default paired printer!
         printTicket(buildBillPayload(result, restaurant)).catch(() => {});
 
-        const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
-        notifications.show({
-          title: "Order settled!",
-          message: `#${result.order.orderNo} — ₹${(result.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
-          color: "green",
-          icon: <IconCheck size={16} />,
-        });
+        if (isSavedOffline) {
+          notifications.show({
+            title: `⚡ Offline Bill #${result.order.orderNo} Saved & Printed!`,
+            message: `₹${(grandTotal / 100).toFixed(0)} via ${settleMethod}. Bill stored locally; will auto-sync when online.`,
+            color: "yellow",
+            icon: <IconAlertCircle size={16} />,
+            autoClose: 8000,
+          });
+        } else {
+          const phoneNote = customerPhone.trim() ? ` · WA sent` : "";
+          notifications.show({
+            title: "Order settled!",
+            message: `#${result.order.orderNo} — ₹${(result.order.subtotalPaise / 100).toFixed(0)} via ${settleMethod}${phoneNote}`,
+            color: "green",
+            icon: <IconCheck size={16} />,
+          });
 
-        queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
-        queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
-        queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
-        queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
+          queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
+          queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, activeOutlet.id) });
+          queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, activeOutlet.id) });
+          queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
+        }
       }
     } catch (err: any) {
       notifications.show({ title: "Error", message: err.message, color: "red" });
@@ -2244,6 +2519,71 @@ export default function POSPage() {
       pt="xs"
       pb="xs"
     >
+      {/* Offline Billing Alert Bar */}
+      {(!isOnline || pendingOfflineOrders.length > 0) && (
+        <Paper
+          withBorder
+          p="xs"
+          radius="md"
+          mb="xs"
+          style={{
+            flexShrink: 0,
+            background: !isOnline ? "#fff9db" : "#e6fcf5",
+            borderColor: !isOnline ? "#ffe066" : "#63e6be",
+          }}
+        >
+          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+            <Group gap="xs" align="center">
+              <ThemeIcon
+                size="sm"
+                color={!isOnline ? "yellow" : "teal"}
+                variant="filled"
+                radius="xl"
+              >
+                {!isOnline ? <IconWifiOff size={13} /> : <IconCloudUpload size={13} />}
+              </ThemeIcon>
+              <div>
+                <Group gap={6} align="center">
+                  <Text size="xs" fw={700} c={!isOnline ? "yellow.9" : "teal.9"}>
+                    {!isOnline ? "OFFLINE BILLING MODE ACTIVE" : "INTERNET RESTORED"}
+                  </Text>
+                  <Badge size="xs" color={!isOnline ? "yellow" : "teal"} variant="light">
+                    {pendingOfflineOrders.length} {pendingOfflineOrders.length === 1 ? "Bill" : "Bills"} Pending Sync
+                  </Badge>
+                </Group>
+                <Text size="11px" c="dimmed">
+                  {!isOnline
+                    ? "Zero internet connection. Counter orders and thermal receipts continue printing locally."
+                    : "You are back online. Click Sync to Cloud to update your server reports."}
+                </Text>
+              </div>
+            </Group>
+
+            <Group gap="xs">
+              <Button
+                size="compact-xs"
+                variant="light"
+                color="blue"
+                leftSection={<IconReceiptTax size={13} />}
+                onClick={() => setOfflineBillsModalOpen(true)}
+              >
+                View Offline Bills ({pendingOfflineOrders.length})
+              </Button>
+
+              <Button
+                size="compact-xs"
+                color="teal"
+                leftSection={isSyncingOffline ? <Loader size={11} color="white" /> : <IconRefresh size={13} />}
+                onClick={() => handleTriggerOfflineSync(true)}
+                disabled={isSyncingOffline || !isOnline || pendingOfflineOrders.length === 0}
+              >
+                Sync to Cloud ({pendingOfflineOrders.length})
+              </Button>
+            </Group>
+          </Group>
+        </Paper>
+      )}
+
       <Grid
         gap="md"
         styles={{
@@ -4122,6 +4462,18 @@ export default function POSPage() {
           </Group>
         </Stack>
       </Modal>
+
+      {/* Offline Bills Modal */}
+      <OfflineBillsModal
+        opened={offlineBillsModalOpen}
+        onClose={() => setOfflineBillsModalOpen(false)}
+        orders={getQueuedOfflineOrders(activeOutlet?.id)}
+        onRefresh={() => setPendingOfflineOrders(getPendingOfflineOrders(activeOutlet?.id))}
+        restaurantId={restaurantId}
+        outletId={activeOutlet?.id || ""}
+        restaurant={restaurant}
+        isOnline={isOnline}
+      />
     </Box>
   );
 }

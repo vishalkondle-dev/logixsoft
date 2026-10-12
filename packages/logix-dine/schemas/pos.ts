@@ -594,7 +594,7 @@ export const CreateSettledSchema = z.object({
   deliveryChargePaise: z.number().int().nonnegative().optional().default(0),
   adjustments: z.array(OrderAdjustmentSchema).optional().default([]),
   delivery: DeliveryInputSchema.optional(),
-  method: z.enum(['Cash', 'UPI', 'QR']).optional(),
+  method: z.string().optional(),
   items: z.array(OrderItemInputSchema).optional(),
 });
 

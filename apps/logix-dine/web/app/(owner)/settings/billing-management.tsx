@@ -807,6 +807,8 @@ export function BillingManagement() {
                     >
                       {isCurrentForActive
                         ? `Active on ${currentOutlet.name}`
+                        : currentOutlet.planTier === "PRO" && p.id === "BASIC"
+                        ? `Downgrade to ${p.name}`
                         : `Switch ${currentOutlet.name} to ${p.name}`}
                     </Button>
 
@@ -1050,21 +1052,27 @@ export function BillingManagement() {
             let unusedCredit = 0;
             let payableAmount = targetFullAmount;
 
+            const isCurrentAnnual = (currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL";
+            const currentEffectivePrice = isCurrentAnnual
+              ? (currentOutlet?.annualPrice || 9990)
+              : (currentOutlet?.monthlyPrice || 999);
+            const totalDaysInCurrent = isCurrentAnnual ? 365 : 30;
+
             if (isUpgradeFromStarter && hasRemainingTime) {
               const remainingMs = expiresAt - now;
-              const isCurrentAnnual = (currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL";
-              const totalDaysInCurrent = isCurrentAnnual ? 365 : 30;
               remainingDays = Math.min(totalDaysInCurrent, Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))));
-              const currentEffectivePrice = isCurrentAnnual
-                ? (currentOutlet?.annualPrice || 9990)
-                : (currentOutlet?.monthlyPrice || 999);
               const dailyRate = currentEffectivePrice / totalDaysInCurrent;
               unusedCredit = Math.min(targetFullAmount - 1, Math.round(remainingDays * dailyRate));
               payableAmount = Math.max(1, targetFullAmount - unusedCredit);
             }
 
             const rawTotalCredit = isUpgradeFromStarter && hasRemainingTime
-              ? Math.round(remainingDays * (((currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL" ? (currentOutlet?.annualPrice || 9990) : (currentOutlet?.monthlyPrice || 999)) / ((currentOutlet?.billingCycle || "MONTHLY") === "ANNUAL" ? 365 : 30)))
+              ? Math.round(remainingDays * (currentEffectivePrice / totalDaysInCurrent))
+              : 0;
+
+            const isDowngradeToStarter = currentOutlet?.planTier === "PRO" && selectedPlanTier === "BASIC";
+            const downgradeDaysLeft = hasRemainingTime
+              ? Math.max(1, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)))
               : 0;
 
             return (
@@ -1103,6 +1111,32 @@ export function BillingManagement() {
                         </Text>
                       </Alert>
                     )}
+                  </Paper>
+                )}
+
+                {isDowngradeToStarter && (
+                  <Paper withBorder p="sm" radius="md" style={{ backgroundColor: "#fff9db", borderColor: "#ffe066" }}>
+                    <Group justify="space-between" align="center" mb={4}>
+                      <Group gap="xs">
+                        <ThemeIcon size="sm" color="yellow" variant="filled" radius="xl">
+                          <IconAlertCircle size={12} />
+                        </ThemeIcon>
+                        <Text size="xs" fw={700} c="yellow.9">
+                          Downgrading from Pro to Starter Plan
+                        </Text>
+                      </Group>
+                      {downgradeDaysLeft > 0 && (
+                        <Badge size="xs" color="yellow" variant="light">
+                          {downgradeDaysLeft} days remaining on Pro
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="xs" c="dark.7" mb={4}>
+                      Switching to the Starter plan will lock Pro features: Kitchen KDS, Waiter Floor Calls, Rider Deliveries, WhatsApp Broadcasts, Inventory Tracking, Table Reservations, and Online Aggregators.
+                    </Text>
+                    <Text size="xs" fw={600} c="teal.8">
+                      ✓ Zero Data Loss: All recipes, past orders, and inventory catalog entries are safely preserved and will instantly reactivate whenever you re-upgrade to Pro.
+                    </Text>
                   </Paper>
                 )}
 

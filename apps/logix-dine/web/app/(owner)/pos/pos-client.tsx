@@ -39,7 +39,7 @@ import {
 } from "@/lib/queries";
 import {
   startOrder, settleOrder, markKotPrinted, createSettledOrder, addOrderRound,
-  createDeliveryRider, updateDeliveryStatus,
+  createDeliveryRider, updateDeliveryStatus, sendOrderWhatsApp,
 } from "@/lib/api-client";
 import { buildKotPayload, buildBillPayload } from "@/lib/ticket";
 import { printTicket, printTicketSilent } from "@/lib/print";
@@ -3946,9 +3946,33 @@ export default function POSPage() {
                 </Badge>
               </Group>
 
-              <Button fullWidth variant="default" onClick={() => setShowExistingItemsModal(false)}>
-                Close
-              </Button>
+              <Group gap="xs" grow>
+                {activeTableOrder.order && (
+                  <Button
+                    variant="light"
+                    color="teal"
+                    leftSection={<IconBrandWhatsapp size={14} />}
+                    onClick={async () => {
+                      const targetPhone = activeTableOrder.order.customerPhone;
+                      if (!targetPhone) {
+                        notifications.show({ title: "No Phone Number", message: "Customer phone not attached to this table order.", color: "orange" });
+                        return;
+                      }
+                      try {
+                        await sendOrderWhatsApp(restaurantId, activeTableOrder.order.id, { phone: targetPhone }, activeOutlet?.id);
+                        notifications.show({ title: "WhatsApp Bill Dispatched 🧾", message: `Receipt sent to ${targetPhone}`, color: "teal", icon: <IconBrandWhatsapp size={16} /> });
+                      } catch (err: any) {
+                        notifications.show({ title: "Failed to Send WhatsApp", message: err.message, color: "red" });
+                      }
+                    }}
+                  >
+                    Send WhatsApp Bill
+                  </Button>
+                )}
+                <Button variant="default" onClick={() => setShowExistingItemsModal(false)}>
+                  Close
+                </Button>
+              </Group>
             </Stack>
           );
         })()}
@@ -4157,6 +4181,27 @@ export default function POSPage() {
                               }}
                             >
                               Reprint Bill
+                            </Button>
+                            <Button
+                              size="xs"
+                              variant="subtle"
+                              color="teal"
+                              leftSection={<IconBrandWhatsapp size={14} />}
+                              onClick={async () => {
+                                const targetPhone = entry.order?.customerPhone;
+                                if (!targetPhone) {
+                                  notifications.show({ title: "No Phone Number", message: "This order has no customer phone number.", color: "orange" });
+                                  return;
+                                }
+                                try {
+                                  await sendOrderWhatsApp(restaurantId, entry.order.id, { phone: targetPhone }, activeOutlet?.id);
+                                  notifications.show({ title: "WhatsApp Bill Dispatched 🧾", message: `Receipt sent to ${targetPhone}`, color: "teal", icon: <IconBrandWhatsapp size={16} /> });
+                                } catch (err: any) {
+                                  notifications.show({ title: "Failed to Send WhatsApp", message: err.message, color: "red" });
+                                }
+                              }}
+                            >
+                              WhatsApp Bill
                             </Button>
 
                             {isThirdPartyManaged ? (

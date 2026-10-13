@@ -32,6 +32,7 @@ import {
   recomputeTotal,
   getOrderWithItems,
   formatOrderWhatsAppMessage,
+  getOutletWhatsAppConfig,
   seatActiveReservation,
   completeActiveReservation,
 } from '../lib/order-helpers';
@@ -375,28 +376,30 @@ app.post(
         parsed.data.customerPhone
       );
 
-      const whatsappSettings = (outlet.whatsappSettings as any) || null;
       const custPhone = parsed.data.customerPhone;
-      if (whatsappSettings?.enabled && whatsappSettings?.sendOnOrderCreated && custPhone) {
-        c.executionCtx?.waitUntil?.(
-          (async () => {
-            try {
-              const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
-              const msg = formatOrderWhatsAppMessage(
-                rest?.name || 'Restaurant',
-                outlet.name,
-                { id, orderNo: tokenNo, tableNo: parsed.data.tableNo, orderType: computedOrderType, subtotalPaise: totalOrderPaise, packagingChargePaise, deliveryChargePaise },
-                orderItemsToInsert,
-                false,
-                delRow,
-                whatsappSettings.customFooterNote
-              );
-              await sendWhatsAppText(custPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
-            } catch (err) {
-              console.error('[WhatsApp] sendOnOrderCreated error:', err);
-            }
-          })()
-        );
+      const waConfig = getOutletWhatsAppConfig(outlet.whatsappSettings);
+      if (waConfig.enabled && waConfig.sendOnOrderCreated && custPhone) {
+        const dispatchPromise = (async () => {
+          try {
+            const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
+            const msg = formatOrderWhatsAppMessage(
+              rest?.name || 'Restaurant',
+              outlet.name,
+              { id, orderNo: tokenNo, tableNo: parsed.data.tableNo, orderType: computedOrderType, subtotalPaise: totalOrderPaise, packagingChargePaise, deliveryChargePaise },
+              orderItemsToInsert,
+              false,
+              delRow,
+              waConfig.customFooterNote,
+              c.env?.FRONTEND_URL
+            );
+            await sendWhatsAppText(custPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+          } catch (err) {
+            console.error('[WhatsApp] sendOnOrderCreated error:', err);
+          }
+        })();
+        if (c.executionCtx?.waitUntil) {
+          c.executionCtx.waitUntil(dispatchPromise);
+        }
       }
 
       // Auto-deduct inventory if enabled for this outlet
@@ -578,28 +581,30 @@ app.post(
         parsed.data.customerPhone
       );
 
-      const whatsappSettings = (outlet.whatsappSettings as any) || null;
       const settledCustPhone = parsed.data.customerPhone;
-      if (whatsappSettings?.enabled && (whatsappSettings?.sendOnBillSettled || whatsappSettings?.sendOnOrderCreated) && settledCustPhone) {
-        c.executionCtx?.waitUntil?.(
-          (async () => {
-            try {
-              const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
-              const msg = formatOrderWhatsAppMessage(
-                rest?.name || 'Restaurant',
-                outlet.name,
-                { id, orderNo: tokenNo, tableNo: parsed.data.tableNo ?? 'Takeaway', orderType: computedOrderType, status: 'PAID', method: parsed.data.method, subtotalPaise: totalOrderPaise, packagingChargePaise, deliveryChargePaise },
-                orderItemsToInsert,
-                true,
-                undefined,
-                whatsappSettings.customFooterNote
-              );
-              await sendWhatsAppText(settledCustPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
-            } catch (err) {
-              console.error('[WhatsApp] create-settled dispatch failed:', err);
-            }
-          })()
-        );
+      const waConfig = getOutletWhatsAppConfig(outlet.whatsappSettings);
+      if (waConfig.enabled && (waConfig.sendOnBillSettled || waConfig.sendOnOrderCreated) && settledCustPhone) {
+        const dispatchPromise = (async () => {
+          try {
+            const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
+            const msg = formatOrderWhatsAppMessage(
+              rest?.name || 'Restaurant',
+              outlet.name,
+              { id, orderNo: tokenNo, tableNo: parsed.data.tableNo ?? 'Takeaway', orderType: computedOrderType, status: 'PAID', method: parsed.data.method, subtotalPaise: totalOrderPaise, packagingChargePaise, deliveryChargePaise },
+              orderItemsToInsert,
+              true,
+              undefined,
+              waConfig.customFooterNote,
+              c.env?.FRONTEND_URL
+            );
+            await sendWhatsAppText(settledCustPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+          } catch (err) {
+            console.error('[WhatsApp] create-settled dispatch failed:', err);
+          }
+        })();
+        if (c.executionCtx?.waitUntil) {
+          c.executionCtx.waitUntil(dispatchPromise);
+        }
       }
 
       // Auto-deduct inventory if enabled for this outlet
@@ -907,28 +912,30 @@ app.post(
 
       if (order.outletId) {
         const [out] = await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.id, order.outletId));
-        const whatsappSettings = (out?.whatsappSettings as any) || null;
+        const waConfig = getOutletWhatsAppConfig(out?.whatsappSettings);
         const targetPhone = customerPhone?.trim() || order.customerPhone;
-        if (whatsappSettings?.enabled && whatsappSettings?.sendOnBillSettled && targetPhone) {
-          c.executionCtx?.waitUntil?.(
-            (async () => {
-              try {
-                const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
-                const msg = formatOrderWhatsAppMessage(
-                  rest?.name || 'Restaurant',
-                  out?.name,
-                  { ...order, status: 'PAID', method, subtotalPaise: totalAmount },
-                  activeItems,
-                  true,
-                  undefined,
-                  whatsappSettings.customFooterNote
-                );
-                await sendWhatsAppText(targetPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
-              } catch (err) {
-                console.error('[WhatsApp] sendOnBillSettled failed:', err);
-              }
-            })()
-          );
+        if (waConfig.enabled && waConfig.sendOnBillSettled && targetPhone) {
+          const dispatchPromise = (async () => {
+            try {
+              const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
+              const msg = formatOrderWhatsAppMessage(
+                rest?.name || 'Restaurant',
+                out?.name,
+                { ...order, status: 'PAID', method, subtotalPaise: totalAmount },
+                activeItems,
+                true,
+                undefined,
+                waConfig.customFooterNote,
+                c.env?.FRONTEND_URL
+              );
+              await sendWhatsAppText(targetPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });
+            } catch (err) {
+              console.error('[WhatsApp] sendOnBillSettled failed:', err);
+            }
+          })();
+          if (c.executionCtx?.waitUntil) {
+            c.executionCtx.waitUntil(dispatchPromise);
+          }
         }
       }
 
@@ -1221,6 +1228,7 @@ app.post(
 
       const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
       const [out] = orderData.order.outletId ? await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.id, orderData.order.outletId)) : [null];
+      const waConfig = getOutletWhatsAppConfig(out?.whatsappSettings);
 
       const message = formatOrderWhatsAppMessage(
         rest?.name || 'Restaurant',
@@ -1229,17 +1237,22 @@ app.post(
         orderData.items || [],
         orderData.order.status === 'PAID',
         orderData.delivery,
-        (out?.whatsappSettings as any)?.customFooterNote
+        waConfig.customFooterNote,
+        c.env?.FRONTEND_URL
       );
 
-      await sendWhatsAppText(
+      const waRes = await sendWhatsAppText(
         recipientPhone,
         message,
         undefined,
         { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY }
       );
 
-      return c.json({ success: true, message: `Receipt sent to ${recipientPhone}` });
+      if (!waRes.success) {
+        return c.json({ error: 'WhatsApp Delivery Failed', message: waRes.error || 'Gateway returned failure' }, 502);
+      }
+
+      return c.json({ success: true, message: `Receipt sent to ${recipientPhone}`, waResponse: waRes });
     } finally {
       await close();
     }

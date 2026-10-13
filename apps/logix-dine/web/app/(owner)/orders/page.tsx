@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import {
   Title, Stack, Paper, Group, Text, Badge, Select, Button,
   Loader, Center, Modal, Divider, Box, ActionIcon, Tooltip, Radio,
-  SimpleGrid, Alert, SegmentedControl,
+  SimpleGrid, Alert, SegmentedControl, TextInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import {
   IconReceipt, IconPrinter, IconArrowRight, IconX,
   IconBan, IconCheck, IconCash, IconDoorExit, IconAlertCircle,
   IconUser, IconMotorbike, IconMapPin, IconNotes, IconQrcode, IconCreditCard,
+  IconBrandWhatsapp,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import { useOrders } from "@/lib/queries";
@@ -25,6 +26,7 @@ import {
   voidOrder,
   settleOrder,
   freeTableOrder,
+  sendOrderWhatsApp,
 } from "@/lib/api-client";
 import {
   getStatusVisual,
@@ -57,6 +59,11 @@ export default function OrdersPage() {
   const [isVoiding, setIsVoiding] = useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = useState(false);
   const [cancelItemConfirm, setCancelItemConfirm] = useState<{ item: any; actionPayload: any } | null>(null);
+
+  // WhatsApp bill receipt dispatch state
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+  const [waPhoneModalOpen, setWaPhoneModalOpen] = useState(false);
+  const [waPhoneInput, setWaPhoneInput] = useState("");
 
   // Real-time live sync via Cloudflare Durable Object
   const { isConnected, isConnecting } = useOutletSync(restaurantId, outletId);
@@ -116,6 +123,38 @@ export default function OrdersPage() {
       }
     } finally {
       setReprinting(null);
+    }
+  };
+
+  const handleSendWhatsApp = async (phoneOverride?: string) => {
+    if (!selected || !restaurant) return;
+    const targetPhone = (phoneOverride || waPhoneInput || selected.order.customerPhone || "").trim();
+    const cleanPhone = targetPhone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setWaPhoneInput(targetPhone);
+      setWaPhoneModalOpen(true);
+      return;
+    }
+
+    setSendingWhatsApp(true);
+    try {
+      await sendOrderWhatsApp(restaurantId, selected.order.id, { phone: cleanPhone }, outletId);
+      notifications.show({
+        title: "Bill Sent to WhatsApp! 🧾",
+        message: `Digital e-bill and receipt dispatched to +91 ${cleanPhone.slice(-10)}.`,
+        color: "teal",
+        icon: <IconBrandWhatsapp size={16} />,
+      });
+      setWaPhoneModalOpen(false);
+    } catch (err: any) {
+      notifications.show({
+        title: "WhatsApp Dispatch Failed",
+        message: err?.message || "Could not dispatch WhatsApp message. Please check number.",
+        color: "red",
+        icon: <IconAlertCircle size={16} />,
+      });
+    } finally {
+      setSendingWhatsApp(false);
     }
   };
 
@@ -1041,6 +1080,18 @@ export default function OrdersPage() {
                       Reprint Bill
                     </Button>
                   )}
+                  {order.status !== "VOID" && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="teal"
+                      leftSection={<IconBrandWhatsapp size={14} />}
+                      loading={sendingWhatsApp}
+                      onClick={() => handleSendWhatsApp()}
+                    >
+                      {order.customerPhone ? "WhatsApp Bill" : "Send to WhatsApp"}
+                    </Button>
+                  )}
                 </Group>
 
                 <Group gap="xs">
@@ -1324,6 +1375,51 @@ export default function OrdersPage() {
             </Button>
             <Button color="red" size="sm" onClick={handleConfirmCancelItem} leftSection={<IconX size={16} />}>
               Cancel Item
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* ─── Send WhatsApp Bill Modal (Phone Prompt) ─── */}
+      <Modal
+        opened={waPhoneModalOpen}
+        onClose={() => setWaPhoneModalOpen(false)}
+        title={
+          <Group gap={8} align="center">
+            <IconBrandWhatsapp size={20} color="#25D366" />
+            <Text fw={700} size="sm">Send Bill Receipt to WhatsApp</Text>
+          </Group>
+        }
+        size="sm"
+        zIndex={1400}
+      >
+        <Stack gap="md">
+          <Text size="xs" c="dimmed">
+            Enter the customer's 10-digit mobile number to dispatch the interactive digital e-bill directly via WhatsApp.
+          </Text>
+          <TextInput
+            label="Customer WhatsApp Number"
+            placeholder="e.g. 9876543210"
+            type="tel"
+            inputMode="numeric"
+            maxLength={15}
+            value={waPhoneInput}
+            onChange={(e) => setWaPhoneInput(e.target.value.replace(/\D/g, "").slice(0, 15))}
+            leftSection={<IconBrandWhatsapp size={16} color="#25D366" />}
+            data-autofocus
+          />
+          <Group justify="flex-end" gap="xs" mt="xs">
+            <Button variant="default" size="sm" onClick={() => setWaPhoneModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="teal"
+              size="sm"
+              loading={sendingWhatsApp}
+              leftSection={<IconBrandWhatsapp size={16} />}
+              onClick={() => handleSendWhatsApp(waPhoneInput)}
+            >
+              Send WhatsApp Bill
             </Button>
           </Group>
         </Stack>

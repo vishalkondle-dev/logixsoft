@@ -197,6 +197,31 @@ export async function getOrderWithItems(db: any, orderId: string, restaurantId: 
   return result;
 }
 
+export interface OutletWhatsAppConfig {
+  enabled: boolean;
+  sendOnOrderCreated: boolean;
+  sendOnKdsReady: boolean;
+  sendOnBillSettled: boolean;
+  sendOnDispatched: boolean;
+  sendDailyClosingReport: boolean;
+  customFooterNote: string | null;
+  ownerClosingReportPhone: string | null;
+}
+
+export function getOutletWhatsAppConfig(rawSettings: any): OutletWhatsAppConfig {
+  const ws = (rawSettings as any) || {};
+  return {
+    enabled: ws.enabled !== false,
+    sendOnOrderCreated: ws.sendOnOrderCreated !== false,
+    sendOnKdsReady: ws.sendOnKdsReady !== false,
+    sendOnBillSettled: ws.sendOnBillSettled !== false,
+    sendOnDispatched: ws.sendOnDispatched !== false,
+    sendDailyClosingReport: ws.sendDailyClosingReport !== false,
+    customFooterNote: ws.customFooterNote || null,
+    ownerClosingReportPhone: ws.ownerClosingReportPhone || null,
+  };
+}
+
 export function formatOrderWhatsAppMessage(
   restaurantName: string,
   outletName: string | null | undefined,
@@ -204,7 +229,8 @@ export function formatOrderWhatsAppMessage(
   items: any[],
   isSettled = false,
   delivery?: any,
-  customFooter?: string | null
+  customFooter?: string | null,
+  frontendUrl = 'https://dine.logixsoft.in'
 ): string {
   const tableStr = order.orderType === 'DELIVERY'
     ? 'Delivery'
@@ -215,7 +241,7 @@ export function formatOrderWhatsAppMessage(
       : 'Takeaway';
   const pkgPaise = order.packagingChargePaise || 0;
   const delPaise = order.deliveryChargePaise || 0;
-  const totalRupees = (((order.subtotalPaise ?? 0)) / 100).toFixed(0);
+  const totalRupees = (((order.subtotalPaise ?? order.paidPaise ?? 0)) / 100).toFixed(0);
 
   const itemsList = items
     .filter((item) => item.status !== 'CANCELLED')
@@ -230,7 +256,7 @@ export function formatOrderWhatsAppMessage(
     })
     .join('\n');
 
-  const title = isSettled ? '*Payment Receipt*' : '*Order Confirmed!*';
+  const title = isSettled ? '🧾 *Digital Payment Receipt*' : '🎉 *Order Confirmed!*';
   const header = `*${restaurantName}*${outletName ? ` (${outletName})` : ''}`;
   const paymentLine = isSettled && order.method ? `\nPayment: *${order.method}*` : '';
   const deliveryAddrLine = delivery?.addressLine1 ? `\nAddress: *${delivery.addressLine1}${delivery.landmark ? ` (${delivery.landmark})` : ''}*` : '';
@@ -239,8 +265,11 @@ export function formatOrderWhatsAppMessage(
     ? `\nPackaging: ₹${(pkgPaise / 100).toFixed(0)} | Delivery: ₹${(delPaise / 100).toFixed(0)}`
     : '';
 
-  const footer = customFooter?.trim() ? `\n\n${customFooter.trim()}` : '\n\nThank you!';
-  return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}${deliveryAddrLine}${otpLine}\n\n*Items:*\n${itemsList}${chargesLine}\n\n*Total:* ₹${totalRupees}${footer}`;
+  const cleanFrontend = (frontendUrl || 'https://dine.logixsoft.in').replace(/\/+$/, '');
+  const ebillLink = `\n\n📄 *View & Download E-Bill:* ${cleanFrontend}/portal?orderId=${order.id}`;
+
+  const footer = customFooter?.trim() ? `\n\n_${customFooter.trim()}_` : '\n\n_Thank you for dining with us!_';
+  return `${title}\n${header}\nToken: *#${order.orderNo}*\nOrder ID: \`${order.id}\`\nType: *${tableStr}*${paymentLine}${deliveryAddrLine}${otpLine}\n\n*Items Ordered:*\n${itemsList}${chargesLine}\n\n*Total Paid:* ₹${totalRupees}${ebillLink}${footer}`;
 }
 
 export async function seatActiveReservation(

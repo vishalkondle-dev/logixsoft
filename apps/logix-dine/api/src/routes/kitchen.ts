@@ -14,7 +14,7 @@ import { toOrderWithItems } from '@logixsoft/logix-dine/mappers/pos';
 import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
-import { getDb, recomputeTotal, getOrderWithItems } from '../lib/order-helpers';
+import { getDb, recomputeTotal, getOrderWithItems, getOutletWhatsAppConfig } from '../lib/order-helpers';
 import { sendWhatsAppText } from '@logixsoft/wa';
 import { restoreOrderItemInventory } from '../lib/inventory-helpers';
 
@@ -471,8 +471,8 @@ app.post(
           (async () => {
             try {
               const [out] = await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.id, order.outletId));
-              const ws = (out?.whatsappSettings as any) || null;
-              if (ws?.enabled && ws?.sendOnKdsReady && order.customerPhone) {
+              const ws = getOutletWhatsAppConfig(out?.whatsappSettings);
+              if (ws.enabled && ws.sendOnKdsReady && order.customerPhone) {
                 const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, restaurantId));
                 const msg = `*Order Ready!*\n*${rest?.name || 'Restaurant'}* (${out?.name || ''})\nToken: *#${order.orderNo}*\nYour fresh order is prepared and ready!${ws.customFooterNote ? `\n\n${ws.customFooterNote}` : ''}`;
                 await sendWhatsAppText(order.customerPhone, msg, undefined, { url: c.env?.WA_API_URL, apiKey: c.env?.WA_API_KEY });

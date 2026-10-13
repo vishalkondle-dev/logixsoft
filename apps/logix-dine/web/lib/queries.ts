@@ -44,6 +44,7 @@ import {
   getCustomerProfile,
   updateCustomerNotes,
   sendCustomerWhatsApp,
+  sendOrderWhatsApp,
   getCustomerPortal,
   updateCustomerProfile,
   getCustomerOutletMenu,
@@ -617,6 +618,13 @@ export function useSendCustomerWhatsApp(restaurantId: string, phone: string) {
   return useMutation({
     mutationFn: ({ message, outletId }: { message: string; outletId?: string | null }) =>
       sendCustomerWhatsApp(restaurantId, phone, { message }, outletId),
+  });
+}
+
+export function useSendOrderWhatsApp(restaurantId: string) {
+  return useMutation({
+    mutationFn: ({ orderId, phone, outletId }: { orderId: string; phone?: string; outletId?: string | null }) =>
+      sendOrderWhatsApp(restaurantId, orderId, { phone }, outletId),
   });
 }
 

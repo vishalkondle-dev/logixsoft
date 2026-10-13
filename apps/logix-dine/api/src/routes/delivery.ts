@@ -9,7 +9,7 @@ import { toCustomerAddress, toDeliveryRider, toDeliveryOrder } from '@logixsoft/
 import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
-import { getDb, getPhoneVariants } from '../lib/order-helpers';
+import { getDb, getPhoneVariants, getOutletWhatsAppConfig } from '../lib/order-helpers';
 import { sendWhatsAppText } from '@logixsoft/wa';
 
 const app = new Hono<{ Bindings: AuthEnv & { OUTLET_ROOM?: DurableObjectNamespace } }>();
@@ -425,8 +425,8 @@ async function transitionDeliveryStatus(c: any, orderId: string, newStatus: any,
         (async () => {
           try {
             const [out] = await db.select().from(appSchema.restaurantOutlet).where(eq(appSchema.restaurantOutlet.id, existingDelivery.outletId));
-            const ws = (out?.whatsappSettings as any) || null;
-            if (ws?.enabled && ws?.sendOnDispatched) {
+            const ws = getOutletWhatsAppConfig(out?.whatsappSettings);
+            if (ws.enabled && ws.sendOnDispatched) {
               const [rest] = await db.select().from(appSchema.restaurant).where(eq(appSchema.restaurant.id, existingDelivery.restaurantId));
               const riderText = updatedDelivery?.riderName
                 ? `\nRider: *${updatedDelivery.riderName}*${updatedDelivery.riderPhone ? ` (${updatedDelivery.riderPhone})` : ''}`

@@ -39,13 +39,13 @@ export interface TableForVoice {
   name: string;
 }
 
-// ─── Hindi & English Quantity Dictionary ─────────────────────────────────────
+// ─── Multilingual Pan-Indian Quantity Dictionary ───────────────────────────
 const NUMBER_WORDS: Record<string, number> = {
-  // English
+  // English digits & words
   "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "10": 10,
   "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
   "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-  // Hindi & Hinglish numbers
+  // Hindi & Urdu
   "ek": 1, "aik": 1, "ikk": 1,
   "do": 2, "doh": 2,
   "teen": 3, "tin": 3,
@@ -56,25 +56,92 @@ const NUMBER_WORDS: Record<string, number> = {
   "aath": 8, "ath": 8,
   "nau": 9, "no": 9,
   "das": 10, "duss": 10,
+  // Telugu (తెలుగు)
+  "okati": 1, "okti": 1, "vokati": 1,
+  "rendu": 2, "rend": 2,
+  "moodu": 3, "mudu": 3,
+  "naalugu": 4, "nalugu": 4,
+  "aidu": 5, "ayidu": 5,
+  "aaru": 6,
+  "yedu": 7, "edu": 7,
+  "enimidi": 8,
+  "tommidi": 9,
+  "padi": 10,
+  // Tamil (தமிழ்)
+  "onnu": 1, "ondru": 1,
+  "moonu": 3, "moondru": 3,
+  "naalu": 4, "naangu": 4,
+  "anju": 5, "ainthu": 5,
+  "ezhu": 7,
+  "ettu": 8,
+  "ombadhu": 9, "ombathu": 9,
+  "pathu": 10,
+  // Kannada (ಕನ್ನಡ)
+  "ondu": 1,
+  "eradu": 2,
+  "mooru": 3,
+  "naalku": 4, "nalku": 4,
+  "eelu": 7,
+  "entu": 8,
+  "ombattu": 9,
+  "hattu": 10,
+  // Marathi (मराठी)
+  "don": 2,
+  "paach": 5,
+  "saha": 6,
+  "daha": 10,
+  // Bengali (বাংলা)
+  "dui": 2,
+  "chhoy": 6,
+  "aat": 8,
+  "noy": 9,
+  "dosh": 10,
+  // Gujarati (ગુજરાતી)
+  "be": 2,
+  "tran": 3,
+  "chha": 6,
+  "nav": 9,
+  // Malayalam (മലയാളം)
+  "moonnu": 3,
+  "anchu": 5,
+  "onpathu": 9,
+  // Punjabi (ਪੰਜਾਬੀ)
+  "tinn": 3,
+  "panj": 5,
+  "satt": 7,
+  "atth": 8,
   // Portions / portions counted as 1
   "single": 1, "double": 2,
 };
 
-// Modifiers / Notes Dictionary
+// Modifiers / Notes Dictionary across Pan-Indian Languages
 const COOKING_NOTE_PATTERNS: Array<{ regex: RegExp; note: string }> = [
-  { regex: /\b(bina\s+pyaaz(\s+ke)?|no\s+onion|without\s+onion)\b/gi, note: "No Onion" },
-  { regex: /\b(bina\s+lehsun(\s+ke)?|bina\s+lahsun|no\s+garlic|without\s+garlic)\b/gi, note: "No Garlic" },
+  // No Onion
+  { regex: /\b(bina\s+pyaaz(\s+ke)?|no\s+onion|without\s+onion|ulli\s+lekunda|vulli\s+lekunda|vengayam\s+(vendam|ilamal)|eerulli\s+beda|kanda\s+nako|peyaj\s+chara|dungli\s+vagar|ulli\s+venda)\b/gi, note: "No Onion" },
+  // No Garlic
+  { regex: /\b(bina\s+lehsun(\s+ke)?|bina\s+lahsun|no\s+garlic|without\s+garlic|vellulli\s+lekunda|poondu\s+vendam|bellulli\s+beda|lasun\s+nako|rosun\s+chara|lasan\s+vagar|veluthulli\s+venda)\b/gi, note: "No Garlic" },
+  // Jain Preparation
   { regex: /\b(jain(\s+prep(aration)?)?)\b/gi, note: "Jain Prep (No Onion/Garlic)" },
-  { regex: /\b(kam\s+mirchi|kam\s+teekha|less\s+spicy|mild|thoda\s+kam\s+spicy)\b/gi, note: "Less Spicy" },
-  { regex: /\b(zyada\s+teekha|jyada\s+spicy|extra\s+spicy|very\s+spicy|tez\s+mirchi)\b/gi, note: "Extra Spicy" },
-  { regex: /\b(extra\s+cheese|zyada\s+cheese|jyada\s+cheese)\b/gi, note: "Extra Cheese" },
-  { regex: /\b(kam\s+cheeni|kam\s+meetha|less\s+sugar)\b/gi, note: "Less Sugar" },
-  { regex: /\b(bina\s+cheeni|without\s+sugar|sugar\s+free|no\s+sugar)\b/gi, note: "No Sugar" },
-  { regex: /\b(bina\s+barf|without\s+ice|no\s+ice)\b/gi, note: "No Ice" },
-  { regex: /\b(garam|piping\s+hot|very\s+hot)\b/gi, note: "Serve Hot" },
-  { regex: /\b(crispy|karara|kurkura|well\s+done)\b/gi, note: "Make Crispy" },
+  // Less Spicy
+  { regex: /\b(kam\s+mirchi|kam\s+teekha|less\s+spicy|mild|thoda\s+kam\s+spicy|takkuva\s+kaaram|kaaram\s+takkuva|kaaram\s+(koraivaga|kammi)|khara\s+kammi|kami\s+teekhat|kom\s+jhal|ocho\s+teekho|erivu\s+kuravu)\b/gi, note: "Less Spicy" },
+  // Extra Spicy
+  { regex: /\b(zyada\s+teekha|jyada\s+spicy|extra\s+spicy|very\s+spicy|tez\s+mirchi|ekkuva\s+kaaram|kaaram\s+ekkuva|(romba|adhigam)\s+kaaram|jasti\s+khara|jast\s+teekhat|beshi\s+jhal|vadhu\s+teekho|kooduthal\s+erivu)\b/gi, note: "Extra Spicy" },
+  // Extra Cheese
+  { regex: /\b(extra\s+cheese|zyada\s+cheese|jyada\s+cheese|ekkuva\s+cheese|jasti\s+cheese)\b/gi, note: "Extra Cheese" },
+  // Less Sugar
+  { regex: /\b(kam\s+cheeni|kam\s+meetha|less\s+sugar|takkuva\s+sugar|kammi\s+sugar)\b/gi, note: "Less Sugar" },
+  // No Sugar
+  { regex: /\b(bina\s+cheeni|without\s+sugar|sugar\s+free|no\s+sugar|chekkera\s+lekunda|sugar\s+lekunda|sakkarai\s+vendam|sakkare\s+beda)\b/gi, note: "No Sugar" },
+  // No Ice
+  { regex: /\b(bina\s+barf|without\s+ice|no\s+ice|ice\s+lekunda|ice\s+vendam|ice\s+beda|ice\s+nako)\b/gi, note: "No Ice" },
+  // Serve Hot
+  { regex: /\b(garam|piping\s+hot|very\s+hot|vedi|bisi)\b/gi, note: "Serve Hot" },
+  // Make Crispy
+  { regex: /\b(crispy|karara|kurkura|well\s+done|moru\s+moru)\b/gi, note: "Make Crispy" },
+  // Dry
   { regex: /\b(dry|sukha)\b/gi, note: "Dry" },
-  { regex: /\b(gravy|with\s+gravy)\b/gi, note: "With Gravy" },
+  // With Gravy
+  { regex: /\b(gravy|with\s+gravy|saaru|jhol)\b/gi, note: "With Gravy" },
 ];
 
 /**

@@ -35,6 +35,7 @@ import {
   IconMinus,
   IconVolume,
   IconEdit,
+  IconLanguage,
 } from "@tabler/icons-react";
 import {
   parseVoiceKot,
@@ -43,6 +44,19 @@ import {
   type MenuItemForVoice,
   type TableForVoice,
 } from "@/lib/voice-kot-parser";
+
+export const SUPPORTED_VOICE_LANGUAGES = [
+  { value: "en-IN", label: "Hinglish / English (India)" },
+  { value: "hi-IN", label: "Hindi (हिन्दी)" },
+  { value: "te-IN", label: "Telugu (తెలుగు)" },
+  { value: "ta-IN", label: "Tamil (தமிழ்)" },
+  { value: "kn-IN", label: "Kannada (ಕನ್ನಡ)" },
+  { value: "mr-IN", label: "Marathi (मराठी)" },
+  { value: "bn-IN", label: "Bengali (বাংলা)" },
+  { value: "gu-IN", label: "Gujarati (ગુજરાતી)" },
+  { value: "ml-IN", label: "Malayalam (മലയാളം)" },
+  { value: "pa-IN", label: "Punjabi (ਪੰਜਾਬੀ)" },
+];
 
 interface VoiceKotModalProps {
   opened: boolean;
@@ -78,7 +92,7 @@ export function VoiceKotModal({
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
-  const [lang, setLang] = useState<"en-IN" | "hi-IN">("en-IN");
+  const [lang, setLang] = useState<string>("en-IN");
   const [speechSupported, setSpeechSupported] = useState(true);
 
   // Parsed Order Staging
@@ -326,11 +340,11 @@ export function VoiceKotModal({
                 Voice-to-KOT Assistant
               </Text>
               <Badge color="violet" variant="light" size="xs">
-                Bilingual AI
+                Multilingual Pan-Indian AI
               </Badge>
             </Group>
             <Text size="xs" c="dimmed">
-              Speak naturally in Hinglish, Hindi, or English (e.g. &ldquo;Table 4 do butter naan, ek paneer butter masala bina pyaaz ke&rdquo;)
+              Speak naturally in English, Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, etc.
             </Text>
           </div>
         </Group>
@@ -343,23 +357,31 @@ export function VoiceKotModal({
       }}
     >
       <Stack gap="md" pt="xs">
-        {/* Language Selection & Status */}
-        <Group justify="space-between" align="center">
-          <SegmentedControl
-            size="xs"
-            radius="md"
-            value={lang}
-            onChange={(val) => {
-              setLang(val as "en-IN" | "hi-IN");
-              if (isListening) {
-                stopListening();
-              }
-            }}
-            data={[
-              { label: "Hinglish / Indian English (en-IN)", value: "en-IN" },
-              { label: "Hindi / हिन्दी (hi-IN)", value: "hi-IN" },
-            ]}
-          />
+        {/* Multilingual Pan-Indian Language Selection & Status */}
+        <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+          <Group gap="xs" align="center">
+            <Text size="xs" fw={600} c="dimmed">
+              Speech Language:
+            </Text>
+            <Select
+              size="xs"
+              w={{ base: "100%", xs: 260 }}
+              radius="md"
+              leftSection={<IconLanguage size={15} />}
+              value={lang}
+              onChange={(val) => {
+                if (val) {
+                  setLang(val);
+                  if (isListening) {
+                    stopListening();
+                  }
+                }
+              }}
+              data={SUPPORTED_VOICE_LANGUAGES}
+              allowDeselect={false}
+              comboboxProps={{ zIndex: 2000 }}
+            />
+          </Group>
 
           <Badge
             color={isListening ? "red" : "gray"}

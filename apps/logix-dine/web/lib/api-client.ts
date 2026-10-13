@@ -2258,6 +2258,139 @@ export const deleteCampaign = (
     outletId
   );
 
+// ─── Waitlist & Queue Management ─────────────────────────────────────────────
+
+export interface WaitlistEntry {
+  id: string;
+  restaurantId: string;
+  outletId: string;
+  tokenNumber: string;
+  guestName: string;
+  guestPhone: string;
+  partySize: number;
+  seatingPreference: string;
+  status: 'WAITING' | 'CALLED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW';
+  estimatedWaitMinutes: number;
+  calledAt: string | null;
+  seatedAt: string | null;
+  assignedTableId: string | null;
+  assignedTableName: string | null;
+  preOrderItems?: Array<{ itemId: string; name: string; qty: number; pricePaise: number; notes?: string }> | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WaitlistResponse {
+  entries: WaitlistEntry[];
+  stats: {
+    waitingCount: number;
+    calledCount: number;
+    seatedTodayCount: number;
+    avgWaitMinutes: number;
+  };
+}
+
+export const getWaitlist = (
+  restaurantId: string,
+  outletId?: string | null,
+  status?: string
+) =>
+  apiFetch<WaitlistResponse>(
+    `/waitlist${status ? `?status=${status}` : ''}`,
+    restaurantId,
+    {},
+    outletId
+  );
+
+export const joinWaitlist = (
+  restaurantId: string,
+  outletId: string,
+  data: {
+    guestName: string;
+    guestPhone: string;
+    partySize: number;
+    seatingPreference?: string;
+    notes?: string;
+    preOrderItems?: any[];
+  }
+) =>
+  apiFetch<{
+    entry: WaitlistEntry;
+    queuePosition: number;
+    partiesAhead: number;
+    trackerUrl: string;
+  }>(
+    '/waitlist/join',
+    restaurantId,
+    { method: 'POST', body: JSON.stringify({ ...data, outletId }) },
+    outletId
+  );
+
+export const callWaitlistGuest = (
+  restaurantId: string,
+  outletId: string,
+  waitlistId: string,
+  notifyWhatsApp: boolean = true
+) =>
+  apiFetch<WaitlistEntry>(
+    '/waitlist/call',
+    restaurantId,
+    { method: 'POST', body: JSON.stringify({ waitlistId, notifyWhatsApp }) },
+    outletId
+  );
+
+export const seatWaitlistGuest = (
+  restaurantId: string,
+  outletId: string,
+  waitlistId: string,
+  tableId: string,
+  tableName?: string
+) =>
+  apiFetch<{ entry: WaitlistEntry; tableId: string }>(
+    '/waitlist/seat',
+    restaurantId,
+    { method: 'POST', body: JSON.stringify({ waitlistId, tableId, tableName }) },
+    outletId
+  );
+
+export const cancelWaitlistGuest = (
+  restaurantId: string,
+  outletId: string,
+  waitlistId: string,
+  reason?: string,
+  status: 'CANCELLED' | 'NO_SHOW' = 'CANCELLED'
+) =>
+  apiFetch<WaitlistEntry>(
+    '/waitlist/cancel',
+    restaurantId,
+    { method: 'POST', body: JSON.stringify({ waitlistId, reason, status }) },
+    outletId
+  );
+
+export const getPublicWaitlistStatus = async (
+  outletId: string,
+  waitlistId: string
+) => {
+  const res = await fetch(`${API_BASE}/waitlist/public/${outletId}/${waitlistId}`);
+  if (!res.ok) throw new Error('Waitlist ticket not found');
+  return res.json();
+};
+
+export const submitPublicPreOrder = async (
+  outletId: string,
+  waitlistId: string,
+  items: Array<{ itemId: string; name: string; qty: number; pricePaise: number; notes?: string }>
+) => {
+  const res = await fetch(`${API_BASE}/waitlist/public/pre-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ outletId, waitlistId, items }),
+  });
+  if (!res.ok) throw new Error('Failed to submit pre-order');
+  return res.json();
+};
+
 
 
 

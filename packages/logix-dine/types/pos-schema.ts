@@ -15,6 +15,7 @@ import {
   customerAddress,
   deliveryRider,
   tableReservation,
+  outletWaitlist,
   inventorySupplier,
   inventoryItem,
   menuItemRecipe,
@@ -219,6 +220,15 @@ export type NewTableReservationRow = InferInsertModel<typeof tableReservation>;
 export type JsonTableReservationRow = Omit<TableReservationRow, 'createdAt' | 'updatedAt'> & {
   createdAt: string;
   updatedAt: string;
+};
+
+export type OutletWaitlistRow = InferSelectModel<typeof outletWaitlist>;
+export type NewOutletWaitlistRow = InferInsertModel<typeof outletWaitlist>;
+export type JsonOutletWaitlistRow = Omit<OutletWaitlistRow, 'createdAt' | 'updatedAt' | 'calledAt' | 'seatedAt'> & {
+  createdAt: string;
+  updatedAt: string;
+  calledAt: string | null;
+  seatedAt: string | null;
 };
 
 export type InventorySupplierRow = InferSelectModel<typeof inventorySupplier>;

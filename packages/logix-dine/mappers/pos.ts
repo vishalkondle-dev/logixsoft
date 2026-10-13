@@ -28,6 +28,8 @@ import type {
   JsonDeliveryRiderRow,
   TableReservationRow,
   JsonTableReservationRow,
+  OutletWaitlistRow,
+  JsonOutletWaitlistRow,
   InventorySupplierRow,
   JsonInventorySupplierRow,
   InventoryItemRow,
@@ -188,6 +190,16 @@ export function toReservation(r: TableReservationRow): JsonTableReservationRow {
     ...r,
     createdAt: toIsoRequired(r.createdAt),
     updatedAt: toIsoRequired(r.updatedAt),
+  };
+}
+
+export function toWaitlistEntry(w: OutletWaitlistRow): JsonOutletWaitlistRow {
+  return {
+    ...w,
+    createdAt: toIsoRequired(w.createdAt),
+    updatedAt: toIsoRequired(w.updatedAt),
+    calledAt: w.calledAt ? toIsoRequired(w.calledAt) : null,
+    seatedAt: w.seatedAt ? toIsoRequired(w.seatedAt) : null,
   };
 }
 

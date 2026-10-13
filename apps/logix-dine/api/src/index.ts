@@ -49,6 +49,7 @@ import { rolesRouter } from './routes/roles';
 import { webhookRoutes } from './routes/webhooks';
 import { expenseRoutes } from './routes/expenses';
 import { campaignRoutes } from './routes/campaigns';
+import waitlistRoutes from './routes/waitlist';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -608,6 +609,9 @@ app.route('/api/expenses', expenseRoutes);
 
 app.route('/campaigns', campaignRoutes);
 app.route('/api/campaigns', campaignRoutes);
+
+app.route('/waitlist', waitlistRoutes);
+app.route('/api/waitlist', waitlistRoutes);
 
 
 

@@ -580,6 +580,44 @@ export const tableReservation = pgTable(
   ],
 );
 
+// ─── Outlet Waitlist & Queue ─────────────────────────────────────────────────
+
+export const outletWaitlist = pgTable(
+  'outletWaitlist',
+  {
+    id: text('id').primaryKey(),
+    restaurantId: text('restaurantId')
+      .notNull()
+      .references(() => restaurant.id, { onDelete: 'cascade' }),
+    outletId: text('outletId')
+      .notNull()
+      .references(() => restaurantOutlet.id, { onDelete: 'cascade' }),
+    tokenNumber: text('tokenNumber').notNull(), // Daily sequential: Q-01, Q-02...
+    guestName: text('guestName').notNull(),
+    guestPhone: text('guestPhone').notNull(),
+    partySize: integer('partySize').notNull().default(2),
+    seatingPreference: text('seatingPreference').notNull().default('ANY'), // ANY | INDOOR | OUTDOOR | ROOFTOP | BAR
+    status: text('status').notNull().default('WAITING'), // WAITING | CALLED | SEATED | CANCELLED | NO_SHOW
+    estimatedWaitMinutes: integer('estimatedWaitMinutes').notNull().default(15),
+    calledAt: timestamp('calledAt'),
+    seatedAt: timestamp('seatedAt'),
+    assignedTableId: text('assignedTableId').references(() => posTable.id, { onDelete: 'set null' }),
+    assignedTableName: text('assignedTableName'),
+    preOrderItems: jsonb('preOrderItems').default([]), // Optional pre-ordered items
+    notes: text('notes'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+    createdBy: text('createdBy'),
+    updatedBy: text('updatedBy'),
+  },
+  (t) => [
+    index('outletWaitlist_restaurantId_idx').on(t.restaurantId),
+    index('outletWaitlist_outletId_idx').on(t.outletId),
+    index('outletWaitlist_status_idx').on(t.status),
+    index('outletWaitlist_createdAt_idx').on(t.createdAt),
+  ],
+);
+
 // ─── Inventory Suppliers ─────────────────────────────────────────────────────
 
 export const inventorySupplier = pgTable(
@@ -918,6 +956,7 @@ export const posSchema = {
   customerAddress,
   deliveryRider,
   tableReservation,
+  outletWaitlist,
   inventorySupplier,
   inventoryItem,
   menuItemRecipe,

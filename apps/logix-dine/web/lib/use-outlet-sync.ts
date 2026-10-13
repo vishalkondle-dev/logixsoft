@@ -133,6 +133,7 @@ export function useOutletSync(
             queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["waitlist", restaurantId] });
           }
           if (topic === "ORDERS" || topic === "ALL") {
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
@@ -168,6 +169,11 @@ export function useOutletSync(
             queryClient.invalidateQueries({ queryKey: ["riders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["deliveryOrders", restaurantId] });
             queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+          }
+
+          if (msg.type === "WAITLIST_UPDATED") {
+            queryClient.invalidateQueries({ queryKey: ["waitlist", restaurantId] });
+            queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
           }
 
           if (

@@ -17,6 +17,7 @@ import type {
   JsonCustomerAddressRow,
   JsonDeliveryRiderRow,
   JsonTableReservationRow,
+  JsonOutletWaitlistRow,
   JsonInventorySupplierRow,
   JsonInventoryItemRow,
   JsonMenuItemRecipeRow,
@@ -330,6 +331,57 @@ export const TableReservationSchema = z.object({
   updatedBy: z.string().nullable(),
 });
 type _ReservationAssert = Expect<AssertSame<z.infer<typeof TableReservationSchema>, JsonTableReservationRow>>;
+
+export const OutletWaitlistSchema = z.object({
+  id: z.string(),
+  restaurantId: z.string(),
+  outletId: z.string(),
+  tokenNumber: z.string(),
+  guestName: z.string(),
+  guestPhone: z.string(),
+  partySize: z.number().int(),
+  seatingPreference: z.string(),
+  status: z.string(),
+  estimatedWaitMinutes: z.number().int(),
+  calledAt: z.string().nullable(),
+  seatedAt: z.string().nullable(),
+  assignedTableId: z.string().nullable(),
+  assignedTableName: z.string().nullable(),
+  preOrderItems: z.any().nullable(),
+  notes: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  createdBy: z.string().nullable(),
+  updatedBy: z.string().nullable(),
+});
+type _WaitlistAssert = Expect<AssertSame<z.infer<typeof OutletWaitlistSchema>, JsonOutletWaitlistRow>>;
+
+export const JoinWaitlistSchema = z.object({
+  outletId: z.string(),
+  guestName: z.string().min(1, 'Name is required'),
+  guestPhone: z.string().min(10, 'Valid 10-digit phone number is required'),
+  partySize: z.number().int().min(1).default(2),
+  seatingPreference: z.enum(['ANY', 'INDOOR', 'OUTDOOR', 'ROOFTOP', 'BAR']).default('ANY'),
+  notes: z.string().optional(),
+  preOrderItems: z.array(z.any()).optional(),
+});
+
+export const CallWaitlistSchema = z.object({
+  waitlistId: z.string(),
+  notifyWhatsApp: z.boolean().default(true),
+});
+
+export const SeatWaitlistSchema = z.object({
+  waitlistId: z.string(),
+  tableId: z.string(),
+  tableName: z.string().optional(),
+});
+
+export const CancelWaitlistSchema = z.object({
+  waitlistId: z.string(),
+  reason: z.string().optional(),
+  status: z.enum(['CANCELLED', 'NO_SHOW']).default('CANCELLED'),
+});
 
 export const InventorySupplierSchema = z.object({
   id: z.string(),

@@ -67,6 +67,16 @@ const ALL_SIDEBAR_ITEMS = [
     requiredPlan: "PRO",
   },
   {
+    id: "waitlist",
+    label: "Waitlist & Queue",
+    href: "/tables?tab=waitlist",
+    icon: IconUsers,
+    section: "GUEST & MARKETING",
+    roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"],
+    permission: "tables:view",
+    moduleId: "tables",
+  },
+  {
     id: "feedback",
     label: "Customer Reviews & Ratings",
     href: "/settings/feedback",

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Title, Text, Group, Stack, SimpleGrid, Paper, Badge,
   Button, ActionIcon, TextInput, NumberInput, Modal, Menu,
@@ -22,13 +22,14 @@ import {
   useTables, useOrders, useCreateTable, useUpdateTable,
   useDeleteTable, useReservations, useUpdateReservation, qk,
 } from "@/lib/queries";
-import { useQueryClient } from "@tanstack/react-query";
-import { freeTableOrder, voidOrder } from "@/lib/api-client";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { freeTableOrder, voidOrder, getWaitlist } from "@/lib/api-client";
 import { getStatusVisual, PAYMENT_STATUS_CONFIG } from "@/lib/order-status-ui";
 import { buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
 import { useOutletSync } from "@/lib/use-outlet-sync";
+import { WaitlistPanel } from "@/components/tables/waitlist-panel";
 
 /** Helper to match table numbers flexibly (e.g. "T1" === "Table 1" === "t1" === "1") */
 function normalizeTable(str: string): string {
@@ -59,14 +60,37 @@ export interface TableSession {
   elapsedMinutes: number;
 }
 
-export default function TablesPage() {
+function TablesPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [viewMode, setViewMode] = useState<"TABLES" | "WAITLIST">(
+    tabParam === "waitlist" ? "WAITLIST" : "TABLES"
+  );
+
+  useEffect(() => {
+    if (tabParam === "waitlist") {
+      setViewMode("WAITLIST");
+    } else if (tabParam === "tables") {
+      setViewMode("TABLES");
+    }
+  }, [tabParam]);
+
   const queryClient = useQueryClient();
   const { restaurant, activeOutlet, outlets, role } = useRestaurant();
   const restaurantId = restaurant?.id ?? "";
   const outletId = activeOutlet?.id ?? outlets[0]?.id ?? "";
 
   const canManage = role === "OWNER" || role === "MANAGER";
+
+  // Waitlist query for header counter and badge
+  const { data: waitlistData } = useQuery({
+    queryKey: ["waitlist", restaurantId, outletId, "ACTIVE"],
+    queryFn: () => getWaitlist(restaurantId, outletId, "ACTIVE"),
+    enabled: Boolean(restaurantId && outletId),
+    refetchInterval: 8000,
+  });
+  const waitingCount = waitlistData?.stats?.waitingCount ?? 0;
 
   // Re-render tick every 15s to update "Xm seated" time display
   const [, forceTick] = useState(0);
@@ -509,11 +533,11 @@ export default function TablesPage() {
 
   return (
     <Box pt="sm" pb="xl" px={{ base: "xs", sm: "md" }}>
-      {/* ─── Top Header ───────────────────────────────────────────────────────── */}
-      <Group justify="space-between" align="center" mb="md" wrap="wrap">
+      {/* ─── Top Header & Mode Switcher ───────────────────────────────────────── */}
+      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="sm">
         <div>
           <Group gap="xs" align="center">
-            <Title order={2}>Tables</Title>
+            <Title order={2}>Tables & Queue</Title>
             <Badge
               size="sm"
               variant="dot"
@@ -523,27 +547,68 @@ export default function TablesPage() {
             </Badge>
           </Group>
           <Text size="sm" c="dimmed">
-            {activeOutlet?.name || "Active Outlet"} · {stats.occupied} Occupied{stats.reserved > 0 ? ` · ${stats.reserved} Reserved` : ""} · {stats.free} Free
+            {activeOutlet?.name || "Active Outlet"} · {stats.occupied} Occupied{stats.reserved > 0 ? ` · ${stats.reserved} Reserved` : ""} · {stats.free} Free{waitingCount > 0 ? ` · ${waitingCount} Waiting` : ""}
           </Text>
         </div>
 
-        {canManage && (
-          <Tooltip label="Add Table" withArrow position="bottom">
-            <ActionIcon
-              size="lg"
-              radius="md"
-              color="dinePrimary"
-              aria-label="Add Table"
-              onClick={handleOpenCreate}
-              disabled={!outletId}
-            >
-              <IconPlus size={18} />
-            </ActionIcon>
-          </Tooltip>
-        )}
+        <Group gap="xs" wrap="wrap">
+          <SegmentedControl
+            value={viewMode}
+            onChange={(val) => setViewMode(val as "TABLES" | "WAITLIST")}
+            data={[
+              {
+                value: "TABLES",
+                label: (
+                  <Center style={{ gap: 6 }}>
+                    <IconTableAlias size={16} />
+                    <span>Tables ({stats.total})</span>
+                  </Center>
+                ),
+              },
+              {
+                value: "WAITLIST",
+                label: (
+                  <Center style={{ gap: 6 }}>
+                    <IconUsers size={16} />
+                    <span>Waitlist & Queue</span>
+                    {waitingCount > 0 && (
+                      <Badge size="xs" color="orange" variant="filled" circle>
+                        {waitingCount}
+                      </Badge>
+                    )}
+                  </Center>
+                ),
+              },
+            ]}
+          />
+
+          {viewMode === "TABLES" && canManage && (
+            <Tooltip label="Add Table" withArrow position="bottom">
+              <ActionIcon
+                size="lg"
+                radius="md"
+                color="dinePrimary"
+                aria-label="Add Table"
+                onClick={handleOpenCreate}
+                disabled={!outletId}
+              >
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </Group>
       </Group>
 
-      {/* ─── KPI Counters ─────────────────────────────────────────────────────── */}
+      {viewMode === "WAITLIST" ? (
+        <WaitlistPanel
+          restaurantId={restaurantId}
+          outletId={outletId}
+          tables={tables}
+          canManage={canManage}
+        />
+      ) : (
+        <>
+          {/* ─── KPI Counters ─────────────────────────────────────────────────────── */}
       <SimpleGrid cols={{ base: 2, sm: stats.reserved > 0 ? 5 : 4 }} spacing="sm" mb="md">
         {/* Total Tables */}
         <Paper p="sm" radius="md">
@@ -1170,6 +1235,8 @@ export default function TablesPage() {
           })}
         </SimpleGrid>
       )}
+        </>
+      )}
 
       {/* ─── Free Table (Settle & Clear) Modal ─────────────────────────────────── */}
       <Modal
@@ -1596,5 +1663,19 @@ export default function TablesPage() {
         </Stack>
       </Modal>
     </Box>
+  );
+}
+
+export default function TablesPage() {
+  return (
+    <Suspense
+      fallback={
+        <Center py={80}>
+          <Loader color="dinePrimary" size="lg" />
+        </Center>
+      }
+    >
+      <TablesPageContent />
+    </Suspense>
   );
 }

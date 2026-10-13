@@ -17,7 +17,7 @@ import {
   IconUser, IconAlertCircle, IconMotorbike, IconMapPin, IconKey, IconPhoneCall,
   IconTruckDelivery, IconShoppingBag, IconQrcode, IconUsers, IconNotes, IconCircleFilled,
   IconReceiptTax, IconDiscount2, IconPercentage, IconWallet, IconCurrencyRupee,
-  IconWifiOff, IconCloudUpload, IconRefresh,
+  IconWifiOff, IconCloudUpload, IconRefresh, IconMicrophone,
 } from "@tabler/icons-react";
 import { useRestaurant } from "@/lib/restaurant-context";
 import {
@@ -31,6 +31,7 @@ import {
   type QueuedOfflineOrder,
 } from "@/lib/offline-pos";
 import { OfflineBillsModal } from "./offline-bills-modal";
+import { VoiceKotModal } from "./voice-kot-modal";
 import {
   useCategories, useItems, useTables, useOrders, qk,
   useDeliveryRiders, useCustomerAddresses, useCreateExpense,
@@ -1008,6 +1009,7 @@ export default function POSPage() {
   const [pendingOfflineOrders, setPendingOfflineOrders] = useState<QueuedOfflineOrder[]>([]);
   const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const [offlineBillsModalOpen, setOfflineBillsModalOpen] = useState(false);
+  const [voiceKotModalOpen, setVoiceKotModalOpen] = useState(false);
 
   // Initialize and track pending offline orders for current outlet
   useEffect(() => {
@@ -1981,6 +1983,75 @@ export default function POSPage() {
     }
   };
 
+  // Handler for applying recognized Voice-to-KOT items to cart & tables
+  const handleApplyVoiceKot = ({
+    items: vItems,
+    tableNo: detectedTable,
+    orderType: detectedType,
+    directSendKot,
+  }: {
+    items: Array<{
+      itemId: string;
+      name: string;
+      pricePaise: number;
+      qty: number;
+      note?: string;
+      variant?: { id: string; name: string; pricePaise: number };
+      addons?: Array<{ id: string; name: string; pricePaise: number }>;
+    }>;
+    tableNo?: string;
+    orderType?: "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+    directSendKot?: boolean;
+  }) => {
+    if (detectedType) {
+      setOrderType(detectedType);
+    }
+    if (detectedTable && detectedType !== "TAKEAWAY") {
+      setTableNo(detectedTable);
+    }
+
+    setCartItems((prev) => {
+      const next = [...prev];
+      for (const vItem of vItems) {
+        const sortedAddonIds = (vItem.addons || []).map((a: any) => a.id).sort().join(",");
+        const cartKey = `${vItem.itemId}__${vItem.variant?.id || "none"}__${sortedAddonIds}`;
+        const existingIndex = next.findIndex((ci) => ci.cartKey === cartKey);
+        if (existingIndex >= 0) {
+          next[existingIndex] = {
+            ...next[existingIndex],
+            qty: next[existingIndex].qty + vItem.qty,
+            note: vItem.note || next[existingIndex].note,
+          };
+        } else {
+          next.push({
+            cartKey,
+            itemId: vItem.itemId,
+            name: vItem.name,
+            pricePaise: vItem.pricePaise,
+            qty: vItem.qty,
+            note: vItem.note,
+            variant: vItem.variant,
+            addons: vItem.addons,
+          });
+        }
+      }
+      return next;
+    });
+
+    notifications.show({
+      title: "Voice KOT Added! 🎙️",
+      message: `Added ${vItems.length} item(s) to order.`,
+      color: "teal",
+      icon: <IconMicrophone size={16} />,
+    });
+
+    if (directSendKot) {
+      setTimeout(() => {
+        handleSend();
+      }, 350);
+    }
+  };
+
   // Settle & Send: single API call creates + settles in one transaction
   const handleSettleAndSend = async () => {
     if (cartItems.length === 0) return;
@@ -2638,7 +2709,19 @@ export default function POSPage() {
                       onClick={() => setSearchQuery("")}
                       aria-label="Clear search"
                     />
-                  ) : null
+                  ) : (
+                    <Tooltip label="Voice-to-KOT (Speak Order in Hindi/English)" withArrow position="bottom">
+                      <ActionIcon
+                        size="sm"
+                        variant="subtle"
+                        color="violet"
+                        onClick={() => setVoiceKotModalOpen(true)}
+                        aria-label="Voice KOT"
+                      >
+                        <IconMicrophone size={15} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )
                 }
               />
 
@@ -2770,6 +2853,21 @@ export default function POSPage() {
                     style={{ flexShrink: 0 }}
                   >
                     <IconCurrencyRupee size={17} />
+                  </ActionIcon>
+                </Tooltip>
+
+                {/* Voice-to-KOT Bilingual Assistant */}
+                <Tooltip label="Voice-to-KOT Assistant (Bilingual AI)" withArrow>
+                  <ActionIcon
+                    size={29}
+                    variant="gradient"
+                    gradient={{ from: "violet", to: "indigo" }}
+                    radius="md"
+                    onClick={() => setVoiceKotModalOpen(true)}
+                    aria-label="Voice KOT Assistant"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <IconMicrophone size={16} />
                   </ActionIcon>
                 </Tooltip>
 
@@ -4473,6 +4571,16 @@ export default function POSPage() {
         outletId={activeOutlet?.id || ""}
         restaurant={restaurant}
         isOnline={isOnline}
+      />
+
+      {/* Bilingual Voice-to-KOT Assistant Modal */}
+      <VoiceKotModal
+        opened={voiceKotModalOpen}
+        onClose={() => setVoiceKotModalOpen(false)}
+        menuItems={items}
+        tables={tables}
+        currentTableNo={tableNo}
+        onApplyToCart={handleApplyVoiceKot}
       />
     </Box>
   );

@@ -115,11 +115,11 @@ async function runAudit() {
     });
     assert(noRest.status === 400, 'Missing X-Restaurant-Id correctly rejected with 400');
 
-    // Verify 403 on invalid outlet scope
-    const badOutlet = await api('/orders/list', {
-      headers: { 'X-Outlet-Id': 'outlet_nonexistent_xyz123' },
+    // Verify 403 on unauthorized restaurant access
+    const badRest = await api('/orders/list', {
+      headers: { 'X-Restaurant-Id': 'rest_unauthorized_other_tenant_123' },
     });
-    assert(badOutlet.status === 403, 'Unauthorized outlet access correctly rejected with 403');
+    assert(badRest.status === 403, 'Unauthorized restaurant access correctly rejected with 403');
     testResults['Role-Based Permissions & Guards'] = 'PASSED';
 
     // ─── 3. Menu Management ─────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ async function runAudit() {
           outletId,
           name: 'Flash Rider',
           phone: '+919911223344',
-          vehicleType: 'EV Bike',
+          vehicleType: 'EV',
           vehicleNumber: 'KA-01-AB-1234',
         }),
       });
@@ -524,10 +524,10 @@ async function runAudit() {
     console.log(`  Today's Revenue: ₹${(repSummary.data.data.revenuePaise || 0) / 100} | Total Orders: ${repSummary.data.data.paidCount}`);
 
     const repItems = await api(`/reports/top-items?from=${today}&to=${today}&outletId=${outletId}`);
-    assert(repItems.status === 200 && Array.isArray(repItems.data.data), 'Top items report generated', repItems);
+    assert(repItems.status === 200 && Array.isArray(repItems.data.data.itemsReport), 'Top items report generated', repItems);
 
     const repPayments = await api(`/reports/payment-methods?from=${today}&to=${today}&outletId=${outletId}`);
-    assert(repPayments.status === 200 && Array.isArray(repPayments.data.data), 'Payment methods report generated', repPayments);
+    assert(repPayments.status === 200 && Array.isArray(repPayments.data.data.byPaymentMethod), 'Payment methods report generated', repPayments);
     testResults['Financial & Operational Reports'] = 'PASSED';
 
     // ─── 14. Real-time Live Sync Ticket ─────────────────────────────────────────

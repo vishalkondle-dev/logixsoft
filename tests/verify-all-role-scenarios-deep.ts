@@ -66,7 +66,7 @@ async function run() {
   console.log('========================================================================\n');
 
   // 1. Get restaurant and outlets from Owner session
-  const ownerAuth = await loginAndGetCookie('+917276718848');
+  const ownerAuth = await loginAndGetCookie('+919985720478');
   const restRes = await fetch(`${API_BASE}/restaurants`, {
     headers: { Cookie: ownerAuth.cookiePair },
   });
@@ -84,6 +84,56 @@ async function run() {
   console.log(`[Setup] Target Restaurant: "${restName}" (${restId})`);
   console.log(`[Setup] Target Outlet: "${outletName}" (${outletId})\n`);
 
+  // Ensure custom role BARTENDER exists for Scenario 8
+  const rolesRes = await fetch(`${API_BASE}/roles`, {
+    headers: { Cookie: ownerAuth.cookiePair, 'X-Restaurant-Id': restId },
+  });
+  const rolesData = await rolesRes.json();
+  let bartenderRole = rolesData.roles?.find((r: any) => r.name.toUpperCase() === 'BARTENDER');
+
+  if (!bartenderRole) {
+    console.log('[Setup] Creating custom role "BARTENDER"...');
+    const createRoleRes = await fetch(`${API_BASE}/roles`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: ownerAuth.cookiePair,
+        'X-Restaurant-Id': restId,
+      },
+      body: JSON.stringify({
+        name: 'BARTENDER',
+        description: 'Bar counter specialist: tableside drinks orders, bar counter billing.',
+        allOutlets: false,
+        permissions: ['menu:view', 'tables:view', 'waiter:punch_order', 'pos:view', 'pos:order_create'],
+      }),
+    });
+    const createdData = await createRoleRes.json();
+    bartenderRole = createdData.role || createdData;
+  }
+
+  const staffRes = await fetch(`${API_BASE}/staff`, {
+    headers: { Cookie: ownerAuth.cookiePair, 'X-Restaurant-Id': restId },
+  });
+  const staffList = await staffRes.json();
+  const existingBartender = Array.isArray(staffList) ? staffList.find((s: any) => s.phone === '+919876543299') : null;
+
+  if (!existingBartender) {
+    console.log('[Setup] Inviting staff member +919876543299 as BARTENDER...');
+    await fetch(`${API_BASE}/staff/invite`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: ownerAuth.cookiePair,
+        'X-Restaurant-Id': restId,
+      },
+      body: JSON.stringify({
+        phone: '+919876543299',
+        role: bartenderRole.id,
+        outletIds: [outletId],
+      }),
+    });
+  }
+
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -94,7 +144,7 @@ async function run() {
     // SCENARIO 1: OWNER ROLE - Full Governance & Security Administration
     // ─────────────────────────────────────────────────────────────────────────────
     console.log('--- SCENARIO 1: OWNER Role (All Modules, Role Matrix, Settings) ---');
-    const owner = await createContextForRole(browser, '+917276718848', restId, outletId);
+    const owner = await createContextForRole(browser, '+919985720478', restId, outletId);
     
     // Check Settings/Roles Matrix
     const ownerPage = await owner.context.newPage();
@@ -206,7 +256,7 @@ async function run() {
     // SCENARIO 5: WAITER ROLE - Table Orders, Guest Calling & Mobility
     // ─────────────────────────────────────────────────────────────────────────────
     console.log('--- SCENARIO 5: WAITER Role (Table Ordering, Service Mobility, Forbidden from Kitchen & Settings) ---');
-    const waiter = await createContextForRole(browser, '+919985720478', restId, outletId);
+    const waiter = await createContextForRole(browser, '+919876543204', restId, outletId);
 
     // 5.1 Primary screen: /waiter
     await verifyRouteAccess(waiter.context, `/waiter?outletId=${outletId}`, 'ALLOWED', '/waiter');
@@ -226,7 +276,7 @@ async function run() {
     // SCENARIO 6: KITCHEN ROLE (CHEF) - KDS Display & Ticket Operations
     // ─────────────────────────────────────────────────────────────────────────────
     console.log('--- SCENARIO 6: KITCHEN Role (KDS Kitchen Display, Ticket Bump, Forbidden from POS/Waiter/Settings) ---');
-    const kitchen = await createContextForRole(browser, '+919876543204', restId, outletId);
+    const kitchen = await createContextForRole(browser, '+919876543205', restId, outletId);
 
     // 6.1 Primary screen: /kitchen
     await verifyRouteAccess(kitchen.context, `/kitchen?outletId=${outletId}`, 'ALLOWED', '/kitchen');
@@ -290,8 +340,8 @@ async function run() {
       { role: 'MANAGER', phone: '+919876543201' },
       { role: 'CASHIER', phone: '+919876543202' },
       { role: 'CAPTAIN', phone: '+919876543203' },
-      { role: 'WAITER', phone: '+919985720478' },
-      { role: 'KITCHEN', phone: '+919876543204' },
+      { role: 'WAITER', phone: '+919876543204' },
+      { role: 'KITCHEN', phone: '+919876543205' },
       { role: 'RIDER', phone: '+919876543210' },
       { role: 'BARTENDER', phone: '+919876543299' },
     ];

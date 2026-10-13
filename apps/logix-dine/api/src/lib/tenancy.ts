@@ -462,7 +462,7 @@ export function requireMembership(): MiddlewareHandler {
 
 // ─── requirePermission ────────────────────────────────────────────────────────
 
-export function requirePermission(permission: Permission): MiddlewareHandler {
+export function requirePermission(permission: Permission | readonly Permission[]): MiddlewareHandler {
   return async (c, next) => {
     const { payload } = await resolveSessionPayload(c);
     if (!payload) {
@@ -504,13 +504,16 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
       return c.json({ error: 'Forbidden', message: 'You do not have access to this restaurant' }, 403);
     }
 
+    const permissions = (Array.isArray(permission) ? permission : [permission]) as readonly Permission[];
+
     // Permission check — pure in-memory (ZERO DB, ZERO KV)
     const userPerms = membership.permissions || ROLE_PERMISSIONS[membership.role as keyof typeof ROLE_PERMISSIONS] || [];
-    if (!hasPermission(userPerms, permission)) {
+    const hasUserPerm = permissions.some((p) => hasPermission(userPerms, p));
+    if (!hasUserPerm) {
       return c.json({
         error: 'Forbidden',
-        message: `Permission '${permission}' required`,
-        requiredPermission: permission,
+        message: `Permission '${permissions.join(' or ')}' required`,
+        requiredPermission: permissions[0],
       }, 403);
     }
 
@@ -535,10 +538,12 @@ export function requirePermission(permission: Permission): MiddlewareHandler {
             status: planInfo.status,
           }, 403);
         }
-        if (!isPermissionAllowedForOutlet(planInfo, permission)) {
+        // At least one permission the user holds must be allowed under this outlet's plan tier
+        const allowedByPlan = permissions.some((p) => hasPermission(userPerms, p) && isPermissionAllowedForOutlet(planInfo, p));
+        if (!allowedByPlan) {
           return c.json({
             error: 'Plan Upgrade Required',
-            message: `Feature '${permission}' requires a higher plan tier (e.g. Pro Plan). Current outlet plan: ${planInfo.planTier}`,
+            message: `Feature '${permissions[0]}' requires a higher plan tier (e.g. Pro Plan). Current outlet plan: ${planInfo.planTier}`,
             requiredPlan: 'PRO',
             currentPlan: planInfo.planTier,
           }, 403);

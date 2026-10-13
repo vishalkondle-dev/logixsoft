@@ -135,7 +135,7 @@ app.post(
       404: ErrorResponseSchema,
     },
   }),
-  requirePermission('kitchen:write'),
+  requirePermission(['kitchen:write', 'order:create']),
   async (c) => {
     const tenant = c.get('tenant');
     const { restaurantId } = tenant;
@@ -281,7 +281,7 @@ app.post(
       404: ErrorResponseSchema,
     },
   }),
-  requirePermission('kitchen:write'),
+  requirePermission(['kitchen:write', 'order:create']),
   async (c) => {
     const tenant = c.get('tenant');
     const { restaurantId } = tenant;
@@ -379,7 +379,7 @@ app.post(
       404: ErrorResponseSchema,
     },
   }),
-  requirePermission('kitchen:write'),
+  requirePermission(['kitchen:write', 'order:create']),
   async (c) => {
     const tenant = c.get('tenant');
     const { restaurantId } = tenant;

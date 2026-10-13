@@ -651,7 +651,7 @@ export default function CustomerProfilePage() {
                       {/* Preferred Dining Mode */}
                       <Badge
                         size="sm"
-                        variant="dot"
+                        variant="light"
                         color={
                           metrics.preferredDineMode === "Delivery"
                             ? "teal"

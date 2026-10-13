@@ -47,6 +47,7 @@ import { PrinterButton } from "@/components/print/printer-button";
 import { UpiQrCode } from "@/components/common/upi-qr-code";
 import { useOutletSync } from "@/lib/use-outlet-sync";
 import { getOrderChannel } from "@/lib/channel-helpers";
+import { isModuleAllowedForOutlet } from "@logixsoft/logix-dine/types/plans";
 import { usePosStore } from "@/lib/stores";
 
 interface LocalCartItem {
@@ -1332,9 +1333,10 @@ export default function POSPage() {
   const [assignRiderId, setAssignRiderId] = useState<string | null>(null);
   const [assigningRider, setAssigningRider] = useState(false);
 
-  // Delivery queries
-  const { data: riders = [] } = useDeliveryRiders(restaurantId, outletId);
-  const { data: savedAddresses = [] } = useCustomerAddresses(restaurantId, customerPhone);
+  // Delivery queries (guarded by outlet plan tier)
+  const isDeliveryAllowed = isModuleAllowedForOutlet(activeOutlet, "delivery");
+  const { data: riders = [] } = useDeliveryRiders(restaurantId, outletId, isDeliveryAllowed);
+  const { data: savedAddresses = [] } = useCustomerAddresses(restaurantId, customerPhone, isDeliveryAllowed);
 
   // All recent orders for active delivery tracking (real-time push via Durable Object)
   const { data: allRecentOrders = [] } = useOrders(

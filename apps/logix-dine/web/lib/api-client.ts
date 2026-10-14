@@ -2287,6 +2287,7 @@ export interface WaitlistResponse {
     waitingCount: number;
     calledCount: number;
     seatedTodayCount: number;
+    totalTodayCount: number;
     avgWaitMinutes: number;
   };
 }

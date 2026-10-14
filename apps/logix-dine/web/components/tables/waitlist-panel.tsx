@@ -57,17 +57,25 @@ export function WaitlistPanel({
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["waitlist", restaurantId, outletId, activeTab],
-    queryFn: () => getWaitlist(restaurantId, outletId, activeTab === "ACTIVE" ? "ACTIVE" : "ALL"),
+    queryKey: ["waitlist", restaurantId, outletId],
+    queryFn: () => getWaitlist(restaurantId, outletId, "ALL"),
     enabled: Boolean(restaurantId && outletId),
     refetchInterval: 6000, // Live poll every 6s
   });
 
   const entries: WaitlistEntry[] = waitlistData?.entries || [];
+
+  const activeEntries = useMemo(() => {
+    return entries.filter((e) => e.status === "WAITING" || e.status === "CALLED");
+  }, [entries]);
+
+  const displayedEntries = activeTab === "ACTIVE" ? activeEntries : entries;
+
   const stats = waitlistData?.stats || {
     waitingCount: 0,
     calledCount: 0,
     seatedTodayCount: 0,
+    totalTodayCount: 0,
     avgWaitMinutes: 15,
   };
 
@@ -78,8 +86,8 @@ export function WaitlistPanel({
 
   // Find next party that matches any free table
   const smartMatch = useMemo(() => {
-    if (freeTables.length === 0 || entries.length === 0) return null;
-    const waitingParties = entries.filter((e) => e.status === "WAITING");
+    if (freeTables.length === 0 || activeEntries.length === 0) return null;
+    const waitingParties = activeEntries.filter((e) => e.status === "WAITING");
     if (waitingParties.length === 0) return null;
 
     // Check if any free table can accommodate the next waiting party
@@ -90,7 +98,7 @@ export function WaitlistPanel({
       }
     }
     return { party: waitingParties[0], table: freeTables[0] };
-  }, [freeTables, entries]);
+  }, [freeTables, activeEntries]);
 
   // 3. Actions
   const handleOpenAddModal = () => {
@@ -330,7 +338,7 @@ export function WaitlistPanel({
               onChange={(val) => setActiveTab(val as any)}
               data={[
                 { label: `Active Queue (${stats.waitingCount + stats.calledCount})`, value: "ACTIVE" },
-                { label: `All Entries Today (${entries.length})`, value: "ALL" },
+                { label: `All Entries Today (${stats.totalTodayCount || entries.length})`, value: "ALL" },
               ]}
             />
           </Group>
@@ -362,7 +370,7 @@ export function WaitlistPanel({
         <Center py="xl">
           <Loader size="md" color="indigo" />
         </Center>
-      ) : entries.length === 0 ? (
+      ) : displayedEntries.length === 0 ? (
         <Paper p="xl" radius="md" withBorder style={{ textAlign: "center" }}>
           <ThemeIcon size={48} radius="xl" color="gray" variant="light" style={{ margin: "0 auto 8px" }}>
             <IconUsers size={24} />
@@ -385,7 +393,7 @@ export function WaitlistPanel({
         </Paper>
       ) : (
         <Stack gap="xs">
-          {entries.map((entry, idx) => {
+          {displayedEntries.map((entry, idx) => {
             const isWaiting = entry.status === "WAITING";
             const isCalled = entry.status === "CALLED";
             const isSeated = entry.status === "SEATED";

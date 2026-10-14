@@ -98,12 +98,12 @@ function TablesPageContent() {
 
   const canManage = role === "OWNER" || role === "MANAGER";
 
-  // Waitlist query for header counter and badge
+  // Waitlist query for header counter and badge (shared with WaitlistPanel)
   const { data: waitlistData } = useQuery({
-    queryKey: ["waitlist", restaurantId, outletId, "ACTIVE"],
-    queryFn: () => getWaitlist(restaurantId, outletId, "ACTIVE"),
+    queryKey: ["waitlist", restaurantId, outletId],
+    queryFn: () => getWaitlist(restaurantId, outletId, "ALL"),
     enabled: Boolean(restaurantId && outletId),
-    refetchInterval: 8000,
+    refetchInterval: 6000,
   });
   const waitingCount = waitlistData?.stats?.waitingCount ?? 0;
 

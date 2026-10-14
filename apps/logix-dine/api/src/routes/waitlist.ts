@@ -38,6 +38,7 @@ app.get(
           waitingCount: z.number(),
           calledCount: z.number(),
           seatedTodayCount: z.number(),
+          totalTodayCount: z.number(),
           avgWaitMinutes: z.number(),
         }),
       }),
@@ -57,6 +58,9 @@ app.get(
 
     const { db, close } = getDb(c);
     try {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
       const conditions = [eq(appSchema.outletWaitlist.restaurantId, restaurantId)];
 
       if (outletId) {
@@ -67,7 +71,9 @@ app.get(
 
       if (statusParam === 'ACTIVE' || !statusParam) {
         conditions.push(inArray(appSchema.outletWaitlist.status, ['WAITING', 'CALLED']));
-      } else if (statusParam !== 'ALL') {
+      } else if (statusParam === 'ALL') {
+        conditions.push(gte(appSchema.outletWaitlist.createdAt, todayStart));
+      } else {
         conditions.push(eq(appSchema.outletWaitlist.status, statusParam));
       }
 
@@ -82,13 +88,11 @@ app.get(
       let waitingCount = 0;
       let calledCount = 0;
       let seatedTodayCount = 0;
+      let totalTodayCount = 0;
       let totalWaitMins = 0;
       let seatedCountForAvg = 0;
 
       if (targetOutletId) {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-
         const allToday = await db
           .select({
             status: appSchema.outletWaitlist.status,
@@ -103,6 +107,8 @@ app.get(
               gte(appSchema.outletWaitlist.createdAt, todayStart),
             ),
           );
+
+        totalTodayCount = allToday.length;
 
         for (const r of allToday) {
           if (r.status === 'WAITING') waitingCount++;
@@ -128,6 +134,7 @@ app.get(
           waitingCount,
           calledCount,
           seatedTodayCount,
+          totalTodayCount,
           avgWaitMinutes,
         },
       });

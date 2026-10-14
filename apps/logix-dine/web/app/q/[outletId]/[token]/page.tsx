@@ -13,11 +13,14 @@ import {
   IconAlertCircle, IconArmchair, IconSparkles, IconBellRinging,
   IconChefHat, IconPlus, IconMinus, IconTrash, IconShoppingCart
 } from "@tabler/icons-react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function QueueTrackerPage() {
   const params = useParams();
   const outletId = (params?.outletId as string) || "";
   const waitlistId = (params?.token as string) || "";
+
+  const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -109,13 +112,39 @@ export default function QueueTrackerPage() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <Center style={{ minHeight: "100vh", backgroundColor: "#f8f9fa" }}>
         <Stack align="center" gap="sm">
           <Loader size="md" color="indigo" />
           <Text size="sm" c="dimmed">Fetching your live queue ticket...</Text>
         </Stack>
+      </Center>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Center style={{ minHeight: "100vh", backgroundColor: "#f8f9fa", padding: 16 }}>
+        <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ textAlign: "center", background: "#fff", maxWidth: 440, width: "100%" }}>
+          <ThemeIcon size={64} radius="xl" color="indigo" variant="light" mb="md" style={{ margin: "0 auto 16px" }}>
+            <IconBrandWhatsapp size={32} />
+          </ThemeIcon>
+          <Title order={2} fw={800}>Sign In Required</Title>
+          <Text c="dimmed" size="sm" mt="xs" mb="lg">
+            Please sign in with your WhatsApp number to view your queue ticket, track waiting position, and pre-order food.
+          </Text>
+          <Button
+            size="md"
+            radius="md"
+            color="indigo"
+            fullWidth
+            leftSection={<IconBrandWhatsapp size={20} />}
+            onClick={openLoginModal}
+          >
+            Sign In with WhatsApp
+          </Button>
+        </Paper>
       </Center>
     );
   }

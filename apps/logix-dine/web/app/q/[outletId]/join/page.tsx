@@ -9,13 +9,16 @@ import {
 import { notifications } from "@mantine/notifications";
 import {
   IconUsers, IconClock, IconBrandWhatsapp, IconCheck,
-  IconAlertCircle, IconArmchair, IconSparkles
+  IconAlertCircle, IconArmchair, IconSparkles, IconLock
 } from "@tabler/icons-react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function JoinWaitlistPage() {
   const params = useParams();
   const router = useRouter();
   const outletId = (params?.outletId as string) || "";
+
+  const { user, isAuthenticated, isLoading: authLoading, openLoginModal } = useAuth();
 
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -30,6 +33,17 @@ export default function JoinWaitlistPage() {
   const [notes, setNotes] = useState("");
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://dine-api.logixsoft.in";
+
+  // Auto-populate verified user credentials
+  useEffect(() => {
+    if (user?.phoneNumber) {
+      const clean = user.phoneNumber.replace(/\D/g, "").slice(-10);
+      setGuestPhone(clean);
+    }
+    if (user?.name && !guestName) {
+      setGuestName(user.name);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!outletId) return;
@@ -95,13 +109,42 @@ export default function JoinWaitlistPage() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <Center style={{ minHeight: "100vh", backgroundColor: "#f8f9fa" }}>
         <Stack align="center" gap="sm">
           <Loader size="md" color="indigo" />
           <Text size="sm" c="dimmed">Loading table queue...</Text>
         </Stack>
+      </Center>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Center style={{ minHeight: "100vh", backgroundColor: "#f8f9fa", padding: 16 }}>
+        <Paper p="xl" radius="lg" withBorder shadow="sm" style={{ textAlign: "center", background: "#fff", maxWidth: 440, width: "100%" }}>
+          <ThemeIcon size={64} radius="xl" color="indigo" variant="light" mb="md" style={{ margin: "0 auto 16px" }}>
+            <IconBrandWhatsapp size={32} />
+          </ThemeIcon>
+          <Badge size="md" variant="light" color="indigo" mb="xs">
+            {info?.restaurantName || "Logix Dine"}
+          </Badge>
+          <Title order={2} fw={800}>Sign In to Join Waitlist</Title>
+          <Text c="dimmed" size="sm" mt="xs" mb="lg">
+            Please sign in with your WhatsApp number to join the queue, receive live table ready alerts, and pre-order food.
+          </Text>
+          <Button
+            size="md"
+            radius="md"
+            color="indigo"
+            fullWidth
+            leftSection={<IconBrandWhatsapp size={20} />}
+            onClick={openLoginModal}
+          >
+            Sign In with WhatsApp
+          </Button>
+        </Paper>
       </Center>
     );
   }
@@ -158,11 +201,19 @@ export default function JoinWaitlistPage() {
 
                 <TextInput
                   label="WhatsApp Number"
-                  description="We will send your digital token & table ready alert here"
+                  description={user?.phoneNumber ? "Verified WhatsApp number" : "We will send your digital token & table ready alert here"}
                   placeholder="10-digit mobile number"
                   required
                   value={guestPhone}
                   onChange={(e) => setGuestPhone(e.currentTarget.value)}
+                  disabled={Boolean(user?.phoneNumber)}
+                  rightSection={
+                    user?.phoneNumber ? (
+                      <Badge size="xs" color="teal" variant="light">
+                        Verified
+                      </Badge>
+                    ) : undefined
+                  }
                   leftSection={<IconBrandWhatsapp size={18} color="#25D366" />}
                   size="md"
                 />

@@ -1,20 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PROTECTED_PREFIXES = [
-  '/pos',
-  '/orders',
-  '/tables',
-  '/menu',
-  '/reports',
-  '/settings',
-  '/customers',
-  '/kitchen',
-  '/waiter',
-  '/rider',
-  '/admin',
-];
-
 const SESSION_COOKIE_NAMES = [
   'logix-dine.session_token',
   '__Secure-logix-dine.session_token',
@@ -25,23 +11,34 @@ const SESSION_COOKIE_NAMES = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isProtected = PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
+  // 1. Allow homepage, static files, next.js internals, and public downloads
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/download') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/favicon.svg' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/manifest.json' ||
+    /\.(svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|css|js)$/i.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
 
-  if (isProtected) {
-    const hasSessionCookie = SESSION_COOKIE_NAMES.some((cookieName) => {
-      const cookie = request.cookies.get(cookieName);
-      return Boolean(cookie?.value);
-    });
+  // 2. All restaurant interaction routes require user authentication
+  const hasSessionCookie = SESSION_COOKIE_NAMES.some((cookieName) => {
+    const cookie = request.cookies.get(cookieName);
+    return Boolean(cookie?.value);
+  });
 
-    if (!hasSessionCookie) {
-      const loginUrl = new URL('/', request.url);
-      loginUrl.searchParams.set('login', 'true');
-      const nextPath = `${pathname}${request.nextUrl.search || ''}`;
-      loginUrl.searchParams.set('next', nextPath);
-      return NextResponse.redirect(loginUrl);
-    }
+  if (!hasSessionCookie) {
+    const loginUrl = new URL('/', request.url);
+    loginUrl.searchParams.set('login', 'true');
+    const nextPath = `${pathname}${request.nextUrl.search || ''}`;
+    loginUrl.searchParams.set('next', nextPath);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
@@ -49,27 +46,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/pos',
-    '/pos/:path*',
-    '/orders',
-    '/orders/:path*',
-    '/tables',
-    '/tables/:path*',
-    '/menu',
-    '/menu/:path*',
-    '/reports',
-    '/reports/:path*',
-    '/settings',
-    '/settings/:path*',
-    '/customers',
-    '/customers/:path*',
-    '/kitchen',
-    '/kitchen/:path*',
-    '/waiter',
-    '/waiter/:path*',
-    '/rider',
-    '/rider/:path*',
-    '/admin',
-    '/admin/:path*',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

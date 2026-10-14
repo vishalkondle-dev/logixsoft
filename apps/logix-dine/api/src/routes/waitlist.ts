@@ -255,7 +255,7 @@ app.post(
       const trackerUrl = `${frontendUrl}/q/${outletId}/${newId}`;
 
       // Broadcast real-time waitlist update via Durable Object
-      await broadcastToOutlet(c, outletId, {
+      await broadcastToOutlet(c.env, outletId, {
         type: 'WAITLIST_UPDATED',
         action: 'JOIN',
         waitlistId: newId,
@@ -367,7 +367,7 @@ app.post(
         .returning();
 
       // Real-time broadcast
-      await broadcastToOutlet(c, entry.outletId, {
+      await broadcastToOutlet(c.env, entry.outletId, {
         type: 'WAITLIST_UPDATED',
         action: 'CALLED',
         waitlistId,
@@ -474,29 +474,18 @@ app.post(
         resolvedTableName = targetTable?.name || 'Assigned Table';
       }
 
-      await db.transaction(async (tx: any) => {
-        // 1. Mark waitlist entry SEATED
-        await tx
-          .update(appSchema.outletWaitlist)
-          .set({
-            status: 'SEATED',
-            seatedAt: now,
-            assignedTableId: tableId,
-            assignedTableName: resolvedTableName,
-            updatedAt: now,
-            updatedBy: actorPhone,
-          })
-          .where(eq(appSchema.outletWaitlist.id, waitlistId));
-
-        // 2. Mark table OCCUPIED in posTable
-        await tx
-          .update(appSchema.posTable)
-          .set({
-            status: 'OCCUPIED',
-            updatedAt: now,
-          })
-          .where(eq(appSchema.posTable.id, tableId));
-      });
+      // 1. Mark waitlist entry SEATED
+      await db
+        .update(appSchema.outletWaitlist)
+        .set({
+          status: 'SEATED',
+          seatedAt: now,
+          assignedTableId: tableId,
+          assignedTableName: resolvedTableName,
+          updatedAt: now,
+          updatedBy: actorPhone,
+        })
+        .where(eq(appSchema.outletWaitlist.id, waitlistId));
 
       const [updatedEntry] = await db
         .select()
@@ -505,15 +494,17 @@ app.post(
 
       // Broadcast real-time updates
       await Promise.all([
-        broadcastToOutlet(c, entry.outletId, {
+        broadcastToOutlet(c.env, entry.outletId, {
           type: 'WAITLIST_UPDATED',
           action: 'SEATED',
           waitlistId,
           tableId,
+          tableName: resolvedTableName,
         }),
-        broadcastToOutlet(c, entry.outletId, {
+        broadcastToOutlet(c.env, entry.outletId, {
           type: 'TABLES_UPDATED',
           tableId,
+          tableName: resolvedTableName,
           status: 'OCCUPIED',
         }),
       ]).catch(() => {});
@@ -587,11 +578,20 @@ app.post(
         .where(eq(appSchema.outletWaitlist.id, waitlistId))
         .returning();
 
-      await broadcastToOutlet(c, entry.outletId, {
-        type: 'WAITLIST_UPDATED',
-        action: 'CANCELLED',
-        waitlistId,
-      }).catch(() => {});
+      await Promise.all([
+        broadcastToOutlet(c.env, entry.outletId, {
+          type: 'WAITLIST_UPDATED',
+          action: status || 'CANCELLED',
+          waitlistId,
+        }),
+        entry.assignedTableId
+          ? broadcastToOutlet(c.env, entry.outletId, {
+              type: 'TABLES_UPDATED',
+              tableId: entry.assignedTableId,
+              status: 'FREE',
+            })
+          : Promise.resolve(),
+      ]).catch(() => {});
 
       return c.json(toWaitlistEntry(updated));
     } finally {
@@ -828,7 +828,7 @@ app.post(
         })
         .where(eq(appSchema.outletWaitlist.id, waitlistId));
 
-      await broadcastToOutlet(c, outletId, {
+      await broadcastToOutlet(c.env, outletId, {
         type: 'WAITLIST_UPDATED',
         action: 'PREORDER',
         waitlistId,

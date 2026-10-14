@@ -380,7 +380,7 @@ export const SeatWaitlistSchema = z.object({
 export const CancelWaitlistSchema = z.object({
   waitlistId: z.string(),
   reason: z.string().optional(),
-  status: z.enum(['CANCELLED', 'NO_SHOW']).default('CANCELLED'),
+  status: z.enum(['CANCELLED', 'NO_SHOW', 'COMPLETED']).default('CANCELLED'),
 });
 
 export const InventorySupplierSchema = z.object({

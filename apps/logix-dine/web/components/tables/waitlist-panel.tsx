@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Paper, Title, Text, Stack, Group, SimpleGrid, Badge, Button,
   ActionIcon, TextInput, NumberInput, Select, Modal, Card,
@@ -12,7 +13,8 @@ import { modals } from "@mantine/modals";
 import {
   IconUsers, IconClock, IconBellRinging, IconArmchair, IconCheck,
   IconPlus, IconQrcode, IconDotsVertical, IconX, IconPhone,
-  IconSparkles, IconAlertCircle, IconPrinter, IconShare, IconChefHat
+  IconSparkles, IconAlertCircle, IconPrinter, IconShare, IconChefHat,
+  IconShoppingCart
 } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -34,6 +36,7 @@ export function WaitlistPanel({
   tables = [],
   canManage,
 }: WaitlistPanelProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   // Local state
@@ -42,6 +45,7 @@ export function WaitlistPanel({
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [seatingEntry, setSeatingEntry] = useState<WaitlistEntry | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<string>("");
+  const [isSeating, setIsSeating] = useState(false);
 
   // Form state
   const [guestName, setGuestName] = useState("");
@@ -81,7 +85,7 @@ export function WaitlistPanel({
 
   // 2. Identify Free Tables for smart auto-matching
   const freeTables = useMemo(() => {
-    return tables.filter((t: any) => t.active && t.status !== "OCCUPIED");
+    return tables.filter((t: any) => t.active && t.status !== "OCCUPIED" && !t.isOccupied);
   }, [tables]);
 
   // Find next party that matches any free table
@@ -174,6 +178,7 @@ export function WaitlistPanel({
 
   const handleSeatGuest = async () => {
     if (!seatingEntry || !selectedTableId) return;
+    setIsSeating(true);
     try {
       const targetTable = tables.find((t: any) => t.id === selectedTableId);
       await seatWaitlistGuest(
@@ -194,9 +199,46 @@ export function WaitlistPanel({
       setSeatingEntry(null);
       queryClient.invalidateQueries({ queryKey: ["waitlist", restaurantId] });
       queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
       refetch();
     } catch (err: any) {
       notifications.show({ title: "Seating Failed", message: err.message, color: "red" });
+    } finally {
+      setIsSeating(false);
+    }
+  };
+
+  const handleSeatAndTakeOrder = async () => {
+    if (!seatingEntry || !selectedTableId) return;
+    setIsSeating(true);
+    try {
+      const targetTable = tables.find((t: any) => t.id === selectedTableId);
+      await seatWaitlistGuest(
+        restaurantId,
+        outletId,
+        seatingEntry.id,
+        selectedTableId,
+        targetTable?.name || "Assigned Table"
+      );
+
+      notifications.show({
+        title: "Guest Seated!",
+        message: `${seatingEntry.guestName} seated at ${targetTable?.name || "Table"}. Redirecting to POS...`,
+        color: "teal",
+        icon: <IconCheck size={16} />,
+      });
+
+      const tableName = targetTable?.name || "Table";
+      const phoneQuery = seatingEntry.guestPhone ? `&phone=${encodeURIComponent(seatingEntry.guestPhone)}` : "";
+      setSeatingEntry(null);
+      queryClient.invalidateQueries({ queryKey: ["waitlist", restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["tables", restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["orders", restaurantId] });
+      router.push(`/pos?table=${encodeURIComponent(tableName)}&outletId=${outletId}${phoneQuery}`);
+    } catch (err: any) {
+      notifications.show({ title: "Seating Failed", message: err.message, color: "red" });
+    } finally {
+      setIsSeating(false);
     }
   };
 
@@ -519,6 +561,22 @@ export function WaitlistPanel({
                       </Button>
                     )}
 
+                    {/* Take Order for Seated Guest */}
+                    {isSeated && (
+                      <Button
+                        size="xs"
+                        color="indigo"
+                        variant="light"
+                        leftSection={<IconShoppingCart size={14} />}
+                        onClick={() => {
+                          const phoneQuery = entry.guestPhone ? `&phone=${encodeURIComponent(entry.guestPhone)}` : "";
+                          router.push(`/pos?table=${encodeURIComponent(entry.assignedTableName || "Table")}&outletId=${outletId}${phoneQuery}`);
+                        }}
+                      >
+                        Take Order
+                      </Button>
+                    )}
+
                     {/* More actions menu */}
                     {(isWaiting || isCalled) && (
                       <Menu position="bottom-end" shadow="md">
@@ -681,18 +739,32 @@ export function WaitlistPanel({
             </Stack>
           )}
 
-          <Group justify="flex-end" mt="md">
-            <Button variant="default" onClick={() => setSeatingEntry(null)}>
+          <Group justify="space-between" mt="md">
+            <Button variant="default" onClick={() => setSeatingEntry(null)} disabled={isSeating}>
               Cancel
             </Button>
-            <Button
-              color="teal"
-              disabled={!selectedTableId}
-              onClick={handleSeatGuest}
-              leftSection={<IconArmchair size={16} />}
-            >
-              Confirm Seating
-            </Button>
+            <Group gap="xs">
+              <Button
+                color="teal"
+                variant="light"
+                disabled={!selectedTableId}
+                loading={isSeating}
+                onClick={handleSeatGuest}
+                leftSection={<IconArmchair size={16} />}
+              >
+                Confirm Seating
+              </Button>
+              <Button
+                color="indigo"
+                variant="filled"
+                disabled={!selectedTableId}
+                loading={isSeating}
+                onClick={handleSeatAndTakeOrder}
+                leftSection={<IconShoppingCart size={16} />}
+              >
+                Seat & Take Order →
+              </Button>
+            </Group>
           </Group>
         </Stack>
       </Modal>

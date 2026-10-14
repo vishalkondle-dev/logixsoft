@@ -23,7 +23,7 @@ import {
   useDeleteTable, useReservations, useUpdateReservation, qk,
 } from "@/lib/queries";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { freeTableOrder, voidOrder, getWaitlist } from "@/lib/api-client";
+import { freeTableOrder, voidOrder, getWaitlist, cancelWaitlistGuest } from "@/lib/api-client";
 import { getStatusVisual, PAYMENT_STATUS_CONFIG } from "@/lib/order-status-ui";
 import { buildBillPayload } from "@/lib/ticket";
 import { printTicket } from "@/lib/print";
@@ -274,6 +274,14 @@ function TablesPageContent() {
     );
   };
 
+  const getTableSeatedWaitlist = (table: any) => {
+    return (waitlistData?.entries || []).find(
+      (w: any) =>
+        w.status === "SEATED" &&
+        (w.assignedTableId === table.id || (w.assignedTableName && isTableMatch(table.name, w.assignedTableName)))
+    );
+  };
+
   // ─── Unique Sections ─────────────────────────────────────────────────────────
   const sections = useMemo(() => {
     const set = new Set<string>();
@@ -297,8 +305,9 @@ function TablesPageContent() {
         totalSeats += t.capacity || 0;
         const session = getTableSession(t);
         const res = getTableActiveReservation(t);
+        const waitlistSeat = getTableSeatedWaitlist(t);
 
-        if (session.isOccupied) {
+        if (session.isOccupied || waitlistSeat) {
           occupied++;
         } else if (res) {
           reserved++;
@@ -309,7 +318,28 @@ function TablesPageContent() {
     }
 
     return { total: tables.length, occupied, reserved, free, totalSeats };
-  }, [tables, orders, reservations]);
+  }, [tables, orders, reservations, waitlistData]);
+
+  // ─── Enriched Tables with Live Occupancy ──────────────────────────────────────
+  const enrichedTables = useMemo(() => {
+    return tables.map((t: any) => {
+      const session = getTableSession(t);
+      const res = getTableActiveReservation(t);
+      const waitlistSeat = getTableSeatedWaitlist(t);
+      const isOccupied = session.isOccupied || Boolean(waitlistSeat);
+      const isReserved = Boolean(res && !isOccupied);
+
+      return {
+        ...t,
+        status: isOccupied ? "OCCUPIED" : isReserved ? "RESERVED" : "FREE",
+        isOccupied,
+        isReserved,
+        session,
+        activeRes: res,
+        seatedWaitlist: waitlistSeat,
+      };
+    });
+  }, [tables, orders, reservations, waitlistData]);
 
   // ─── Filtered Tables ──────────────────────────────────────────────────────────
   const filteredTables = useMemo(() => {
@@ -332,13 +362,15 @@ function TablesPageContent() {
       // Status filter
       const session = getTableSession(t);
       const res = getTableActiveReservation(t);
-      if (statusFilter === "FREE" && (session.isOccupied || res)) return false;
-      if (statusFilter === "RESERVED" && (!res || session.isOccupied)) return false;
-      if (statusFilter === "OCCUPIED" && !session.isOccupied) return false;
+      const waitlistSeat = getTableSeatedWaitlist(t);
+      const isOccupied = session.isOccupied || Boolean(waitlistSeat);
+      if (statusFilter === "FREE" && (isOccupied || res)) return false;
+      if (statusFilter === "RESERVED" && (!res || isOccupied)) return false;
+      if (statusFilter === "OCCUPIED" && !isOccupied) return false;
 
       return true;
     });
-  }, [tables, searchQuery, selectedSection, statusFilter, orders, reservations]);
+  }, [tables, searchQuery, selectedSection, statusFilter, orders, reservations, waitlistData]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────────
   const handleOpenCreate = () => {
@@ -429,6 +461,17 @@ function TablesPageContent() {
         }).catch(() => {});
       }
 
+      const seatedWaitlist = getTableSeatedWaitlist(freeModalSession.table);
+      if (seatedWaitlist) {
+        await cancelWaitlistGuest(
+          restaurantId,
+          outletId,
+          seatedWaitlist.id,
+          "Table settled and freed",
+          "COMPLETED"
+        ).catch(() => {});
+      }
+
       await Promise.all(
         freeModalSession.orders.map((o: any) =>
           freeTableOrder(
@@ -445,6 +488,7 @@ function TablesPageContent() {
       queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
       queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
       queryClient.invalidateQueries({ queryKey: ["reservations", restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ["waitlist", restaurantId] });
 
       notifications.show({
         title: "Table Freed",
@@ -478,6 +522,17 @@ function TablesPageContent() {
       onConfirm: async () => {
         setIsFreeing(true);
         try {
+          const seatedWaitlist = getTableSeatedWaitlist(session.table);
+          if (seatedWaitlist) {
+            await cancelWaitlistGuest(
+              restaurantId,
+              outletId,
+              seatedWaitlist.id,
+              "Table voided and released",
+              "CANCELLED"
+            ).catch(() => {});
+          }
+
           await Promise.all(
             session.orders.map((o: any) =>
               voidOrder(restaurantId, o.order.id, outletId)
@@ -487,6 +542,7 @@ function TablesPageContent() {
           queryClient.invalidateQueries({ queryKey: qk.orders(restaurantId) });
           queryClient.invalidateQueries({ queryKey: qk.kitchenOrders(restaurantId, outletId) });
           queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+          queryClient.invalidateQueries({ queryKey: ["waitlist", restaurantId] });
 
           notifications.show({
             title: "Table Released",
@@ -500,6 +556,46 @@ function TablesPageContent() {
           notifications.show({ title: "Failed to release table", message: err.message || "Error voiding order", color: "red" });
         } finally {
           setIsFreeing(false);
+        }
+      },
+    });
+  };
+
+  // Action: Release seated waitlist party from table
+  const handleReleaseWaitlistGuest = (waitlistEntry: any, table: any) => {
+    modals.openConfirmModal({
+      title: "Release Seated Table",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Release table &quot;{table.name}&quot; and remove waitlist guest <strong>{waitlistEntry.guestName}</strong>?
+        </Text>
+      ),
+      labels: { confirm: "Release Table", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await cancelWaitlistGuest(
+            restaurantId,
+            outletId,
+            waitlistEntry.id,
+            "Table released by host",
+            "CANCELLED"
+          );
+          queryClient.invalidateQueries({ queryKey: ["waitlist", restaurantId] });
+          queryClient.invalidateQueries({ queryKey: qk.tables(restaurantId, outletId) });
+          notifications.show({
+            title: "Table Released",
+            message: `Table "${table.name}" is now Free.`,
+            color: "teal",
+            icon: <IconCheck size={16} />,
+          });
+        } catch (e: any) {
+          notifications.show({
+            title: "Failed to release table",
+            message: e.message || "Could not update queue status",
+            color: "red",
+          });
         }
       },
     });
@@ -618,7 +714,7 @@ function TablesPageContent() {
         <WaitlistPanel
           restaurantId={restaurantId}
           outletId={outletId}
-          tables={tables}
+          tables={enrichedTables}
           canManage={canManage}
         />
       ) : (
@@ -793,11 +889,12 @@ function TablesPageContent() {
         <SimpleGrid cols={{ base: 1, xs: 2, sm: 3, md: 4 }} spacing="md">
           {filteredTables.map((table: any) => {
             const session = getTableSession(table);
-            const isOccupied = session.isOccupied;
+            const seatedWaitlist = getTableSeatedWaitlist(table);
+            const isOccupied = session.isOccupied || Boolean(seatedWaitlist);
 
             const activeRes = getTableActiveReservation(table);
 
-            const orderVisual = isOccupied
+            const orderVisual = session.isOccupied
               ? getStatusVisual(session.orderStatus || "ORDERED")
               : null;
             const OrderIcon = orderVisual?.icon;
@@ -838,7 +935,7 @@ function TablesPageContent() {
 
                     <Group gap={4} align="center">
                       {/* Active Reservation Badge (only when occupied, so staff knows occupied table belongs to a reserved guest) */}
-                      {isOccupied && activeRes && (
+                      {session.isOccupied && activeRes && (
                         <Badge
                           size="sm"
                           variant="filled"
@@ -849,8 +946,20 @@ function TablesPageContent() {
                         </Badge>
                       )}
 
-                      {/* Status Badge: Occupied vs Reserved vs Free */}
-                      {isOccupied ? (
+                      {/* Active Waitlist Badge (only when occupied, so staff knows occupied table belongs to a waitlist guest) */}
+                      {session.isOccupied && seatedWaitlist && (
+                        <Badge
+                          size="sm"
+                          variant="filled"
+                          color="teal"
+                          leftSection={<IconArmchair size={11} />}
+                        >
+                          {seatedWaitlist.guestName}
+                        </Badge>
+                      )}
+
+                      {/* Status Badge: Occupied vs Seated Waitlist vs Reserved vs Free */}
+                      {session.isOccupied ? (
                         <Badge
                           size="sm"
                           variant="light"
@@ -858,6 +967,15 @@ function TablesPageContent() {
                           leftSection={session.duePaise === 0 ? <IconCheck size={11} /> : <IconClock size={11} />}
                         >
                           {session.duePaise === 0 ? "Occupied · Paid" : "Occupied"}
+                        </Badge>
+                      ) : seatedWaitlist ? (
+                        <Badge
+                          size="sm"
+                          variant="filled"
+                          color="teal"
+                          leftSection={<IconArmchair size={11} />}
+                        >
+                          Seated · {seatedWaitlist.guestName}
                         </Badge>
                       ) : activeRes ? (
                         <Badge
@@ -889,6 +1007,31 @@ function TablesPageContent() {
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
+                          {/* Seated Waitlist Guest Menu Actions */}
+                          {seatedWaitlist && !session.isOccupied && (
+                            <>
+                              <Menu.Item
+                                color="dinePrimary"
+                                leftSection={<IconShoppingCart size={14} />}
+                                disabled={isDineInDisabled}
+                                onClick={() => {
+                                  if (isDineInDisabled) return;
+                                  const phoneQuery = seatedWaitlist.guestPhone ? `&phone=${encodeURIComponent(seatedWaitlist.guestPhone)}` : "";
+                                  router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}${phoneQuery}`);
+                                }}
+                              >
+                                Take Order ({seatedWaitlist.guestName})
+                              </Menu.Item>
+                              <Menu.Item
+                                color="red"
+                                leftSection={<IconX size={14} />}
+                                onClick={() => handleReleaseWaitlistGuest(seatedWaitlist, table)}
+                              >
+                                Release Table ({seatedWaitlist.guestName})
+                              </Menu.Item>
+                              <Menu.Divider />
+                            </>
+                          )}
                           {activeRes && activeRes.status === "CONFIRMED" && (
                             <>
                               <Menu.Item
@@ -1033,7 +1176,7 @@ function TablesPageContent() {
                   </Group>
 
                   {/* ─── Middle Section: Live Occupancy or Available Status ─────── */}
-                  {isOccupied ? (
+                  {session.isOccupied ? (
                     <Box
                       p="xs"
                       mb="sm"
@@ -1083,6 +1226,28 @@ function TablesPageContent() {
                         </Text>
                       )}
                     </Box>
+                  ) : seatedWaitlist ? (
+                    <Box
+                      p="xs"
+                      mb="sm"
+                      style={{
+                        backgroundColor: "rgba(32, 201, 151, 0.08)",
+                        borderRadius: "6px",
+                        textAlign: "center",
+                        border: "1px dashed rgba(32, 201, 151, 0.4)",
+                      }}
+                    >
+                      <Group gap={4} justify="center" align="center">
+                        <IconArmchair size={13} color="var(--mantine-color-teal-7)" />
+                        <Text size="xs" c="teal.8" fw={700}>
+                          Guest Seated: {seatedWaitlist.guestName}
+                        </Text>
+                      </Group>
+                      <Text size="11px" c="dimmed" mt={2}>
+                        {seatedWaitlist.partySize ? `Party of ${seatedWaitlist.partySize} · ` : ""}{seatedWaitlist.tokenNumber || "Waitlist"}
+                        {seatedWaitlist.guestPhone ? ` · ${seatedWaitlist.guestPhone}` : ""}
+                      </Text>
+                    </Box>
                   ) : activeRes ? (
                     <Box
                       p="xs"
@@ -1125,7 +1290,7 @@ function TablesPageContent() {
                 {/* ─── Bottom Action Buttons ────────────────────────────────────── */}
                 <div>
                   <Divider mb="xs" />
-                  {isOccupied ? (
+                  {session.isOccupied ? (
                     <Stack gap={6}>
                       {/* Primary Free Table button */}
                       <Button
@@ -1164,6 +1329,32 @@ function TablesPageContent() {
                         </Button>
                       </Group>
                     </Stack>
+                  ) : seatedWaitlist ? (
+                    <Group gap={6} grow>
+                      <Button
+                        size="sm"
+                        color={isDineInDisabled ? "gray" : "dinePrimary"}
+                        variant="filled"
+                        disabled={isDineInDisabled}
+                        leftSection={<IconShoppingCart size={14} />}
+                        onClick={() => {
+                          if (isDineInDisabled) return;
+                          const phoneQuery = seatedWaitlist.guestPhone ? `&phone=${encodeURIComponent(seatedWaitlist.guestPhone)}` : "";
+                          router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}${phoneQuery}`);
+                        }}
+                      >
+                        Take Order ({seatedWaitlist.guestName})
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="gray"
+                        variant="light"
+                        leftSection={<IconX size={14} />}
+                        onClick={() => handleReleaseWaitlistGuest(seatedWaitlist, table)}
+                      >
+                        Release
+                      </Button>
+                    </Group>
                   ) : activeRes && activeRes.status === "CONFIRMED" ? (
                     <Group gap={6} grow>
                       <Button

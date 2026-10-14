@@ -2304,7 +2304,7 @@ export interface WaitlistEntry {
   guestPhone: string;
   partySize: number;
   seatingPreference: string;
-  status: 'WAITING' | 'CALLED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW';
+  status: 'WAITING' | 'CALLED' | 'SEATED' | 'CANCELLED' | 'NO_SHOW' | 'COMPLETED';
   estimatedWaitMinutes: number;
   calledAt: string | null;
   seatedAt: string | null;
@@ -2395,7 +2395,7 @@ export const cancelWaitlistGuest = (
   outletId: string,
   waitlistId: string,
   reason?: string,
-  status: 'CANCELLED' | 'NO_SHOW' = 'CANCELLED'
+  status: 'CANCELLED' | 'NO_SHOW' | 'COMPLETED' = 'CANCELLED'
 ) =>
   apiFetch<WaitlistEntry>(
     '/waitlist/cancel',

@@ -29,7 +29,10 @@ interface CustomerContextValue {
   customer?: CustomerPortalData["customer"];
   stats?: CustomerPortalData["stats"];
   primaryActiveOrder?: CustomerPortalOrder;
-  openCallWaiter: (order?: CustomerPortalOrder) => void;
+  openCallWaiter: (
+    order?: CustomerPortalOrder,
+    initialServiceType?: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER"
+  ) => void;
   openOrderMore: (order?: CustomerPortalOrder) => void;
   openBillBreakdown: (order?: CustomerPortalOrder) => void;
   openRateModal: (order: CustomerPortalOrder) => void;
@@ -81,6 +84,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
 
   const [waiterOrder, setWaiterOrder] = useState<CustomerPortalOrder | null>(null);
+  const [waiterServiceType, setWaiterServiceType] = useState<
+    "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER"
+  >("WATER");
   const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false);
 
   const [orderMoreTarget, setOrderMoreTarget] = useState<CustomerPortalOrder | null>(null);
@@ -91,10 +97,16 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const [isReservationOpen, setIsReservationOpen] = useState(false);
 
-  const openCallWaiter = (order?: CustomerPortalOrder) => {
+  const openCallWaiter = (
+    order?: CustomerPortalOrder,
+    initialServiceType?: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER"
+  ) => {
     const target = order || primaryActiveOrder;
     if (!target) return;
     setWaiterOrder(target);
+    if (initialServiceType) {
+      setWaiterServiceType(initialServiceType);
+    }
     setIsWaiterModalOpen(true);
   };
 
@@ -163,6 +175,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           opened={isWaiterModalOpen}
           onClose={() => setIsWaiterModalOpen(false)}
           order={waiterOrder}
+          initialServiceType={waiterServiceType}
           onSuccess={() => {
             refetch();
             notifications.show({

@@ -18,6 +18,7 @@ import {
   ActionIcon,
   Tooltip,
   Alert,
+  CopyButton,
 } from "@mantine/core";
 import {
   IconFlame,
@@ -36,7 +37,18 @@ import {
   IconCircleDot,
   IconAlertCircle,
   IconArmchair,
+  IconDroplet,
+  IconSparkles,
+  IconBrandWhatsapp,
+  IconStar,
+  IconWifi,
+  IconCopy,
+  IconReceipt,
+  IconCreditCard,
+  IconMessage,
 } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { useCallWaiter } from "@/lib/queries";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
 import type {
   CustomerPortalOrder,
@@ -48,9 +60,14 @@ interface PortalLiveViewProps {
   activeOrders: CustomerPortalOrder[];
   activeWaitlist?: CustomerWaitlistEntry[];
   activeReservations?: CustomerReservationEntry[];
-  onOpenCallWaiter: (order: CustomerPortalOrder) => void;
+  onOpenCallWaiter: (
+    order: CustomerPortalOrder,
+    initialServiceType?: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE" | "OTHER"
+  ) => void;
   onOpenOrderMore: (order: CustomerPortalOrder) => void;
   onOpenBillBreakdown: (order: CustomerPortalOrder) => void;
+  onOpenRateModal?: (order: CustomerPortalOrder) => void;
+  onShareBillWhatsApp?: (order: CustomerPortalOrder) => void;
   onOpenReservationModal: () => void;
   onNavigateOrders: () => void;
   onNavigateHome: () => void;
@@ -136,10 +153,49 @@ export function PortalLiveView({
   onOpenCallWaiter,
   onOpenOrderMore,
   onOpenBillBreakdown,
+  onOpenRateModal,
+  onShareBillWhatsApp,
   onOpenReservationModal,
   onNavigateOrders,
   onNavigateHome,
 }: PortalLiveViewProps) {
+  const callWaiterMutation = useCallWaiter();
+  const [requestingKey, setRequestingKey] = React.useState<string | null>(null);
+
+  const handleInstantServiceRequest = async (
+    order: CustomerPortalOrder,
+    serviceType: "WATER" | "CUTLERY" | "BILL" | "CLEAN_TABLE",
+    label: string
+  ) => {
+    const key = `${order.id}-${serviceType}`;
+    setRequestingKey(key);
+    try {
+      await callWaiterMutation.mutateAsync({
+        orderId: order.id,
+        body: {
+          serviceType,
+          outletId: order.outletId,
+          tableNo: order.tableNo || "Table",
+        },
+      });
+      notifications.show({
+        title: `${label} Requested!`,
+        message: `Floor staff notified. Attendant is heading to Table ${order.tableNo || ""}.`,
+        color: "teal",
+        icon: <IconCheck size={18} />,
+        autoClose: 5000,
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: "Request Failed",
+        message: err.message || "Failed to notify staff. Please try again.",
+        color: "red",
+      });
+    } finally {
+      setRequestingKey(null);
+    }
+  };
+
   const hasActiveOrder = activeOrders.length > 0;
   const hasWaitlist = activeWaitlist.length > 0;
   const hasReservation = activeReservations.length > 0;
@@ -368,60 +424,314 @@ export function PortalLiveView({
               })}
             </Stack>
 
-            {/* Active Waiter Call Notification */}
-            {order.activeWaiterRequest && (
-              <Alert
-                icon={<IconBellRinging size={16} />}
-                title="Waiter Assistance Requested"
-                color="orange"
-                radius="md"
-                mb="md"
-                variant="light"
-              >
-                Requested for: <strong>{order.activeWaiterRequest.serviceLabel || order.activeWaiterRequest.serviceType}</strong> • Staff has been notified and is heading to your table.
-              </Alert>
-            )}
+            {/* ── 1. Table Menu & Add More Dishes Banner ── */}
+            <Paper
+              p="md"
+              radius="lg"
+              withBorder
+              mb="md"
+              style={{
+                background: "linear-gradient(135deg, rgba(121, 80, 242, 0.06) 0%, rgba(229, 219, 255, 0.28) 100%)",
+                borderColor: "rgba(121, 80, 242, 0.3)",
+              }}
+            >
+              <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+                <Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                  <ThemeIcon size={44} radius="md" color="violet" variant="filled">
+                    <IconToolsKitchen2 size={24} />
+                  </ThemeIcon>
+                  <Box style={{ minWidth: 0 }}>
+                    <Text fw={800} size="sm">
+                      Craving More Dishes?
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Browse full outlet menu & add extra rounds directly to {tableLabel}.
+                    </Text>
+                  </Box>
+                </Group>
 
-            {/* Seated Table Action Controls (Call Waiter, Running Bill, Order More) */}
-            <Divider mb="md" />
+                <Button
+                  color="violet"
+                  variant="filled"
+                  radius="md"
+                  size="sm"
+                  leftSection={<IconPlus size={16} />}
+                  onClick={() => onOpenOrderMore(order)}
+                >
+                  Browse Menu & Add Round
+                </Button>
+              </Group>
+            </Paper>
 
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-              {/* 1. Add Dishes / Table Menu */}
+            {/* ── 2. Floor Service & Waiter Call (1-Tap Assistance) ── */}
+            <Paper p="md" radius="lg" withBorder mb="md" style={{ background: "#fff" }}>
+              <Group justify="space-between" align="center" mb="xs">
+                <div>
+                  <Text fw={800} size="sm">
+                    Floor Service & Assistance
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    1-Tap to notify floor staff at {tableLabel}
+                  </Text>
+                </div>
+                {order.activeWaiterRequest && (
+                  <Badge color="orange" variant="filled" size="sm" leftSection={<IconBellRinging size={12} />}>
+                    ATTENDANT NOTIFIED
+                  </Badge>
+                )}
+              </Group>
+
+              {/* Active Waiter Call Notification */}
+              {order.activeWaiterRequest && (
+                <Alert
+                  icon={<IconBellRinging size={16} />}
+                  title="Attendant on the Way"
+                  color="orange"
+                  radius="md"
+                  mb="sm"
+                  variant="light"
+                >
+                  Requested: <strong>{order.activeWaiterRequest.serviceLabel || order.activeWaiterRequest.serviceType}</strong> • Staff has been notified and is heading to {tableLabel}.
+                </Alert>
+              )}
+
+              {/* 1-Tap Quick Action Buttons */}
+              <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="xs" mb="xs">
+                <Button
+                  color="blue"
+                  variant="light"
+                  radius="md"
+                  size="xs"
+                  leftSection={<IconDroplet size={14} />}
+                  loading={requestingKey === `${order.id}-WATER`}
+                  onClick={() => handleInstantServiceRequest(order, "WATER", "Water Refill")}
+                  fullWidth
+                >
+                  Water Refill
+                </Button>
+
+                <Button
+                  color="teal"
+                  variant="light"
+                  radius="md"
+                  size="xs"
+                  leftSection={<IconToolsKitchen2 size={14} />}
+                  loading={requestingKey === `${order.id}-CUTLERY`}
+                  onClick={() => handleInstantServiceRequest(order, "CUTLERY", "Cutlery & Napkins")}
+                  fullWidth
+                >
+                  Extra Cutlery
+                </Button>
+
+                <Button
+                  color="orange"
+                  variant="light"
+                  radius="md"
+                  size="xs"
+                  leftSection={<IconSparkles size={14} />}
+                  loading={requestingKey === `${order.id}-CLEAN_TABLE`}
+                  onClick={() => handleInstantServiceRequest(order, "CLEAN_TABLE", "Clean Table")}
+                  fullWidth
+                >
+                  Clean Table
+                </Button>
+
+                <Button
+                  color="grape"
+                  variant="light"
+                  radius="md"
+                  size="xs"
+                  leftSection={<IconReceipt size={14} />}
+                  loading={requestingKey === `${order.id}-BILL`}
+                  onClick={() => handleInstantServiceRequest(order, "BILL", "Physical Bill")}
+                  fullWidth
+                >
+                  Printed Bill
+                </Button>
+              </SimpleGrid>
+
+              {/* Custom Request / Note */}
               <Button
-                color="violet"
-                variant="filled"
+                variant="subtle"
+                color="gray"
+                size="xs"
                 radius="md"
-                leftSection={<IconToolsKitchen2 size={16} />}
-                onClick={() => onOpenOrderMore(order)}
+                leftSection={<IconMessage size={14} />}
+                onClick={() => onOpenCallWaiter(order, "OTHER")}
                 fullWidth
               >
-                Table Menu & Add Dishes
+                Other Request / Call Captain with Custom Note →
               </Button>
+            </Paper>
 
-              {/* 2. Call Waiter */}
-              <Button
-                color="orange"
-                variant="light"
-                radius="md"
-                leftSection={<IconBellRinging size={16} />}
-                onClick={() => onOpenCallWaiter(order)}
-                fullWidth
-              >
-                Call Waiter Service
-              </Button>
+            {/* ── 3. Live Running Bill & Pay at Table ── */}
+            {(() => {
+              const itemsSubtotalPaise =
+                order.items.reduce(
+                  (sum, it) => sum + (it.pricePaise || 0) * (it.qty || 1),
+                  0
+                ) || order.subtotalPaise || 0;
+              const cgstPaise = Math.round(itemsSubtotalPaise * 0.025);
+              const sgstPaise = Math.round(itemsSubtotalPaise * 0.025);
+              const packagingChargePaise = order.packagingChargePaise || 0;
+              const estimatedGrandTotalPaise =
+                itemsSubtotalPaise + cgstPaise + sgstPaise + packagingChargePaise;
+              const paidPaise = order.paidPaise || 0;
+              const isFullyPaid =
+                paidPaise >= estimatedGrandTotalPaise && estimatedGrandTotalPaise > 0;
 
-              {/* 3. Running Bill */}
-              <Button
-                color="teal"
-                variant="light"
-                radius="md"
-                leftSection={<IconReceipt2 size={16} />}
-                onClick={() => onOpenBillBreakdown(order)}
-                fullWidth
-              >
-                Running Bill ({formatINR(order.subtotalPaise)})
-              </Button>
-            </SimpleGrid>
+              return (
+                <Paper p="md" radius="lg" withBorder mb="md" style={{ background: "#fcfdfe" }}>
+                  <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs" mb="sm">
+                    <div>
+                      <Group gap={6} align="center">
+                        <Text fw={800} size="sm">
+                          Live Running Bill
+                        </Text>
+                        <Badge color={isFullyPaid ? "teal" : "blue"} variant="light" size="xs">
+                          {isFullyPaid ? "FULLY PAID" : "ACTIVE SESSION"}
+                        </Badge>
+                      </Group>
+                      <Text size="xs" c="dimmed">
+                        {totalItemsCount} items ordered across {order.maxRound || 1} round
+                        {(order.maxRound || 1) > 1 ? "s" : ""}
+                      </Text>
+                    </div>
+
+                    <Box style={{ textAlign: "right" }}>
+                      <Text fw={800} size="lg" style={{ color: "#af73d7" }}>
+                        {formatINR(estimatedGrandTotalPaise)}
+                      </Text>
+                      <Text size="10px" c="dimmed">
+                        Subtotal: {formatINR(itemsSubtotalPaise)} + 5% GST
+                      </Text>
+                    </Box>
+                  </Group>
+
+                  <Divider my="xs" />
+
+                  <SimpleGrid cols={{ base: 1, sm: onShareBillWhatsApp ? 2 : 1 }} spacing="xs">
+                    <Button
+                      color="teal"
+                      variant="filled"
+                      radius="md"
+                      size="sm"
+                      leftSection={<IconCreditCard size={16} />}
+                      onClick={() => onOpenBillBreakdown(order)}
+                      fullWidth
+                    >
+                      {isFullyPaid
+                        ? "View Receipt & Paid Breakdown"
+                        : "Pay at Table via UPI / Cards"}
+                    </Button>
+
+                    {onShareBillWhatsApp && (
+                      <Button
+                        color="teal"
+                        variant="light"
+                        radius="md"
+                        size="sm"
+                        leftSection={<IconBrandWhatsapp size={16} />}
+                        onClick={() => onShareBillWhatsApp(order)}
+                        fullWidth
+                      >
+                        Share Bill on WhatsApp
+                      </Button>
+                    )}
+                  </SimpleGrid>
+                </Paper>
+              );
+            })()}
+
+            {/* ── 4. Table Amenities & Meal Feedback ── */}
+            {(() => {
+              const wifiSsid =
+                (order.diningSettings as any)?.wifiSsid ||
+                (order.qrMenuSettings as any)?.wifiSsid ||
+                (order.outlet as any)?.diningSettings?.wifiSsid;
+              const wifiPassword =
+                (order.diningSettings as any)?.wifiPassword ||
+                (order.qrMenuSettings as any)?.wifiPassword ||
+                (order.outlet as any)?.diningSettings?.wifiPassword;
+
+              return (
+                <SimpleGrid cols={{ base: 1, sm: wifiSsid && onOpenRateModal ? 2 : 1 }} spacing="sm">
+                  {/* Wi-Fi Details if present */}
+                  {wifiSsid && (
+                    <Paper p="sm" radius="md" withBorder style={{ background: "#f8f9fa" }}>
+                      <Group justify="space-between" align="center">
+                        <Group gap="xs">
+                          <ThemeIcon size="md" radius="md" color="indigo" variant="light">
+                            <IconWifi size={18} />
+                          </ThemeIcon>
+                          <div>
+                            <Text fw={700} size="xs">
+                              Guest Wi-Fi: {wifiSsid}
+                            </Text>
+                            <Text size="11px" c="dimmed">
+                              Pass: {wifiPassword || "None"}
+                            </Text>
+                          </div>
+                        </Group>
+                        {wifiPassword && (
+                          <CopyButton value={wifiPassword}>
+                            {({ copied, copy }) => (
+                              <Button
+                                size="xs"
+                                variant="subtle"
+                                color={copied ? "teal" : "gray"}
+                                leftSection={copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+                                onClick={copy}
+                              >
+                                {copied ? "Copied" : "Copy"}
+                              </Button>
+                            )}
+                          </CopyButton>
+                        )}
+                      </Group>
+                    </Paper>
+                  )}
+
+                  {/* Dining Feedback / Rating */}
+                  {onOpenRateModal && (
+                    <Paper
+                      p="sm"
+                      radius="md"
+                      withBorder
+                      style={{ background: "#fdf8f0", borderColor: "#fde2b4" }}
+                    >
+                      <Group justify="space-between" align="center">
+                        <Group gap="xs">
+                          <ThemeIcon size="md" radius="md" color="yellow" variant="light">
+                            <IconStar size={18} />
+                          </ThemeIcon>
+                          <div>
+                            <Text fw={700} size="xs">
+                              {order.feedback ? "Thank You for Feedback!" : "How is your meal?"}
+                            </Text>
+                            <Text size="11px" c="dimmed">
+                              {order.feedback
+                                ? `You rated this meal ${order.feedback.rating || 5} ★`
+                                : "Rate dishes and service anytime"}
+                            </Text>
+                          </div>
+                        </Group>
+
+                        <Button
+                          size="xs"
+                          color="yellow"
+                          variant="light"
+                          radius="md"
+                          onClick={() => onOpenRateModal(order)}
+                        >
+                          {order.feedback ? "Edit Rating" : "Rate Meal"}
+                        </Button>
+                      </Group>
+                    </Paper>
+                  )}
+                </SimpleGrid>
+              );
+            })()}
           </Paper>
         );
       })}

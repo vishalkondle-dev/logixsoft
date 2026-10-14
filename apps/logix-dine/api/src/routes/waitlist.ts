@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, desc, inArray, sql, asc, gte, lt } from 'drizzle-orm';
+import { eq, and, or, desc, inArray, sql, asc, gte, lt } from 'drizzle-orm';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { sendWhatsAppText } from '@logixsoft/wa';
 import { appSchema } from '../db';
@@ -688,8 +688,12 @@ app.get(
         .from(appSchema.outletWaitlist)
         .where(
           and(
-            eq(appSchema.outletWaitlist.id, waitlistId),
             eq(appSchema.outletWaitlist.outletId, outletId),
+            or(
+              eq(appSchema.outletWaitlist.id, waitlistId),
+              eq(appSchema.outletWaitlist.tokenNumber, waitlistId),
+              sql`LOWER(${appSchema.outletWaitlist.tokenNumber}) = LOWER(${waitlistId})`,
+            ),
           ),
         );
 
@@ -803,8 +807,12 @@ app.post(
         .from(appSchema.outletWaitlist)
         .where(
           and(
-            eq(appSchema.outletWaitlist.id, waitlistId),
             eq(appSchema.outletWaitlist.outletId, outletId),
+            or(
+              eq(appSchema.outletWaitlist.id, waitlistId),
+              eq(appSchema.outletWaitlist.tokenNumber, waitlistId),
+              sql`LOWER(${appSchema.outletWaitlist.tokenNumber}) = LOWER(${waitlistId})`,
+            ),
           ),
         );
 

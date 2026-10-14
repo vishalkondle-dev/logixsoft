@@ -146,190 +146,49 @@ export function PortalHomeView({
         </Group>
       </Paper>
 
-      {/* ─── 2. Active Order Hero (Dynamic) ─── */}
+      {/* ─── 2. Active Order Banner (Concise Basic Info) ─── */}
       {primaryActiveOrder ? (
         <Paper
-          p={{ base: "md", sm: "lg" }}
+          p="md"
           radius="xl"
           withBorder
           style={{
-            background: "#fff",
-            borderColor: "#7950f2",
-            boxShadow: "0 8px 24px rgba(121, 80, 242, 0.12)",
+            background: "linear-gradient(135deg, rgba(255, 107, 107, 0.08) 0%, rgba(255, 235, 235, 0.6) 100%)",
+            borderColor: "rgba(255, 107, 107, 0.35)",
+            boxShadow: "0 6px 20px rgba(255, 107, 107, 0.08)",
           }}
         >
-          <Stack gap="sm">
-            {/* Header info */}
-            <Group justify="space-between" align="center" wrap="wrap">
-              <Group gap="xs">
-                <Badge
-                  color="green"
-                  variant="filled"
-                  size="sm"
-                  style={{ textTransform: "none" }}
-                  leftSection={
-                    <Box
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: "#fff",
-                      }}
-                    />
-                  }
-                >
-                  LIVE ORDER
-                </Badge>
-                <Text fw={700} size="sm">
-                  {isDelivery ? "Direct Delivery" : isTakeaway ? "Takeaway" : `Table ${primaryActiveOrder.tableNo || "TG3"}`}
-                </Text>
-                <Text size="xs" c="dimmed">•</Text>
-                <Text size="xs" c="dimmed">Token #{primaryActiveOrder.tokenNo || primaryActiveOrder.orderNo}</Text>
-              </Group>
-
-              <Text fw={800} size="md" c="dinePrimary">
-                {formatINR(primaryActiveOrder.subtotalPaise)}
-              </Text>
-            </Group>
-
-            {/* Stage Progress Bar */}
-            {liveStage && (
-              <Box my={4}>
-                <Group justify="space-between" align="center" mb={4}>
-                  <Text size="xs" fw={700} c={liveStage.color}>
-                    {liveStage.icon} {liveStage.label}
+          <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+            <Group gap="sm" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+              <ThemeIcon size={46} radius="xl" color="red" variant="filled">
+                <IconFlame size={24} />
+              </ThemeIcon>
+              <Box style={{ minWidth: 0 }}>
+                <Group gap={6} align="center">
+                  <Text fw={800} size="sm" lineClamp={1}>
+                    {primaryActiveOrder.restaurantName || "Restaurant"} • {isDelivery ? "Direct Delivery" : isTakeaway ? "Takeaway" : `Table ${primaryActiveOrder.tableNo || "Dine-In"}`}
                   </Text>
-                  <Text size="11px" c="dimmed">
-                    {primaryActiveOrder.items?.length || 0} items ordered
-                  </Text>
-                </Group>
-                <Progress
-                  value={liveStage.percent}
-                  color={liveStage.color}
-                  size="sm"
-                  radius="xl"
-                  animated={liveStage.percent < 100}
-                />
-              </Box>
-            )}
-
-            {/* Real-time Waiter Service Call Status Banner */}
-            {primaryActiveOrder.activeWaiterRequest && (
-              <Paper
-                p="xs"
-                radius="md"
-                withBorder
-                style={{
-                  backgroundColor:
-                    primaryActiveOrder.activeWaiterRequest.status === "COMPLETED"
-                      ? "rgba(18, 184, 134, 0.08)"
-                      : primaryActiveOrder.activeWaiterRequest.status === "IN_PROGRESS"
-                      ? "rgba(34, 139, 230, 0.08)"
-                      : "rgba(250, 176, 5, 0.12)",
-                  borderColor:
-                    primaryActiveOrder.activeWaiterRequest.status === "COMPLETED"
-                      ? "#12b886"
-                      : primaryActiveOrder.activeWaiterRequest.status === "IN_PROGRESS"
-                      ? "#228be6"
-                      : "#fab005",
-                }}
-              >
-                <Group justify="space-between" align="center" wrap="nowrap">
-                  <Group gap="xs" wrap="nowrap">
-                    <ThemeIcon
-                      size={28}
-                      radius="md"
-                      color={
-                        primaryActiveOrder.activeWaiterRequest.status === "COMPLETED"
-                          ? "teal"
-                          : primaryActiveOrder.activeWaiterRequest.status === "IN_PROGRESS"
-                          ? "blue"
-                          : "yellow"
-                      }
-                      variant="light"
-                    >
-                      {primaryActiveOrder.activeWaiterRequest.status === "COMPLETED" ? (
-                        <IconCheck size={16} />
-                      ) : (
-                        <IconBellRinging size={16} />
-                      )}
-                    </ThemeIcon>
-                    <div>
-                      <Text size="xs" fw={700}>
-                        {primaryActiveOrder.activeWaiterRequest.status === "COMPLETED"
-                          ? `Staff attended to ${primaryActiveOrder.activeWaiterRequest.serviceLabel}`
-                          : primaryActiveOrder.activeWaiterRequest.status === "IN_PROGRESS"
-                          ? `Staff is attending to ${primaryActiveOrder.activeWaiterRequest.serviceLabel}`
-                          : `Staff alerted for ${primaryActiveOrder.activeWaiterRequest.serviceLabel}`}
-                      </Text>
-                      <Text size="10px" c="dimmed">
-                        {primaryActiveOrder.activeWaiterRequest.status === "COMPLETED"
-                          ? "Request resolved"
-                          : primaryActiveOrder.activeWaiterRequest.status === "IN_PROGRESS"
-                          ? "Floor staff assigned"
-                          : "Assistance is on the way"}
-                      </Text>
-                    </div>
-                  </Group>
-
-                  <Badge
-                    size="xs"
-                    variant="filled"
-                    color={
-                      primaryActiveOrder.activeWaiterRequest.status === "COMPLETED"
-                        ? "teal"
-                        : primaryActiveOrder.activeWaiterRequest.status === "IN_PROGRESS"
-                        ? "blue"
-                        : "yellow"
-                    }
-                  >
-                    {primaryActiveOrder.activeWaiterRequest.status === "COMPLETED"
-                      ? "Resolved"
-                      : primaryActiveOrder.activeWaiterRequest.status === "IN_PROGRESS"
-                      ? "Attending"
-                      : "On the way"}
+                  <Badge size="xs" color="red" variant="filled">
+                    LIVE
                   </Badge>
                 </Group>
-              </Paper>
-            )}
-
-            {/* Quick Actions Bar */}
-            <Group justify="space-between" align="center" mt="xs" wrap="wrap" gap="xs">
-              <Group gap="xs">
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="orange"
-                  radius="md"
-                  leftSection={<IconBellRinging size={14} />}
-                  onClick={() => onOpenCallWaiter(primaryActiveOrder)}
-                >
-                  Call Waiter
-                </Button>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="teal"
-                  radius="md"
-                  leftSection={<IconPlus size={14} />}
-                  onClick={() => onOpenOrderMore(primaryActiveOrder)}
-                >
-                  Add Dishes
-                </Button>
-              </Group>
-
-              <Button
-                size="xs"
-                color="dinePrimary"
-                variant="filled"
-                radius="md"
-                rightSection={<IconChevronRight size={14} />}
-                onClick={() => onNavigateTab("live")}
-              >
-                Track Live Order
-              </Button>
+                <Text size="xs" c="dimmed" mt={2} lineClamp={1}>
+                  Token #{primaryActiveOrder.tokenNo || primaryActiveOrder.orderNo} • {primaryActiveOrder.items?.length || 0} items ordered • {formatINR(primaryActiveOrder.subtotalPaise)}
+                </Text>
+              </Box>
             </Group>
-          </Stack>
+
+            <Button
+              size="sm"
+              color="red"
+              variant="filled"
+              radius="md"
+              rightSection={<IconChevronRight size={16} />}
+              onClick={() => onNavigateTab("live")}
+            >
+              Go to Live Dining
+            </Button>
+          </Group>
         </Paper>
       ) : null}
 

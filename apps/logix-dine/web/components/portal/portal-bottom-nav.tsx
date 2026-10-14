@@ -37,7 +37,6 @@ export function PortalBottomNav({
       label: "Live",
       icon: IconFlame,
       isLive: isLiveActive || liveCount > 0,
-      badge: liveCount > 0 ? liveCount : undefined,
     },
     {
       id: "orders" as const,
@@ -76,7 +75,7 @@ export function PortalBottomNav({
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
-          const isLivePulse = tab.id === "live" && (tab.isLive || tab.badge);
+          const isLivePulse = tab.id === "live" && tab.isLive;
 
           return (
             <UnstyledButton
@@ -135,25 +134,6 @@ export function PortalBottomNav({
                       animation: "pulse 1.8s infinite ease-in-out",
                     }}
                   />
-                )}
-                {tab.badge != null && (
-                  <Badge
-                    size="xs"
-                    circle
-                    color="red"
-                    variant="filled"
-                    style={{
-                      position: "absolute",
-                      top: -4,
-                      right: -10,
-                      fontSize: 10,
-                      height: 16,
-                      minWidth: 16,
-                      boxShadow: "0 0 0 2px #fff",
-                    }}
-                  >
-                    {tab.badge}
-                  </Badge>
                 )}
               </Box>
               <Text

@@ -14,6 +14,8 @@ export default function CustomerLivePage() {
     openCallWaiter,
     openOrderMore,
     openBillBreakdown,
+    openRateModal,
+    shareReceiptWhatsApp,
     openReservationModal,
   } = useCustomer();
 
@@ -25,6 +27,8 @@ export default function CustomerLivePage() {
       onOpenCallWaiter={openCallWaiter}
       onOpenOrderMore={openOrderMore}
       onOpenBillBreakdown={openBillBreakdown}
+      onOpenRateModal={openRateModal}
+      onShareBillWhatsApp={shareReceiptWhatsApp}
       onOpenReservationModal={openReservationModal}
       onNavigateOrders={() => router.push("/my-orders")}
       onNavigateHome={() => router.push("/home")}

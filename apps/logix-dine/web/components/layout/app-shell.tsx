@@ -271,11 +271,12 @@ const ALL_SIDEBAR_ITEMS = [
   },
 ];
 
-// Customer portal navigation items (Active Order, Past Orders, My Profile)
+// Customer navigation items (Home, Live Dining, My Orders, My Profile)
 const CUSTOMER_NAV_ITEMS = [
-  { label: "Active Orders", href: "/portal?tab=active", icon: IconFlame },
-  { label: "Past Orders", href: "/portal?tab=past", icon: IconHistory },
-  { label: "My Profile", href: "/portal?tab=profile", icon: IconUser },
+  { label: "Home", href: "/home", icon: IconHome },
+  { label: "Live Dining", href: "/live", icon: IconFlame },
+  { label: "My Orders", href: "/my-orders", icon: IconReceipt },
+  { label: "My Profile", href: "/profile", icon: IconUser },
 ];
 
 function SearchParamsWatcher({
@@ -336,7 +337,14 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading: authLoading, openLoginModal, signOut } = useAuth();
   const { restaurant, outlets, activeOutlet, setActiveOutlet, myRestaurants, setActiveRestaurant, role, can, roleName } = useRestaurant();
 
-  const isPortal = pathname === "/portal";
+  const isCustomerRoute =
+    pathname === "/portal" ||
+    pathname === "/home" ||
+    pathname === "/live" ||
+    pathname === "/my-orders" ||
+    pathname === "/profile" ||
+    Boolean(pathname?.startsWith("/q/"));
+  const isPortal = isCustomerRoute;
   const isLanding = pathname === "/";
   const isAdmin = pathname?.startsWith("/admin");
 
@@ -365,8 +373,8 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
     });
   }, [user, effectiveRole, can, activeOutlet]);
 
-  const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isPortal;
-  const canAccessSidebar = Boolean(isStaffOrOwner && !isPortal && visibleSidebarItems.length > 0);
+  const canAccessSettings = Boolean(effectiveRole && ["OWNER", "MANAGER"].includes(effectiveRole)) && !isCustomerRoute;
+  const canAccessSidebar = Boolean(isStaffOrOwner && !isCustomerRoute && visibleSidebarItems.length > 0);
   const isCustomer = isAuthenticated && !isStaffOrOwner;
 
   const isTrial = Boolean(
@@ -851,11 +859,11 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     {isCustomer && (
                       <Menu.Item
                         component={Link}
-                        href="/portal"
-                        leftSection={<IconReceipt size={16} color="#af73d7" />}
+                        href="/home"
+                        leftSection={<IconFlame size={16} color="#af73d7" />}
                         style={{ fontWeight: 600, color: "#af73d7", backgroundColor: "rgba(175, 115, 215, 0.08)" }}
                       >
-                        My Orders & Dining Profile
+                        Customer Dining Hub
                       </Menu.Item>
                     )}
 
@@ -897,10 +905,10 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     {!isCustomer && (
                       <Menu.Item
                         component={Link}
-                        href="/portal"
+                        href="/home"
                         leftSection={<IconUser size={16} color="#868e96" />}
                       >
-                        Customer Portal (My Orders)
+                        Customer Dining Hub
                       </Menu.Item>
                     )}
                     <Menu.Divider />

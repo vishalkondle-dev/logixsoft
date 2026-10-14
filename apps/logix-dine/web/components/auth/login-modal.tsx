@@ -185,7 +185,7 @@ export function LoginModal() {
       if (destination) {
         window.location.href = destination;
       } else if (typeof window !== "undefined" && window.location.pathname === "/") {
-        window.location.href = "/portal";
+        window.location.href = "/home";
       }
     } catch (err: any) {
       setErrorMessage(err?.message || "Invalid or expired verification code");

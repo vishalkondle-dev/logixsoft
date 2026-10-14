@@ -324,7 +324,7 @@ export function PortalHomeView({
                 variant="filled"
                 radius="md"
                 rightSection={<IconChevronRight size={14} />}
-                onClick={() => onNavigateTab("orders")}
+                onClick={() => onNavigateTab("live")}
               >
                 Track Live Order
               </Button>
@@ -341,26 +341,27 @@ export function PortalHomeView({
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
           {primaryActiveOrder ? (
             <>
-              {/* Menu */}
+              {/* Live Dining */}
               <Paper
                 p="md"
                 radius="lg"
                 withBorder
-                onClick={() => onNavigateTab("menu")}
+                onClick={() => onNavigateTab("live")}
                 style={{
                   background: "#fff",
                   cursor: "pointer",
                   transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                  borderColor: "rgba(255, 107, 107, 0.4)",
                 }}
               >
-                <ThemeIcon size={42} radius="md" color="violet" variant="light" mb="xs">
-                  <IconToolsKitchen2 size={22} />
+                <ThemeIcon size={42} radius="md" color="red" variant="filled" mb="xs">
+                  <IconFlame size={22} />
                 </ThemeIcon>
                 <Text fw={700} size="sm">
-                  Table Menu
+                  Live Dining
                 </Text>
                 <Text size="11px" c="dimmed">
-                  Add dishes to Table {primaryActiveOrder.tableNo || "TG3"}
+                  Table {primaryActiveOrder.tableNo || "TG3"} • Kitchen prep live
                 </Text>
               </Paper>
 
@@ -435,26 +436,26 @@ export function PortalHomeView({
             </>
           ) : (
             <>
-              {/* Explore Menu */}
+              {/* Live Status */}
               <Paper
                 p="md"
                 radius="lg"
                 withBorder
-                onClick={() => onNavigateTab("menu")}
+                onClick={() => onNavigateTab("live")}
                 style={{
                   background: "#fff",
                   cursor: "pointer",
                   transition: "transform 0.15s ease, box-shadow 0.15s ease",
                 }}
               >
-                <ThemeIcon size={42} radius="md" color="violet" variant="light" mb="xs">
-                  <IconToolsKitchen2 size={22} />
+                <ThemeIcon size={42} radius="md" color="red" variant="light" mb="xs">
+                  <IconFlame size={22} />
                 </ThemeIcon>
                 <Text fw={700} size="sm">
-                  Explore Menu
+                  Live Dining
                 </Text>
                 <Text size="11px" c="dimmed">
-                  Browse dishes & prices
+                  Seated table & active queue
                 </Text>
               </Paper>
 
@@ -547,9 +548,15 @@ export function PortalHomeView({
               variant="subtle"
               size="compact-xs"
               color="dinePrimary"
-              onClick={() => onNavigateTab("menu")}
+              onClick={() => {
+                if (primaryActiveOrder) {
+                  onOpenOrderMore(primaryActiveOrder);
+                } else {
+                  onOpenReservationModal();
+                }
+              }}
             >
-              See Full Menu
+              {primaryActiveOrder ? "Add More to Table" : "Book Table to Dine"}
             </Button>
           </Group>
 
@@ -594,11 +601,11 @@ export function PortalHomeView({
                     if (primaryActiveOrder) {
                       onOpenOrderMore(primaryActiveOrder);
                     } else {
-                      onNavigateTab("menu");
+                      onOpenReservationModal();
                     }
                   }}
                 >
-                  Order
+                  {primaryActiveOrder ? "Add" : "Book Table"}
                 </Button>
               </Paper>
             ))}

@@ -56,7 +56,7 @@ export default function HomePage() {
     user?.role === "ADMIN"
       ? "/admin/overview"
       : user?.role === "CUSTOMER"
-      ? "/portal"
+      ? "/home"
       : role === "WAITER" || role === "CAPTAIN"
       ? `/waiter${outletQuery}`
       : role === "KITCHEN"

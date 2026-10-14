@@ -48,9 +48,52 @@ async function handleGetPortalSession(c: any) {
       )
       .orderBy(desc(appSchema.saleOrder.createdAt));
 
+    // Active waitlist entries for this customer
+    const waitlistRows = await db
+      .select()
+      .from(appSchema.outletWaitlist)
+      .where(
+        and(
+          or(
+            inArray(appSchema.outletWaitlist.guestPhone, variants),
+            sql`${appSchema.outletWaitlist.guestPhone} LIKE ${'%' + rawDigits}`
+          ),
+          inArray(appSchema.outletWaitlist.status, ['WAITING', 'CALLED'])
+        )
+      )
+      .orderBy(desc(appSchema.outletWaitlist.createdAt));
+
+    // Active/upcoming reservations for this customer
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const reservationRows = await db
+      .select()
+      .from(appSchema.tableReservation)
+      .where(
+        and(
+          or(
+            inArray(appSchema.tableReservation.guestPhone, variants),
+            sql`${appSchema.tableReservation.guestPhone} LIKE ${'%' + rawDigits}`
+          ),
+          sql`${appSchema.tableReservation.reservationDate} >= ${todayStr}`,
+          or(
+            eq(appSchema.tableReservation.status, 'CONFIRMED'),
+            eq(appSchema.tableReservation.status, 'SEATED')
+          )
+        )
+      )
+      .orderBy(asc(appSchema.tableReservation.reservationDate), asc(appSchema.tableReservation.startTime));
+
     const orderIds = orders.map((o: any) => o.id);
-    const outletIds = Array.from(new Set(orders.map((o: any) => o.outletId).filter(Boolean)));
-    const restaurantIds = Array.from(new Set(orders.map((o: any) => o.restaurantId).filter(Boolean)));
+    const outletIds = Array.from(new Set([
+      ...orders.map((o: any) => o.outletId),
+      ...waitlistRows.map((w: any) => w.outletId),
+      ...reservationRows.map((r: any) => r.outletId),
+    ].filter(Boolean)));
+    const restaurantIds = Array.from(new Set([
+      ...orders.map((o: any) => o.restaurantId),
+      ...waitlistRows.map((w: any) => w.restaurantId),
+      ...reservationRows.map((r: any) => r.restaurantId),
+    ].filter(Boolean)));
 
     const outletRows = outletIds.length > 0
       ? await db
@@ -310,6 +353,47 @@ async function handleGetPortalSession(c: any) {
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 4);
 
+    const activeWaitlist = waitlistRows.map((w: any) => {
+      const outletInfo = outletMap.get(w.outletId) ?? { name: 'Restaurant' };
+      const restInfo = restMap.get(w.restaurantId) ?? { name: 'Restaurant' };
+      return {
+        id: w.id,
+        tokenNumber: w.tokenNumber,
+        outletId: w.outletId,
+        outletName: outletInfo.name,
+        restaurantName: restInfo.name,
+        outletAddress: outletInfo.address,
+        outletPhone: outletInfo.phone,
+        partySize: w.partySize,
+        seatingPreference: w.seatingPreference,
+        status: w.status,
+        estimatedWaitMinutes: w.estimatedWaitMinutes,
+        createdAt: w.createdAt instanceof Date ? w.createdAt.toISOString() : w.createdAt,
+      };
+    });
+
+    const activeReservations = reservationRows.map((r: any) => {
+      const outletInfo = outletMap.get(r.outletId) ?? { name: 'Restaurant' };
+      const restInfo = restMap.get(r.restaurantId) ?? { name: 'Restaurant' };
+      return {
+        id: r.id,
+        outletId: r.outletId,
+        outletName: outletInfo.name,
+        restaurantName: restInfo.name,
+        outletAddress: outletInfo.address,
+        outletPhone: outletInfo.phone,
+        tableId: r.tableId,
+        tableName: r.tableName,
+        partySize: r.partySize,
+        reservationDate: r.reservationDate,
+        startTime: r.startTime,
+        endTime: r.endTime,
+        status: r.status,
+        notes: r.notes,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+      };
+    });
+
     return c.json({
       customer: {
         id: sessionUser?.id,
@@ -325,6 +409,8 @@ async function handleGetPortalSession(c: any) {
         favoriteDishes,
       },
       activeOrders: activeOrdersList,
+      activeWaitlist,
+      activeReservations,
       pastOrders: pastOrdersList,
     });
   } finally {

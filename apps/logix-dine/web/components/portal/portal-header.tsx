@@ -33,9 +33,9 @@ interface PortalHeaderProps {
   phoneNumber?: string | null;
   restaurantName?: string;
   outletName?: string;
-  activeOrders: CustomerPortalOrder[];
-  isRefetching: boolean;
-  onRefresh: () => void;
+  activeOrders?: CustomerPortalOrder[];
+  isRefetching?: boolean;
+  onRefresh?: () => void;
   onSelectActiveOrder?: () => void;
   onOpenProfile?: () => void;
   staffRole?: string | null;

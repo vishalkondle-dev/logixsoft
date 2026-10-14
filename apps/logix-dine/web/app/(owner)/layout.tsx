@@ -104,7 +104,7 @@ export default function OwnerLayout({ children }: { children: ReactNode }) {
     if (!restaurant && !myRestaurants.length && !redirected.current) {
       redirected.current = true;
       if (user?.role === "CUSTOMER") {
-        router.replace("/portal");
+        router.replace(pathname.startsWith("/orders") ? "/my-orders" : "/home");
       } else {
         router.replace("/onboarding");
       }

@@ -1019,6 +1019,39 @@ export interface CustomerMenuResponse {
   items: CustomerMenuItem[];
 }
 
+export interface CustomerWaitlistEntry {
+  id: string;
+  tokenNumber: string;
+  outletId: string;
+  outletName: string;
+  restaurantName: string;
+  outletAddress?: string | null;
+  outletPhone?: string | null;
+  partySize: number;
+  seatingPreference: string;
+  status: string; // WAITING | CALLED | SEATED | CANCELLED
+  estimatedWaitMinutes?: number | null;
+  createdAt: string;
+}
+
+export interface CustomerReservationEntry {
+  id: string;
+  outletId: string;
+  outletName: string;
+  restaurantName: string;
+  outletAddress?: string | null;
+  outletPhone?: string | null;
+  tableId?: string | null;
+  tableName?: string | null;
+  partySize: number;
+  reservationDate: string;
+  startTime: string;
+  endTime?: string | null;
+  status: string; // CONFIRMED | SEATED | CANCELLED
+  notes?: string | null;
+  createdAt: string;
+}
+
 export interface CustomerPortalData {
   customer: {
     id: string;
@@ -1030,6 +1063,8 @@ export interface CustomerPortalData {
     dietaryPreference?: string;
   };
   activeOrders: CustomerPortalOrder[];
+  activeWaitlist?: CustomerWaitlistEntry[];
+  activeReservations?: CustomerReservationEntry[];
   pastOrders: CustomerPortalOrder[];
   stats: {
     lifetimeSpendPaise: number;

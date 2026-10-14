@@ -27,6 +27,7 @@ import {
   IconBrandWhatsapp,
   IconChevronDown,
   IconChevronUp,
+  IconChevronRight,
   IconMotorbike,
   IconShoppingBag,
 } from "@tabler/icons-react";
@@ -101,6 +102,41 @@ export function PortalOrdersView({
 
   return (
     <Stack gap="md" pb={30}>
+      {/* ─── Active Live Dining Banner ─── */}
+      {activeOrders.length > 0 && (
+        <Paper
+          p="sm"
+          radius="md"
+          withBorder
+          onClick={() => onNavigateTab("live")}
+          style={{
+            background: "linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(255, 235, 235, 0.8) 100%)",
+            borderColor: "rgba(255, 107, 107, 0.4)",
+            cursor: "pointer",
+            boxShadow: "0 4px 14px rgba(255, 107, 107, 0.1)",
+          }}
+        >
+          <Group justify="space-between" align="center">
+            <Group gap="xs">
+              <ThemeIcon color="red" variant="filled" size="sm" radius="xl">
+                <IconFlame size={14} />
+              </ThemeIcon>
+              <div>
+                <Text size="xs" fw={700} c="red.9">
+                  Live Dining Session Active ({activeOrders.length} order{activeOrders.length > 1 ? "s" : ""})
+                </Text>
+                <Text size="11px" c="dimmed">
+                  Table {activeOrders[0]?.tableNo || "Dine-in"} • Kitchen prep status & waiter call
+                </Text>
+              </div>
+            </Group>
+            <Button size="compact-xs" color="red" variant="filled" radius="md" rightSection={<IconChevronRight size={12} />}>
+              Open Live
+            </Button>
+          </Group>
+        </Paper>
+      )}
+
       {/* ─── Top Segmented Filter ─── */}
       <SegmentedControl
         value={subTab}

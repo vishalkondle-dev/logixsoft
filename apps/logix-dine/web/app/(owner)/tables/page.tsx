@@ -1330,9 +1330,10 @@ function TablesPageContent() {
                       </Group>
                     </Stack>
                   ) : seatedWaitlist ? (
-                    <Group gap={6} grow>
+                    <Group gap={6} wrap="nowrap">
                       <Button
                         size="sm"
+                        style={{ flex: 1 }}
                         color={isDineInDisabled ? "gray" : "dinePrimary"}
                         variant="filled"
                         disabled={isDineInDisabled}
@@ -1343,17 +1344,20 @@ function TablesPageContent() {
                           router.push(`/pos?table=${encodeURIComponent(table.name)}&outletId=${outletId}${phoneQuery}`);
                         }}
                       >
-                        Take Order ({seatedWaitlist.guestName})
+                        Take Order
                       </Button>
-                      <Button
-                        size="sm"
-                        color="gray"
-                        variant="light"
-                        leftSection={<IconX size={14} />}
-                        onClick={() => handleReleaseWaitlistGuest(seatedWaitlist, table)}
-                      >
-                        Release
-                      </Button>
+                      <Tooltip label={`Release table "${table.name}" (${seatedWaitlist.guestName})`}>
+                        <Button
+                          size="sm"
+                          px={8}
+                          color="gray"
+                          variant="light"
+                          leftSection={<IconX size={13} />}
+                          onClick={() => handleReleaseWaitlistGuest(seatedWaitlist, table)}
+                        >
+                          Release
+                        </Button>
+                      </Tooltip>
                     </Group>
                   ) : activeRes && activeRes.status === "CONFIRMED" ? (
                     <Group gap={6} grow>

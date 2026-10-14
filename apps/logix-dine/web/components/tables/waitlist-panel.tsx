@@ -19,7 +19,7 @@ import {
   getWaitlist, joinWaitlist, callWaitlistGuest, seatWaitlistGuest,
   cancelWaitlistGuest, type WaitlistEntry
 } from "@/lib/api-client";
-import { UpiQrCode } from "@/components/common/upi-qr-code";
+import { QRCode } from "@gfazioli/mantine-qr-code";
 
 interface WaitlistPanelProps {
   restaurantId: string;
@@ -709,7 +709,7 @@ export function WaitlistPanel({
             <Text size="xs" c="dimmed" mb="md">Scan below with your phone camera</Text>
 
             <Center p="sm" bg="white" style={{ borderRadius: 8, display: "inline-block" }}>
-              <UpiQrCode upiUrl={publicJoinUrl} size={200} />
+              <QRCode value={publicJoinUrl} size={200} />
             </Center>
 
             <Text size="xs" c="dimmed" mt="sm">

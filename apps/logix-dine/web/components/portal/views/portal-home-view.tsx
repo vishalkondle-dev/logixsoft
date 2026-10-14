@@ -23,10 +23,8 @@ import {
   IconBellRinging,
   IconPlus,
   IconReceipt2,
-  IconCrown,
   IconStar,
   IconCalendar,
-  IconSparkles,
   IconChevronRight,
   IconClock,
   IconMapPin,
@@ -135,11 +133,6 @@ export function PortalHomeView({
               <Text size="xs" fw={700} c="dimmed" style={{ textTransform: "uppercase", letterSpacing: "0.5px" }}>
                 {greeting},
               </Text>
-              {customer?.loyaltyTier && (
-                <Badge size="xs" variant="light" color="yellow" leftSection={<IconCrown size={11} />}>
-                  {customer.loyaltyTier}
-                </Badge>
-              )}
             </Group>
             <Title order={2} style={{ fontSize: "1.45rem", fontWeight: 800, marginTop: 2 }}>
               {customer?.name || "Valued Diner"}
@@ -147,20 +140,9 @@ export function PortalHomeView({
             <Text size="xs" c="dimmed" mt={2}>
               {primaryActiveOrder
                 ? `Currently dining at ${primaryActiveOrder.restaurantName || "Restaurant"}${primaryActiveOrder.outletName ? ` (${primaryActiveOrder.outletName})` : ""}. Enjoy your meal!`
-                : "Welcome to your personal dining hub. Track past receipts, explore perks, and re-order your favorites."}
+                : "Welcome to your personal dining hub. Track your live orders, past receipts, and explore the menu."}
             </Text>
           </div>
-
-          <Button
-            size="xs"
-            variant="light"
-            color="dinePrimary"
-            radius="xl"
-            rightSection={<IconChevronRight size={14} />}
-            onClick={() => onNavigateTab("rewards")}
-          >
-            Dining DNA & Perks
-          </Button>
         </Group>
       </Paper>
 
@@ -428,31 +410,54 @@ export function PortalHomeView({
                 </Text>
               </Paper>
 
-              {/* VIP Perks */}
+              {/* Book Table */}
               <Paper
                 p="md"
                 radius="lg"
                 withBorder
-                onClick={() => onNavigateTab("rewards")}
+                onClick={onOpenReservationModal}
                 style={{
                   background: "#fff",
                   cursor: "pointer",
                   transition: "transform 0.15s ease, box-shadow 0.15s ease",
                 }}
               >
-                <ThemeIcon size={42} radius="md" color="yellow" variant="light" mb="xs">
-                  <IconCrown size={22} />
+                <ThemeIcon size={42} radius="md" color="blue" variant="light" mb="xs">
+                  <IconCalendar size={22} />
                 </ThemeIcon>
                 <Text fw={700} size="sm">
-                  VIP Privileges
+                  Book Table
                 </Text>
                 <Text size="11px" c="dimmed">
-                  Member pass & dining perks
+                  Reserve upcoming dining
                 </Text>
               </Paper>
             </>
           ) : (
             <>
+              {/* Explore Menu */}
+              <Paper
+                p="md"
+                radius="lg"
+                withBorder
+                onClick={() => onNavigateTab("menu")}
+                style={{
+                  background: "#fff",
+                  cursor: "pointer",
+                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                }}
+              >
+                <ThemeIcon size={42} radius="md" color="violet" variant="light" mb="xs">
+                  <IconToolsKitchen2 size={22} />
+                </ThemeIcon>
+                <Text fw={700} size="sm">
+                  Explore Menu
+                </Text>
+                <Text size="11px" c="dimmed">
+                  Browse dishes & prices
+                </Text>
+              </Paper>
+
               {/* Past Bills & Ratings */}
               <Paper
                 p="md"
@@ -476,49 +481,26 @@ export function PortalHomeView({
                 </Text>
               </Paper>
 
-              {/* Perks */}
+              {/* Book Table */}
               <Paper
                 p="md"
                 radius="lg"
                 withBorder
-                onClick={() => onNavigateTab("rewards")}
+                onClick={onOpenReservationModal}
                 style={{
                   background: "#fff",
                   cursor: "pointer",
                   transition: "transform 0.15s ease, box-shadow 0.15s ease",
                 }}
               >
-                <ThemeIcon size={42} radius="md" color="yellow" variant="light" mb="xs">
-                  <IconCrown size={22} />
+                <ThemeIcon size={42} radius="md" color="blue" variant="light" mb="xs">
+                  <IconCalendar size={22} />
                 </ThemeIcon>
                 <Text fw={700} size="sm">
-                  VIP Privileges
+                  Book Table
                 </Text>
                 <Text size="11px" c="dimmed">
-                  Loyalty pass & milestones
-                </Text>
-              </Paper>
-
-              {/* Dining DNA */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={() => onNavigateTab("rewards")}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="violet" variant="light" mb="xs">
-                  <IconSparkles size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Dining DNA
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Taste profile & food stats
+                  Reserve a table in advance
                 </Text>
               </Paper>
 
@@ -534,7 +516,7 @@ export function PortalHomeView({
                   transition: "transform 0.15s ease, box-shadow 0.15s ease",
                 }}
               >
-                <ThemeIcon size={42} radius="md" color="blue" variant="light" mb="xs">
+                <ThemeIcon size={42} radius="md" color="indigo" variant="light" mb="xs">
                   <IconUser size={22} />
                 </ThemeIcon>
                 <Text fw={700} size="sm">
@@ -624,41 +606,6 @@ export function PortalHomeView({
         </div>
       )}
 
-      {/* ─── 5. Dining DNA Teaser ─── */}
-      <Paper
-        p="md"
-        radius="xl"
-        withBorder
-        style={{
-          background: "linear-gradient(135deg, rgba(235, 248, 255, 0.7) 0%, rgba(243, 232, 255, 0.7) 100%)",
-          borderColor: "rgba(121, 80, 242, 0.15)",
-        }}
-      >
-        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
-          <Group gap="sm" wrap="nowrap">
-            <ThemeIcon size={44} radius="xl" color="violet" variant="filled">
-              <IconSparkles size={24} />
-            </ThemeIcon>
-            <div>
-              <Text fw={800} size="sm">
-                Your Dining DNA: {customer?.dietaryPreference || "Mixed Dining Connoisseur"}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {stats?.totalOrdersCount || 0} visits across all outlets • {formatINR(stats?.lifetimeSpendPaise)} total spend
-              </Text>
-            </div>
-          </Group>
-
-          <Button
-            size="xs"
-            variant="default"
-            radius="xl"
-            onClick={() => onNavigateTab("rewards")}
-          >
-            View Dining DNA
-          </Button>
-        </Group>
-      </Paper>
 
       {/* ─── 6. Table Dining Amenities (ONLY when dining actively at a table) ─── */}
       {primaryActiveOrder && (

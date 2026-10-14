@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export interface CustomerState {
-  activeTab: 'home' | 'menu' | 'orders' | 'rewards' | 'profile';
+  activeTab: 'home' | 'menu' | 'orders' | 'profile';
   orderMoreDrawerOpen: boolean;
   rateOrderModalOpen: boolean;
   callWaiterModalOpen: boolean;
@@ -9,7 +9,7 @@ export interface CustomerState {
   reservationModalOpen: boolean;
 
   // Actions
-  setActiveTab: (tab: 'home' | 'menu' | 'orders' | 'rewards' | 'profile') => void;
+  setActiveTab: (tab: 'home' | 'menu' | 'orders' | 'profile') => void;
   setOrderMoreDrawerOpen: (open: boolean) => void;
   setRateOrderModalOpen: (open: boolean) => void;
   setCallWaiterModalOpen: (open: boolean) => void;

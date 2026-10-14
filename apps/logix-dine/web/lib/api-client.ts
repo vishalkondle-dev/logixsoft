@@ -1026,8 +1026,8 @@ export interface CustomerPortalData {
     phone: string;
     rawPhone: string;
     email?: string | null;
-    loyaltyTier: string;
-    dietaryPreference: string;
+    loyaltyTier?: string;
+    dietaryPreference?: string;
   };
   activeOrders: CustomerPortalOrder[];
   pastOrders: CustomerPortalOrder[];

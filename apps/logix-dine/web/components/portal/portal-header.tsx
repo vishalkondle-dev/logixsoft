@@ -31,7 +31,6 @@ import type { CustomerPortalOrder } from "@/lib/api-client";
 interface PortalHeaderProps {
   customerName?: string | null;
   phoneNumber?: string | null;
-  loyaltyTier?: string;
   restaurantName?: string;
   outletName?: string;
   activeOrders: CustomerPortalOrder[];
@@ -45,7 +44,6 @@ interface PortalHeaderProps {
 
 export function PortalHeader({
   customerName,
-  loyaltyTier,
   restaurantName,
   outletName,
   activeOrders = [],
@@ -67,20 +65,6 @@ export function PortalHeader({
   const isTakeaway =
     (primaryActiveOrder?.tableNo || "").toLowerCase() === "takeaway" ||
     primaryActiveOrder?.orderType === "TAKEAWAY";
-
-  const tierColor =
-    loyaltyTier === "VIP Customer"
-      ? "yellow"
-      : loyaltyTier === "Regular Guest"
-      ? "blue"
-      : "violet";
-
-  const TierIcon =
-    loyaltyTier === "VIP Customer"
-      ? IconCrown
-      : loyaltyTier === "Regular Guest"
-      ? IconStar
-      : IconHeart;
 
   return (
     <Box mb="md">
@@ -235,40 +219,20 @@ export function PortalHeader({
               </ActionIcon>
             </Tooltip>
 
-            {/* Profile Avatar with Loyalty Badge */}
+            {/* Profile Avatar */}
             <UnstyledButton onClick={onOpenProfile} style={{ cursor: "pointer" }}>
-              <Box style={{ position: "relative" }}>
-                <Avatar
-                  size="md"
-                  radius="xl"
-                  color="dinePrimary"
-                  style={{
-                    border: "2px solid #7950f2",
-                    fontWeight: 700,
-                    fontSize: 14,
-                  }}
-                >
-                  {customerName ? customerName.slice(0, 2).toUpperCase() : "G"}
-                </Avatar>
-                {loyaltyTier && (
-                  <Badge
-                    size="xs"
-                    circle
-                    color={tierColor}
-                    variant="filled"
-                    style={{
-                      position: "absolute",
-                      bottom: -2,
-                      right: -2,
-                      height: 16,
-                      minWidth: 16,
-                      border: "1.5px solid #fff",
-                    }}
-                  >
-                    <TierIcon size={9} />
-                  </Badge>
-                )}
-              </Box>
+              <Avatar
+                size="md"
+                radius="xl"
+                color="dinePrimary"
+                style={{
+                  border: "2px solid #7950f2",
+                  fontWeight: 700,
+                  fontSize: 14,
+                }}
+              >
+                {customerName ? customerName.slice(0, 2).toUpperCase() : "G"}
+              </Avatar>
             </UnstyledButton>
           </Group>
         </Group>

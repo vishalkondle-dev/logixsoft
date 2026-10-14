@@ -32,7 +32,6 @@ import { PortalHeader } from "@/components/portal/portal-header";
 import { PortalHomeView } from "@/components/portal/views/portal-home-view";
 import { PortalOrdersView } from "@/components/portal/views/portal-orders-view";
 import { PortalMenuView } from "@/components/portal/views/portal-menu-view";
-import { PortalRewardsView } from "@/components/portal/views/portal-rewards-view";
 import { PortalProfileView } from "@/components/portal/views/portal-profile-view";
 import { RateOrderModal } from "@/components/portal/rate-order-modal";
 import { CallWaiterModal } from "@/components/portal/call-waiter-modal";
@@ -66,10 +65,9 @@ function CustomerPortalInner() {
   const searchParams = useSearchParams();
   const rawTab = searchParams.get("tab") || "home";
 
-  // Map backward-compatible tabs: 'active' -> 'orders', 'past' -> 'orders', 'loyalty' -> 'rewards'
+  // Map backward-compatible tabs: 'active' -> 'orders', 'past' -> 'orders'
   const activeTab: PortalTab = useMemo(() => {
     if (rawTab === "active" || rawTab === "past" || rawTab === "orders") return "orders";
-    if (rawTab === "rewards" || rawTab === "loyalty") return "rewards";
     if (rawTab === "menu") return "menu";
     if (rawTab === "profile") return "profile";
     return "home";
@@ -286,7 +284,7 @@ Thank you for dining with us!`;
                 Customer Dining Portal
               </Title>
               <Text c="dimmed" size="sm" mt={6} maw={420} mx="auto">
-                Sign in with your mobile number to track live dine-in orders, check past bills, and view your VIP loyalty rewards.
+                Sign in with your mobile number to track live dine-in orders, view item preparation status, and access past receipts.
               </Text>
             </div>
 
@@ -313,7 +311,6 @@ Thank you for dining with us!`;
       <PortalHeader
         customerName={customer?.name || user?.name}
         phoneNumber={customer?.phone || user?.phoneNumber}
-        loyaltyTier={customer?.loyaltyTier}
         restaurantName={activeOrders[0]?.restaurantName}
         outletName={activeOrders[0]?.outletName}
         activeOrders={activeOrders}
@@ -365,10 +362,6 @@ Thank you for dining with us!`;
               pastOrders={pastOrders}
               onOpenOrderMore={handleOpenOrderMore}
             />
-          )}
-
-          {activeTab === "rewards" && (
-            <PortalRewardsView data={data} />
           )}
 
           {activeTab === "profile" && (

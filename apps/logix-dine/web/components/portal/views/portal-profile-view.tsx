@@ -31,7 +31,7 @@ import {
   IconShieldLock,
   IconHeadset,
   IconHeart,
-  IconCrown,
+  IconToolsKitchen2,
   IconStar,
   IconCheck,
   IconTrash,
@@ -96,20 +96,6 @@ export function PortalProfileView({
     setIsAddAddressOpen(false);
   };
 
-  const tierColor =
-    customer?.loyaltyTier === "VIP Customer"
-      ? "yellow"
-      : customer?.loyaltyTier === "Regular Guest"
-      ? "blue"
-      : "violet";
-
-  const TierIcon =
-    customer?.loyaltyTier === "VIP Customer"
-      ? IconCrown
-      : customer?.loyaltyTier === "Regular Guest"
-      ? IconStar
-      : IconHeart;
-
   return (
     <Stack gap="lg" pb={40}>
       {/* ─── Profile Summary Card ─── */}
@@ -124,11 +110,6 @@ export function PortalProfileView({
                 <Title order={3} style={{ fontSize: "1.2rem", fontWeight: 800 }}>
                   {customer?.name || "Customer"}
                 </Title>
-                {customer?.loyaltyTier && (
-                  <Badge color={tierColor} variant="light" size="xs" leftSection={<TierIcon size={11} />}>
-                    {customer.loyaltyTier}
-                  </Badge>
-                )}
               </Group>
               <Text size="xs" c="dimmed" mt={2}>
                 {customer?.phone}
@@ -256,10 +237,10 @@ export function PortalProfileView({
           <Group justify="space-between" align="center">
             <Group gap="xs" wrap="nowrap">
               <ThemeIcon size="md" radius="md" color="violet" variant="light">
-                <IconCrown size={16} />
+                <IconToolsKitchen2 size={16} />
               </ThemeIcon>
               <div>
-                <Text size="xs" fw={600}>VIP Chef Specials & Invitations</Text>
+                <Text size="xs" fw={600}>Chef Specials & Seasonal Previews</Text>
                 <Text size="11px" c="dimmed">Invites to seasonal menu tasting events</Text>
               </div>
             </Group>

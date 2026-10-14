@@ -10,7 +10,7 @@ import {
   IconUser,
 } from "@tabler/icons-react";
 
-export type PortalTab = "home" | "orders" | "menu" | "rewards" | "profile";
+export type PortalTab = "home" | "orders" | "menu" | "profile";
 
 interface PortalBottomNavProps {
   activeTab: PortalTab;
@@ -39,11 +39,6 @@ export function PortalBottomNav({
       id: "menu" as const,
       label: "Menu",
       icon: IconToolsKitchen2,
-    },
-    {
-      id: "rewards" as const,
-      label: "Perks",
-      icon: IconCrown,
     },
     {
       id: "profile" as const,

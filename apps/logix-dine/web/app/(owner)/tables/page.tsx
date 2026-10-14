@@ -63,18 +63,33 @@ export interface TableSession {
 function TablesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
+  const rawTab = (searchParams.get("tab") || "").toLowerCase();
+  const isWaitlist = rawTab === "waitlist" || rawTab.startsWith("waitlist");
+
   const [viewMode, setViewMode] = useState<"TABLES" | "WAITLIST">(
-    tabParam === "waitlist" ? "WAITLIST" : "TABLES"
+    isWaitlist ? "WAITLIST" : "TABLES"
   );
 
   useEffect(() => {
-    if (tabParam === "waitlist") {
+    const currentTab = (searchParams.get("tab") || "").toLowerCase();
+    if (currentTab === "waitlist" || currentTab.startsWith("waitlist")) {
       setViewMode("WAITLIST");
-    } else if (tabParam === "tables") {
+    } else {
       setViewMode("TABLES");
     }
-  }, [tabParam]);
+  }, [searchParams]);
+
+  const handleViewModeChange = (newMode: "TABLES" | "WAITLIST") => {
+    setViewMode(newMode);
+    const params = new URLSearchParams(searchParams.toString());
+    if (newMode === "WAITLIST") {
+      params.set("tab", "waitlist");
+    } else {
+      params.delete("tab");
+    }
+    const query = params.toString();
+    router.replace(`/tables${query ? `?${query}` : ""}`, { scroll: false });
+  };
 
   const queryClient = useQueryClient();
   const { restaurant, activeOutlet, outlets, role } = useRestaurant();
@@ -554,7 +569,7 @@ function TablesPageContent() {
         <Group gap="xs" wrap="wrap">
           <SegmentedControl
             value={viewMode}
-            onChange={(val) => setViewMode(val as "TABLES" | "WAITLIST")}
+            onChange={(val) => handleViewModeChange(val as "TABLES" | "WAITLIST")}
             data={[
               {
                 value: "TABLES",

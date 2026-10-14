@@ -23,6 +23,14 @@ import { useRestaurant } from "@/lib/restaurant-context";
 import { LoginModal } from "@/components/auth/login-modal";
 import { isModuleAllowedForOutlet, type PlanModuleId, DEFAULT_FREE_TRIAL_DAYS } from "@logixsoft/logix-dine/types/plans";
 
+/** Helper to cleanly append activeOutletId without breaking existing query params or duplicating outletId */
+function buildNavHref(href: string, activeOutletId?: string | null): string {
+  if (!activeOutletId || href === "/") return href;
+  if (href.includes("outletId=")) return href;
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}outletId=${encodeURIComponent(activeOutletId)}`;
+}
+
 // Top horizontal header navbar items: operational links
 const TOP_NAV_ITEMS = [
   { label: "POS", href: "/pos", icon: IconShoppingCart, roles: ["OWNER", "MANAGER", "CASHIER", "CAPTAIN", "WAITER"], permission: "pos:view", moduleId: "pos" },
@@ -409,8 +417,14 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       if (item.href === "/settings") {
         return pathname === "/settings";
       }
+      if (item.id === "waitlist") {
+        return pathname === "/tables" && (currentTab === "waitlist" || currentTab.startsWith("waitlist"));
+      }
       if (item.href === "/tables") {
-        return pathname === "/tables" || (pathname.startsWith("/tables/") && !pathname.startsWith("/settings/tables"));
+        return (
+          (pathname === "/tables" && currentTab !== "waitlist" && !currentTab.startsWith("waitlist")) ||
+          (pathname.startsWith("/tables/") && !pathname.startsWith("/settings/tables"))
+        );
       }
       if (item.href === "/settings/tables") {
         return pathname === "/settings/tables" || activeSettingId === "tables";
@@ -421,7 +435,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       }
       return pathname === item.href || pathname.startsWith(`${item.href}/`);
     },
-    [pathname, activeSettingId]
+    [pathname, activeSettingId, currentTab]
   );
 
   // On /portal, the customer portal page already provides its own tabs for Active, Past, and Profile.
@@ -574,9 +588,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                           : pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const itemHref = isPortalItem
                     ? item.href
-                    : activeOutlet && item.href !== "/"
-                      ? `${item.href}?outletId=${activeOutlet.id}`
-                      : item.href;
+                    : buildNavHref(item.href, activeOutlet?.id);
                   return (
                     <UnstyledButton
                       key={item.href}
@@ -936,9 +948,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                     lastSection = item.section;
                   }
 
-                  const itemHref = activeOutlet && item.href !== "/"
-                    ? `${item.href}?outletId=${activeOutlet.id}`
-                    : item.href;
+                  const itemHref = buildNavHref(item.href, activeOutlet?.id);
 
                   return (
                     <React.Fragment key={item.id}>
@@ -1176,9 +1186,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         : pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const itemHref = isPortalItem
                   ? item.href
-                  : activeOutlet && item.href !== "/"
-                    ? `${item.href}?outletId=${activeOutlet.id}`
-                    : item.href;
+                  : buildNavHref(item.href, activeOutlet?.id);
                 return (
                   <UnstyledButton
                     key={item.href}

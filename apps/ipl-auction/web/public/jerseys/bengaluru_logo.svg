@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <defs>
+    <!-- Metallic Gold Gradients -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBE6" />
+      <stop offset="20%" stop-color="#FCE070" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="75%" stop-color="#997316" />
+      <stop offset="100%" stop-color="#FFEA8A" />
+    </linearGradient>
+
+    <!-- Crimson Red Field -->
+    <linearGradient id="redField" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E61924" />
+      <stop offset="40%" stop-color="#B80C14" />
+      <stop offset="80%" stop-color="#7A0007" />
+      <stop offset="100%" stop-color="#2E0003" />
+    </linearGradient>
+
+    <!-- Radial Core Glow -->
+    <radialGradient id="coreGlow" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#FF3344" stop-opacity="0.6" />
+      <stop offset="50%" stop-color="#B80C14" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#1A0002" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Filters -->
+    <filter id="dropHeavy" x="-25%" y="-20%" width="150%" height="145%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000000" flood-opacity="0.8" />
+    </filter>
+
+    <filter id="dropSmall" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.75" />
+    </filter>
+  </defs>
+
+  <g transform="translate(0, 15)">
+    <!-- ROYAL CROWN ON TOP -->
+    <g filter="url(#dropSmall)">
+      <!-- Majestic 5-Pointed Royal Crown -->
+      <path d="M230,75 L215,35 L255,55 L300,18 L345,55 L385,35 L370,75 Z" fill="url(#goldGrad)" stroke="#5C3D00" stroke-width="1.5" />
+      <!-- Crown Base Band with Rubies -->
+      <rect x="225" y="75" width="150" height="14" rx="3" fill="#0F0F12" stroke="url(#goldGrad)" stroke-width="1.5" />
+      <circle cx="245" cy="82" r="3.5" fill="#E61924" />
+      <circle cx="272" cy="82" r="3.5" fill="url(#goldGrad)" />
+      <circle cx="300" cy="82" r="4.5" fill="#E61924" stroke="url(#goldGrad)" stroke-width="1" />
+      <circle cx="328" cy="82" r="3.5" fill="url(#goldGrad)" />
+      <circle cx="355" cy="82" r="3.5" fill="#E61924" />
+    </g>
+
+    <!-- SHIELD -->
+    <g filter="url(#dropHeavy)">
+      <!-- Outer Heavy Gold Shield Rim -->
+      <path d="M300,92 L468,122 C486,230 476,366 300,488 C124,366 114,230 132,122 Z"
+            fill="url(#goldGrad)" stroke="#4F3100" stroke-width="2" />
+
+      <!-- Recessed Midnight Black Ring -->
+      <path d="M300,101 L458,129 C474,232 465,358 300,474 C135,358 126,232 142,129 Z"
+            fill="#0A0A0D" stroke="#FFE885" stroke-width="1" />
+
+      <!-- Deep Crimson Field -->
+      <path d="M300,108 L450,135 C465,234 456,352 300,464 C144,352 135,234 150,135 Z"
+            fill="url(#redField)" />
+
+      <!-- Dynamic Core Glow -->
+      <path d="M300,108 L450,135 C465,234 456,352 300,464 C144,352 135,234 150,135 Z"
+            fill="url(#coreGlow)" />
+
+      <!-- Inner Pinstripe Arc -->
+      <path d="M300,122 L434,146 C446,236 438,338 300,442 C162,338 154,236 166,146 Z"
+            fill="none" stroke="url(#goldGrad)" stroke-width="1.8" opacity="0.6" stroke-dasharray="14 6" />
+    </g>
+
+    <!-- CENTERPIECE: RAMPANT ROYAL GOLDEN LION (Original Modern Heraldry) -->
+    <g transform="translate(300, 255)" filter="url(#dropSmall)">
+      <!-- Lion Body / Spine / Mane Silhouette -->
+      <!-- Mane Flames -->
+      <path d="M-20,-75 C10,-100 50,-80 40,-45 C65,-55 85,-35 70,-10 C90,-15 95,15 75,30 C90,35 85,65 60,65 C40,65 25,45 10,50 C0,55 -15,40 -25,25 Z" fill="#8C630B" />
+      <path d="M-30,-60 C0,-85 38,-65 28,-35 C52,-45 70,-25 58,-2 C75,-6 80,20 62,32 C75,36 70,58 48,56 C30,56 18,38 5,42 C-4,46 -18,32 -26,18 Z" fill="url(#goldGrad)" />
+
+      <!-- Roaring Forehead, Snout & Fangs -->
+      <path d="M-10,-55 C10,-60 35,-50 45,-30 C35,-25 20,-30 10,-45 Z" fill="#FFF5B8" />
+      <path d="M35,-32 C55,-30 75,-15 80,-2 C68,-2 58,-6 48,-18 Z" fill="url(#goldGrad)" />
+      <polygon points="80,-2 72,-5 75,3" fill="#0A0A0D" />
+      <!-- Open Roaring Mouth -->
+      <path d="M74,3 C58,5 42,2 28,10 C42,22 62,18 72,15 Z" fill="#0F0304" />
+      <polygon points="68,3 62,15 58,3" fill="#FFFFFF" />
+      <polygon points="58,16 61,7 64,16" fill="#FFFFFF" />
+      <!-- Lower Jaw -->
+      <path d="M28,10 C45,22 65,18 74,15 C68,26 48,34 25,28 Z" fill="url(#goldGrad)" />
+      <!-- Fierce Red Eye -->
+      <polygon points="22,-22 38,-20 28,-14 16,-18" fill="#0A0A0D" />
+      <circle cx="28" cy="-18" r="3" fill="#E61924" />
+      <circle cx="28" cy="-18" r="1.5" fill="#FFFFFF" />
+
+      <!-- Rampant Golden Claws / Forepaws -->
+      <!-- Left Forepaw reaching forward -->
+      <path d="M10,-10 C-15,10 -35,30 -50,60 C-45,65 -35,55 -25,45 C-15,35 0,20 15,10 Z" fill="url(#goldGrad)" />
+      <polygon points="-50,60 -58,55 -52,66" fill="#FFFFFF" stroke="#5C3D00" stroke-width="0.8" />
+      <polygon points="-45,65 -52,62 -47,72" fill="#FFFFFF" stroke="#5C3D00" stroke-width="0.8" />
+      <!-- Right Forepaw raised high -->
+      <path d="M-15,-30 C-40,-15 -60,0 -80,25 C-75,30 -65,22 -55,12 C-40,0 -25,-12 -10,-22 Z" fill="url(#goldGrad)" />
+      <polygon points="-80,25 -88,20 -82,31" fill="#FFFFFF" stroke="#5C3D00" stroke-width="0.8" />
+      <polygon points="-75,30 -82,27 -77,37" fill="#FFFFFF" stroke="#5C3D00" stroke-width="0.8" />
+
+      <!-- Royal Monogram 'B' Emblem beneath lion -->
+      <circle cx="-15" cy="75" r="16" fill="#0A0A0D" stroke="url(#goldGrad)" stroke-width="1.5" />
+      <text x="-15" y="82" font-family="'Montserrat', sans-serif" font-size="20" font-weight="900" fill="url(#goldGrad)" text-anchor="middle">B</text>
+    </g>
+
+    <!-- BANNER: "BENGALURU" -->
+    <g transform="translate(0, 38)">
+      <!-- Ribbon Left Swallowtail -->
+      <path d="M75,360 L140,348 L140,406 L75,418 L92,389 Z" fill="#400004" />
+      <path d="M78,364 L137,353 L137,403 L78,414 L94,389 Z" fill="url(#goldGrad)" />
+      <path d="M140,348 L160,348 L140,370 Z" fill="#050508" />
+
+      <!-- Ribbon Right Swallowtail -->
+      <path d="M525,360 L460,348 L460,406 L525,418 L508,389 Z" fill="#400004" />
+      <path d="M522,364 L463,353 L463,403 L522,414 L506,389 Z" fill="url(#goldGrad)" />
+      <path d="M460,348 L440,348 L460,370 Z" fill="#050508" />
+
+      <!-- Center Banner Plate (Midnight Black Field with Gold Rim) -->
+      <path d="M120,345 L480,345 L498,410 L102,410 Z" fill="#0F0F12" stroke="url(#goldGrad)" stroke-width="3" filter="url(#dropHeavy)" />
+      <path d="M127,351 L473,351 L489,404 L111,404 Z" fill="#1A0205" stroke="#FFEAA0" stroke-width="1" />
+
+      <line x1="132" y1="356" x2="468" y2="356" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.9" />
+      <line x1="118" y1="399" x2="482" y2="399" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.9" />
+
+      <!-- "BENGALURU" ATHLETIC TEXT -->
+      <text x="300" y="392"
+            font-family="'Montserrat', 'Trebuchet MS', 'Arial Black', sans-serif"
+            font-size="32"
+            font-weight="900"
+            font-style="italic"
+            letter-spacing="5"
+            text-anchor="middle"
+            fill="url(#goldGrad)"
+            stroke="#050508"
+            stroke-width="2"
+            filter="url(#dropSmall)">BENGALURU</text>
+    </g>
+  </g>
+</svg>

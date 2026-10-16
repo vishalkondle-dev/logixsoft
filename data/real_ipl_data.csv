@@ -1,0 +1,533 @@
+List No,Set No,Set Code,Set Name,Player,Country,Role,Bat,Bowling Style,Capped/Uncapped,Base Price (₹),Status,Current Team (IPL 2026),Price / Salary (₹)
+1,1,BA1,Capped Batters,Devon Conway,New Zealand,Batter,LHB,,Capped,20000000,Unsold,,
+2,1,BA1,Capped Batters,Jake Fraser-McGurk,Australia,Batter,RHB,,Capped,20000000,Unsold,,
+3,1,BA1,Capped Batters,Cameron Green,Australia,Batter,RHB,Right-arm fast,Capped,20000000,Sold,Kolkata Knight Riders,252000000
+4,1,BA1,Capped Batters,Sarfaraz Khan,India,Batter,RHB,Right-arm leg spin,Capped,7500000,Sold,Chennai Super Kings,7500000
+5,1,BA1,Capped Batters,David Miller,South Africa,Batter,LHB,,Capped,20000000,Sold,Delhi Capitals,20000000
+6,1,BA1,Capped Batters,Prithvi Shaw,India,Batter,RHB,,Capped,7500000,Sold,Delhi Capitals,7500000
+7,2,AL1,Capped All-rounders,Gus Atkinson,England,All-rounder,RHB,Right-arm fast,Capped,20000000,Unsold,,
+8,2,AL1,Capped All-rounders,Wanindu Hasaranga,Sri Lanka,All-rounder,RHB,Right-arm leg spin,Capped,20000000,Sold,Lucknow Super Giants,20000000
+9,2,AL1,Capped All-rounders,Deepak Hooda,India,All-rounder,RHB,Right-arm off spin,Capped,7500000,Unsold,,
+10,2,AL1,Capped All-rounders,Venkatesh Iyer,India,All-rounder,LHB,Right-arm medium,Capped,20000000,Sold,Royal Challengers Bengaluru,70000000
+11,2,AL1,Capped All-rounders,Liam Livingstone,England,All-rounder,RHB,Right-arm leg spin,Capped,20000000,Sold,Sunrisers Hyderabad,130000000
+12,2,AL1,Capped All-rounders,Wiaan Mulder,South Africa,All-rounder,RHB,Right-arm fast medium,Capped,10000000,Unsold,,
+13,2,AL1,Capped All-rounders,Rachin Ravindra,New Zealand,All-rounder,LHB,Left-arm slow orthodox,Capped,20000000,Sold,Kolkata Knight Riders,20000000
+14,3,WK1,Capped Wicketkeepers,Finn Allen,New Zealand,Wicketkeeper,RHB,,Capped,20000000,Sold,Kolkata Knight Riders,20000000
+15,3,WK1,Capped Wicketkeepers,Jonny Bairstow,England,Wicketkeeper,RHB,,Capped,10000000,Unsold,,
+16,3,WK1,Capped Wicketkeepers,K.S. Bharat,India,Wicketkeeper,RHB,,Capped,7500000,Unsold,,
+17,3,WK1,Capped Wicketkeepers,Quinton de Kock,South Africa,Wicketkeeper,LHB,,Capped,10000000,Sold,Mumbai Indians,10000000
+18,3,WK1,Capped Wicketkeepers,Ben Duckett,England,Wicketkeeper,LHB,,Capped,20000000,Sold,Delhi Capitals,20000000
+19,3,WK1,Capped Wicketkeepers,Rahmanullah Gurbaz,Afghanistan,Wicketkeeper,RHB,,Capped,15000000,Unsold,,
+20,3,WK1,Capped Wicketkeepers,Jamie Smith,England,Wicketkeeper,RHB,,Capped,20000000,Unsold,,
+21,4,FA1,Capped Fast Bowlers,Gerald Coetzee,South Africa,Bowler,RHB,Right-arm fast,Capped,20000000,Unsold → Replacement signing,Sunrisers Hyderabad,20000000
+22,4,FA1,Capped Fast Bowlers,Akash Deep,India,Bowler,RHB,Right-arm fast,Capped,10000000,Sold,Kolkata Knight Riders,10000000
+23,4,FA1,Capped Fast Bowlers,Jacob Duffy,New Zealand,Bowler,RHB,Right-arm fast medium,Capped,20000000,Sold,Royal Challengers Bengaluru,20000000
+24,4,FA1,Capped Fast Bowlers,Fazalhaq Farooqi,Afghanistan,Bowler,RHB,Left-arm fast medium,Capped,10000000,Unsold,,
+25,4,FA1,Capped Fast Bowlers,Matt Henry,New Zealand,Bowler,RHB,Right-arm fast medium,Capped,20000000,Sold,Chennai Super Kings,20000000
+26,4,FA1,Capped Fast Bowlers,Spencer Johnson,Australia,Bowler,LHB,Left-arm fast,Capped,15000000,Unsold → Replacement signing,Chennai Super Kings,15000000
+27,4,FA1,Capped Fast Bowlers,Shivam Mavi,India,Bowler,RHB,Right-arm fast medium,Capped,7500000,Sold,Sunrisers Hyderabad,7500000
+28,4,FA1,Capped Fast Bowlers,Anrich Nortje,South Africa,Bowler,RHB,Right-arm fast,Capped,20000000,Sold,Lucknow Super Giants,20000000
+29,4,FA1,Capped Fast Bowlers,Matheesha Pathirana,Sri Lanka,Bowler,RHB,Right-arm fast,Capped,20000000,Sold,Kolkata Knight Riders,180000000
+30,5,SP1,Capped Spinners,Ravi Bishnoi,India,Bowler,RHB,Right-arm leg spin,Capped,20000000,Sold,Rajasthan Royals,72000000
+31,5,SP1,Capped Spinners,Rahul Chahar,India,Bowler,RHB,Right-arm leg spin,Capped,10000000,Sold,Chennai Super Kings,52000000
+32,5,SP1,Capped Spinners,Akeal Hosein,West Indies,Bowler,LHB,Left-arm slow orthodox,Capped,20000000,Sold,Chennai Super Kings,20000000
+33,5,SP1,Capped Spinners,Mujeeb Rahman,Afghanistan,Bowler,RHB,Right-arm off spin,Capped,20000000,Unsold,,
+34,5,SP1,Capped Spinners,Maheesh Theekshana,Sri Lanka,Bowler,RHB,Right-arm off spin,Capped,20000000,Unsold,,
+35,6,UBA1,Uncapped Batters,Aarya Desai,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+36,6,UBA1,Uncapped Batters,Yash Dhull,India,Batter,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+37,6,UBA1,Uncapped Batters,Abhinav Manohar,India,Batter,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+38,6,UBA1,Uncapped Batters,Anmolpreet Singh,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+39,6,UBA1,Uncapped Batters,Atharva Taide,India,Batter,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+40,6,UBA1,Uncapped Batters,Abhinav Tejrana,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+41,7,UAL1,Uncapped All-rounders,Auqib Dar,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Sold,Delhi Capitals,84000000
+42,7,UAL1,Uncapped All-rounders,Rajvardhan Hangargekar,India,All-rounder,RHB,Right-arm fast,Uncapped,4000000,Unsold,,
+43,7,UAL1,Uncapped All-rounders,Tanush Kotian,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+44,7,UAL1,Uncapped All-rounders,Shivang Kumar,India,All-rounder,RHB,Left-arm slow unorthodox,Uncapped,3000000,Sold,Sunrisers Hyderabad,3000000
+45,7,UAL1,Uncapped All-rounders,Mahipal Lomror,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,5000000,Unsold → Replacement signing,Mumbai Indians,5000000
+46,7,UAL1,Uncapped All-rounders,Kamlesh Nagarkoti,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+47,7,UAL1,Uncapped All-rounders,Vijay Shankar,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+48,7,UAL1,Uncapped All-rounders,Sanvir Singh,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+49,7,UAL1,Uncapped All-rounders,Edhen Tom,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+50,7,UAL1,Uncapped All-rounders,Prashant Veer,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Sold,Chennai Super Kings,142000000
+51,8,UWK1,Uncapped Wicketkeepers,Ruchit Ahir,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold → Replacement signing,Mumbai Indians,3000000
+52,8,UWK1,Uncapped Wicketkeepers,Vansh Bedi,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold,,
+53,8,UWK1,Uncapped Wicketkeepers,Mukul Choudhary,India,Wicketkeeper,RHB,,Uncapped,3000000,Sold,Lucknow Super Giants,26000000
+54,8,UWK1,Uncapped Wicketkeepers,Tushar Raheja,India,Wicketkeeper,LHB,,Uncapped,3000000,Unsold,,
+55,8,UWK1,Uncapped Wicketkeepers,Kartik Sharma,India,Wicketkeeper,RHB,,Uncapped,3000000,Sold,Chennai Super Kings,142000000
+56,8,UWK1,Uncapped Wicketkeepers,Tejasvi Singh,India,Wicketkeeper,RHB,Right-arm off spin,Uncapped,3000000,Sold,Kolkata Knight Riders,3000000
+57,9,UFA1,Uncapped Fast Bowlers,Raj Limbani,India,Bowler,LHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+58,9,UFA1,Uncapped Fast Bowlers,Akash Madhwal,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold → Replacement signing,Chennai Super Kings,3000000
+59,9,UFA1,Uncapped Fast Bowlers,Sushant Mishra,India,Bowler,LHB,Left-arm fast,Uncapped,3000000,Sold,Rajasthan Royals,9000000
+60,9,UFA1,Uncapped Fast Bowlers,Ashok Sharma,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Sold,Gujarat Titans,9000000
+61,9,UFA1,Uncapped Fast Bowlers,Simarjeet Singh,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+62,9,UFA1,Uncapped Fast Bowlers,Naman Tiwari,India,Bowler,LHB,Left-arm fast,Uncapped,3000000,Sold,Lucknow Super Giants,10000000
+63,9,UFA1,Uncapped Fast Bowlers,Kartik Tyagi,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Sold,Kolkata Knight Riders,3000000
+64,10,USP1,Uncapped Spinners,Yash Raj Punja,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Sold,Rajasthan Royals,3000000
+65,10,USP1,Uncapped Spinners,Vignesh Puthur,India,Bowler,RHB,Left-arm slow unorthodox,Uncapped,3000000,Sold,Rajasthan Royals,3000000
+66,10,USP1,Uncapped Spinners,Karn Sharma,India,Bowler,LHB,Right-arm leg spin,Uncapped,5000000,Unsold,,
+67,10,USP1,Uncapped Spinners,Shivam Shukla,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+68,10,USP1,Uncapped Spinners,Kumar Kartikeya Singh,India,Bowler,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+69,10,USP1,Uncapped Spinners,Prashant Solanki,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Sold,Kolkata Knight Riders,3000000
+70,10,USP1,Uncapped Spinners,Wahidullah Zadran,Afghanistan,Bowler,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+71,11,BA2,Capped Batters,Mayank Agarawal,India,Batter,RHB,Right-arm off spin,Capped,7500000,Unsold,,
+72,11,BA2,Capped Batters,Sediqullah Atal,Afghanistan,Batter,LHB,,Capped,7500000,Unsold,,
+73,11,BA2,Capped Batters,Ackeem Auguste,West Indies,Batter,LHB,Right-arm leg spin,Capped,7500000,Unsold,,
+74,11,BA2,Capped Batters,Reeza Hendricks,South Africa,Batter,RHB,Right-arm off spin,Capped,10000000,Unsold,,
+75,11,BA2,Capped Batters,Pathum Nissanka,Sri Lanka,Batter,RHB,,Capped,7500000,Sold,Delhi Capitals,40000000
+76,11,BA2,Capped Batters,Tim Robinson,New Zealand,Batter,RHB,Right-arm medium,Capped,7500000,Unsold,,
+77,11,BA2,Capped Batters,Steve Smith,Australia,Batter,RHB,,Capped,20000000,Unsold,,
+78,11,BA2,Capped Batters,Rahul Tripathi,India,Batter,RHB,Right-arm medium,Capped,7500000,Sold,Kolkata Knight Riders,7500000
+79,12,AL2,Capped All-rounders,Sean Abbott,Australia,All-rounder,RHB,Right-arm fast medium,Capped,20000000,Unsold,,
+80,12,AL2,Capped All-rounders,Michael Bracewell,New Zealand,All-rounder,LHB,Right-arm off spin,Capped,20000000,Unsold,,
+81,12,AL2,Capped All-rounders,Ben Dwarshuis,Australia,All-rounder,LHB,Left-arm fast medium,Capped,10000000,Sold,Punjab Kings,44000000
+82,12,AL2,Capped All-rounders,Zak Foulkes,New Zealand,All-rounder,RHB,Right-arm fast medium,Capped,7500000,Sold,Chennai Super Kings,7500000
+83,12,AL2,Capped All-rounders,Jason Holder,West Indies,All-rounder,RHB,Right-arm fast,Capped,20000000,Sold,Gujarat Titans,70000000
+84,12,AL2,Capped All-rounders,Daryl Mitchell,New Zealand,All-rounder,RHB,Right-arm medium,Capped,20000000,Unsold,,
+85,12,AL2,Capped All-rounders,Daniel Sams,Australia,All-rounder,RHB,Left-arm fast medium,Capped,10000000,Unsold,,
+86,12,AL2,Capped All-rounders,Dasun Shanaka,Sri Lanka,All-rounder,RHB,Right-arm fast,Capped,7500000,Unsold → Replacement signing,Rajasthan Royals,20000000
+87,12,AL2,Capped All-rounders,Matthew Short,Australia,All-rounder,RHB,Right-arm off spin,Capped,15000000,Sold,Chennai Super Kings,15000000
+88,13,WK2,Capped Wicketkeepers,Tom Banton,England,Wicketkeeper,RHB,,Capped,20000000,Sold,Gujarat Titans,20000000
+89,13,WK2,Capped Wicketkeepers,Jordan Cox,England,Wicketkeeper,RHB,,Capped,7500000,Sold,Royal Challengers Bengaluru,7500000
+90,13,WK2,Capped Wicketkeepers,Shai Hope,West Indies,Wicketkeeper,RHB,,Capped,20000000,Unsold,,
+91,13,WK2,Capped Wicketkeepers,Josh Inglis,Australia,Wicketkeeper,RHB,,Capped,20000000,Sold,Lucknow Super Giants,86000000
+92,13,WK2,Capped Wicketkeepers,Benjamin McDermott,Australia,Wicketkeeper,RHB,,Capped,7500000,Unsold,,
+93,13,WK2,Capped Wicketkeepers,Kusal Mendis,Sri Lanka,Wicketkeeper,RHB,,Capped,7500000,Unsold,,
+94,13,WK2,Capped Wicketkeepers,Kusal Perera,Sri Lanka,Wicketkeeper,LHB,,Capped,10000000,Unsold,,
+95,13,WK2,Capped Wicketkeepers,Tim Seifert,New Zealand,Wicketkeeper,RHB,,Capped,15000000,Sold,Kolkata Knight Riders,15000000
+96,14,FA2,Capped Fast Bowlers,Kyle Jamieson,New Zealand,Bowler,RHB,Right-arm fast,Capped,20000000,Sold,Delhi Capitals,20000000
+97,14,FA2,Capped Fast Bowlers,Saqib Mahmood,England,Bowler,RHB,Right-arm fast,Capped,15000000,Unsold,,
+98,14,FA2,Capped Fast Bowlers,Adam Milne,New Zealand,Bowler,RHB,Right-arm fast,Capped,20000000,Sold,Rajasthan Royals,24000000
+99,14,FA2,Capped Fast Bowlers,Lungisani Ngidi,South Africa,Bowler,RHB,Right-arm fast medium,Capped,20000000,Sold,Delhi Capitals,20000000
+100,14,FA2,Capped Fast Bowlers,William Orourke,New Zealand,Bowler,RHB,Right-arm fast,Capped,20000000,Unsold,,
+101,14,FA2,Capped Fast Bowlers,Mustafizur Rahman,Bangladesh,Bowler,LHB,Left-arm fast medium,Capped,20000000,Sold,Kolkata Knight Riders,92000000
+102,14,FA2,Capped Fast Bowlers,Chetan Sakariya,India,Bowler,LHB,Left-arm medium,Capped,7500000,Unsold,,
+103,14,FA2,Capped Fast Bowlers,Kuldeep Sen,India,Bowler,RHB,Right-arm fast,Capped,7500000,Sold,Rajasthan Royals,7500000
+104,14,FA2,Capped Fast Bowlers,Umesh Yadav,India,Bowler,RHB,Right-arm fast medium,Capped,15000000,Unsold,,
+105,15,SP2,Capped Spinners,Qais Ahmad,Afghanistan,Bowler,RHB,Right-arm leg spin,Capped,7500000,Unsold,,
+106,15,SP2,Capped Spinners,Rishad Hossain,Bangladesh,Bowler,RHB,Right-arm leg spin,Capped,7500000,Unsold,,
+107,15,SP2,Capped Spinners,Mohammad Waqar Salamkheil,Afghanistan,Bowler,RHB,Left-arm slow unorthodox,Capped,10000000,Unsold,,
+108,15,SP2,Capped Spinners,Viyaskanth Vijayakanth,Sri Lanka,Bowler,RHB,Right-arm leg spin,Capped,7500000,Unsold,,
+109,16,UBA2,Uncapped Batters,Ankit Kumar,India,Batter,LHB,,Uncapped,3000000,Unsold,,
+110,16,UBA2,Uncapped Batters,Rohan Kunnummal,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+111,16,UBA2,Uncapped Batters,Danish Malewar,India,Batter,RHB,Right-arm leg spin,Uncapped,3000000,Sold,Mumbai Indians,3000000
+112,16,UBA2,Uncapped Batters,Pukhraj Mann,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+113,16,UBA2,Uncapped Batters,Salman Nizar,India,Batter,LHB,,Uncapped,3000000,Unsold,,
+114,16,UBA2,Uncapped Batters,Aman Rao Perala,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Sold,Rajasthan Royals,3000000
+115,16,UBA2,Uncapped Batters,Akshat Raghuwanshi,India,Batter,RHB,,Uncapped,3000000,Sold,Lucknow Super Giants,22000000
+116,16,UBA2,Uncapped Batters,Manan Vohra,India,Batter,RHB,,Uncapped,3000000,Unsold,,
+117,17,UAL2,Uncapped All-rounders,Yuvraj Chaudhary,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+118,17,UAL2,Uncapped All-rounders,Satvik Deswal,India,All-rounder,RHB,Left-arm slow unorthodox,Uncapped,3000000,Sold,Royal Challengers Bengaluru,3000000
+119,17,UAL2,Uncapped All-rounders,Aman Khan,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Sold,Chennai Super Kings,4000000
+120,17,UAL2,Uncapped All-rounders,Darshan Nalkande,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+121,17,UAL2,Uncapped All-rounders,Vicky Ostwal,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Sold,Royal Challengers Bengaluru,3000000
+122,17,UAL2,Uncapped All-rounders,Sairaj Patil,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+123,17,UAL2,Uncapped All-rounders,Suyash Prabhudessai,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+124,17,UAL2,Uncapped All-rounders,Mayank Rawat,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Sold,Mumbai Indians,3000000
+125,17,UAL2,Uncapped All-rounders,Harsh Tyagi,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+126,17,UAL2,Uncapped All-rounders,Mangesh Yadav,India,All-rounder,LHB,Left-arm fast,Uncapped,3000000,Sold,Royal Challengers Bengaluru,52000000
+127,18,UWK2,Uncapped Wicketkeepers,Salil Arora,India,Wicketkeeper,RHB,,Uncapped,3000000,Sold,Sunrisers Hyderabad,15000000
+128,18,UWK2,Uncapped Wicketkeepers,Ricky Bhui,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold,,
+129,18,UWK2,Uncapped Wicketkeepers,Rahul Buddhi,India,Wicketkeeper,LHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+130,18,UWK2,Uncapped Wicketkeepers,Saurav Chuahan,India,Wicketkeeper,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+131,18,UWK2,Uncapped Wicketkeepers,Yashvardhan Dalal,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold,,
+132,18,UWK2,Uncapped Wicketkeepers,Abhishek Pathak,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold,,
+133,18,UWK2,Uncapped Wicketkeepers,Kunal Rathore,India,Wicketkeeper,LHB,,Uncapped,3000000,Unsold,,
+134,18,UWK2,Uncapped Wicketkeepers,Ravi Singh,India,Wicketkeeper,LHB,,Uncapped,3000000,Sold,Rajasthan Royals,9500000
+135,19,UFA2,Uncapped Fast Bowlers,K.M Asif,India,Bowler,RHB,Right-arm fast medium,Uncapped,4000000,Unsold,,
+136,19,UFA2,Uncapped Fast Bowlers,Sakib Hussain,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Sold,Sunrisers Hyderabad,3000000
+137,19,UFA2,Uncapped Fast Bowlers,Mohammad Izhar,India,Bowler,RHB,Left-arm fast medium,Uncapped,3000000,Sold,Mumbai Indians,3000000
+138,19,UFA2,Uncapped Fast Bowlers,Vidwath Kaverappa,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+139,19,UFA2,Uncapped Fast Bowlers,Vijay Kumar,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+140,19,UFA2,Uncapped Fast Bowlers,Vidyadhar Patil,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+141,19,UFA2,Uncapped Fast Bowlers,PV.Satyanarayana Raju,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+142,19,UFA2,Uncapped Fast Bowlers,Onkar Tarmale,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Sold,Sunrisers Hyderabad,3000000
+143,19,UFA2,Uncapped Fast Bowlers,Prithviraj Yarra,India,Bowler,LHB,Left-arm fast,Uncapped,3000000,Sold,Gujarat Titans,3000000
+144,20,USP2,Uncapped Spinners,Shubham Agrawal,India,Bowler,RHB,Right-arm leg spin,Uncapped,4000000,Unsold,,
+145,20,USP2,Uncapped Spinners,Murugan Ashwin,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+146,20,USP2,Uncapped Spinners,Tejas Baroka,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+147,20,USP2,Uncapped Spinners,K.C. Cariappa,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+148,20,USP2,Uncapped Spinners,Kartik Chadha,India,Bowler,LHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+149,20,USP2,Uncapped Spinners,Pravin Dubey,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Sold,Punjab Kings,3000000
+150,20,USP2,Uncapped Spinners,Mohit Rathee,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+151,20,USP2,Uncapped Spinners,Himanshu Sharma,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+152,20,USP2,Uncapped Spinners,Bailapudi Yeswanth,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+153,21,AL3,Capped All-rounders,Rehan Ahmed,England,All-rounder,RHB,Right-arm leg spin,Capped,7500000,Unsold → Replacement signing,Delhi Capitals,7500000
+154,21,AL3,Capped All-rounders,Cooper Connolly,Australia,All-rounder,LHB,Left-arm slow orthodox,Capped,20000000,Sold,Punjab Kings,30000000
+155,21,AL3,Capped All-rounders,Tom Curran,England,All-rounder,RHB,Right-arm fast,Capped,20000000,Unsold,,
+156,21,AL3,Capped All-rounders,Bevon-John Jacobs,New Zealand,All-rounder,RHB,Right-arm medium,Capped,7500000,Unsold,,
+157,21,AL3,Capped All-rounders,Daniel Lawrence,England,All-rounder,RHB,Right-arm off spin,Capped,20000000,Unsold,,
+158,21,AL3,Capped All-rounders,George Linde,South Africa,All-rounder,LHB,Left-arm slow orthodox,Capped,10000000,Unsold → Replacement signing,Lucknow Super Giants,10000000
+159,21,AL3,Capped All-rounders,Gulbadin Naib,Afghanistan,All-rounder,RHB,Right-arm medium,Capped,10000000,Unsold,,
+160,21,AL3,Capped All-rounders,William Sutherland,Australia,All-rounder,RHB,Right-arm fast,Capped,10000000,Unsold,,
+161,21,AL3,Capped All-rounders,Beau Webster,Australia,All-rounder,RHB,Right-arm fast medium,Capped,12500000,Unsold,,
+162,22,FA3,Capped Fast Bowlers,Taskin Ahmed,Bangladesh,Bowler,LHB,Right-arm fast,Capped,7500000,Unsold,,
+163,22,FA3,Capped Fast Bowlers,Richard Gleeson,England,Bowler,RHB,Right-arm fast,Capped,7500000,Unsold → Replacement signing,Royal Challengers Bengaluru,16000000
+164,22,FA3,Capped Fast Bowlers,Alzarri Joseph,West Indies,Bowler,RHB,Right-arm fast,Capped,20000000,Unsold,,
+165,22,FA3,Capped Fast Bowlers,Shamar Joseph,West Indies,Bowler,LHB,Right-arm fast,Capped,7500000,Unsold,,
+166,22,FA3,Capped Fast Bowlers,Riley Meredith,Australia,Bowler,RHB,Right-arm fast,Capped,15000000,Unsold,,
+167,22,FA3,Capped Fast Bowlers,Jhye Richardson,Australia,Bowler,RHB,Right-arm fast,Capped,15000000,Unsold,,
+168,22,FA3,Capped Fast Bowlers,Navdeep Saini,India,Bowler,RHB,Right-arm fast,Capped,7500000,Unsold → Replacement signing,Kolkata Knight Riders,7500000
+169,22,FA3,Capped Fast Bowlers,Naveen Ul Haq,Afghanistan,Bowler,RHB,Right-arm medium,Capped,20000000,Unsold,,
+170,22,FA3,Capped Fast Bowlers,Luke Wood,England,Bowler,LHB,Left-arm fast,Capped,7500000,Sold,Gujarat Titans,7500000
+171,23,UBA3,Uncapped Batters,Kunal Chandela,India,Batter,RHB,,Uncapped,3000000,Unsold,,
+172,23,UBA3,Uncapped Batters,Ayush Doseja,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+173,23,UBA3,Uncapped Batters,Qamran Iqbal,India,Batter,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+174,23,UBA3,Uncapped Batters,M.Dheeraj Kumar,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+175,23,UBA3,Uncapped Batters,Bhanu Pania,India,Batter,RHB,,Uncapped,3000000,Unsold,,
+176,23,UBA3,Uncapped Batters,Sahil Parakh,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Sold,Delhi Capitals,3000000
+177,23,UBA3,Uncapped Batters,Arsh Kabir Ranga,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+178,23,UBA3,Uncapped Batters,Adarsh Singh,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+179,24,UAL3,Uncapped All-rounders,Manoj Bhandage,India,All-rounder,LHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+180,24,UAL3,Uncapped All-rounders,Mayank Dagar,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+181,24,UAL3,Uncapped All-rounders,Raghav Goyal,India,All-rounder,LHB,Left-arm slow unorthodox,Uncapped,3000000,Unsold,,
+182,24,UAL3,Uncapped All-rounders,Manvanth Kumar,India,All-rounder,LHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+183,24,UAL3,Uncapped All-rounders,Abid Mushtaq,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+184,24,UAL3,Uncapped All-rounders,Jalaj Saxena,India,All-rounder,RHB,Right-arm off spin,Uncapped,4000000,Unsold,,
+185,24,UAL3,Uncapped All-rounders,Atit Sheth,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+186,24,UAL3,Uncapped All-rounders,Hritik Shokeen,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+187,24,UAL3,Uncapped All-rounders,Jagadeesha Suchith,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+188,24,UAL3,Uncapped All-rounders,Tanay Thyagarajann,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+189,25,UWK3,Uncapped Wicketkeepers,Joe Clarke,England,Wicketkeeper,RHB,,Uncapped,5000000,Unsold,,
+190,25,UWK3,Uncapped Wicketkeepers,Connor Esterhuizen,South Africa,Wicketkeeper,RHB,Right-arm off spin,Uncapped,3000000,Unsold → Replacement signing,Gujarat Titans,7500000
+191,25,UWK3,Uncapped Wicketkeepers,Ajitesh Guruswamy,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold,,
+192,25,UWK3,Uncapped Wicketkeepers,Siddharth Joon,India,Wicketkeeper,LHB,,Uncapped,3000000,Unsold,,
+193,25,UWK3,Uncapped Wicketkeepers,Tom Moores,England,Wicketkeeper,LHB,,Uncapped,4000000,Unsold,,
+194,25,UWK3,Uncapped Wicketkeepers,Bipin Saurabh,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold,,
+195,25,UWK3,Uncapped Wicketkeepers,Vishnu Solanki,India,Wicketkeeper,RHB,,Uncapped,3000000,Unsold,,
+196,25,UWK3,Uncapped Wicketkeepers,Hardik Tamore,India,Wicketkeeper,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+197,26,UFA3,Uncapped Fast Bowlers,Sayan Ghosh,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+198,26,UFA3,Uncapped Fast Bowlers,Money Grewal,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+199,26,UFA3,Uncapped Fast Bowlers,Arpit Guleria,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+200,26,UFA3,Uncapped Fast Bowlers,Sunil Kumar,India,Bowler,LHB,Left-arm fast medium,Uncapped,3000000,Unsold,,
+201,26,UFA3,Uncapped Fast Bowlers,Tristan Luus,South Africa,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+202,26,UFA3,Uncapped Fast Bowlers,Divesh Sharma,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+203,26,UFA3,Uncapped Fast Bowlers,Abhilash Shetty,India,Bowler,LHB,Left-arm fast,Uncapped,3000000,Unsold,,
+204,26,UFA3,Uncapped Fast Bowlers,Irfan Umair,India,Bowler,LHB,Left-arm fast medium,Uncapped,3000000,Unsold,,
+205,26,UFA3,Uncapped Fast Bowlers,Kuldip Yadav,India,Bowler,LHB,Left-arm fast medium,Uncapped,3000000,Unsold → Replacement signing,Chennai Super Kings,3000000
+206,27,USP3,Uncapped Spinners,Manan Bhardwaj,India,Bowler,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+207,27,USP3,Uncapped Spinners,Shreyas Chavan,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+208,27,USP3,Uncapped Spinners,Parikshit Dhanak,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+209,27,USP3,Uncapped Spinners,Chintal Gandhi,India,Bowler,LHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+210,27,USP3,Uncapped Spinners,Dharmendrasinh Jadeja,India,Bowler,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+211,27,USP3,Uncapped Spinners,Amit Kumar,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Sold,Sunrisers Hyderabad,3000000
+212,27,USP3,Uncapped Spinners,Vishal Nishad,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Sold,Punjab Kings,3000000
+213,27,USP3,Uncapped Spinners,Saumy Pandey,India,Bowler,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+214,27,USP3,Uncapped Spinners,Jhathavedh Subramanyan,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+215,28,AL4,Capped All-rounders,Muhammad Abbas,New Zealand,All-rounder,RHB,Left-arm fast medium,Capped,7500000,Unsold,,
+216,28,AL4,Capped All-rounders,Charith Asalanka,Sri Lanka,All-rounder,LHB,Right-arm off spin,Capped,10000000,Unsold,,
+217,28,AL4,Capped All-rounders,Roston Chase,West Indies,All-rounder,RHB,Right-arm off spin,Capped,12500000,Unsold,,
+218,28,AL4,Capped All-rounders,Liam Dawson,England,All-rounder,RHB,Left-arm slow orthodox,Capped,20000000,Unsold,,
+219,28,AL4,Capped All-rounders,George Garton,England,All-rounder,LHB,Left-arm fast,Capped,7500000,Unsold,,
+220,28,AL4,Capped All-rounders,Kyle Mayers,West Indies,All-rounder,LHB,Right-arm fast medium,Capped,12500000,Unsold,,
+221,28,AL4,Capped All-rounders,Dwaine Pretorius,South Africa,All-rounder,RHB,Right-arm fast medium,Capped,10000000,Unsold,,
+222,28,AL4,Capped All-rounders,Nathan Smith,New Zealand,All-rounder,RHB,Right-arm fast medium,Capped,7500000,Unsold,,
+223,28,AL4,Capped All-rounders,Dunith Wellalage,Sri Lanka,All-rounder,LHB,Left-arm slow orthodox,Capped,7500000,Unsold,,
+224,29,FA4,Capped Fast Bowlers,Jason Behrendorff,Australia,Bowler,RHB,Left-arm fast medium,Capped,15000000,Unsold,,
+225,29,FA4,Capped Fast Bowlers,Tanzim Hasan Sakib,Bangladesh,Bowler,RHB,Right-arm fast medium,Capped,7500000,Unsold,,
+226,29,FA4,Capped Fast Bowlers,Matthew Potts,England,Bowler,RHB,Right-arm fast medium,Capped,7500000,Unsold,,
+227,29,FA4,Capped Fast Bowlers,Nahid Rana,Bangladesh,Bowler,RHB,Right-arm fast,Capped,7500000,Unsold,,
+228,29,FA4,Capped Fast Bowlers,Olly Stone,England,Bowler,RHB,Right-arm fast,Capped,12500000,Unsold,,
+229,29,FA4,Capped Fast Bowlers,Joshua Tongue,England,Bowler,RHB,Right-arm fast,Capped,10000000,Unsold,,
+230,29,FA4,Capped Fast Bowlers,Sandeep Warrier,India,Bowler,RHB,Right-arm fast,Capped,7500000,Unsold,,
+231,30,UBA4,Uncapped Batters,Sachin Dhas,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+232,30,UBA4,Uncapped Batters,Miles Hammond,England,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+233,30,UBA4,Uncapped Batters,Ahammed Imran,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+234,30,UBA4,Uncapped Batters,Vishvarajsinh Jadeja,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+235,30,UBA4,Uncapped Batters,Ayaz Khan,India,Batter,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+236,30,UBA4,Uncapped Batters,Daniel Lategan,England,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+237,30,UBA4,Uncapped Batters,Siddhant Rana,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+238,30,UBA4,Uncapped Batters,Aaron Varghese,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+239,31,UAL4,Uncapped All-rounders,Atharva Ankolekar,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Sold,Mumbai Indians,3000000
+240,31,UAL4,Uncapped All-rounders,Abdul Bazith,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+241,31,UAL4,Uncapped All-rounders,Karan Lal,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+242,31,UAL4,Uncapped All-rounders,Shams Mulani,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+243,31,UAL4,Uncapped All-rounders,Ripal Patel,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+244,31,UAL4,Uncapped All-rounders,Prince Rai,India,All-rounder,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+245,31,UAL4,Uncapped All-rounders,Vivrant Sharma,India,All-rounder,LHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+246,31,UAL4,Uncapped All-rounders,Utkarsh Singh,India,All-rounder,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+247,31,UAL4,Uncapped All-rounders,Ayush Vartak,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+248,31,UAL4,Uncapped All-rounders,Sanjay Yadav,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+249,32,UFA4,Uncapped Fast Bowlers,Sayed Irfan Aftab,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+250,32,UFA4,Uncapped Fast Bowlers,Esakkimuthu Ayyakutti,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+251,32,UFA4,Uncapped Fast Bowlers,Praful Hinge,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Sold,Sunrisers Hyderabad,3000000
+252,32,UFA4,Uncapped Fast Bowlers,Pankaj Jaswal,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+253,32,UFA4,Uncapped Fast Bowlers,Kulwant Khejroliya,India,Bowler,LHB,Left-arm fast medium,Uncapped,3000000,Unsold → Replacement signing,Gujarat Titans,3000000
+254,32,UFA4,Uncapped Fast Bowlers,Ravi Kumar,India,Bowler,LHB,Left-arm medium,Uncapped,3000000,Unsold,,
+255,32,UFA4,Uncapped Fast Bowlers,Rajan Kumar,India,Bowler,LHB,Left-arm fast,Uncapped,3000000,Unsold,,
+256,32,UFA4,Uncapped Fast Bowlers,Safvan Patel,India,Bowler,RHB,Left-arm fast medium,Uncapped,3000000,Unsold,,
+257,32,UFA4,Uncapped Fast Bowlers,Ishan Porel,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+258,33,USP4,Uncapped Spinners,Purav Agarwal,India,Bowler,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+259,33,USP4,Uncapped Spinners,Jikku Bright,India,Bowler,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+260,33,USP4,Uncapped Spinners,Yash Dicholkar,India,Bowler,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+261,33,USP4,Uncapped Spinners,Arab Gul,Afghanistan,Bowler,RHB,Right-arm leg spin,Uncapped,4000000,Unsold,,
+262,33,USP4,Uncapped Spinners,Rakibul Hasan,Bangladesh,Bowler,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+263,33,USP4,Uncapped Spinners,Traveen Mathew,Sri Lanka,Bowler,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+264,33,USP4,Uncapped Spinners,Naman Pushpak,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+265,33,USP4,Uncapped Spinners,Izaz Sawariya,India,Bowler,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+266,33,USP4,Uncapped Spinners,Roshan Wagshare,India,Bowler,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+267,34,FA5,Capped Fast Bowlers,Wesley Agar,Australia,Bowler,RHB,Right-arm fast,Capped,7500000,Unsold,,
+268,34,FA5,Capped Fast Bowlers,Binura Fernando,Sri Lanka,Bowler,RHB,Left-arm fast medium,Capped,7500000,Unsold,,
+269,34,FA5,Capped Fast Bowlers,Md Shoriful Islam,Bangladesh,Bowler,LHB,Left-arm fast medium,Capped,7500000,Unsold,,
+270,34,FA5,Capped Fast Bowlers,Joshua Little,Ireland,Bowler,RHB,Left-arm fast medium,Capped,7500000,Unsold,,
+271,34,FA5,Capped Fast Bowlers,Obed McCoy,West Indies,Bowler,LHB,Left-arm fast,Capped,7500000,Unsold,,
+272,34,FA5,Capped Fast Bowlers,Billy Stanlake,Australia,Bowler,RHB,Right-arm fast,Capped,7500000,Unsold,,
+273,35,UAL5,Uncapped All-rounders,R.S Ambrish,India,All-rounder,LHB,Right-arm fast medium,Uncapped,3000000,Unsold → Replacement signing,Sunrisers Hyderabad,4500000
+274,35,UAL5,Uncapped All-rounders,Nikhil Chaudhary,Australia,All-rounder,RHB,Right-arm leg spin,Uncapped,4000000,Unsold,,
+275,35,UAL5,Uncapped All-rounders,Krains Fuletra,India,All-rounder,RHB,Left-arm slow unorthodox,Uncapped,3000000,Sold,Sunrisers Hyderabad,3000000
+276,35,UAL5,Uncapped All-rounders,Macneil Noronha,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold → Replacement signing,Chennai Super Kings,3000000
+277,35,UAL5,Uncapped All-rounders,R Rajkumar,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+278,35,UAL5,Uncapped All-rounders,Ninad Rathva,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+279,35,UAL5,Uncapped All-rounders,Sunny Sandhu,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+280,35,UAL5,Uncapped All-rounders,Shivalik Sharma,India,All-rounder,LHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+281,35,UAL5,Uncapped All-rounders,Siddharth Yadav,India,All-rounder,LHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+282,35,UAL5,Uncapped All-rounders,R.Sonu Yadav,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+283,36,UFA5,Uncapped Fast Bowlers,Waseem Khanday,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+284,36,UFA5,Uncapped Fast Bowlers,Atif Mushtaq,India,Bowler,LHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+285,36,UFA5,Uncapped Fast Bowlers,Atal Rai,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+286,36,UFA5,Uncapped Fast Bowlers,C.Rakshann Readdi,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+287,36,UFA5,Uncapped Fast Bowlers,Manish Reddy,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+288,36,UFA5,Uncapped Fast Bowlers,Nishanth Saranu,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+289,36,UFA5,Uncapped Fast Bowlers,Deependra Singh,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+290,36,UFA5,Uncapped Fast Bowlers,Rajat Verma,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+291,36,UFA5,Uncapped Fast Bowlers,Rohit Yadav,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+292,37,UAL6,Uncapped All-rounders,Emanjot Chahal,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold → Replacement signing,Rajasthan Royals,3000000
+293,37,UAL6,Uncapped All-rounders,Shubhang Hegde,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+294,37,UAL6,Uncapped All-rounders,Bal Krishna,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+295,37,UAL6,Uncapped All-rounders,Vihaan Malhotra,India,All-rounder,LHB,Right-arm off spin,Uncapped,3000000,Sold,Royal Challengers Bengaluru,3000000
+296,37,UAL6,Uncapped All-rounders,Khilan Patel,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+297,37,UAL6,Uncapped All-rounders,Delano Potgieter,South Africa,All-rounder,LHB,Right-arm medium,Uncapped,3000000,Unsold,,
+298,37,UAL6,Uncapped All-rounders,Hardik Raj,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+299,37,UAL6,Uncapped All-rounders,Sarthak Ranjan,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Sold,Kolkata Knight Riders,3000000
+300,37,UAL6,Uncapped All-rounders,Parth Rekhade,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+301,37,UAL6,Uncapped All-rounders,Tiaan Van Vuuren,South Africa,All-rounder,RHB,Left-arm fast medium,Uncapped,3000000,Unsold,,
+302,38,UFA6,Uncapped Fast Bowlers,Shreevatsha Acharya,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+303,38,UFA6,Uncapped Fast Bowlers,Sadek Hussain,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+304,38,UFA6,Uncapped Fast Bowlers,Shubham Kapse,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+305,38,UFA6,Uncapped Fast Bowlers,Aaqib Khan,India,Bowler,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+306,38,UFA6,Uncapped Fast Bowlers,Sabir Khan,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+307,38,UFA6,Uncapped Fast Bowlers,Bayanda Majola,South Africa,Bowler,LHB,Right-arm fast,Uncapped,3000000,Unsold,,
+308,38,UFA6,Uncapped Fast Bowlers,Srihari Nair,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+309,38,UFA6,Uncapped Fast Bowlers,Brijesh Sharma,India,Bowler,RHB,Right-arm fast,Uncapped,3000000,Sold,Rajasthan Royals,3000000
+310,38,UFA6,Uncapped Fast Bowlers,Aman Shekhawat,India,Bowler,RHB,Left-arm fast medium,Uncapped,3000000,Unsold,,
+311,39,UAL7,Uncapped All-rounders,Himanshu Bisht,India,All-rounder,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+312,39,UAL7,Uncapped All-rounders,Shreyan Chakraborty,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+313,39,UAL7,Uncapped All-rounders,Kanishk Chouhan,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Sold,Royal Challengers Bengaluru,3000000
+314,39,UAL7,Uncapped All-rounders,Mayank Gusain,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+315,39,UAL7,Uncapped All-rounders,Akash Pugazhanthi,India,All-rounder,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+316,39,UAL7,Uncapped All-rounders,Abhimanyusingh Rajput,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+317,39,UAL7,Uncapped All-rounders,Shubham Rana,India,All-rounder,LHB,Left-arm slow unorthodox,Uncapped,3000000,Unsold,,
+318,39,UAL7,Uncapped All-rounders,Arpit Rana,India,All-rounder,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+319,39,UAL7,Uncapped All-rounders,Maramreddy Reddy,India,All-rounder,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+320,39,UAL7,Uncapped All-rounders,Sagar Solanki,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+321,40,UAL8,Uncapped All-rounders,Aryaman Singh Dhaliwal,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+322,40,UAL8,Uncapped All-rounders,Daksh Kamra,India,All-rounder,RHB,Right-arm leg spin,Uncapped,3000000,Sold,Kolkata Knight Riders,3000000
+323,40,UAL8,Uncapped All-rounders,Vishal Mandwal,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold,,
+324,40,UAL8,Uncapped All-rounders,Arfaz Mohammad,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+325,40,UAL8,Uncapped All-rounders,Hemang Patel,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+326,40,UAL8,Uncapped All-rounders,Mridul Surroch,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+327,40,UAL8,Uncapped All-rounders,Anuj Thakral,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+328,40,UAL8,Uncapped All-rounders,Parth Vats,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+329,40,UAL8,Uncapped All-rounders,Lalit Yadav,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+330,40,UAL8,Uncapped All-rounders,Nitin Sai Yadav,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+331,41,UAL9,Uncapped All-rounders,Krish Bhagat,India,All-rounder,RHB,Right-arm fast,Uncapped,3000000,Unsold → Replacement signing,Mumbai Indians,3000000
+332,41,UAL9,Uncapped All-rounders,Prerit Dutta,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+333,41,UAL9,Uncapped All-rounders,Sammar Gajjar,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+334,41,UAL9,Uncapped All-rounders,Nasir Lone,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+335,41,UAL9,Uncapped All-rounders,Ishan Mulchandani,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+336,41,UAL9,Uncapped All-rounders,Akhil Scaria,India,All-rounder,LHB,Right-arm medium,Uncapped,3000000,Unsold,,
+337,41,UAL9,Uncapped All-rounders,Muhammed Sharafuddeen,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+338,41,UAL9,Uncapped All-rounders,K.Ajay Singh,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+339,41,UAL9,Uncapped All-rounders,Ritik Tada,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+340,41,UAL9,Uncapped All-rounders,Luckyrajsinh Vaghela,India,All-rounder,RHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+341,42,UAL10,Uncapped All-rounders,Mohamed Ali,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+342,42,UAL10,Uncapped All-rounders,Madhav Bajaj,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+343,42,UAL10,Uncapped All-rounders,Akshu Bajwa,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+344,42,UAL10,Uncapped All-rounders,Varun Raj Singh Bisht,India,All-rounder,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+345,42,UAL10,Uncapped All-rounders,Rishabh Chauhan,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+346,42,UAL10,Uncapped All-rounders,Jack Edwards,Australia,All-rounder,RHB,Right-arm fast medium,Uncapped,5000000,Sold,Sunrisers Hyderabad,30000000
+347,42,UAL10,Uncapped All-rounders,Dian Forrester,South Africa,All-rounder,LHB,Right-arm medium,Uncapped,3000000,Unsold → Replacement signing,Chennai Super Kings,7500000
+348,42,UAL10,Uncapped All-rounders,Dhurmil Matkar,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,3000000,Unsold,,
+349,42,UAL10,Uncapped All-rounders,Shiva Singh,India,All-rounder,RHB,Left-arm slow unorthodox,Uncapped,3000000,Unsold,,
+350,42,UAL10,Uncapped All-rounders,Parikshit Valsangkar,India,All-rounder,RHB,Right-arm leg spin,Uncapped,3000000,Unsold,,
+351,42,UAL10,Uncapped All-rounders,Mani Sankar Mura Singh,India,All-rounder,LHB,Right-arm fast medium,Uncapped,3000000,Unsold,,
+352,42,UAL10,Uncapped All-rounders,Virandeep Singh,Malaysia,All-rounder,RHB,Left-arm slow orthodox,Associate,3000000,Unsold,,
+353,42,UAL10,Uncapped All-rounders,Chama Milind,India,All-rounder,LHB,Left-arm fast medium,Uncapped,3000000,Unsold,,
+354,25,UWK3,Uncapped Wicketkeepers,K.L. Shrijith,India,Wicketkeeper,LHB,,Uncapped,3000000,Unsold,,
+355,28,AL4,Capped All-rounders,Eathan Bosch,South Africa,All-rounder,RHB,Right-arm fast medium,Capped,7500000,Unsold,,
+356,28,AL4,Capped All-rounders,Chris Green,Australia,All-rounder,RHB,Right-arm off spin,Capped,7500000,Unsold,,
+357,30,UBA4,Uncapped Batters,Swastik Chikara,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+358,30,UBA4,Uncapped Batters,Rahul Raj Namala,India,Batter,RHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+359,30,UBA4,Uncapped Batters,Virat Singh,India,Batter,LHB,Right-arm off spin,Uncapped,3000000,Unsold,,
+,,RETAINED,Retained (not in auction),Ruturaj Gaikwad,India,Batter,RHB,,Capped,,Retained,Chennai Super Kings,180000000
+,,RETAINED,Retained (not in auction),Sanju Samson,India,Wicketkeeper,RHB,,Capped,,Retained,Chennai Super Kings,180000000
+,,RETAINED,Retained (not in auction),Shivam Dube,India,All-rounder,LHB,Right-arm medium,Capped,,Retained,Chennai Super Kings,120000000
+,,RETAINED,Retained (not in auction),Noor Ahmad,Afghanistan,Bowler,RHB,Left-arm slow unorthodox,Capped,,Retained,Chennai Super Kings,100000000
+,,RETAINED,Retained (not in auction),Khaleel Ahmed,India,Bowler,RHB,Left-arm fast medium,Capped,,Retained,Chennai Super Kings,48000000
+,,RETAINED,Retained (not in auction),MS Dhoni,India,Wicketkeeper,RHB,,Uncapped,,Retained,Chennai Super Kings,40000000
+,,RETAINED,Retained (not in auction),Anshul Kamboj,India,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Chennai Super Kings,34000000
+,,RETAINED,Retained (not in auction),Dewald Brevis,South Africa,Batter,RHB,Right-arm leg spin,Capped,,Retained,Chennai Super Kings,22000000
+,,RETAINED,Retained (not in auction),Gurjapneet Singh,India,Bowler,RHB,Left-arm fast medium,Uncapped,,Retained,Chennai Super Kings,22000000
+,,RETAINED,Retained (not in auction),Nathan Ellis,Australia,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Chennai Super Kings,20000000
+,,RETAINED,Retained (not in auction),Jamie Overton,England,All-rounder,RHB,Right-arm fast,Capped,,Retained,Chennai Super Kings,15000000
+,,RETAINED,Retained (not in auction),Mukesh Choudhary,India,Bowler,LHB,Left-arm fast medium,Uncapped,,Retained,Chennai Super Kings,3000000
+,,RETAINED,Retained (not in auction),Ramakrishna Ghosh,India,All-rounder,RHB,Right-arm fast medium,Uncapped,,Retained,Chennai Super Kings,3000000
+,,RETAINED,Retained (not in auction),Shreyas Gopal,India,Bowler,RHB,Right-arm leg spin,Uncapped,,Retained,Chennai Super Kings,3000000
+,,RETAINED,Retained (not in auction),Ayush Mhatre,India,Batter,RHB,Right-arm off spin,Uncapped,,Retained,Chennai Super Kings,3000000
+,,RETAINED,Retained (not in auction),Urvil Patel,India,Wicketkeeper,RHB,,Uncapped,,Retained,Chennai Super Kings,3000000
+,,RETAINED,Retained (not in auction),Axar Patel,India,All-rounder,LHB,Left-arm slow orthodox,Capped,,Retained,Delhi Capitals,165000000
+,,RETAINED,Retained (not in auction),KL Rahul,India,Wicketkeeper,RHB,,Capped,,Retained,Delhi Capitals,140000000
+,,RETAINED,Retained (not in auction),Kuldeep Yadav,India,Bowler,LHB,Left-arm slow unorthodox,Capped,,Retained,Delhi Capitals,132500000
+,,RETAINED,Retained (not in auction),Mitchell Starc,Australia,Bowler,LHB,Left-arm fast,Capped,,Retained,Delhi Capitals,117500000
+,,RETAINED,Retained (not in auction),T Natarajan,India,Bowler,LHB,Left-arm fast medium,Capped,,Retained,Delhi Capitals,107500000
+,,RETAINED,Retained (not in auction),Tristan Stubbs,South Africa,Wicketkeeper,RHB,Right-arm off spin,Capped,,Retained,Delhi Capitals,100000000
+,,RETAINED,Retained (not in auction),Mukesh Kumar,India,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Delhi Capitals,80000000
+,,RETAINED,Retained (not in auction),Nitish Rana,India,Batter,LHB,Right-arm off spin,Capped,,Retained,Delhi Capitals,42000000
+,,RETAINED,Retained (not in auction),Abishek Porel,India,Wicketkeeper,LHB,,Uncapped,,Retained,Delhi Capitals,40000000
+,,RETAINED,Retained (not in auction),Ashutosh Sharma,India,Batter,RHB,,Uncapped,,Retained,Delhi Capitals,38000000
+,,RETAINED,Retained (not in auction),Sameer Rizvi,India,Batter,RHB,Right-arm off spin,Uncapped,,Retained,Delhi Capitals,9500000
+,,RETAINED,Retained (not in auction),Dushmantha Chameera,Sri Lanka,Bowler,RHB,Right-arm fast,Capped,,Retained,Delhi Capitals,7500000
+,,RETAINED,Retained (not in auction),Karun Nair,India,Batter,RHB,Right-arm off spin,Capped,,Retained,Delhi Capitals,5000000
+,,RETAINED,Retained (not in auction),Madhav Tiwari,India,All-rounder,RHB,Right-arm fast medium,Uncapped,,Retained,Delhi Capitals,4000000
+,,RETAINED,Retained (not in auction),Ajay Mandal,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,,Retained,Delhi Capitals,3000000
+,,RETAINED,Retained (not in auction),Tripurana Vijay,India,All-rounder,RHB,Right-arm off spin,Uncapped,,Retained,Delhi Capitals,3000000
+,,RETAINED,Retained (not in auction),Vipraj Nigam,India,All-rounder,RHB,Right-arm leg spin,Uncapped,,Retained,Delhi Capitals,3000000
+,,RETAINED,Retained (not in auction),Rashid Khan,Afghanistan,Bowler,RHB,Right-arm leg spin,Capped,,Retained,Gujarat Titans,180000000
+,,RETAINED,Retained (not in auction),Shubman Gill,India,Batter,RHB,,Capped,,Retained,Gujarat Titans,165000000
+,,RETAINED,Retained (not in auction),Jos Buttler,England,Wicketkeeper,RHB,,Capped,,Retained,Gujarat Titans,157500000
+,,RETAINED,Retained (not in auction),Mohammed Siraj,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Gujarat Titans,122500000
+,,RETAINED,Retained (not in auction),Kagiso Rabada,South Africa,Bowler,LHB,Right-arm fast,Capped,,Retained,Gujarat Titans,107500000
+,,RETAINED,Retained (not in auction),Prasidh Krishna,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Gujarat Titans,95000000
+,,RETAINED,Retained (not in auction),Sai Sudharsan,India,Batter,LHB,,Capped,,Retained,Gujarat Titans,85000000
+,,RETAINED,Retained (not in auction),Rahul Tewatia,India,All-rounder,LHB,Right-arm leg spin,Uncapped,,Retained,Gujarat Titans,40000000
+,,RETAINED,Retained (not in auction),Shahrukh Khan,India,Batter,RHB,Right-arm off spin,Uncapped,,Retained,Gujarat Titans,40000000
+,,RETAINED,Retained (not in auction),Washington Sundar,India,All-rounder,LHB,Right-arm off spin,Capped,,Retained,Gujarat Titans,32000000
+,,RETAINED,Retained (not in auction),R Sai Kishore,India,Bowler,LHB,Left-arm slow orthodox,Capped,,Retained,Gujarat Titans,20000000
+,,RETAINED,Retained (not in auction),Glenn Phillips,New Zealand,Batter,RHB,Right-arm off spin,Capped,,Retained,Gujarat Titans,20000000
+,,RETAINED,Retained (not in auction),Arshad Khan,India,All-rounder,LHB,Left-arm fast medium,Uncapped,,Retained,Gujarat Titans,13000000
+,,RETAINED,Retained (not in auction),Gurnoor Brar,India,Bowler,RHB,Right-arm fast,Uncapped,,Retained,Gujarat Titans,13000000
+,,RETAINED,Retained (not in auction),Ishant Sharma,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Gujarat Titans,7500000
+,,RETAINED,Retained (not in auction),Jayant Yadav,India,All-rounder,RHB,Right-arm off spin,Capped,,Retained,Gujarat Titans,7500000
+,,RETAINED,Retained (not in auction),Kumar Kushagra,India,Wicketkeeper,RHB,,Uncapped,,Retained,Gujarat Titans,6500000
+,,RETAINED,Retained (not in auction),Anuj Rawat,India,Wicketkeeper,LHB,,Uncapped,,Retained,Gujarat Titans,3000000
+,,RETAINED,Retained (not in auction),Manav Suthar,India,Bowler,LHB,Left-arm slow orthodox,Uncapped,,Retained,Gujarat Titans,3000000
+,,RETAINED,Retained (not in auction),Nishant Sindhu,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,,Retained,Gujarat Titans,3000000
+,,RETAINED,Retained (not in auction),Rinku Singh,India,Batter,LHB,Right-arm off spin,Capped,,Retained,Kolkata Knight Riders,130000000
+,,RETAINED,Retained (not in auction),Sunil Narine,West Indies,All-rounder,LHB,Right-arm off spin,Capped,,Retained,Kolkata Knight Riders,120000000
+,,RETAINED,Retained (not in auction),Varun Chakravarthy,India,Bowler,RHB,Right-arm leg spin,Capped,,Retained,Kolkata Knight Riders,120000000
+,,RETAINED,Retained (not in auction),Harshit Rana,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Kolkata Knight Riders,40000000
+,,RETAINED,Retained (not in auction),Ramandeep Singh,India,All-rounder,RHB,Right-arm medium,Capped,,Retained,Kolkata Knight Riders,40000000
+,,RETAINED,Retained (not in auction),Angkrish Raghuvanshi,India,Batter,RHB,,Uncapped,,Retained,Kolkata Knight Riders,30000000
+,,RETAINED,Retained (not in auction),Vaibhav Arora,India,Bowler,RHB,Right-arm fast medium,Uncapped,,Retained,Kolkata Knight Riders,18000000
+,,RETAINED,Retained (not in auction),Ajinkya Rahane,India,Batter,RHB,,Capped,,Retained,Kolkata Knight Riders,15000000
+,,RETAINED,Retained (not in auction),Rovman Powell,West Indies,Batter,RHB,Right-arm medium,Capped,,Retained,Kolkata Knight Riders,15000000
+,,RETAINED,Retained (not in auction),Manish Pandey,India,Batter,RHB,,Capped,,Retained,Kolkata Knight Riders,7500000
+,,RETAINED,Retained (not in auction),Umran Malik,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Kolkata Knight Riders,7500000
+,,RETAINED,Retained (not in auction),Anukul Roy,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,,Retained,Kolkata Knight Riders,4000000
+,,RETAINED,Retained (not in auction),Rishabh Pant,India,Wicketkeeper,LHB,,Capped,,Retained,Lucknow Super Giants,270000000
+,,RETAINED,Retained (not in auction),Nicholas Pooran,West Indies,Wicketkeeper,LHB,,Capped,,Retained,Lucknow Super Giants,210000000
+,,RETAINED,Retained (not in auction),Mayank Yadav,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Lucknow Super Giants,110000000
+,,RETAINED,Retained (not in auction),Mohammed Shami,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Lucknow Super Giants,100000000
+,,RETAINED,Retained (not in auction),Avesh Khan,India,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Lucknow Super Giants,97500000
+,,RETAINED,Retained (not in auction),Abdul Samad,India,Batter,RHB,Right-arm leg spin,Uncapped,,Retained,Lucknow Super Giants,42000000
+,,RETAINED,Retained (not in auction),Ayush Badoni,India,Batter,RHB,Right-arm off spin,Uncapped,,Retained,Lucknow Super Giants,40000000
+,,RETAINED,Retained (not in auction),Mohsin Khan,India,Bowler,LHB,Left-arm fast medium,Uncapped,,Retained,Lucknow Super Giants,40000000
+,,RETAINED,Retained (not in auction),Mitchell Marsh,Australia,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Lucknow Super Giants,34000000
+,,RETAINED,Retained (not in auction),Shahbaz Ahmed,India,All-rounder,LHB,Left-arm slow orthodox,Capped,,Retained,Lucknow Super Giants,24000000
+,,RETAINED,Retained (not in auction),Aiden Markram,South Africa,Batter,RHB,Right-arm off spin,Capped,,Retained,Lucknow Super Giants,20000000
+,,RETAINED,Retained (not in auction),Manimaran Siddharth,India,Bowler,RHB,Left-arm slow orthodox,Uncapped,,Retained,Lucknow Super Giants,7500000
+,,RETAINED,Retained (not in auction),Matthew Breetzke,South Africa,Batter,RHB,,Capped,,Retained,Lucknow Super Giants,7500000
+,,RETAINED,Retained (not in auction),Akash Singh,India,Bowler,RHB,Left-arm fast medium,Uncapped,,Retained,Lucknow Super Giants,3000000
+,,RETAINED,Retained (not in auction),Arjun Tendulkar,India,All-rounder,LHB,Left-arm fast medium,Uncapped,,Retained,Lucknow Super Giants,3000000
+,,RETAINED,Retained (not in auction),Arshin Kulkarni,India,All-rounder,RHB,Right-arm fast medium,Uncapped,,Retained,Lucknow Super Giants,3000000
+,,RETAINED,Retained (not in auction),Himmat Singh,India,Batter,RHB,,Uncapped,,Retained,Lucknow Super Giants,3000000
+,,RETAINED,Retained (not in auction),Digvesh Rathi,India,Bowler,RHB,Right-arm leg spin,Uncapped,,Retained,Lucknow Super Giants,3000000
+,,RETAINED,Retained (not in auction),Prince Yadav,India,Bowler,RHB,Right-arm fast medium,Uncapped,,Retained,Lucknow Super Giants,3000000
+,,RETAINED,Retained (not in auction),Jasprit Bumrah,India,Bowler,RHB,Right-arm fast,Capped,,Retained,Mumbai Indians,180000000
+,,RETAINED,Retained (not in auction),Hardik Pandya,India,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Mumbai Indians,163500000
+,,RETAINED,Retained (not in auction),Suryakumar Yadav,India,Batter,RHB,,Capped,,Retained,Mumbai Indians,163500000
+,,RETAINED,Retained (not in auction),Rohit Sharma,India,Batter,RHB,Right-arm off spin,Capped,,Retained,Mumbai Indians,163000000
+,,RETAINED,Retained (not in auction),Trent Boult,New Zealand,Bowler,RHB,Left-arm fast medium,Capped,,Retained,Mumbai Indians,125000000
+,,RETAINED,Retained (not in auction),Deepak Chahar,India,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Mumbai Indians,92500000
+,,RETAINED,Retained (not in auction),Tilak Varma,India,Batter,LHB,Right-arm off spin,Capped,,Retained,Mumbai Indians,80000000
+,,RETAINED,Retained (not in auction),Will Jacks,England,All-rounder,RHB,Right-arm off spin,Capped,,Retained,Mumbai Indians,52500000
+,,RETAINED,Retained (not in auction),Naman Dhir,India,All-rounder,RHB,Right-arm off spin,Uncapped,,Retained,Mumbai Indians,52500000
+,,RETAINED,Retained (not in auction),Allah Ghazanfar,Afghanistan,Bowler,RHB,Right-arm off spin,Capped,,Retained,Mumbai Indians,48000000
+,,RETAINED,Retained (not in auction),Sherfane Rutherford,West Indies,Batter,LHB,Right-arm fast medium,Capped,,Retained,Mumbai Indians,26000000
+,,RETAINED,Retained (not in auction),Shardul Thakur,India,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Mumbai Indians,20000000
+,,RETAINED,Retained (not in auction),Mitchell Santner,New Zealand,All-rounder,LHB,Left-arm slow orthodox,Capped,,Retained,Mumbai Indians,20000000
+,,RETAINED,Retained (not in auction),Ryan Rickelton,South Africa,Wicketkeeper,LHB,,Capped,,Retained,Mumbai Indians,10000000
+,,RETAINED,Retained (not in auction),Corbin Bosch,South Africa,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Mumbai Indians,7500000
+,,RETAINED,Retained (not in auction),Robin Minz,India,Wicketkeeper,LHB,,Uncapped,,Retained,Mumbai Indians,6500000
+,,RETAINED,Retained (not in auction),Raj Angad Bawa,India,All-rounder,LHB,Right-arm fast medium,Uncapped,,Retained,Mumbai Indians,3000000
+,,RETAINED,Retained (not in auction),Ashwani Kumar,India,Bowler,LHB,Left-arm fast medium,Uncapped,,Retained,Mumbai Indians,3000000
+,,RETAINED,Retained (not in auction),Raghu Sharma,India,Bowler,RHB,Right-arm leg spin,Uncapped,,Retained,Mumbai Indians,3000000
+,,RETAINED,Retained (not in auction),Mayank Markande,India,Bowler,RHB,Right-arm leg spin,Capped,,Retained,Mumbai Indians,3000000
+,,RETAINED,Retained (not in auction),Shreyas Iyer,India,Batter,RHB,Right-arm leg spin,Capped,,Retained,Punjab Kings,267500000
+,,RETAINED,Retained (not in auction),Arshdeep Singh,India,Bowler,LHB,Left-arm fast medium,Capped,,Retained,Punjab Kings,180000000
+,,RETAINED,Retained (not in auction),Yuzvendra Chahal,India,Bowler,RHB,Right-arm leg spin,Capped,,Retained,Punjab Kings,180000000
+,,RETAINED,Retained (not in auction),Marcus Stoinis,Australia,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Punjab Kings,110000000
+,,RETAINED,Retained (not in auction),Marco Jansen,South Africa,All-rounder,RHB,Left-arm fast,Capped,,Retained,Punjab Kings,70000000
+,,RETAINED,Retained (not in auction),Shashank Singh,India,Batter,RHB,Right-arm off spin,Uncapped,,Retained,Punjab Kings,55000000
+,,RETAINED,Retained (not in auction),Nehal Wadhera,India,Batter,LHB,Right-arm leg spin,Uncapped,,Retained,Punjab Kings,42000000
+,,RETAINED,Retained (not in auction),Prabhsimran Singh,India,Wicketkeeper,RHB,,Uncapped,,Retained,Punjab Kings,40000000
+,,RETAINED,Retained (not in auction),Priyansh Arya,India,Batter,LHB,,Uncapped,,Retained,Punjab Kings,38000000
+,,RETAINED,Retained (not in auction),Mitchell Owen,Australia,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Punjab Kings,30000000
+,,RETAINED,Retained (not in auction),Azmatullah Omarzai,Afghanistan,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Punjab Kings,24000000
+,,RETAINED,Retained (not in auction),Lockie Ferguson,New Zealand,Bowler,RHB,Right-arm fast,Capped,,Retained,Punjab Kings,20000000
+,,RETAINED,Retained (not in auction),Vijaykumar Vyshak,India,Bowler,RHB,Right-arm fast medium,Uncapped,,Retained,Punjab Kings,18000000
+,,RETAINED,Retained (not in auction),Yash Thakur,India,Bowler,RHB,Right-arm fast medium,Uncapped,,Retained,Punjab Kings,16000000
+,,RETAINED,Retained (not in auction),Harpreet Brar,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,,Retained,Punjab Kings,15000000
+,,RETAINED,Retained (not in auction),Vishnu Vinod,India,Wicketkeeper,RHB,,Uncapped,,Retained,Punjab Kings,9500000
+,,RETAINED,Retained (not in auction),Xavier Bartlett,Australia,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Punjab Kings,8000000
+,,RETAINED,Retained (not in auction),Pyla Avinash,India,Batter,RHB,,Uncapped,,Retained,Punjab Kings,3000000
+,,RETAINED,Retained (not in auction),Harnoor Pannu,India,Batter,LHB,,Uncapped,,Retained,Punjab Kings,3000000
+,,RETAINED,Retained (not in auction),Musheer Khan,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,,Retained,Punjab Kings,3000000
+,,RETAINED,Retained (not in auction),Suryansh Shedge,India,All-rounder,RHB,Right-arm medium,Uncapped,,Retained,Punjab Kings,3000000
+,,RETAINED,Retained (not in auction),Yashasvi Jaiswal,India,Batter,LHB,Right-arm leg spin,Capped,,Retained,Rajasthan Royals,180000000
+,,RETAINED,Retained (not in auction),Riyan Parag,India,All-rounder,RHB,Right-arm off spin,Capped,,Retained,Rajasthan Royals,140000000
+,,RETAINED,Retained (not in auction),Ravindra Jadeja,India,All-rounder,LHB,Left-arm slow orthodox,Capped,,Retained,Rajasthan Royals,140000000
+,,RETAINED,Retained (not in auction),Dhruv Jurel,India,Wicketkeeper,RHB,,Capped,,Retained,Rajasthan Royals,140000000
+,,RETAINED,Retained (not in auction),Jofra Archer,England,Bowler,RHB,Right-arm fast,Capped,,Retained,Rajasthan Royals,125000000
+,,RETAINED,Retained (not in auction),Shimron Hetmyer,West Indies,Batter,LHB,,Capped,,Retained,Rajasthan Royals,110000000
+,,RETAINED,Retained (not in auction),Tushar Deshpande,India,Bowler,LHB,Right-arm fast medium,Capped,,Retained,Rajasthan Royals,65000000
+,,RETAINED,Retained (not in auction),Sandeep Sharma,India,Bowler,RHB,Right-arm medium,Capped,,Retained,Rajasthan Royals,40000000
+,,RETAINED,Retained (not in auction),Nandre Burger,South Africa,Bowler,LHB,Left-arm fast,Capped,,Retained,Rajasthan Royals,35000000
+,,RETAINED,Retained (not in auction),Sam Curran,England,All-rounder,LHB,Left-arm fast medium,Capped,,Retained,Rajasthan Royals,24000000
+,,RETAINED,Retained (not in auction),Kwena Maphaka,South Africa,Bowler,LHB,Left-arm fast,Capped,,Retained,Rajasthan Royals,15000000
+,,RETAINED,Retained (not in auction),Vaibhav Sooryavanshi,India,Batter,LHB,,Uncapped,,Retained,Rajasthan Royals,11000000
+,,RETAINED,Retained (not in auction),Donovan Ferreira,South Africa,All-rounder,RHB,Right-arm off spin,Capped,,Retained,Rajasthan Royals,10000000
+,,RETAINED,Retained (not in auction),Shubham Dubey,India,Batter,LHB,,Uncapped,,Retained,Rajasthan Royals,8000000
+,,RETAINED,Retained (not in auction),Yudhvir Singh,India,Bowler,RHB,Right-arm fast medium,Uncapped,,Retained,Rajasthan Royals,3500000
+,,RETAINED,Retained (not in auction),Lhuan-dre Pretorius,South Africa,Wicketkeeper,LHB,,Capped,,Retained,Rajasthan Royals,3000000
+,,RETAINED,Retained (not in auction),Virat Kohli,India,Batter,RHB,Right-arm medium,Capped,,Retained,Royal Challengers Bengaluru,210000000
+,,RETAINED,Retained (not in auction),Josh Hazlewood,Australia,Bowler,LHB,Right-arm fast medium,Capped,,Retained,Royal Challengers Bengaluru,125000000
+,,RETAINED,Retained (not in auction),Phil Salt,England,Wicketkeeper,RHB,,Capped,,Retained,Royal Challengers Bengaluru,115000000
+,,RETAINED,Retained (not in auction),Rajat Patidar,India,Batter,RHB,Right-arm off spin,Capped,,Retained,Royal Challengers Bengaluru,110000000
+,,RETAINED,Retained (not in auction),Jitesh Sharma,India,Wicketkeeper,RHB,,Capped,,Retained,Royal Challengers Bengaluru,110000000
+,,RETAINED,Retained (not in auction),Bhuvneshwar Kumar,India,Bowler,RHB,Right-arm medium,Capped,,Retained,Royal Challengers Bengaluru,107500000
+,,RETAINED,Retained (not in auction),Rasikh Salam,India,Bowler,RHB,Right-arm fast medium,Uncapped,,Retained,Royal Challengers Bengaluru,60000000
+,,RETAINED,Retained (not in auction),Krunal Pandya,India,All-rounder,LHB,Left-arm slow orthodox,Capped,,Retained,Royal Challengers Bengaluru,57500000
+,,RETAINED,Retained (not in auction),Yash Dayal,India,Bowler,LHB,Left-arm fast medium,Uncapped,,Retained,Royal Challengers Bengaluru,50000000
+,,RETAINED,Retained (not in auction),Tim David,Australia,Batter,RHB,Right-arm off spin,Capped,,Retained,Royal Challengers Bengaluru,30000000
+,,RETAINED,Retained (not in auction),Suyash Sharma,India,Bowler,RHB,Right-arm leg spin,Uncapped,,Retained,Royal Challengers Bengaluru,26000000
+,,RETAINED,Retained (not in auction),Jacob Bethell,England,All-rounder,LHB,Left-arm slow orthodox,Capped,,Retained,Royal Challengers Bengaluru,26000000
+,,RETAINED,Retained (not in auction),Devdutt Padikkal,India,Batter,LHB,Right-arm off spin,Capped,,Retained,Royal Challengers Bengaluru,20000000
+,,RETAINED,Retained (not in auction),Nuwan Thushara,Sri Lanka,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Royal Challengers Bengaluru,16000000
+,,RETAINED,Retained (not in auction),Romario Shepherd,West Indies,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Royal Challengers Bengaluru,15000000
+,,RETAINED,Retained (not in auction),Swapnil Singh,India,All-rounder,RHB,Left-arm slow orthodox,Uncapped,,Retained,Royal Challengers Bengaluru,5000000
+,,RETAINED,Retained (not in auction),Abhinandan Singh,India,Bowler,RHB,Right-arm fast medium,Uncapped,,Retained,Royal Challengers Bengaluru,3000000
+,,RETAINED,Retained (not in auction),Heinrich Klaasen,South Africa,Wicketkeeper,RHB,,Capped,,Retained,Sunrisers Hyderabad,230000000
+,,RETAINED,Retained (not in auction),Pat Cummins,Australia,Bowler,RHB,Right-arm fast,Capped,,Retained,Sunrisers Hyderabad,180000000
+,,RETAINED,Retained (not in auction),Travis Head,Australia,Batter,LHB,Right-arm off spin,Capped,,Retained,Sunrisers Hyderabad,140000000
+,,RETAINED,Retained (not in auction),Abhishek Sharma,India,All-rounder,LHB,Left-arm slow orthodox,Capped,,Retained,Sunrisers Hyderabad,140000000
+,,RETAINED,Retained (not in auction),Ishan Kishan,India,Wicketkeeper,LHB,,Capped,,Retained,Sunrisers Hyderabad,112500000
+,,RETAINED,Retained (not in auction),Harshal Patel,India,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Sunrisers Hyderabad,80000000
+,,RETAINED,Retained (not in auction),Nitish Kumar Reddy,India,All-rounder,RHB,Right-arm fast medium,Capped,,Retained,Sunrisers Hyderabad,60000000
+,,RETAINED,Retained (not in auction),Eshan Malinga,Sri Lanka,Bowler,RHB,Right-arm fast medium,Capped,,Retained,Sunrisers Hyderabad,12000000
+,,RETAINED,Retained (not in auction),Brydon Carse,England,All-rounder,RHB,Right-arm fast,Capped,,Retained,Sunrisers Hyderabad,10000000
+,,RETAINED,Retained (not in auction),Jaydev Unadkat,India,Bowler,RHB,Left-arm fast medium,Capped,,Retained,Sunrisers Hyderabad,10000000
+,,RETAINED,Retained (not in auction),Kamindu Mendis,Sri Lanka,All-rounder,LHB,Ambidextrous spin,Capped,,Retained,Sunrisers Hyderabad,7500000
+,,RETAINED,Retained (not in auction),Zeeshan Ansari,India,Bowler,RHB,Right-arm leg spin,Uncapped,,Retained,Sunrisers Hyderabad,4000000
+,,RETAINED,Retained (not in auction),Smaran Ravichandran,India,Batter,LHB,,Uncapped,,Retained,Sunrisers Hyderabad,3000000
+,,RETAINED,Retained (not in auction),Aniket Verma,India,Batter,RHB,,Uncapped,,Retained,Sunrisers Hyderabad,3000000
+,,RETAINED,Retained (not in auction),Harsh Dubey,India,All-rounder,LHB,Left-arm slow orthodox,Uncapped,,Retained,Sunrisers Hyderabad,3000000

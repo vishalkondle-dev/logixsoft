@@ -1,0 +1,4258 @@
+{
+  "Devon Conway": {
+    "matches": 29,
+    "runs": 1080,
+    "battingAverage": 43.2,
+    "strikeRate": 139.72,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Jake Fraser-McGurk": {
+    "matches": 15,
+    "runs": 385,
+    "battingAverage": 25.67,
+    "strikeRate": 199.48,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Cameron Green": {
+    "matches": 43,
+    "runs": 1029,
+    "battingAverage": 38.11,
+    "strikeRate": 151.1,
+    "wickets": 23,
+    "economy": 9.44
+  },
+  "Sarfaraz Khan": {
+    "matches": 58,
+    "runs": 746,
+    "battingAverage": 22.61,
+    "strikeRate": 137.38,
+    "wickets": 0,
+    "economy": 18.0
+  },
+  "David Miller": {
+    "matches": 152,
+    "runs": 3288,
+    "battingAverage": 35.35,
+    "strikeRate": 139.44,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Prithvi Shaw": {
+    "matches": 79,
+    "runs": 1892,
+    "battingAverage": 23.95,
+    "strikeRate": 147.47,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Gus Atkinson": {
+    "matches": 4,
+    "runs": 10,
+    "battingAverage": 10.0,
+    "strikeRate": 43.48,
+    "wickets": 6,
+    "economy": 11.26
+  },
+  "Wanindu Hasaranga": {
+    "matches": 32,
+    "runs": 357,
+    "battingAverage": 26.7,
+    "strikeRate": 147.0,
+    "wickets": 25,
+    "economy": 7.87
+  },
+  "Deepak Hooda": {
+    "matches": 125,
+    "runs": 1497,
+    "battingAverage": 17.61,
+    "strikeRate": 127.62,
+    "wickets": 10,
+    "economy": 8.64
+  },
+  "Venkatesh Iyer": {
+    "matches": 68,
+    "runs": 1677,
+    "battingAverage": 31.64,
+    "strikeRate": 142.0,
+    "wickets": 3,
+    "economy": 10.59
+  },
+  "Liam Livingstone": {
+    "matches": 51,
+    "runs": 1066,
+    "battingAverage": 25.38,
+    "strikeRate": 155.17,
+    "wickets": 13,
+    "economy": 9.02
+  },
+  "Wiaan Mulder": {
+    "matches": 38,
+    "runs": 373,
+    "battingAverage": 27.3,
+    "strikeRate": 138.0,
+    "wickets": 31,
+    "economy": 8.33
+  },
+  "Rachin Ravindra": {
+    "matches": 37,
+    "runs": 432,
+    "battingAverage": 25.2,
+    "strikeRate": 147.0,
+    "wickets": 30,
+    "economy": 8.92
+  },
+  "Finn Allen": {
+    "matches": 11,
+    "runs": 349,
+    "battingAverage": 34.9,
+    "strikeRate": 214.11,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Jonny Bairstow": {
+    "matches": 30,
+    "runs": 595,
+    "battingAverage": 26.5,
+    "strikeRate": 150.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "K.S. Bharat": {
+    "matches": 10,
+    "runs": 199,
+    "battingAverage": 28.43,
+    "strikeRate": 122.09,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Quinton de Kock": {
+    "matches": 118,
+    "runs": 3444,
+    "battingAverage": 31.03,
+    "strikeRate": 134.9,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ben Duckett": {
+    "matches": 41,
+    "runs": 686,
+    "battingAverage": 27.6,
+    "strikeRate": 141.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rahmanullah Gurbaz": {
+    "matches": 28,
+    "runs": 713,
+    "battingAverage": 30.3,
+    "strikeRate": 143.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Jamie Smith": {
+    "matches": 5,
+    "runs": 130,
+    "battingAverage": 26.0,
+    "strikeRate": 194.03,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Gerald Coetzee": {
+    "matches": 25,
+    "runs": 45,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 42,
+    "economy": 8.3
+  },
+  "Akash Deep": {
+    "matches": 29,
+    "runs": 49,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 48,
+    "economy": 8.14
+  },
+  "Jacob Duffy": {
+    "matches": 6,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 9,
+    "economy": 10.96
+  },
+  "Fazalhaq Farooqi": {
+    "matches": 35,
+    "runs": 55,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 36,
+    "economy": 7.8
+  },
+  "Matt Henry": {
+    "matches": 36,
+    "runs": 36,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 37,
+    "economy": 7.81
+  },
+  "Spencer Johnson": {
+    "matches": 41,
+    "runs": 41,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 36,
+    "economy": 8.46
+  },
+  "Shivam Mavi": {
+    "matches": 27,
+    "runs": 47,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 30,
+    "economy": 7.52
+  },
+  "Anrich Nortje": {
+    "matches": 28,
+    "runs": 48,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 47,
+    "economy": 8.13
+  },
+  "Matheesha Pathirana": {
+    "matches": 33,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 47,
+    "economy": 8.66
+  },
+  "Ravi Bishnoi": {
+    "matches": 38,
+    "runs": 38,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 43,
+    "economy": 8.53
+  },
+  "Rahul Chahar": {
+    "matches": 31,
+    "runs": 51,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 46,
+    "economy": 8.56
+  },
+  "Akeal Hosein": {
+    "matches": 8,
+    "runs": 21,
+    "battingAverage": 21.0,
+    "strikeRate": 161.54,
+    "wickets": 9,
+    "economy": 8.3
+  },
+  "Mujeeb Rahman": {
+    "matches": 20,
+    "runs": 12,
+    "battingAverage": 4.0,
+    "strikeRate": 80.0,
+    "wickets": 20,
+    "economy": 8.34
+  },
+  "Maheesh Theekshana": {
+    "matches": 25,
+    "runs": 25,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 28,
+    "economy": 7.5
+  },
+  "Aarya Desai": {
+    "matches": 18,
+    "runs": 226,
+    "battingAverage": 32.1,
+    "strikeRate": 148.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Yash Dhull": {
+    "matches": 4,
+    "runs": 16,
+    "battingAverage": 5.33,
+    "strikeRate": 69.57,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Abhinav Manohar": {
+    "matches": 12,
+    "runs": 336,
+    "battingAverage": 26.1,
+    "strikeRate": 132.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Anmolpreet Singh": {
+    "matches": 17,
+    "runs": 265,
+    "battingAverage": 33.0,
+    "strikeRate": 135.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Atharva Taide": {
+    "matches": 14,
+    "runs": 318,
+    "battingAverage": 34.3,
+    "strikeRate": 148.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Abhinav Tejrana": {
+    "matches": 19,
+    "runs": 411,
+    "battingAverage": 28.6,
+    "strikeRate": 135.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Auqib Dar": {
+    "matches": 18,
+    "runs": 270,
+    "battingAverage": 20.0,
+    "strikeRate": 142.0,
+    "wickets": 8,
+    "economy": 8.2
+  },
+  "Rajvardhan Hangargekar": {
+    "matches": 13,
+    "runs": 173,
+    "battingAverage": 26.3,
+    "strikeRate": 145.0,
+    "wickets": 10,
+    "economy": 8.33
+  },
+  "Tanush Kotian": {
+    "matches": 18,
+    "runs": 178,
+    "battingAverage": 24.8,
+    "strikeRate": 150.0,
+    "wickets": 16,
+    "economy": 8.38
+  },
+  "Shivang Kumar": {
+    "matches": 13,
+    "runs": 53,
+    "battingAverage": 8.83,
+    "strikeRate": 115.22,
+    "wickets": 9,
+    "economy": 9.62
+  },
+  "Mahipal Lomror": {
+    "matches": 40,
+    "runs": 527,
+    "battingAverage": 18.17,
+    "strikeRate": 141.29,
+    "wickets": 1,
+    "economy": 8.47
+  },
+  "Kamlesh Nagarkoti": {
+    "matches": 14,
+    "runs": 158,
+    "battingAverage": 25.8,
+    "strikeRate": 150.0,
+    "wickets": 16,
+    "economy": 8.58
+  },
+  "Vijay Shankar": {
+    "matches": 10,
+    "runs": 246,
+    "battingAverage": 21.6,
+    "strikeRate": 138.0,
+    "wickets": 17,
+    "economy": 8.96
+  },
+  "Sanvir Singh": {
+    "matches": 16,
+    "runs": 152,
+    "battingAverage": 24.2,
+    "strikeRate": 144.0,
+    "wickets": 16,
+    "economy": 8.72
+  },
+  "Edhen Tom": {
+    "matches": 11,
+    "runs": 199,
+    "battingAverage": 22.9,
+    "strikeRate": 151.0,
+    "wickets": 12,
+    "economy": 8.49
+  },
+  "Prashant Veer": {
+    "matches": 11,
+    "runs": 211,
+    "battingAverage": 24.1,
+    "strikeRate": 143.0,
+    "wickets": 15,
+    "economy": 8.91
+  },
+  "Ruchit Ahir": {
+    "matches": 12,
+    "runs": 204,
+    "battingAverage": 28.9,
+    "strikeRate": 138.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Vansh Bedi": {
+    "matches": 9,
+    "runs": 281,
+    "battingAverage": 30.6,
+    "strikeRate": 133.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Mukul Choudhary": {
+    "matches": 17,
+    "runs": 257,
+    "battingAverage": 27.2,
+    "strikeRate": 143.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Tushar Raheja": {
+    "matches": 11,
+    "runs": 227,
+    "battingAverage": 25.2,
+    "strikeRate": 145.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Kartik Sharma": {
+    "matches": 11,
+    "runs": 295,
+    "battingAverage": 32.78,
+    "strikeRate": 136.57,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Tejasvi Singh": {
+    "matches": 16,
+    "runs": 420,
+    "battingAverage": 30.5,
+    "strikeRate": 132.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Raj Limbani": {
+    "matches": 8,
+    "runs": 30,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 8.33
+  },
+  "Akash Madhwal": {
+    "matches": 15,
+    "runs": 30,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 16,
+    "economy": 8.08
+  },
+  "Sushant Mishra": {
+    "matches": 9,
+    "runs": 24,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 12,
+    "economy": 8.02
+  },
+  "Ashok Sharma": {
+    "matches": 6,
+    "runs": 1,
+    "battingAverage": 1.0,
+    "strikeRate": 25.0,
+    "wickets": 6,
+    "economy": 10.86
+  },
+  "Simarjeet Singh": {
+    "matches": 8,
+    "runs": 33,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 17,
+    "economy": 8.61
+  },
+  "Naman Tiwari": {
+    "matches": 17,
+    "runs": 26,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 8.54
+  },
+  "Kartik Tyagi": {
+    "matches": 34,
+    "runs": 24,
+    "battingAverage": 3.43,
+    "strikeRate": 92.31,
+    "wickets": 33,
+    "economy": 9.98
+  },
+  "Yash Raj Punja": {
+    "matches": 8,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 9,
+    "economy": 9.3
+  },
+  "Vignesh Puthur": {
+    "matches": 16,
+    "runs": 33,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 19,
+    "economy": 8.61
+  },
+  "Karn Sharma": {
+    "matches": 90,
+    "runs": 352,
+    "battingAverage": 13.54,
+    "strikeRate": 119.32,
+    "wickets": 83,
+    "economy": 8.38
+  },
+  "Shivam Shukla": {
+    "matches": 10,
+    "runs": 36,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 23,
+    "economy": 8.39
+  },
+  "Kumar Kartikeya Singh": {
+    "matches": 16,
+    "runs": 12,
+    "battingAverage": 3.0,
+    "strikeRate": 70.59,
+    "wickets": 12,
+    "economy": 8.66
+  },
+  "Prashant Solanki": {
+    "matches": 2,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 2,
+    "economy": 6.33
+  },
+  "Wahidullah Zadran": {
+    "matches": 13,
+    "runs": 19,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 12,
+    "economy": 8.22
+  },
+  "Mayank Agarawal": {
+    "matches": 35,
+    "runs": 760,
+    "battingAverage": 35.0,
+    "strikeRate": 140.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Sediqullah Atal": {
+    "matches": 1,
+    "runs": 22,
+    "battingAverage": 22.0,
+    "strikeRate": 137.5,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ackeem Auguste": {
+    "matches": 39,
+    "runs": 844,
+    "battingAverage": 31.4,
+    "strikeRate": 149.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Reeza Hendricks": {
+    "matches": 89,
+    "runs": 2475,
+    "battingAverage": 28.45,
+    "strikeRate": 129.38,
+    "wickets": 0,
+    "economy": 12.0
+  },
+  "Pathum Nissanka": {
+    "matches": 10,
+    "runs": 278,
+    "battingAverage": 27.8,
+    "strikeRate": 158.86,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Tim Robinson": {
+    "matches": 40,
+    "runs": 945,
+    "battingAverage": 33.5,
+    "strikeRate": 150.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Steve Smith": {
+    "matches": 34,
+    "runs": 599,
+    "battingAverage": 34.9,
+    "strikeRate": 154.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rahul Tripathi": {
+    "matches": 100,
+    "runs": 2291,
+    "battingAverage": 26.03,
+    "strikeRate": 137.85,
+    "wickets": 0,
+    "economy": 12.0
+  },
+  "Sean Abbott": {
+    "matches": 3,
+    "runs": 22,
+    "battingAverage": 7.33,
+    "strikeRate": 122.22,
+    "wickets": 1,
+    "economy": 11.56
+  },
+  "Michael Bracewell": {
+    "matches": 5,
+    "runs": 58,
+    "battingAverage": 29.0,
+    "strikeRate": 123.4,
+    "wickets": 6,
+    "economy": 8.64
+  },
+  "Ben Dwarshuis": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 1,
+    "economy": 12.75
+  },
+  "Zak Foulkes": {
+    "matches": 27,
+    "runs": 372,
+    "battingAverage": 24.2,
+    "strikeRate": 137.0,
+    "wickets": 20,
+    "economy": 8.02
+  },
+  "Jason Holder": {
+    "matches": 57,
+    "runs": 324,
+    "battingAverage": 12.46,
+    "strikeRate": 123.19,
+    "wickets": 70,
+    "economy": 8.58
+  },
+  "Daryl Mitchell": {
+    "matches": 15,
+    "runs": 351,
+    "battingAverage": 27.0,
+    "strikeRate": 131.46,
+    "wickets": 1,
+    "economy": 12.12
+  },
+  "Daniel Sams": {
+    "matches": 16,
+    "runs": 44,
+    "battingAverage": 4.89,
+    "strikeRate": 100.0,
+    "wickets": 14,
+    "economy": 8.72
+  },
+  "Dasun Shanaka": {
+    "matches": 10,
+    "runs": 89,
+    "battingAverage": 12.71,
+    "strikeRate": 123.61,
+    "wickets": 1,
+    "economy": 10.0
+  },
+  "Matthew Short": {
+    "matches": 9,
+    "runs": 177,
+    "battingAverage": 19.67,
+    "strikeRate": 123.78,
+    "wickets": 0,
+    "economy": 8.93
+  },
+  "Tom Banton": {
+    "matches": 2,
+    "runs": 18,
+    "battingAverage": 9.0,
+    "strikeRate": 90.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Jordan Cox": {
+    "matches": 38,
+    "runs": 803,
+    "battingAverage": 27.3,
+    "strikeRate": 133.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Shai Hope": {
+    "matches": 9,
+    "runs": 183,
+    "battingAverage": 22.88,
+    "strikeRate": 150.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Josh Inglis": {
+    "matches": 17,
+    "runs": 544,
+    "battingAverage": 38.86,
+    "strikeRate": 173.25,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Benjamin McDermott": {
+    "matches": 25,
+    "runs": 342,
+    "battingAverage": 18.0,
+    "strikeRate": 99.71,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Kusal Mendis": {
+    "matches": 1,
+    "runs": 20,
+    "battingAverage": 20.0,
+    "strikeRate": 200.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Kusal Perera": {
+    "matches": 2,
+    "runs": 14,
+    "battingAverage": 7.0,
+    "strikeRate": 107.69,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Tim Seifert": {
+    "matches": 25,
+    "runs": 790,
+    "battingAverage": 30.0,
+    "strikeRate": 145.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Kyle Jamieson": {
+    "matches": 15,
+    "runs": 77,
+    "battingAverage": 15.4,
+    "strikeRate": 105.48,
+    "wickets": 16,
+    "economy": 10.12
+  },
+  "Saqib Mahmood": {
+    "matches": 20,
+    "runs": 35,
+    "battingAverage": 7.0,
+    "strikeRate": 77.78,
+    "wickets": 24,
+    "economy": 9.24
+  },
+  "Adam Milne": {
+    "matches": 11,
+    "runs": 25,
+    "battingAverage": 6.25,
+    "strikeRate": 80.65,
+    "wickets": 7,
+    "economy": 9.73
+  },
+  "Lungisani Ngidi": {
+    "matches": 26,
+    "runs": 46,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 31,
+    "economy": 8.41
+  },
+  "William Orourke": {
+    "matches": 44,
+    "runs": 44,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 41,
+    "economy": 8.29
+  },
+  "Mustafizur Rahman": {
+    "matches": 60,
+    "runs": 13,
+    "battingAverage": 6.5,
+    "strikeRate": 54.17,
+    "wickets": 65,
+    "economy": 8.13
+  },
+  "Chetan Sakariya": {
+    "matches": 20,
+    "runs": 20,
+    "battingAverage": 3.33,
+    "strikeRate": 64.52,
+    "wickets": 20,
+    "economy": 8.62
+  },
+  "Kuldeep Sen": {
+    "matches": 12,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 14,
+    "economy": 9.63
+  },
+  "Umesh Yadav": {
+    "matches": 148,
+    "runs": 208,
+    "battingAverage": 9.9,
+    "strikeRate": 103.48,
+    "wickets": 144,
+    "economy": 8.51
+  },
+  "Qais Ahmad": {
+    "matches": 35,
+    "runs": 35,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 36,
+    "economy": 7.8
+  },
+  "Rishad Hossain": {
+    "matches": 59,
+    "runs": 233,
+    "battingAverage": 8.32,
+    "strikeRate": 122.63,
+    "wickets": 72,
+    "economy": 8.22
+  },
+  "Mohammad Waqar Salamkheil": {
+    "matches": 34,
+    "runs": 34,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 45,
+    "economy": 7.89
+  },
+  "Viyaskanth Vijayakanth": {
+    "matches": 39,
+    "runs": 59,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 36,
+    "economy": 8.24
+  },
+  "Ankit Kumar": {
+    "matches": 17,
+    "runs": 309,
+    "battingAverage": 24.4,
+    "strikeRate": 137.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rohan Kunnummal": {
+    "matches": 9,
+    "runs": 225,
+    "battingAverage": 31.0,
+    "strikeRate": 137.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Danish Malewar": {
+    "matches": 10,
+    "runs": 350,
+    "battingAverage": 28.5,
+    "strikeRate": 134.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Pukhraj Mann": {
+    "matches": 13,
+    "runs": 329,
+    "battingAverage": 29.4,
+    "strikeRate": 143.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Salman Nizar": {
+    "matches": 8,
+    "runs": 276,
+    "battingAverage": 28.1,
+    "strikeRate": 130.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Aman Rao Perala": {
+    "matches": 9,
+    "runs": 261,
+    "battingAverage": 28.6,
+    "strikeRate": 135.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Akshat Raghuwanshi": {
+    "matches": 3,
+    "runs": 29,
+    "battingAverage": 14.5,
+    "strikeRate": 116.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Manan Vohra": {
+    "matches": 56,
+    "runs": 1083,
+    "battingAverage": 22.1,
+    "strikeRate": 130.64,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Yuvraj Chaudhary": {
+    "matches": 12,
+    "runs": 200,
+    "battingAverage": 26.0,
+    "strikeRate": 132.0,
+    "wickets": 17,
+    "economy": 8.2
+  },
+  "Satvik Deswal": {
+    "matches": 9,
+    "runs": 177,
+    "battingAverage": 22.7,
+    "strikeRate": 149.0,
+    "wickets": 8,
+    "economy": 8.77
+  },
+  "Aman Khan": {
+    "matches": 12,
+    "runs": 115,
+    "battingAverage": 12.78,
+    "strikeRate": 110.58,
+    "wickets": 0,
+    "economy": 13.0
+  },
+  "Darshan Nalkande": {
+    "matches": 6,
+    "runs": 12,
+    "battingAverage": 6.0,
+    "strikeRate": 100.0,
+    "wickets": 6,
+    "economy": 10.57
+  },
+  "Vicky Ostwal": {
+    "matches": 8,
+    "runs": 152,
+    "battingAverage": 26.2,
+    "strikeRate": 144.0,
+    "wickets": 7,
+    "economy": 8.22
+  },
+  "Sairaj Patil": {
+    "matches": 15,
+    "runs": 247,
+    "battingAverage": 24.7,
+    "strikeRate": 139.0,
+    "wickets": 13,
+    "economy": 8.77
+  },
+  "Suyash Prabhudessai": {
+    "matches": 11,
+    "runs": 126,
+    "battingAverage": 12.6,
+    "strikeRate": 118.87,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Mayank Rawat": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Harsh Tyagi": {
+    "matches": 19,
+    "runs": 247,
+    "battingAverage": 21.7,
+    "strikeRate": 139.0,
+    "wickets": 13,
+    "economy": 8.27
+  },
+  "Mangesh Yadav": {
+    "matches": 17,
+    "runs": 181,
+    "battingAverage": 26.1,
+    "strikeRate": 133.0,
+    "wickets": 11,
+    "economy": 8.61
+  },
+  "Salil Arora": {
+    "matches": 14,
+    "runs": 156,
+    "battingAverage": 22.29,
+    "strikeRate": 159.18,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ricky Bhui": {
+    "matches": 4,
+    "runs": 10,
+    "battingAverage": 2.5,
+    "strikeRate": 38.46,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rahul Buddhi": {
+    "matches": 12,
+    "runs": 336,
+    "battingAverage": 29.1,
+    "strikeRate": 140.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Saurav Chuahan": {
+    "matches": 12,
+    "runs": 192,
+    "battingAverage": 28.7,
+    "strikeRate": 136.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Yashvardhan Dalal": {
+    "matches": 8,
+    "runs": 252,
+    "battingAverage": 26.7,
+    "strikeRate": 138.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Abhishek Pathak": {
+    "matches": 13,
+    "runs": 413,
+    "battingAverage": 29.8,
+    "strikeRate": 147.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Kunal Rathore": {
+    "matches": 19,
+    "runs": 235,
+    "battingAverage": 27.0,
+    "strikeRate": 141.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ravi Singh": {
+    "matches": 1,
+    "runs": 4,
+    "battingAverage": 4.0,
+    "strikeRate": 200.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "K.M Asif": {
+    "matches": 7,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 7,
+    "economy": 10.42
+  },
+  "Sakib Hussain": {
+    "matches": 11,
+    "runs": 5,
+    "battingAverage": 5.0,
+    "strikeRate": 71.43,
+    "wickets": 15,
+    "economy": 9.45
+  },
+  "Mohammad Izhar": {
+    "matches": 12,
+    "runs": 18,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 17,
+    "economy": 8.21
+  },
+  "Vidwath Kaverappa": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 2,
+    "economy": 9.0
+  },
+  "Vijay Kumar": {
+    "matches": 9,
+    "runs": 35,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 8.38
+  },
+  "Vidyadhar Patil": {
+    "matches": 18,
+    "runs": 20,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 8.23
+  },
+  "PV.Satyanarayana Raju": {
+    "matches": 10,
+    "runs": 21,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 17,
+    "economy": 7.99
+  },
+  "Onkar Tarmale": {
+    "matches": 17,
+    "runs": 13,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 7.66
+  },
+  "Prithviraj Yarra": {
+    "matches": 11,
+    "runs": 31,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 12,
+    "economy": 7.84
+  },
+  "Shubham Agrawal": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 1,
+    "economy": 10.5
+  },
+  "Murugan Ashwin": {
+    "matches": 12,
+    "runs": 19,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 17,
+    "economy": 7.97
+  },
+  "Tejas Baroka": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 9.43
+  },
+  "K.C. Cariappa": {
+    "matches": 11,
+    "runs": 24,
+    "battingAverage": 8.0,
+    "strikeRate": 114.29,
+    "wickets": 8,
+    "economy": 9.67
+  },
+  "Kartik Chadha": {
+    "matches": 8,
+    "runs": 27,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 15,
+    "economy": 8.05
+  },
+  "Pravin Dubey": {
+    "matches": 5,
+    "runs": 23,
+    "battingAverage": 23.0,
+    "strikeRate": 69.7,
+    "wickets": 2,
+    "economy": 8.54
+  },
+  "Mohit Rathee": {
+    "matches": 1,
+    "runs": 1,
+    "battingAverage": 1.0,
+    "strikeRate": 50.0,
+    "wickets": 0,
+    "economy": 14.5
+  },
+  "Himanshu Sharma": {
+    "matches": 2,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 11.4
+  },
+  "Bailapudi Yeswanth": {
+    "matches": 17,
+    "runs": 23,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 20,
+    "economy": 8.26
+  },
+  "Rehan Ahmed": {
+    "matches": 14,
+    "runs": 74,
+    "battingAverage": 14.8,
+    "strikeRate": 142.31,
+    "wickets": 15,
+    "economy": 9.5
+  },
+  "Cooper Connolly": {
+    "matches": 39,
+    "runs": 514,
+    "battingAverage": 23.4,
+    "strikeRate": 154.0,
+    "wickets": 32,
+    "economy": 7.94
+  },
+  "Tom Curran": {
+    "matches": 13,
+    "runs": 127,
+    "battingAverage": 25.4,
+    "strikeRate": 118.69,
+    "wickets": 13,
+    "economy": 10.84
+  },
+  "Bevon-John Jacobs": {
+    "matches": 29,
+    "runs": 354,
+    "battingAverage": 24.4,
+    "strikeRate": 144.0,
+    "wickets": 22,
+    "economy": 8.04
+  },
+  "Daniel Lawrence": {
+    "matches": 26,
+    "runs": 381,
+    "battingAverage": 28.1,
+    "strikeRate": 146.0,
+    "wickets": 19,
+    "economy": 8.01
+  },
+  "George Linde": {
+    "matches": 3,
+    "runs": 31,
+    "battingAverage": 10.33,
+    "strikeRate": 147.62,
+    "wickets": 1,
+    "economy": 8.92
+  },
+  "Gulbadin Naib": {
+    "matches": 2,
+    "runs": 19,
+    "battingAverage": 19.0,
+    "strikeRate": 126.67,
+    "wickets": 0,
+    "economy": 12.0
+  },
+  "William Sutherland": {
+    "matches": 36,
+    "runs": 481,
+    "battingAverage": 27.1,
+    "strikeRate": 146.0,
+    "wickets": 29,
+    "economy": 7.91
+  },
+  "Beau Webster": {
+    "matches": 36,
+    "runs": 481,
+    "battingAverage": 29.1,
+    "strikeRate": 146.0,
+    "wickets": 29,
+    "economy": 8.11
+  },
+  "Taskin Ahmed": {
+    "matches": 85,
+    "runs": 227,
+    "battingAverage": 10.81,
+    "strikeRate": 104.13,
+    "wickets": 98,
+    "economy": 7.75
+  },
+  "Richard Gleeson": {
+    "matches": 3,
+    "runs": 2,
+    "battingAverage": 2.0,
+    "strikeRate": 100.0,
+    "wickets": 2,
+    "economy": 9.71
+  },
+  "Alzarri Joseph": {
+    "matches": 22,
+    "runs": 27,
+    "battingAverage": 27.0,
+    "strikeRate": 84.38,
+    "wickets": 21,
+    "economy": 9.55
+  },
+  "Shamar Joseph": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 11.75
+  },
+  "Riley Meredith": {
+    "matches": 18,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 19,
+    "economy": 9.46
+  },
+  "Jhye Richardson": {
+    "matches": 34,
+    "runs": 54,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 37,
+    "economy": 7.59
+  },
+  "Navdeep Saini": {
+    "matches": 34,
+    "runs": 33,
+    "battingAverage": 8.25,
+    "strikeRate": 89.19,
+    "wickets": 24,
+    "economy": 8.95
+  },
+  "Naveen Ul Haq": {
+    "matches": 27,
+    "runs": 47,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 36,
+    "economy": 8.02
+  },
+  "Luke Wood": {
+    "matches": 2,
+    "runs": 9,
+    "battingAverage": 9.0,
+    "strikeRate": 300.0,
+    "wickets": 1,
+    "economy": 15.5
+  },
+  "Kunal Chandela": {
+    "matches": 12,
+    "runs": 212,
+    "battingAverage": 26.7,
+    "strikeRate": 138.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ayush Doseja": {
+    "matches": 15,
+    "runs": 375,
+    "battingAverage": 33.0,
+    "strikeRate": 135.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Qamran Iqbal": {
+    "matches": 11,
+    "runs": 243,
+    "battingAverage": 28.8,
+    "strikeRate": 137.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "M.Dheeraj Kumar": {
+    "matches": 13,
+    "runs": 201,
+    "battingAverage": 23.6,
+    "strikeRate": 129.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Bhanu Pania": {
+    "matches": 11,
+    "runs": 303,
+    "battingAverage": 27.8,
+    "strikeRate": 149.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Sahil Parakh": {
+    "matches": 19,
+    "runs": 295,
+    "battingAverage": 26.0,
+    "strikeRate": 131.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Arsh Kabir Ranga": {
+    "matches": 12,
+    "runs": 292,
+    "battingAverage": 24.7,
+    "strikeRate": 140.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Adarsh Singh": {
+    "matches": 16,
+    "runs": 228,
+    "battingAverage": 33.3,
+    "strikeRate": 138.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Manoj Bhandage": {
+    "matches": 1,
+    "runs": 1,
+    "battingAverage": 1.0,
+    "strikeRate": 25.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Mayank Dagar": {
+    "matches": 8,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 2,
+    "economy": 8.89
+  },
+  "Raghav Goyal": {
+    "matches": 8,
+    "runs": 204,
+    "battingAverage": 21.4,
+    "strikeRate": 136.0,
+    "wickets": 14,
+    "economy": 8.34
+  },
+  "Manvanth Kumar": {
+    "matches": 13,
+    "runs": 237,
+    "battingAverage": 21.7,
+    "strikeRate": 149.0,
+    "wickets": 8,
+    "economy": 8.27
+  },
+  "Abid Mushtaq": {
+    "matches": 11,
+    "runs": 179,
+    "battingAverage": 24.9,
+    "strikeRate": 151.0,
+    "wickets": 15,
+    "economy": 8.49
+  },
+  "Jalaj Saxena": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 9.0
+  },
+  "Atit Sheth": {
+    "matches": 18,
+    "runs": 226,
+    "battingAverage": 24.6,
+    "strikeRate": 138.0,
+    "wickets": 13,
+    "economy": 8.56
+  },
+  "Hritik Shokeen": {
+    "matches": 18,
+    "runs": 258,
+    "battingAverage": 26.8,
+    "strikeRate": 150.0,
+    "wickets": 8,
+    "economy": 8.98
+  },
+  "Jagadeesha Suchith": {
+    "matches": 14,
+    "runs": 134,
+    "battingAverage": 24.4,
+    "strikeRate": 146.0,
+    "wickets": 9,
+    "economy": 8.34
+  },
+  "Tanay Thyagarajann": {
+    "matches": 18,
+    "runs": 186,
+    "battingAverage": 23.6,
+    "strikeRate": 138.0,
+    "wickets": 12,
+    "economy": 8.26
+  },
+  "Joe Clarke": {
+    "matches": 12,
+    "runs": 348,
+    "battingAverage": 31.3,
+    "strikeRate": 140.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Connor Esterhuizen": {
+    "matches": 10,
+    "runs": 326,
+    "battingAverage": 40.75,
+    "strikeRate": 155.24,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ajitesh Guruswamy": {
+    "matches": 15,
+    "runs": 287,
+    "battingAverage": 28.2,
+    "strikeRate": 131.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Siddharth Joon": {
+    "matches": 11,
+    "runs": 211,
+    "battingAverage": 23.6,
+    "strikeRate": 129.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Tom Moores": {
+    "matches": 18,
+    "runs": 378,
+    "battingAverage": 30.3,
+    "strikeRate": 130.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Bipin Saurabh": {
+    "matches": 8,
+    "runs": 408,
+    "battingAverage": 26.3,
+    "strikeRate": 134.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Vishnu Solanki": {
+    "matches": 8,
+    "runs": 196,
+    "battingAverage": 25.1,
+    "strikeRate": 144.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Hardik Tamore": {
+    "matches": 16,
+    "runs": 268,
+    "battingAverage": 24.3,
+    "strikeRate": 136.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Sayan Ghosh": {
+    "matches": 10,
+    "runs": 12,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 19,
+    "economy": 8.15
+  },
+  "Money Grewal": {
+    "matches": 9,
+    "runs": 18,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 8.46
+  },
+  "Arpit Guleria": {
+    "matches": 19,
+    "runs": 34,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 16,
+    "economy": 8.12
+  },
+  "Sunil Kumar": {
+    "matches": 18,
+    "runs": 26,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 7.79
+  },
+  "Tristan Luus": {
+    "matches": 14,
+    "runs": 32,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 8.35
+  },
+  "Divesh Sharma": {
+    "matches": 10,
+    "runs": 16,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 23,
+    "economy": 8.19
+  },
+  "Abhilash Shetty": {
+    "matches": 12,
+    "runs": 20,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 7.73
+  },
+  "Irfan Umair": {
+    "matches": 19,
+    "runs": 32,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 8.6
+  },
+  "Kuldip Yadav": {
+    "matches": 9,
+    "runs": 26,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 20,
+    "economy": 8.54
+  },
+  "Manan Bhardwaj": {
+    "matches": 13,
+    "runs": 19,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 20,
+    "economy": 8.22
+  },
+  "Shreyas Chavan": {
+    "matches": 17,
+    "runs": 20,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 16,
+    "economy": 7.98
+  },
+  "Parikshit Dhanak": {
+    "matches": 11,
+    "runs": 29,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 24,
+    "economy": 8.32
+  },
+  "Chintal Gandhi": {
+    "matches": 11,
+    "runs": 23,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 24,
+    "economy": 7.76
+  },
+  "Dharmendrasinh Jadeja": {
+    "matches": 10,
+    "runs": 15,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 15,
+    "economy": 8.43
+  },
+  "Amit Kumar": {
+    "matches": 17,
+    "runs": 33,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 7.86
+  },
+  "Vishal Nishad": {
+    "matches": 19,
+    "runs": 16,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 14,
+    "economy": 8.44
+  },
+  "Saumy Pandey": {
+    "matches": 14,
+    "runs": 25,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 8.03
+  },
+  "Jhathavedh Subramanyan": {
+    "matches": 9,
+    "runs": 24,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 8.02
+  },
+  "Muhammad Abbas": {
+    "matches": 39,
+    "runs": 454,
+    "battingAverage": 23.4,
+    "strikeRate": 144.0,
+    "wickets": 32,
+    "economy": 8.74
+  },
+  "Charith Asalanka": {
+    "matches": 73,
+    "runs": 1472,
+    "battingAverage": 23.74,
+    "strikeRate": 127.78,
+    "wickets": 7,
+    "economy": 7.8
+  },
+  "Roston Chase": {
+    "matches": 63,
+    "runs": 856,
+    "battingAverage": 23.14,
+    "strikeRate": 118.89,
+    "wickets": 46,
+    "economy": 7.64
+  },
+  "Liam Dawson": {
+    "matches": 39,
+    "runs": 79,
+    "battingAverage": 11.29,
+    "strikeRate": 114.49,
+    "wickets": 40,
+    "economy": 7.82
+  },
+  "George Garton": {
+    "matches": 44,
+    "runs": 559,
+    "battingAverage": 25.9,
+    "strikeRate": 149.0,
+    "wickets": 37,
+    "economy": 8.19
+  },
+  "Kyle Mayers": {
+    "matches": 13,
+    "runs": 379,
+    "battingAverage": 29.15,
+    "strikeRate": 144.11,
+    "wickets": 0,
+    "economy": 8.43
+  },
+  "Dwaine Pretorius": {
+    "matches": 7,
+    "runs": 44,
+    "battingAverage": 11.0,
+    "strikeRate": 157.14,
+    "wickets": 6,
+    "economy": 9.52
+  },
+  "Nathan Smith": {
+    "matches": 44,
+    "runs": 569,
+    "battingAverage": 23.9,
+    "strikeRate": 159.0,
+    "wickets": 37,
+    "economy": 8.79
+  },
+  "Dunith Wellalage": {
+    "matches": 28,
+    "runs": 383,
+    "battingAverage": 28.3,
+    "strikeRate": 148.0,
+    "wickets": 21,
+    "economy": 8.43
+  },
+  "Jason Behrendorff": {
+    "matches": 17,
+    "runs": 6,
+    "battingAverage": 6.0,
+    "strikeRate": 66.67,
+    "wickets": 19,
+    "economy": 9.05
+  },
+  "Tanzim Hasan Sakib": {
+    "matches": 38,
+    "runs": 192,
+    "battingAverage": 14.77,
+    "strikeRate": 109.71,
+    "wickets": 44,
+    "economy": 8.34
+  },
+  "Matthew Potts": {
+    "matches": 37,
+    "runs": 57,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 38,
+    "economy": 7.82
+  },
+  "Nahid Rana": {
+    "matches": 5,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 8,
+    "economy": 9.48
+  },
+  "Olly Stone": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 9.0
+  },
+  "Joshua Tongue": {
+    "matches": 40,
+    "runs": 60,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 37,
+    "economy": 8.25
+  },
+  "Sandeep Warrier": {
+    "matches": 10,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 8,
+    "economy": 9.04
+  },
+  "Sachin Dhas": {
+    "matches": 13,
+    "runs": 393,
+    "battingAverage": 24.8,
+    "strikeRate": 141.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Miles Hammond": {
+    "matches": 19,
+    "runs": 187,
+    "battingAverage": 34.2,
+    "strikeRate": 147.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ahammed Imran": {
+    "matches": 16,
+    "runs": 396,
+    "battingAverage": 31.1,
+    "strikeRate": 138.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Vishvarajsinh Jadeja": {
+    "matches": 9,
+    "runs": 437,
+    "battingAverage": 28.2,
+    "strikeRate": 131.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ayaz Khan": {
+    "matches": 17,
+    "runs": 193,
+    "battingAverage": 28.8,
+    "strikeRate": 137.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Daniel Lategan": {
+    "matches": 17,
+    "runs": 433,
+    "battingAverage": 31.8,
+    "strikeRate": 145.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Siddhant Rana": {
+    "matches": 11,
+    "runs": 239,
+    "battingAverage": 28.4,
+    "strikeRate": 133.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Aaron Varghese": {
+    "matches": 19,
+    "runs": 183,
+    "battingAverage": 24.8,
+    "strikeRate": 141.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Atharva Ankolekar": {
+    "matches": 11,
+    "runs": 175,
+    "battingAverage": 23.5,
+    "strikeRate": 147.0,
+    "wickets": 7,
+    "economy": 8.55
+  },
+  "Abdul Bazith": {
+    "matches": 19,
+    "runs": 215,
+    "battingAverage": 25.5,
+    "strikeRate": 147.0,
+    "wickets": 16,
+    "economy": 8.75
+  },
+  "Karan Lal": {
+    "matches": 17,
+    "runs": 189,
+    "battingAverage": 24.9,
+    "strikeRate": 141.0,
+    "wickets": 11,
+    "economy": 8.49
+  },
+  "Shams Mulani": {
+    "matches": 2,
+    "runs": 1,
+    "battingAverage": 1.0,
+    "strikeRate": 100.0,
+    "wickets": 0,
+    "economy": 11.4
+  },
+  "Ripal Patel": {
+    "matches": 9,
+    "runs": 80,
+    "battingAverage": 16.0,
+    "strikeRate": 109.59,
+    "wickets": 0,
+    "economy": 7.33
+  },
+  "Prince Rai": {
+    "matches": 9,
+    "runs": 233,
+    "battingAverage": 26.3,
+    "strikeRate": 145.0,
+    "wickets": 9,
+    "economy": 8.83
+  },
+  "Vivrant Sharma": {
+    "matches": 3,
+    "runs": 69,
+    "battingAverage": 69.0,
+    "strikeRate": 146.81,
+    "wickets": 0,
+    "economy": 12.33
+  },
+  "Utkarsh Singh": {
+    "matches": 19,
+    "runs": 199,
+    "battingAverage": 21.9,
+    "strikeRate": 151.0,
+    "wickets": 17,
+    "economy": 8.39
+  },
+  "Ayush Vartak": {
+    "matches": 9,
+    "runs": 165,
+    "battingAverage": 24.5,
+    "strikeRate": 137.0,
+    "wickets": 15,
+    "economy": 8.95
+  },
+  "Sanjay Yadav": {
+    "matches": 8,
+    "runs": 216,
+    "battingAverage": 20.6,
+    "strikeRate": 148.0,
+    "wickets": 16,
+    "economy": 8.76
+  },
+  "Sayed Irfan Aftab": {
+    "matches": 18,
+    "runs": 24,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 8.27
+  },
+  "Esakkimuthu Ayyakutti": {
+    "matches": 19,
+    "runs": 24,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 8.52
+  },
+  "Praful Hinge": {
+    "matches": 11,
+    "runs": 17,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 14,
+    "economy": 8.2
+  },
+  "Pankaj Jaswal": {
+    "matches": 16,
+    "runs": 33,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 17,
+    "economy": 8.61
+  },
+  "Kulwant Khejroliya": {
+    "matches": 9,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 6,
+    "economy": 11.01
+  },
+  "Ravi Kumar": {
+    "matches": 18,
+    "runs": 29,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 8.07
+  },
+  "Rajan Kumar": {
+    "matches": 15,
+    "runs": 12,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 16,
+    "economy": 8.4
+  },
+  "Safvan Patel": {
+    "matches": 1,
+    "runs": 9,
+    "battingAverage": 9.0,
+    "strikeRate": 75.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ishan Porel": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 1,
+    "economy": 9.75
+  },
+  "Purav Agarwal": {
+    "matches": 18,
+    "runs": 21,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 15,
+    "economy": 7.99
+  },
+  "Jikku Bright": {
+    "matches": 16,
+    "runs": 18,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 8.21
+  },
+  "Yash Dicholkar": {
+    "matches": 13,
+    "runs": 36,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 8.14
+  },
+  "Arab Gul": {
+    "matches": 13,
+    "runs": 16,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 7.94
+  },
+  "Rakibul Hasan": {
+    "matches": 3,
+    "runs": 18,
+    "battingAverage": 18.0,
+    "strikeRate": 257.14,
+    "wickets": 2,
+    "economy": 7.86
+  },
+  "Traveen Mathew": {
+    "matches": 19,
+    "runs": 36,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 12,
+    "economy": 8.64
+  },
+  "Naman Pushpak": {
+    "matches": 16,
+    "runs": 34,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 15,
+    "economy": 8.37
+  },
+  "Izaz Sawariya": {
+    "matches": 12,
+    "runs": 33,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 11,
+    "economy": 8.61
+  },
+  "Roshan Wagshare": {
+    "matches": 19,
+    "runs": 27,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 14,
+    "economy": 7.8
+  },
+  "Wesley Agar": {
+    "matches": 35,
+    "runs": 55,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 36,
+    "economy": 7.8
+  },
+  "Binura Fernando": {
+    "matches": 43,
+    "runs": 63,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 46,
+    "economy": 7.68
+  },
+  "Md Shoriful Islam": {
+    "matches": 25,
+    "runs": 45,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 34,
+    "economy": 8.0
+  },
+  "Joshua Little": {
+    "matches": 30,
+    "runs": 30,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 37,
+    "economy": 8.25
+  },
+  "Obed McCoy": {
+    "matches": 42,
+    "runs": 42,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 37,
+    "economy": 8.47
+  },
+  "Billy Stanlake": {
+    "matches": 6,
+    "runs": 5,
+    "battingAverage": 5.0,
+    "strikeRate": 250.0,
+    "wickets": 7,
+    "economy": 8.33
+  },
+  "R.S Ambrish": {
+    "matches": 16,
+    "runs": 148,
+    "battingAverage": 24.8,
+    "strikeRate": 140.0,
+    "wickets": 8,
+    "economy": 8.78
+  },
+  "Nikhil Chaudhary": {
+    "matches": 3,
+    "runs": 26,
+    "battingAverage": 13.0,
+    "strikeRate": 136.84,
+    "wickets": 2,
+    "economy": 6.86
+  },
+  "Krains Fuletra": {
+    "matches": 17,
+    "runs": 185,
+    "battingAverage": 20.5,
+    "strikeRate": 137.0,
+    "wickets": 13,
+    "economy": 8.55
+  },
+  "Macneil Noronha": {
+    "matches": 10,
+    "runs": 174,
+    "battingAverage": 26.4,
+    "strikeRate": 146.0,
+    "wickets": 11,
+    "economy": 8.84
+  },
+  "R Rajkumar": {
+    "matches": 16,
+    "runs": 224,
+    "battingAverage": 22.4,
+    "strikeRate": 136.0,
+    "wickets": 16,
+    "economy": 8.84
+  },
+  "Ninad Rathva": {
+    "matches": 15,
+    "runs": 187,
+    "battingAverage": 26.7,
+    "strikeRate": 139.0,
+    "wickets": 9,
+    "economy": 8.77
+  },
+  "Sunny Sandhu": {
+    "matches": 17,
+    "runs": 137,
+    "battingAverage": 20.7,
+    "strikeRate": 149.0,
+    "wickets": 13,
+    "economy": 8.37
+  },
+  "Shivalik Sharma": {
+    "matches": 18,
+    "runs": 150,
+    "battingAverage": 22.0,
+    "strikeRate": 142.0,
+    "wickets": 11,
+    "economy": 8.8
+  },
+  "Siddharth Yadav": {
+    "matches": 11,
+    "runs": 175,
+    "battingAverage": 24.5,
+    "strikeRate": 147.0,
+    "wickets": 9,
+    "economy": 8.85
+  },
+  "R.Sonu Yadav": {
+    "matches": 13,
+    "runs": 257,
+    "battingAverage": 25.7,
+    "strikeRate": 149.0,
+    "wickets": 15,
+    "economy": 8.87
+  },
+  "Waseem Khanday": {
+    "matches": 13,
+    "runs": 36,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 8.14
+  },
+  "Atif Mushtaq": {
+    "matches": 18,
+    "runs": 14,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 7.67
+  },
+  "Atal Rai": {
+    "matches": 10,
+    "runs": 16,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 13,
+    "economy": 8.19
+  },
+  "C.Rakshann Readdi": {
+    "matches": 12,
+    "runs": 21,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 15,
+    "economy": 8.49
+  },
+  "Manish Reddy": {
+    "matches": 12,
+    "runs": 26,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 8.29
+  },
+  "Nishanth Saranu": {
+    "matches": 18,
+    "runs": 32,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 17,
+    "economy": 8.35
+  },
+  "Deependra Singh": {
+    "matches": 9,
+    "runs": 15,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 8.18
+  },
+  "Rajat Verma": {
+    "matches": 11,
+    "runs": 17,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 12,
+    "economy": 8.2
+  },
+  "Rohit Yadav": {
+    "matches": 19,
+    "runs": 34,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 8.12
+  },
+  "Emanjot Chahal": {
+    "matches": 16,
+    "runs": 156,
+    "battingAverage": 20.6,
+    "strikeRate": 148.0,
+    "wickets": 16,
+    "economy": 8.36
+  },
+  "Shubhang Hegde": {
+    "matches": 12,
+    "runs": 236,
+    "battingAverage": 26.6,
+    "strikeRate": 148.0,
+    "wickets": 9,
+    "economy": 8.86
+  },
+  "Bal Krishna": {
+    "matches": 17,
+    "runs": 137,
+    "battingAverage": 25.7,
+    "strikeRate": 149.0,
+    "wickets": 15,
+    "economy": 8.97
+  },
+  "Vihaan Malhotra": {
+    "matches": 12,
+    "runs": 176,
+    "battingAverage": 24.6,
+    "strikeRate": 148.0,
+    "wickets": 10,
+    "economy": 8.26
+  },
+  "Khilan Patel": {
+    "matches": 12,
+    "runs": 216,
+    "battingAverage": 23.6,
+    "strikeRate": 148.0,
+    "wickets": 16,
+    "economy": 8.26
+  },
+  "Delano Potgieter": {
+    "matches": 12,
+    "runs": 200,
+    "battingAverage": 24.0,
+    "strikeRate": 132.0,
+    "wickets": 9,
+    "economy": 8.2
+  },
+  "Hardik Raj": {
+    "matches": 15,
+    "runs": 235,
+    "battingAverage": 26.5,
+    "strikeRate": 147.0,
+    "wickets": 13,
+    "economy": 8.65
+  },
+  "Sarthak Ranjan": {
+    "matches": 12,
+    "runs": 256,
+    "battingAverage": 26.6,
+    "strikeRate": 148.0,
+    "wickets": 14,
+    "economy": 8.86
+  },
+  "Parth Rekhade": {
+    "matches": 15,
+    "runs": 259,
+    "battingAverage": 26.9,
+    "strikeRate": 151.0,
+    "wickets": 9,
+    "economy": 8.89
+  },
+  "Tiaan Van Vuuren": {
+    "matches": 16,
+    "runs": 196,
+    "battingAverage": 26.6,
+    "strikeRate": 148.0,
+    "wickets": 16,
+    "economy": 8.36
+  },
+  "Shreevatsha Acharya": {
+    "matches": 13,
+    "runs": 36,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 24,
+    "economy": 8.14
+  },
+  "Sadek Hussain": {
+    "matches": 11,
+    "runs": 27,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 7.8
+  },
+  "Shubham Kapse": {
+    "matches": 12,
+    "runs": 22,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 23,
+    "economy": 8.25
+  },
+  "Aaqib Khan": {
+    "matches": 10,
+    "runs": 32,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 8.35
+  },
+  "Sabir Khan": {
+    "matches": 16,
+    "runs": 36,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 7.89
+  },
+  "Bayanda Majola": {
+    "matches": 16,
+    "runs": 31,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 8.09
+  },
+  "Srihari Nair": {
+    "matches": 17,
+    "runs": 33,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 24,
+    "economy": 7.86
+  },
+  "Brijesh Sharma": {
+    "matches": 13,
+    "runs": 2,
+    "battingAverage": 2.0,
+    "strikeRate": 50.0,
+    "wickets": 14,
+    "economy": 9.89
+  },
+  "Aman Shekhawat": {
+    "matches": 9,
+    "runs": 13,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 18,
+    "economy": 7.66
+  },
+  "Himanshu Bisht": {
+    "matches": 13,
+    "runs": 233,
+    "battingAverage": 22.3,
+    "strikeRate": 145.0,
+    "wickets": 7,
+    "economy": 8.33
+  },
+  "Shreyan Chakraborty": {
+    "matches": 19,
+    "runs": 131,
+    "battingAverage": 25.1,
+    "strikeRate": 143.0,
+    "wickets": 16,
+    "economy": 8.21
+  },
+  "Kanishk Chouhan": {
+    "matches": 14,
+    "runs": 262,
+    "battingAverage": 20.2,
+    "strikeRate": 134.0,
+    "wickets": 13,
+    "economy": 8.52
+  },
+  "Mayank Gusain": {
+    "matches": 9,
+    "runs": 173,
+    "battingAverage": 24.3,
+    "strikeRate": 145.0,
+    "wickets": 7,
+    "economy": 8.23
+  },
+  "Akash Pugazhanthi": {
+    "matches": 14,
+    "runs": 270,
+    "battingAverage": 23.0,
+    "strikeRate": 142.0,
+    "wickets": 12,
+    "economy": 8.1
+  },
+  "Abhimanyusingh Rajput": {
+    "matches": 14,
+    "runs": 234,
+    "battingAverage": 21.4,
+    "strikeRate": 146.0,
+    "wickets": 14,
+    "economy": 8.64
+  },
+  "Shubham Rana": {
+    "matches": 16,
+    "runs": 204,
+    "battingAverage": 21.4,
+    "strikeRate": 136.0,
+    "wickets": 9,
+    "economy": 8.84
+  },
+  "Arpit Rana": {
+    "matches": 19,
+    "runs": 223,
+    "battingAverage": 23.3,
+    "strikeRate": 135.0,
+    "wickets": 13,
+    "economy": 8.33
+  },
+  "Maramreddy Reddy": {
+    "matches": 13,
+    "runs": 269,
+    "battingAverage": 20.9,
+    "strikeRate": 141.0,
+    "wickets": 12,
+    "economy": 8.99
+  },
+  "Sagar Solanki": {
+    "matches": 9,
+    "runs": 153,
+    "battingAverage": 25.3,
+    "strikeRate": 145.0,
+    "wickets": 15,
+    "economy": 8.53
+  },
+  "Aryaman Singh Dhaliwal": {
+    "matches": 12,
+    "runs": 144,
+    "battingAverage": 26.4,
+    "strikeRate": 136.0,
+    "wickets": 7,
+    "economy": 8.74
+  },
+  "Daksh Kamra": {
+    "matches": 13,
+    "runs": 189,
+    "battingAverage": 22.9,
+    "strikeRate": 141.0,
+    "wickets": 15,
+    "economy": 8.39
+  },
+  "Vishal Mandwal": {
+    "matches": 16,
+    "runs": 184,
+    "battingAverage": 23.4,
+    "strikeRate": 136.0,
+    "wickets": 8,
+    "economy": 8.24
+  },
+  "Arfaz Mohammad": {
+    "matches": 18,
+    "runs": 178,
+    "battingAverage": 22.8,
+    "strikeRate": 150.0,
+    "wickets": 15,
+    "economy": 8.98
+  },
+  "Hemang Patel": {
+    "matches": 9,
+    "runs": 257,
+    "battingAverage": 20.7,
+    "strikeRate": 149.0,
+    "wickets": 16,
+    "economy": 8.77
+  },
+  "Mridul Surroch": {
+    "matches": 13,
+    "runs": 185,
+    "battingAverage": 25.5,
+    "strikeRate": 137.0,
+    "wickets": 14,
+    "economy": 8.75
+  },
+  "Anuj Thakral": {
+    "matches": 12,
+    "runs": 140,
+    "battingAverage": 22.0,
+    "strikeRate": 132.0,
+    "wickets": 10,
+    "economy": 8.8
+  },
+  "Parth Vats": {
+    "matches": 15,
+    "runs": 267,
+    "battingAverage": 24.7,
+    "strikeRate": 139.0,
+    "wickets": 13,
+    "economy": 8.17
+  },
+  "Lalit Yadav": {
+    "matches": 27,
+    "runs": 305,
+    "battingAverage": 19.06,
+    "strikeRate": 105.17,
+    "wickets": 10,
+    "economy": 8.85
+  },
+  "Nitin Sai Yadav": {
+    "matches": 11,
+    "runs": 175,
+    "battingAverage": 24.5,
+    "strikeRate": 147.0,
+    "wickets": 17,
+    "economy": 8.25
+  },
+  "Krish Bhagat": {
+    "matches": 3,
+    "runs": 10,
+    "battingAverage": 10.0,
+    "strikeRate": 47.62,
+    "wickets": 0,
+    "economy": 10.5
+  },
+  "Prerit Dutta": {
+    "matches": 8,
+    "runs": 192,
+    "battingAverage": 26.2,
+    "strikeRate": 144.0,
+    "wickets": 13,
+    "economy": 8.52
+  },
+  "Sammar Gajjar": {
+    "matches": 19,
+    "runs": 191,
+    "battingAverage": 22.1,
+    "strikeRate": 143.0,
+    "wickets": 13,
+    "economy": 8.81
+  },
+  "Nasir Lone": {
+    "matches": 17,
+    "runs": 265,
+    "battingAverage": 26.5,
+    "strikeRate": 137.0,
+    "wickets": 11,
+    "economy": 8.85
+  },
+  "Ishan Mulchandani": {
+    "matches": 16,
+    "runs": 260,
+    "battingAverage": 26.0,
+    "strikeRate": 132.0,
+    "wickets": 15,
+    "economy": 8.9
+  },
+  "Akhil Scaria": {
+    "matches": 10,
+    "runs": 210,
+    "battingAverage": 23.0,
+    "strikeRate": 142.0,
+    "wickets": 14,
+    "economy": 8.3
+  },
+  "Muhammed Sharafuddeen": {
+    "matches": 16,
+    "runs": 180,
+    "battingAverage": 26.0,
+    "strikeRate": 132.0,
+    "wickets": 9,
+    "economy": 8.9
+  },
+  "K.Ajay Singh": {
+    "matches": 13,
+    "runs": 261,
+    "battingAverage": 25.1,
+    "strikeRate": 133.0,
+    "wickets": 8,
+    "economy": 8.21
+  },
+  "Ritik Tada": {
+    "matches": 14,
+    "runs": 158,
+    "battingAverage": 26.8,
+    "strikeRate": 150.0,
+    "wickets": 7,
+    "economy": 8.58
+  },
+  "Luckyrajsinh Vaghela": {
+    "matches": 15,
+    "runs": 183,
+    "battingAverage": 20.3,
+    "strikeRate": 135.0,
+    "wickets": 12,
+    "economy": 8.53
+  },
+  "Mohamed Ali": {
+    "matches": 17,
+    "runs": 261,
+    "battingAverage": 26.1,
+    "strikeRate": 133.0,
+    "wickets": 14,
+    "economy": 8.31
+  },
+  "Madhav Bajaj": {
+    "matches": 11,
+    "runs": 187,
+    "battingAverage": 20.7,
+    "strikeRate": 139.0,
+    "wickets": 15,
+    "economy": 8.67
+  },
+  "Akshu Bajwa": {
+    "matches": 17,
+    "runs": 157,
+    "battingAverage": 20.7,
+    "strikeRate": 149.0,
+    "wickets": 16,
+    "economy": 8.67
+  },
+  "Varun Raj Singh Bisht": {
+    "matches": 16,
+    "runs": 216,
+    "battingAverage": 22.6,
+    "strikeRate": 148.0,
+    "wickets": 9,
+    "economy": 8.96
+  },
+  "Rishabh Chauhan": {
+    "matches": 9,
+    "runs": 221,
+    "battingAverage": 21.1,
+    "strikeRate": 133.0,
+    "wickets": 16,
+    "economy": 8.71
+  },
+  "Jack Edwards": {
+    "matches": 13,
+    "runs": 149,
+    "battingAverage": 22.9,
+    "strikeRate": 141.0,
+    "wickets": 15,
+    "economy": 8.39
+  },
+  "Dian Forrester": {
+    "matches": 5,
+    "runs": 83,
+    "battingAverage": 27.67,
+    "strikeRate": 107.79,
+    "wickets": 0,
+    "economy": 4.0
+  },
+  "Dhurmil Matkar": {
+    "matches": 14,
+    "runs": 270,
+    "battingAverage": 22.0,
+    "strikeRate": 142.0,
+    "wickets": 9,
+    "economy": 8.7
+  },
+  "Shiva Singh": {
+    "matches": 19,
+    "runs": 191,
+    "battingAverage": 20.1,
+    "strikeRate": 143.0,
+    "wickets": 9,
+    "economy": 8.51
+  },
+  "Parikshit Valsangkar": {
+    "matches": 11,
+    "runs": 223,
+    "battingAverage": 20.3,
+    "strikeRate": 135.0,
+    "wickets": 10,
+    "economy": 8.43
+  },
+  "Mani Sankar Mura Singh": {
+    "matches": 15,
+    "runs": 147,
+    "battingAverage": 21.7,
+    "strikeRate": 139.0,
+    "wickets": 13,
+    "economy": 8.77
+  },
+  "Virandeep Singh": {
+    "matches": 130,
+    "runs": 3398,
+    "battingAverage": 35.4,
+    "strikeRate": 124.06,
+    "wickets": 133,
+    "economy": 5.44
+  },
+  "Chama Milind": {
+    "matches": 14,
+    "runs": 262,
+    "battingAverage": 20.2,
+    "strikeRate": 134.0,
+    "wickets": 7,
+    "economy": 8.82
+  },
+  "K.L. Shrijith": {
+    "matches": 9,
+    "runs": 353,
+    "battingAverage": 32.8,
+    "strikeRate": 133.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Eathan Bosch": {
+    "matches": 4,
+    "runs": 11,
+    "battingAverage": 11.0,
+    "strikeRate": 122.22,
+    "wickets": 3,
+    "economy": 7.38
+  },
+  "Chris Green": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 8.47
+  },
+  "Swastik Chikara": {
+    "matches": 13,
+    "runs": 281,
+    "battingAverage": 24.6,
+    "strikeRate": 139.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rahul Raj Namala": {
+    "matches": 12,
+    "runs": 324,
+    "battingAverage": 27.9,
+    "strikeRate": 128.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Virat Singh": {
+    "matches": 3,
+    "runs": 15,
+    "battingAverage": 7.5,
+    "strikeRate": 57.69,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ruturaj Gaikwad": {
+    "matches": 85,
+    "runs": 2839,
+    "battingAverage": 38.36,
+    "strikeRate": 135.64,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Sanju Samson": {
+    "matches": 190,
+    "runs": 5181,
+    "battingAverage": 31.59,
+    "strikeRate": 141.13,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Shivam Dube": {
+    "matches": 26,
+    "runs": 331,
+    "battingAverage": 22.1,
+    "strikeRate": 146.0,
+    "wickets": 19,
+    "economy": 7.81
+  },
+  "Noor Ahmad": {
+    "matches": 51,
+    "runs": 31,
+    "battingAverage": 2.82,
+    "strikeRate": 53.45,
+    "wickets": 61,
+    "economy": 8.17
+  },
+  "Khaleel Ahmed": {
+    "matches": 76,
+    "runs": 2,
+    "battingAverage": 0.4,
+    "strikeRate": 22.22,
+    "wickets": 91,
+    "economy": 8.96
+  },
+  "MS Dhoni": {
+    "matches": 277,
+    "runs": 5439,
+    "battingAverage": 38.3,
+    "strikeRate": 137.45,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Anshul Kamboj": {
+    "matches": 25,
+    "runs": 74,
+    "battingAverage": 24.67,
+    "strikeRate": 142.31,
+    "wickets": 31,
+    "economy": 9.97
+  },
+  "Dewald Brevis": {
+    "matches": 27,
+    "runs": 606,
+    "battingAverage": 25.25,
+    "strikeRate": 146.02,
+    "wickets": 1,
+    "economy": 16.0
+  },
+  "Gurjapneet Singh": {
+    "matches": 8,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 4,
+    "economy": 9.26
+  },
+  "Nathan Ellis": {
+    "matches": 17,
+    "runs": 19,
+    "battingAverage": 4.75,
+    "strikeRate": 76.0,
+    "wickets": 19,
+    "economy": 8.67
+  },
+  "Jamie Overton": {
+    "matches": 27,
+    "runs": 352,
+    "battingAverage": 26.2,
+    "strikeRate": 142.0,
+    "wickets": 20,
+    "economy": 7.82
+  },
+  "Mukesh Choudhary": {
+    "matches": 10,
+    "runs": 16,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 21,
+    "economy": 8.19
+  },
+  "Ramakrishna Ghosh": {
+    "matches": 9,
+    "runs": 169,
+    "battingAverage": 20.9,
+    "strikeRate": 141.0,
+    "wickets": 10,
+    "economy": 8.29
+  },
+  "Shreyas Gopal": {
+    "matches": 52,
+    "runs": 180,
+    "battingAverage": 12.86,
+    "strikeRate": 106.51,
+    "wickets": 52,
+    "economy": 8.17
+  },
+  "Ayush Mhatre": {
+    "matches": 10,
+    "runs": 386,
+    "battingAverage": 26.1,
+    "strikeRate": 132.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Urvil Patel": {
+    "matches": 10,
+    "runs": 197,
+    "battingAverage": 19.7,
+    "strikeRate": 205.21,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Axar Patel": {
+    "matches": 177,
+    "runs": 2089,
+    "battingAverage": 21.54,
+    "strikeRate": 133.74,
+    "wickets": 139,
+    "economy": 7.43
+  },
+  "KL Rahul": {
+    "matches": 160,
+    "runs": 5828,
+    "battingAverage": 45.53,
+    "strikeRate": 139.16,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Kuldeep Yadav": {
+    "matches": 111,
+    "runs": 210,
+    "battingAverage": 11.67,
+    "strikeRate": 83.0,
+    "wickets": 112,
+    "economy": 8.29
+  },
+  "Mitchell Starc": {
+    "matches": 58,
+    "runs": 111,
+    "battingAverage": 9.25,
+    "strikeRate": 91.74,
+    "wickets": 76,
+    "economy": 8.83
+  },
+  "T Natarajan": {
+    "matches": 74,
+    "runs": 4,
+    "battingAverage": 4.0,
+    "strikeRate": 57.14,
+    "wickets": 73,
+    "economy": 9.19
+  },
+  "Tristan Stubbs": {
+    "matches": 47,
+    "runs": 986,
+    "battingAverage": 39.44,
+    "strikeRate": 151.93,
+    "wickets": 4,
+    "economy": 11.5
+  },
+  "Mukesh Kumar": {
+    "matches": 42,
+    "runs": 10,
+    "battingAverage": 10.0,
+    "strikeRate": 55.56,
+    "wickets": 42,
+    "economy": 10.59
+  },
+  "Nitish Rana": {
+    "matches": 127,
+    "runs": 3078,
+    "battingAverage": 27.48,
+    "strikeRate": 137.72,
+    "wickets": 10,
+    "economy": 9.03
+  },
+  "Abishek Porel": {
+    "matches": 36,
+    "runs": 769,
+    "battingAverage": 25.63,
+    "strikeRate": 145.37,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Ashutosh Sharma": {
+    "matches": 18,
+    "runs": 230,
+    "battingAverage": 28.5,
+    "strikeRate": 134.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Sameer Rizvi": {
+    "matches": 10,
+    "runs": 434,
+    "battingAverage": 28.9,
+    "strikeRate": 138.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Dushmantha Chameera": {
+    "matches": 21,
+    "runs": 53,
+    "battingAverage": 13.25,
+    "strikeRate": 117.78,
+    "wickets": 13,
+    "economy": 9.82
+  },
+  "Karun Nair": {
+    "matches": 86,
+    "runs": 1712,
+    "battingAverage": 23.45,
+    "strikeRate": 131.29,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Madhav Tiwari": {
+    "matches": 18,
+    "runs": 166,
+    "battingAverage": 23.6,
+    "strikeRate": 138.0,
+    "wickets": 12,
+    "economy": 8.56
+  },
+  "Ajay Mandal": {
+    "matches": 8,
+    "runs": 152,
+    "battingAverage": 26.2,
+    "strikeRate": 144.0,
+    "wickets": 15,
+    "economy": 8.22
+  },
+  "Tripurana Vijay": {
+    "matches": 10,
+    "runs": 234,
+    "battingAverage": 24.4,
+    "strikeRate": 146.0,
+    "wickets": 16,
+    "economy": 8.84
+  },
+  "Vipraj Nigam": {
+    "matches": 11,
+    "runs": 243,
+    "battingAverage": 22.3,
+    "strikeRate": 135.0,
+    "wickets": 8,
+    "economy": 8.43
+  },
+  "Rashid Khan": {
+    "matches": 153,
+    "runs": 635,
+    "battingAverage": 13.8,
+    "strikeRate": 156.4,
+    "wickets": 179,
+    "economy": 7.28
+  },
+  "Shubman Gill": {
+    "matches": 134,
+    "runs": 4598,
+    "battingAverage": 40.33,
+    "strikeRate": 142.09,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Jos Buttler": {
+    "matches": 138,
+    "runs": 4647,
+    "battingAverage": 39.38,
+    "strikeRate": 149.66,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Mohammed Siraj": {
+    "matches": 125,
+    "runs": 117,
+    "battingAverage": 9.75,
+    "strikeRate": 84.17,
+    "wickets": 128,
+    "economy": 8.78
+  },
+  "Kagiso Rabada": {
+    "matches": 101,
+    "runs": 262,
+    "battingAverage": 13.1,
+    "strikeRate": 109.62,
+    "wickets": 151,
+    "economy": 8.79
+  },
+  "Prasidh Krishna": {
+    "matches": 78,
+    "runs": 15,
+    "battingAverage": 5.0,
+    "strikeRate": 48.39,
+    "wickets": 91,
+    "economy": 9.0
+  },
+  "Sai Sudharsan": {
+    "matches": 57,
+    "runs": 2515,
+    "battingAverage": 48.37,
+    "strikeRate": 149.17,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rahul Tewatia": {
+    "matches": 124,
+    "runs": 1302,
+    "battingAverage": 23.67,
+    "strikeRate": 138.07,
+    "wickets": 32,
+    "economy": 7.91
+  },
+  "Shahrukh Khan": {
+    "matches": 64,
+    "runs": 775,
+    "battingAverage": 20.39,
+    "strikeRate": 147.9,
+    "wickets": 1,
+    "economy": 9.33
+  },
+  "Washington Sundar": {
+    "matches": 83,
+    "runs": 888,
+    "battingAverage": 20.65,
+    "strikeRate": 135.37,
+    "wickets": 40,
+    "economy": 7.77
+  },
+  "R Sai Kishore": {
+    "matches": 28,
+    "runs": 18,
+    "battingAverage": 4.5,
+    "strikeRate": 112.5,
+    "wickets": 33,
+    "economy": 8.99
+  },
+  "Glenn Phillips": {
+    "matches": 14,
+    "runs": 132,
+    "battingAverage": 12.0,
+    "strikeRate": 121.1,
+    "wickets": 2,
+    "economy": 8.0
+  },
+  "Arshad Khan": {
+    "matches": 27,
+    "runs": 147,
+    "battingAverage": 21.0,
+    "strikeRate": 148.48,
+    "wickets": 18,
+    "economy": 11.06
+  },
+  "Gurnoor Brar": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 0,
+    "economy": 14.0
+  },
+  "Ishant Sharma": {
+    "matches": 117,
+    "runs": 57,
+    "battingAverage": 9.5,
+    "strikeRate": 82.61,
+    "wickets": 96,
+    "economy": 8.38
+  },
+  "Jayant Yadav": {
+    "matches": 20,
+    "runs": 40,
+    "battingAverage": 10.0,
+    "strikeRate": 111.11,
+    "wickets": 8,
+    "economy": 6.85
+  },
+  "Kumar Kushagra": {
+    "matches": 19,
+    "runs": 307,
+    "battingAverage": 24.2,
+    "strikeRate": 135.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Anuj Rawat": {
+    "matches": 24,
+    "runs": 318,
+    "battingAverage": 19.88,
+    "strikeRate": 119.1,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Manav Suthar": {
+    "matches": 17,
+    "runs": 21,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 7.74
+  },
+  "Nishant Sindhu": {
+    "matches": 8,
+    "runs": 63,
+    "battingAverage": 12.6,
+    "strikeRate": 126.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rinku Singh": {
+    "matches": 72,
+    "runs": 1398,
+    "battingAverage": 34.1,
+    "strikeRate": 146.23,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Sunil Narine": {
+    "matches": 201,
+    "runs": 1820,
+    "battingAverage": 17.5,
+    "strikeRate": 165.3,
+    "wickets": 209,
+    "economy": 6.79
+  },
+  "Varun Chakravarthy": {
+    "matches": 94,
+    "runs": 31,
+    "battingAverage": 5.17,
+    "strikeRate": 58.49,
+    "wickets": 111,
+    "economy": 7.72
+  },
+  "Harshit Rana": {
+    "matches": 33,
+    "runs": 59,
+    "battingAverage": 9.83,
+    "strikeRate": 105.36,
+    "wickets": 40,
+    "economy": 9.51
+  },
+  "Ramandeep Singh": {
+    "matches": 38,
+    "runs": 299,
+    "battingAverage": 18.69,
+    "strikeRate": 145.85,
+    "wickets": 7,
+    "economy": 10.07
+  },
+  "Angkrish Raghuvanshi": {
+    "matches": 9,
+    "runs": 349,
+    "battingAverage": 31.4,
+    "strikeRate": 141.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Vaibhav Arora": {
+    "matches": 43,
+    "runs": 10,
+    "battingAverage": 2.5,
+    "strikeRate": 37.04,
+    "wickets": 47,
+    "economy": 9.74
+  },
+  "Ajinkya Rahane": {
+    "matches": 212,
+    "runs": 5367,
+    "battingAverage": 30.15,
+    "strikeRate": 125.6,
+    "wickets": 1,
+    "economy": 5.0
+  },
+  "Rovman Powell": {
+    "matches": 39,
+    "runs": 555,
+    "battingAverage": 22.2,
+    "strikeRate": 142.31,
+    "wickets": 1,
+    "economy": 11.67
+  },
+  "Manish Pandey": {
+    "matches": 180,
+    "runs": 4021,
+    "battingAverage": 29.35,
+    "strikeRate": 121.96,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Umran Malik": {
+    "matches": 26,
+    "runs": 23,
+    "battingAverage": 11.5,
+    "strikeRate": 143.75,
+    "wickets": 29,
+    "economy": 9.4
+  },
+  "Anukul Roy": {
+    "matches": 25,
+    "runs": 78,
+    "battingAverage": 9.75,
+    "strikeRate": 121.88,
+    "wickets": 15,
+    "economy": 8.9
+  },
+  "Rishabh Pant": {
+    "matches": 139,
+    "runs": 3879,
+    "battingAverage": 33.73,
+    "strikeRate": 146.71,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Nicholas Pooran": {
+    "matches": 104,
+    "runs": 2527,
+    "battingAverage": 30.45,
+    "strikeRate": 163.77,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Mayank Yadav": {
+    "matches": 10,
+    "runs": 5,
+    "battingAverage": 5.0,
+    "strikeRate": 100.0,
+    "wickets": 9,
+    "economy": 10.15
+  },
+  "Mohammed Shami": {
+    "matches": 132,
+    "runs": 115,
+    "battingAverage": 6.05,
+    "strikeRate": 103.6,
+    "wickets": 145,
+    "economy": 8.66
+  },
+  "Avesh Khan": {
+    "matches": 82,
+    "runs": 68,
+    "battingAverage": 17.0,
+    "strikeRate": 158.14,
+    "wickets": 93,
+    "economy": 9.28
+  },
+  "Abdul Samad": {
+    "matches": 71,
+    "runs": 859,
+    "battingAverage": 19.09,
+    "strikeRate": 148.62,
+    "wickets": 2,
+    "economy": 13.16
+  },
+  "Ayush Badoni": {
+    "matches": 66,
+    "runs": 1178,
+    "battingAverage": 25.61,
+    "strikeRate": 140.91,
+    "wickets": 4,
+    "economy": 9.22
+  },
+  "Mohsin Khan": {
+    "matches": 31,
+    "runs": 25,
+    "battingAverage": 5.0,
+    "strikeRate": 89.29,
+    "wickets": 38,
+    "economy": 8.41
+  },
+  "Mitchell Marsh": {
+    "matches": 68,
+    "runs": 1855,
+    "battingAverage": 30.92,
+    "strikeRate": 148.52,
+    "wickets": 37,
+    "economy": 8.52
+  },
+  "Shahbaz Ahmed": {
+    "matches": 63,
+    "runs": 603,
+    "battingAverage": 20.79,
+    "strikeRate": 123.31,
+    "wickets": 27,
+    "economy": 9.79
+  },
+  "Aiden Markram": {
+    "matches": 69,
+    "runs": 1671,
+    "battingAverage": 29.84,
+    "strikeRate": 135.41,
+    "wickets": 6,
+    "economy": 9.61
+  },
+  "Manimaran Siddharth": {
+    "matches": 9,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 9,
+    "economy": 9.13
+  },
+  "Matthew Breetzke": {
+    "matches": 1,
+    "runs": 14,
+    "battingAverage": 14.0,
+    "strikeRate": 116.67,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Akash Singh": {
+    "matches": 12,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 13,
+    "economy": 9.86
+  },
+  "Arjun Tendulkar": {
+    "matches": 6,
+    "runs": 18,
+    "battingAverage": 18.0,
+    "strikeRate": 128.57,
+    "wickets": 4,
+    "economy": 9.28
+  },
+  "Arshin Kulkarni": {
+    "matches": 11,
+    "runs": 231,
+    "battingAverage": 20.1,
+    "strikeRate": 143.0,
+    "wickets": 17,
+    "economy": 8.61
+  },
+  "Himmat Singh": {
+    "matches": 9,
+    "runs": 92,
+    "battingAverage": 30.67,
+    "strikeRate": 133.33,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Digvesh Rathi": {
+    "matches": 12,
+    "runs": 23,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 15,
+    "economy": 8.01
+  },
+  "Prince Yadav": {
+    "matches": 20,
+    "runs": 5,
+    "battingAverage": 5.0,
+    "strikeRate": 45.45,
+    "wickets": 19,
+    "economy": 9.17
+  },
+  "Jasprit Bumrah": {
+    "matches": 158,
+    "runs": 75,
+    "battingAverage": 9.38,
+    "strikeRate": 87.21,
+    "wickets": 190,
+    "economy": 7.34
+  },
+  "Hardik Pandya": {
+    "matches": 162,
+    "runs": 2964,
+    "battingAverage": 27.7,
+    "strikeRate": 146.37,
+    "wickets": 82,
+    "economy": 9.36
+  },
+  "Suryakumar Yadav": {
+    "matches": 179,
+    "runs": 4581,
+    "battingAverage": 33.44,
+    "strikeRate": 148.54,
+    "wickets": 0,
+    "economy": 8.0
+  },
+  "Rohit Sharma": {
+    "matches": 281,
+    "runs": 7331,
+    "battingAverage": 29.8,
+    "strikeRate": 132.88,
+    "wickets": 15,
+    "economy": 8.02
+  },
+  "Trent Boult": {
+    "matches": 124,
+    "runs": 93,
+    "battingAverage": 9.3,
+    "strikeRate": 109.41,
+    "wickets": 145,
+    "economy": 8.51
+  },
+  "Deepak Chahar": {
+    "matches": 103,
+    "runs": 142,
+    "battingAverage": 14.2,
+    "strikeRate": 137.86,
+    "wickets": 96,
+    "economy": 8.3
+  },
+  "Tilak Varma": {
+    "matches": 68,
+    "runs": 1858,
+    "battingAverage": 35.73,
+    "strikeRate": 144.7,
+    "wickets": 0,
+    "economy": 7.64
+  },
+  "Will Jacks": {
+    "matches": 28,
+    "runs": 602,
+    "battingAverage": 27.36,
+    "strikeRate": 158.84,
+    "wickets": 10,
+    "economy": 9.86
+  },
+  "Naman Dhir": {
+    "matches": 37,
+    "runs": 710,
+    "battingAverage": 27.31,
+    "strikeRate": 163.97,
+    "wickets": 0,
+    "economy": 8.77
+  },
+  "Allah Ghazanfar": {
+    "matches": 32,
+    "runs": 32,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 45,
+    "economy": 7.67
+  },
+  "Sherfane Rutherford": {
+    "matches": 31,
+    "runs": 520,
+    "battingAverage": 24.76,
+    "strikeRate": 142.86,
+    "wickets": 1,
+    "economy": 8.63
+  },
+  "Shardul Thakur": {
+    "matches": 114,
+    "runs": 349,
+    "battingAverage": 11.63,
+    "strikeRate": 132.7,
+    "wickets": 119,
+    "economy": 9.57
+  },
+  "Mitchell Santner": {
+    "matches": 35,
+    "runs": 136,
+    "battingAverage": 17.0,
+    "strikeRate": 110.57,
+    "wickets": 30,
+    "economy": 7.51
+  },
+  "Ryan Rickelton": {
+    "matches": 26,
+    "runs": 836,
+    "battingAverage": 34.83,
+    "strikeRate": 168.21,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Corbin Bosch": {
+    "matches": 9,
+    "runs": 97,
+    "battingAverage": 32.33,
+    "strikeRate": 153.97,
+    "wickets": 13,
+    "economy": 9.2
+  },
+  "Robin Minz": {
+    "matches": 15,
+    "runs": 383,
+    "battingAverage": 23.8,
+    "strikeRate": 131.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Raj Angad Bawa": {
+    "matches": 14,
+    "runs": 138,
+    "battingAverage": 26.8,
+    "strikeRate": 150.0,
+    "wickets": 15,
+    "economy": 8.88
+  },
+  "Ashwani Kumar": {
+    "matches": 10,
+    "runs": 1,
+    "battingAverage": 1.0,
+    "strikeRate": 16.67,
+    "wickets": 17,
+    "economy": 10.95
+  },
+  "Raghu Sharma": {
+    "matches": 6,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 1,
+    "economy": 8.67
+  },
+  "Mayank Markande": {
+    "matches": 40,
+    "runs": 48,
+    "battingAverage": 16.0,
+    "strikeRate": 114.29,
+    "wickets": 37,
+    "economy": 9.16
+  },
+  "Shreyas Iyer": {
+    "matches": 147,
+    "runs": 4233,
+    "battingAverage": 35.57,
+    "strikeRate": 136.77,
+    "wickets": 0,
+    "economy": 7.0
+  },
+  "Arshdeep Singh": {
+    "matches": 97,
+    "runs": 32,
+    "battingAverage": 5.33,
+    "strikeRate": 68.09,
+    "wickets": 111,
+    "economy": 9.19
+  },
+  "Yuzvendra Chahal": {
+    "matches": 189,
+    "runs": 37,
+    "battingAverage": 5.29,
+    "strikeRate": 43.02,
+    "wickets": 233,
+    "economy": 8.05
+  },
+  "Marcus Stoinis": {
+    "matches": 123,
+    "runs": 2242,
+    "battingAverage": 28.74,
+    "strikeRate": 147.5,
+    "wickets": 46,
+    "economy": 9.93
+  },
+  "Marco Jansen": {
+    "matches": 49,
+    "runs": 192,
+    "battingAverage": 12.8,
+    "strikeRate": 110.34,
+    "wickets": 45,
+    "economy": 9.63
+  },
+  "Shashank Singh": {
+    "matches": 54,
+    "runs": 905,
+    "battingAverage": 36.2,
+    "strikeRate": 161.61,
+    "wickets": 5,
+    "economy": 9.33
+  },
+  "Nehal Wadhera": {
+    "matches": 45,
+    "runs": 784,
+    "battingAverage": 23.76,
+    "strikeRate": 140.0,
+    "wickets": 0,
+    "economy": 7.76
+  },
+  "Prabhsimran Singh": {
+    "matches": 66,
+    "runs": 1865,
+    "battingAverage": 29.6,
+    "strikeRate": 156.85,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Priyansh Arya": {
+    "matches": 31,
+    "runs": 909,
+    "battingAverage": 29.32,
+    "strikeRate": 192.99,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Mitchell Owen": {
+    "matches": 36,
+    "runs": 441,
+    "battingAverage": 27.1,
+    "strikeRate": 156.0,
+    "wickets": 29,
+    "economy": 8.31
+  },
+  "Azmatullah Omarzai": {
+    "matches": 38,
+    "runs": 503,
+    "battingAverage": 25.3,
+    "strikeRate": 143.0,
+    "wickets": 31,
+    "economy": 8.13
+  },
+  "Lockie Ferguson": {
+    "matches": 52,
+    "runs": 72,
+    "battingAverage": 24.0,
+    "strikeRate": 153.19,
+    "wickets": 54,
+    "economy": 9.19
+  },
+  "Vijaykumar Vyshak": {
+    "matches": 26,
+    "runs": 16,
+    "battingAverage": 8.0,
+    "strikeRate": 100.0,
+    "wickets": 26,
+    "economy": 10.47
+  },
+  "Yash Thakur": {
+    "matches": 22,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 27,
+    "economy": 10.6
+  },
+  "Harpreet Brar": {
+    "matches": 51,
+    "runs": 249,
+    "battingAverage": 20.75,
+    "strikeRate": 120.87,
+    "wickets": 37,
+    "economy": 8.0
+  },
+  "Vishnu Vinod": {
+    "matches": 7,
+    "runs": 71,
+    "battingAverage": 11.83,
+    "strikeRate": 109.23,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Xavier Bartlett": {
+    "matches": 13,
+    "runs": 40,
+    "battingAverage": 20.0,
+    "strikeRate": 142.86,
+    "wickets": 7,
+    "economy": 11.13
+  },
+  "Pyla Avinash": {
+    "matches": 16,
+    "runs": 344,
+    "battingAverage": 31.9,
+    "strikeRate": 146.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Harnoor Pannu": {
+    "matches": 17,
+    "runs": 217,
+    "battingAverage": 32.2,
+    "strikeRate": 149.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Musheer Khan": {
+    "matches": 1,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 1,
+    "economy": 13.5
+  },
+  "Suryansh Shedge": {
+    "matches": 12,
+    "runs": 165,
+    "battingAverage": 23.57,
+    "strikeRate": 163.37,
+    "wickets": 0,
+    "economy": 13.33
+  },
+  "Yashasvi Jaiswal": {
+    "matches": 82,
+    "runs": 2593,
+    "battingAverage": 33.24,
+    "strikeRate": 152.8,
+    "wickets": 0,
+    "economy": 36.0
+  },
+  "Riyan Parag": {
+    "matches": 97,
+    "runs": 1879,
+    "battingAverage": 25.39,
+    "strikeRate": 144.32,
+    "wickets": 9,
+    "economy": 9.69
+  },
+  "Ravindra Jadeja": {
+    "matches": 267,
+    "runs": 3526,
+    "battingAverage": 29.14,
+    "strikeRate": 130.64,
+    "wickets": 180,
+    "economy": 7.71
+  },
+  "Dhruv Jurel": {
+    "matches": 57,
+    "runs": 1195,
+    "battingAverage": 31.45,
+    "strikeRate": 154.19,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Jofra Archer": {
+    "matches": 68,
+    "runs": 326,
+    "battingAverage": 13.04,
+    "strikeRate": 144.89,
+    "wickets": 84,
+    "economy": 8.22
+  },
+  "Shimron Hetmyer": {
+    "matches": 94,
+    "runs": 1566,
+    "battingAverage": 27.47,
+    "strikeRate": 149.29,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Tushar Deshpande": {
+    "matches": 25,
+    "runs": 45,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 34,
+    "economy": 8.0
+  },
+  "Sandeep Sharma": {
+    "matches": 142,
+    "runs": 60,
+    "battingAverage": 10.0,
+    "strikeRate": 80.0,
+    "wickets": 151,
+    "economy": 8.17
+  },
+  "Nandre Burger": {
+    "matches": 39,
+    "runs": 39,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 46,
+    "economy": 8.34
+  },
+  "Sam Curran": {
+    "matches": 64,
+    "runs": 997,
+    "battingAverage": 24.93,
+    "strikeRate": 136.39,
+    "wickets": 59,
+    "economy": 9.74
+  },
+  "Kwena Maphaka": {
+    "matches": 26,
+    "runs": 46,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 37,
+    "economy": 7.81
+  },
+  "Vaibhav Sooryavanshi": {
+    "matches": 11,
+    "runs": 211,
+    "battingAverage": 25.6,
+    "strikeRate": 149.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Donovan Ferreira": {
+    "matches": 18,
+    "runs": 326,
+    "battingAverage": 27.17,
+    "strikeRate": 170.68,
+    "wickets": 1,
+    "economy": 13.67
+  },
+  "Shubham Dubey": {
+    "matches": 12,
+    "runs": 348,
+    "battingAverage": 27.3,
+    "strikeRate": 144.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Yudhvir Singh": {
+    "matches": 9,
+    "runs": 22,
+    "battingAverage": 5.5,
+    "strikeRate": 137.5,
+    "wickets": 8,
+    "economy": 11.0
+  },
+  "Lhuan-dre Pretorius": {
+    "matches": 2,
+    "runs": 7,
+    "battingAverage": 3.5,
+    "strikeRate": 87.5,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Virat Kohli": {
+    "matches": 282,
+    "runs": 9346,
+    "battingAverage": 40.46,
+    "strikeRate": 134.86,
+    "wickets": 4,
+    "economy": 8.8
+  },
+  "Josh Hazlewood": {
+    "matches": 52,
+    "runs": 19,
+    "battingAverage": 19.0,
+    "strikeRate": 63.33,
+    "wickets": 72,
+    "economy": 8.62
+  },
+  "Phil Salt": {
+    "matches": 40,
+    "runs": 1258,
+    "battingAverage": 34.0,
+    "strikeRate": 174.48,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Rajat Patidar": {
+    "matches": 57,
+    "runs": 1612,
+    "battingAverage": 33.58,
+    "strikeRate": 164.49,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Jitesh Sharma": {
+    "matches": 71,
+    "runs": 1107,
+    "battingAverage": 23.06,
+    "strikeRate": 152.48,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Bhuvneshwar Kumar": {
+    "matches": 206,
+    "runs": 354,
+    "battingAverage": 9.32,
+    "strikeRate": 93.9,
+    "wickets": 226,
+    "economy": 7.71
+  },
+  "Rasikh Salam": {
+    "matches": 17,
+    "runs": 34,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 12,
+    "economy": 8.62
+  },
+  "Krunal Pandya": {
+    "matches": 158,
+    "runs": 1982,
+    "battingAverage": 22.78,
+    "strikeRate": 133.83,
+    "wickets": 107,
+    "economy": 7.57
+  },
+  "Yash Dayal": {
+    "matches": 43,
+    "runs": 4,
+    "battingAverage": 1.33,
+    "strikeRate": 44.44,
+    "wickets": 41,
+    "economy": 9.58
+  },
+  "Tim David": {
+    "matches": 66,
+    "runs": 1151,
+    "battingAverage": 32.89,
+    "strikeRate": 177.08,
+    "wickets": 0,
+    "economy": 18.0
+  },
+  "Suyash Sharma": {
+    "matches": 11,
+    "runs": 29,
+    "battingAverage": 6.0,
+    "strikeRate": 80.0,
+    "wickets": 22,
+    "economy": 8.32
+  },
+  "Jacob Bethell": {
+    "matches": 29,
+    "runs": 394,
+    "battingAverage": 24.4,
+    "strikeRate": 159.0,
+    "wickets": 22,
+    "economy": 8.44
+  },
+  "Devdutt Padikkal": {
+    "matches": 90,
+    "runs": 2270,
+    "battingAverage": 26.71,
+    "strikeRate": 133.14,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Nuwan Thushara": {
+    "matches": 34,
+    "runs": 54,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 41,
+    "economy": 8.29
+  },
+  "Romario Shepherd": {
+    "matches": 33,
+    "runs": 268,
+    "battingAverage": 24.36,
+    "strikeRate": 175.16,
+    "wickets": 17,
+    "economy": 11.77
+  },
+  "Swapnil Singh": {
+    "matches": 14,
+    "runs": 51,
+    "battingAverage": 10.2,
+    "strikeRate": 113.33,
+    "wickets": 7,
+    "economy": 8.93
+  },
+  "Abhinandan Singh": {
+    "matches": 3,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 3,
+    "economy": 12.62
+  },
+  "Heinrich Klaasen": {
+    "matches": 64,
+    "runs": 2104,
+    "battingAverage": 42.08,
+    "strikeRate": 166.72,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Pat Cummins": {
+    "matches": 80,
+    "runs": 642,
+    "battingAverage": 19.45,
+    "strikeRate": 152.49,
+    "wickets": 87,
+    "economy": 8.89
+  },
+  "Travis Head": {
+    "matches": 53,
+    "runs": 1556,
+    "battingAverage": 32.42,
+    "strikeRate": 170.05,
+    "wickets": 3,
+    "economy": 11.25
+  },
+  "Abhishek Sharma": {
+    "matches": 92,
+    "runs": 2379,
+    "battingAverage": 29.37,
+    "strikeRate": 171.27,
+    "wickets": 11,
+    "economy": 9.04
+  },
+  "Ishan Kishan": {
+    "matches": 134,
+    "runs": 3600,
+    "battingAverage": 30.51,
+    "strikeRate": 143.54,
+    "wickets": 0,
+    "economy": 24.0
+  },
+  "Harshal Patel": {
+    "matches": 123,
+    "runs": 280,
+    "battingAverage": 8.75,
+    "strikeRate": 117.65,
+    "wickets": 151,
+    "economy": 8.92
+  },
+  "Nitish Kumar Reddy": {
+    "matches": 42,
+    "runs": 787,
+    "battingAverage": 29.15,
+    "strikeRate": 145.47,
+    "wickets": 13,
+    "economy": 10.65
+  },
+  "Eshan Malinga": {
+    "matches": 33,
+    "runs": 53,
+    "battingAverage": 8.5,
+    "strikeRate": 90.0,
+    "wickets": 28,
+    "economy": 8.38
+  },
+  "Brydon Carse": {
+    "matches": 30,
+    "runs": 525,
+    "battingAverage": 24.5,
+    "strikeRate": 140.0,
+    "wickets": 23,
+    "economy": 8.85
+  },
+  "Jaydev Unadkat": {
+    "matches": 116,
+    "runs": 201,
+    "battingAverage": 12.56,
+    "strikeRate": 118.93,
+    "wickets": 114,
+    "economy": 8.94
+  },
+  "Kamindu Mendis": {
+    "matches": 30,
+    "runs": 395,
+    "battingAverage": 24.5,
+    "strikeRate": 135.0,
+    "wickets": 23,
+    "economy": 8.85
+  },
+  "Zeeshan Ansari": {
+    "matches": 10,
+    "runs": 0,
+    "battingAverage": 0.0,
+    "strikeRate": 0.0,
+    "wickets": 6,
+    "economy": 9.84
+  },
+  "Smaran Ravichandran": {
+    "matches": 8,
+    "runs": 208,
+    "battingAverage": 28.3,
+    "strikeRate": 132.0,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Aniket Verma": {
+    "matches": 24,
+    "runs": 315,
+    "battingAverage": 21.0,
+    "strikeRate": 160.71,
+    "wickets": 0,
+    "economy": 0.0
+  },
+  "Harsh Dubey": {
+    "matches": 11,
+    "runs": 13,
+    "battingAverage": 6.5,
+    "strikeRate": 144.44,
+    "wickets": 13,
+    "economy": 10.19
+  }
+}

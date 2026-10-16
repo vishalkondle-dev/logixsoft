@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <defs>
+    <!-- Metallic Gold Gradients -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBE6" />
+      <stop offset="20%" stop-color="#FCE070" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="75%" stop-color="#997316" />
+      <stop offset="100%" stop-color="#FFEA8A" />
+    </linearGradient>
+
+    <linearGradient id="lionGold" x1="0%" y1="0%" x2="100%" y2="80%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="25%" stop-color="#FFDF66" />
+      <stop offset="65%" stop-color="#E5B224" />
+      <stop offset="100%" stop-color="#8A5E08" />
+    </linearGradient>
+
+    <!-- Deep Royal Blue Gradients -->
+    <linearGradient id="blueField" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#005BEA" />
+      <stop offset="35%" stop-color="#003EAA" />
+      <stop offset="75%" stop-color="#00246B" />
+      <stop offset="100%" stop-color="#001138" />
+    </linearGradient>
+
+    <radialGradient id="lionGlow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#FFCC00" stop-opacity="0.4" />
+      <stop offset="40%" stop-color="#005BEA" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#001138" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Filters -->
+    <filter id="dropHeavy" x="-25%" y="-20%" width="150%" height="145%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000814" flood-opacity="0.75" />
+    </filter>
+
+    <filter id="dropSmall" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000B1A" flood-opacity="0.7" />
+    </filter>
+  </defs>
+
+  <g transform="translate(0, 15)">
+    <!-- 5 CHAMPIONSHIP STARS (5 Titles: 2010, 2011, 2018, 2021, 2023) -->
+    <g filter="url(#dropSmall)">
+      <path d="M178,74 L181.5,84 L192,84 L183.5,90.5 L186.5,101 L178,94.5 L169.5,101 L172.5,90.5 L164,84 L174.5,84 Z" fill="url(#goldGrad)" stroke="#694300" stroke-width="0.8" transform="rotate(-16, 178, 87)" />
+      <path d="M235,54 L239,66 L251.5,66 L241.5,73.5 L245,85.5 L235,78 L225,85.5 L228.5,73.5 L218.5,66 L231,66 Z" fill="url(#goldGrad)" stroke="#694300" stroke-width="1" transform="rotate(-8, 235, 70)" />
+      <path d="M300,36 L305,51 L321,51 L308,61 L313,76 L300,66.5 L287,76 L292,61 L279,51 L295,51 Z" fill="url(#goldGrad)" stroke="#694300" stroke-width="1.4" />
+      <path d="M365,54 L369,66 L381.5,66 L371.5,73.5 L375,85.5 L365,78 L355,85.5 L358.5,73.5 L348.5,66 L361,66 Z" fill="url(#goldGrad)" stroke="#694300" stroke-width="1" transform="rotate(8, 365, 70)" />
+      <path d="M422,74 L425.5,84 L436,84 L427.5,90.5 L430.5,101 L422,94.5 L413.5,101 L416.5,90.5 L408,84 L418.5,84 Z" fill="url(#goldGrad)" stroke="#694300" stroke-width="0.8" transform="rotate(16, 422, 87)" />
+    </g>
+
+    <!-- SHIELD -->
+    <g filter="url(#dropHeavy)">
+      <!-- Outer Beveled Gold Rim -->
+      <path d="M300,92 L468,122 C486,230 476,366 300,488 C124,366 114,230 132,122 Z"
+            fill="url(#goldGrad)" stroke="#573600" stroke-width="2" />
+
+      <!-- Inner Obsidian Trim -->
+      <path d="M300,101 L458,129 C474,232 465,358 300,474 C135,358 126,232 142,129 Z"
+            fill="#000B1A" stroke="#FFE885" stroke-width="1" />
+
+      <!-- Royal Blue Field -->
+      <path d="M300,108 L450,135 C465,234 456,352 300,464 C144,352 135,234 150,135 Z"
+            fill="url(#blueField)" />
+
+      <!-- Lion Core Glow -->
+      <path d="M300,108 L450,135 C465,234 456,352 300,464 C144,352 135,234 150,135 Z"
+            fill="url(#lionGlow)" />
+
+      <!-- Crown Arc Inlay -->
+      <path d="M300,122 L434,146 C446,236 438,338 300,442 C162,338 154,236 166,146 Z"
+            fill="none" stroke="url(#goldGrad)" stroke-width="1.8" opacity="0.6" stroke-dasharray="14 6" />
+    </g>
+
+    <!-- CENTERPIECE: MAJESTIC ATHLETIC GOLDEN LION HEAD (Profile - Original Artwork) -->
+    <g transform="translate(300, 252)" filter="url(#dropSmall)">
+      <!-- Mane Flames (Sharp Dynamic Geometric Mane Tufts) -->
+      <!-- Back Mane Layer (Darker Gold) -->
+      <path d="M-80,-40 C-60,-85 0,-105 50,-85 C70,-70 55,-55 35,-60 C15,-65 -30,-50 -45,-20 Z" fill="#B28318" />
+      <path d="M-95,-10 C-75,-45 -40,-60 -10,-45 C5,-35 -5,-20 -20,-25 C-45,-30 -65,-10 -70,25 Z" fill="#8C630B" />
+      <path d="M-90,20 C-65,0 -30,0 0,15 C-20,25 -50,30 -65,55 Z" fill="#8C630B" />
+
+      <!-- Main Golden Mane Blades -->
+      <path d="M-65,-60 C-35,-100 30,-110 80,-75 C55,-65 40,-50 48,-35 C20,-45 -10,-40 -40,-25 Z" fill="url(#lionGold)" />
+      <path d="M-85,-20 C-55,-60 15,-65 60,-35 C35,-30 25,-15 35,0 C5,-15 -25,-15 -55,0 Z" fill="url(#lionGold)" />
+      <path d="M-80,25 C-50,-10 10,-10 50,20 C25,20 15,35 25,50 C-5,35 -35,35 -60,55 Z" fill="url(#lionGold)" />
+      <path d="M-65,70 C-35,45 5,45 40,75 C15,70 5,85 10,95 C-15,80 -40,80 -55,95 Z" fill="url(#lionGold)" />
+
+      <!-- Lion Face / Jaw / Crown Structure -->
+      <!-- Forehead & Brow -->
+      <path d="M10,-65 C35,-65 65,-45 80,-20 C65,-15 50,-20 35,-35 Z" fill="#FFE885" />
+      <!-- Snout & Nose -->
+      <path d="M60,-22 C85,-18 105,0 110,15 C95,15 85,10 75,-5 Z" fill="url(#lionGold)" />
+      <!-- Sharp Lion Nose Tip -->
+      <polygon points="110,15 102,12 105,20" fill="#001128" />
+      <!-- Roaring Upper Muzzle & Whiskers Shelf -->
+      <path d="M105,20 C85,22 65,18 45,25 C65,30 90,32 102,28 Z" fill="#FFF3B8" />
+      <!-- Sharp White Fang (Upper) -->
+      <polygon points="95,27 88,44 84,28" fill="#FFFFFF" stroke="#573600" stroke-width="0.8" />
+      <polygon points="75,26 71,38 68,26" fill="#FFFFFF" />
+      <!-- Roaring Mouth Cavity (Dark Obsidian) -->
+      <path d="M98,28 C75,32 50,30 35,45 C50,60 75,55 90,52 Z" fill="#000B1A" />
+      <!-- Roaring Lower Jaw & Chin -->
+      <path d="M35,45 C55,62 80,58 92,52 C85,65 60,78 30,70 C40,60 38,52 35,45 Z" fill="url(#lionGold)" />
+      <!-- Sharp White Fang (Lower) -->
+      <polygon points="84,53 88,40 91,52" fill="#FFFFFF" stroke="#573600" stroke-width="0.8" />
+
+      <!-- Piercing Lion Eye (White sclera, gold iris, black pupil) -->
+      <polygon points="35,-15 55,-12 42,-5 28,-10" fill="#000E26" />
+      <polygon points="36,-13 52,-11 42,-6 32,-9" fill="#FFFFFF" />
+      <circle cx="42" cy="-10" r="3.5" fill="#FFC400" />
+      <circle cx="42" cy="-10" r="2" fill="#000000" />
+      <circle cx="43" cy="-11" r="0.8" fill="#FFFFFF" />
+      <!-- Fierce Eyebrow Ridge -->
+      <path d="M22,-18 C38,-24 55,-20 62,-12 C52,-16 38,-18 22,-18 Z" fill="#5E3C02" />
+
+      <!-- Dynamic Crown Accent over Lion Forehead -->
+      <path d="M0,-75 L15,-92 L28,-78 L42,-95 L52,-75 Z" fill="url(#goldGrad)" stroke="#4F3100" stroke-width="1" />
+    </g>
+
+    <!-- BANNER: "CHENNAI" -->
+    <g transform="translate(0, 38)">
+      <!-- Ribbon Left Swallowtail -->
+      <path d="M85,360 L145,348 L145,406 L85,418 L102,389 Z" fill="#5E3C02" />
+      <path d="M88,364 L142,353 L142,403 L88,414 L104,389 Z" fill="url(#goldGrad)" />
+      <path d="M145,348 L165,348 L145,370 Z" fill="#000B1A" />
+
+      <!-- Ribbon Right Swallowtail -->
+      <path d="M515,360 L455,348 L455,406 L515,418 L498,389 Z" fill="#5E3C02" />
+      <path d="M512,364 L458,353 L458,403 L512,414 L496,389 Z" fill="url(#goldGrad)" />
+      <path d="M455,348 L435,348 L455,370 Z" fill="#000B1A" />
+
+      <!-- Center Banner Body Plate -->
+      <path d="M130,345 L470,345 L488,410 L112,410 Z" fill="#000E26" stroke="url(#goldGrad)" stroke-width="3" filter="url(#dropHeavy)" />
+      <path d="M137,351 L463,351 L479,404 L121,404 Z" fill="url(#blueField)" stroke="#FFEAA0" stroke-width="1" />
+
+      <line x1="142" y1="356" x2="458" y2="356" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.9" />
+      <line x1="128" y1="399" x2="472" y2="399" stroke="url(#goldGrad)" stroke-width="1.5" opacity="0.9" />
+
+      <!-- "CHENNAI" VARSITY TEXT -->
+      <text x="300" y="392"
+            font-family="'Montserrat', 'Trebuchet MS', 'Arial Black', sans-serif"
+            font-size="35"
+            font-weight="900"
+            font-style="italic"
+            letter-spacing="5"
+            text-anchor="middle"
+            fill="url(#goldGrad)"
+            stroke="#000A1A"
+            stroke-width="2.2"
+            filter="url(#dropSmall)">CHENNAI</text>
+    </g>
+  </g>
+</svg>

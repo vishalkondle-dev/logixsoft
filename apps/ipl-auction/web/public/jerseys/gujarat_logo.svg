@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <defs>
+    <!-- Metallic Gold Gradients -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBE6" />
+      <stop offset="20%" stop-color="#FCE070" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="75%" stop-color="#997316" />
+      <stop offset="100%" stop-color="#FFEA8A" />
+    </linearGradient>
+
+    <!-- Obsidian Navy Field -->
+    <linearGradient id="navyField" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1F2438" />
+      <stop offset="40%" stop-color="#141724" />
+      <stop offset="80%" stop-color="#0B0D14" />
+      <stop offset="100%" stop-color="#040508" />
+    </linearGradient>
+
+    <!-- Electric Cyan Lightning Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A8F5FF" />
+      <stop offset="30%" stop-color="#00E5FF" />
+      <stop offset="70%" stop-color="#0090D4" />
+      <stop offset="100%" stop-color="#004488" />
+    </linearGradient>
+
+    <radialGradient id="cyanGlow" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.6" />
+      <stop offset="50%" stop-color="#005588" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#040508" stop-opacity="0" />
+    </radialGradient>
+
+    <filter id="dropHeavy" x="-25%" y="-20%" width="150%" height="145%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000000" flood-opacity="0.8" />
+    </filter>
+
+    <filter id="dropSmall" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.75" />
+    </filter>
+  </defs>
+
+  <g transform="translate(0, 15)">
+    <!-- 1 CHAMPIONSHIP STAR (Debut 2022 IPL Champions) -->
+    <g filter="url(#dropSmall)">
+      <path d="M300,32 L306,49 L325,49 L310,60 L316,77 L300,66 L284,77 L290,60 L275,49 L294,49 Z" fill="url(#goldGrad)" stroke="#694300" stroke-width="1.4" />
+    </g>
+
+    <!-- SHIELD -->
+    <g filter="url(#dropHeavy)">
+      <path d="M300,92 L468,122 C486,230 476,366 300,488 C124,366 114,230 132,122 Z"
+            fill="url(#goldGrad)" stroke="#4F3100" stroke-width="2" />
+      <path d="M300,101 L458,129 C474,232 465,358 300,474 C135,358 126,232 142,129 Z"
+            fill="#06080D" stroke="#FFE885" stroke-width="1" />
+      <path d="M300,108 L450,135 C465,234 456,352 300,464 C144,352 135,234 150,135 Z"
+            fill="url(#navyField)" />
+      <path d="M300,108 L450,135 C465,234 456,352 300,464 C144,352 135,234 150,135 Z"
+            fill="url(#cyanGlow)" />
+      <path d="M300,122 L434,146 C446,236 438,338 300,442 C162,338 154,236 166,146 Z"
+            fill="none" stroke="url(#cyanGrad)" stroke-width="1.8" opacity="0.6" stroke-dasharray="14 6" />
+    </g>
+
+    <!-- CENTERPIECE: DYNAMIC CYAN LIGHTNING BOLT & APEX FALCON (Original Artwork) -->
+    <g transform="translate(300, 255)" filter="url(#dropSmall)">
+      <!-- Faceted Apex Pyramid Shield Background -->
+      <polygon points="0,-85 68,-10 0,65 -68,-10" fill="#0A0E1A" stroke="url(#cyanGrad)" stroke-width="1.5" />
+
+      <!-- Sweeping Electric Cyan Wings -->
+      <path d="M0,-75 L55,-8 L0,52 L-55,-8 Z" fill="none" stroke="url(#goldGrad)" stroke-width="1" opacity="0.5" />
+
+      <!-- Dynamic High-Impact Lightning Bolt Slash -->
+      <polygon points="12,-78 -24,-8 5,-8 -12,68 32,-2 2,-2" fill="url(#cyanGrad)" stroke="#FFFFFF" stroke-width="1" />
+      <!-- Inner White Lightning Arc Core -->
+      <polygon points="8,-65 -16,-8 0,-8 -8,52 18,-2 0,-2" fill="#FFFFFF" opacity="0.85" />
+
+      <!-- Left Geometric Wing Blade -->
+      <path d="M-28,-35 L-72,-5 L-42,28 Z" fill="url(#goldGrad)" stroke="#4F3100" stroke-width="1" />
+      <!-- Right Geometric Wing Blade -->
+      <path d="M28,-35 L72,-5 L42,28 Z" fill="url(#goldGrad)" stroke="#4F3100" stroke-width="1" />
+
+      <!-- Central Monogram 'G' Medal -->
+      <circle cx="0" cy="8" r="12" fill="#050810" stroke="url(#goldGrad)" stroke-width="1.5" />
+      <text x="0" y="14" font-family="'Montserrat', sans-serif" font-size="16" font-weight="900" fill="url(#goldGrad)" text-anchor="middle">G</text>
+    </g>
+
+    <!-- BANNER: "GUJARAT" -->
+    <g transform="translate(0, 38)">
+      <path d="M85,360 L145,348 L145,406 L85,418 L102,389 Z" fill="#0A1224" />
+      <path d="M88,364 L142,353 L142,403 L88,414 L104,389 Z" fill="url(#goldGrad)" />
+      <path d="M145,348 L165,348 L145,370 Z" fill="#030508" />
+
+      <path d="M515,360 L455,348 L455,406 L515,418 L498,389 Z" fill="#0A1224" />
+      <path d="M512,364 L458,353 L458,403 L512,414 L496,389 Z" fill="url(#goldGrad)" />
+      <path d="M455,348 L435,348 L455,370 Z" fill="#030508" />
+
+      <path d="M130,345 L470,345 L488,410 L112,410 Z" fill="#070B14" stroke="url(#goldGrad)" stroke-width="3" filter="url(#dropHeavy)" />
+      <path d="M137,351 L463,351 L479,404 L121,404 Z" fill="#0E1628" stroke="url(#cyanGrad)" stroke-width="1" />
+
+      <line x1="142" y1="356" x2="458" y2="356" stroke="url(#cyanGrad)" stroke-width="1.5" opacity="0.9" />
+      <line x1="128" y1="399" x2="472" y2="399" stroke="url(#cyanGrad)" stroke-width="1.5" opacity="0.9" />
+
+      <!-- "GUJARAT" TEXT -->
+      <text x="300" y="392"
+            font-family="'Montserrat', 'Trebuchet MS', 'Arial Black', sans-serif"
+            font-size="34"
+            font-weight="900"
+            font-style="italic"
+            letter-spacing="5"
+            text-anchor="middle"
+            fill="url(#goldGrad)"
+            stroke="#030508"
+            stroke-width="2"
+            filter="url(#dropSmall)">GUJARAT</text>
+    </g>
+  </g>
+</svg>

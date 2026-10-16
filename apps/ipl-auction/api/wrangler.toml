@@ -1,0 +1,31 @@
+name = "ipl-auction-api"
+main = "src/index.ts"
+compatibility_date = "2026-08-13"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [
+  { name = "AUCTION_ROOM", class_name = "AuctionRoomDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AuctionRoomDO"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ipl_auction_db"
+database_id = "ipl-auction-d1-local"
+
+[ai]
+binding = "AI"
+
+[vars]
+NODE_ENV = "production"
+APP_NAME = "IPL Auction Simulator"
+BETTER_AUTH_SECRET = "ipl-auction-super-secret-auth-key-production-ready"
+BETTER_AUTH_URL = "https://auction.logixsoft.in"
+FRONTEND_URL = "https://auction.logixsoft.in"
+GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_SECRET = ""
+DEFAULT_AI_DIFFICULTY = "normal"

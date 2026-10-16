@@ -17,7 +17,15 @@
     "pc:pack": "pnpm --filter logix-dine-pc run pack",
     "pc:dist:win": "pnpm --filter logix-dine-pc run dist:win",
     "pc:dist:mac": "pnpm --filter logix-dine-pc run dist:mac",
-    "pc:dist:linux": "pnpm --filter logix-dine-pc run dist:linux"
+    "pc:dist:linux": "pnpm --filter logix-dine-pc run dist:linux",
+    "ipl:api:dev": "pnpm --filter @ipl-auction/api run dev",
+    "ipl:api:deploy": "pnpm --filter @ipl-auction/api run deploy",
+    "ipl:api:test": "pnpm --filter @ipl-auction/api run test",
+    "ipl:api:typecheck": "pnpm --filter @ipl-auction/api run typecheck",
+    "ipl:web:dev": "pnpm --filter @ipl-auction/web run dev",
+    "ipl:web:build": "pnpm --filter @ipl-auction/web run build",
+    "ipl:web:typecheck": "pnpm --filter @ipl-auction/web run typecheck",
+    "ipl:test": "pnpm --filter @ipl-auction/api run test && pnpm --filter @ipl-auction/web run typecheck"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

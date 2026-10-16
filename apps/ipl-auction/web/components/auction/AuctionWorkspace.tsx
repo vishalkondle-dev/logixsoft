@@ -28,20 +28,17 @@ import {
   Center,
 } from "@mantine/core";
 import {
-  IconStack2,
-  IconPlayerPlay,
-  IconPlayerPause,
-  IconSquare,
-  IconAward,
-  IconFlame,
-  IconCircleCheck,
-  IconCircleX,
-  IconPlane,
-  IconSchool,
-  IconShield,
-  IconGavel,
-  IconArrowDown,
-} from "@tabler/icons-react";
+  Cards,
+  Play,
+  Pause,
+  Square,
+  Trophy,
+  Fire,
+  Airplane,
+  GraduationCap,
+  Shield,
+  Gavel,
+} from "@phosphor-icons/react";
 
 function playTickSound(second: number) {
   if (typeof window === "undefined") return;
@@ -270,7 +267,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
               radius="md"
               onClick={() => setIsUpcomingDialogOpen(true)}
             >
-              <IconStack2 size={18} color="#748ffc" />
+              <Cards size={18} weight="bold" color="#748ffc" />
             </ActionIcon>
           </Tooltip>
 
@@ -283,7 +280,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                 radius="md"
                 onClick={() => onPauseAuction("MANUAL_HOST_PAUSE")}
               >
-                <IconPlayerPause size={18} />
+                <Pause size={18} weight="bold" />
               </ActionIcon>
             </Tooltip>
           )}
@@ -297,7 +294,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                 radius="md"
                 onClick={onResumeAuction}
               >
-                <IconPlayerPlay size={18} />
+                <Play size={18} weight="fill" />
               </ActionIcon>
             </Tooltip>
           )}
@@ -315,7 +312,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                   }
                 }}
               >
-                <IconSquare size={16} />
+                <Square size={16} weight="bold" />
               </ActionIcon>
             </Tooltip>
           )}
@@ -367,14 +364,14 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                 <Group justify="center" gap={4} mt={{ base: 2, sm: 4 }}>
                   {currentLot.isCapped && (
                     <Tooltip label="Capped Player" withArrow>
-                      <Badge size="xs" color="teal" variant="light" px={{ base: 4, sm: 6 }} leftSection={<IconSchool size={10} />}>
+                      <Badge size="xs" color="teal" variant="light" px={{ base: 4, sm: 6 }} leftSection={<GraduationCap size={11} weight="fill" />}>
                         <Box component="span" visibleFrom="xs">Capped</Box>
                       </Badge>
                     </Tooltip>
                   )}
                   {currentLot.isOverseas && (
                     <Tooltip label="Overseas Player" withArrow>
-                      <Badge size="xs" color="yellow" variant="light" px={{ base: 4, sm: 6 }} leftSection={<IconPlane size={10} />}>
+                      <Badge size="xs" color="yellow" variant="light" px={{ base: 4, sm: 6 }} leftSection={<Airplane size={10} weight="fill" />}>
                         <Box component="span" visibleFrom="xs">Overseas</Box>
                       </Badge>
                     </Tooltip>
@@ -486,7 +483,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                 </Box>
 
                 {currentLot.highestBidderFranchise && (
-                  <Badge size="md" color="yellow" variant="filled" leftSection={<IconFlame size={12} />}>
+                  <Badge size="md" color="yellow" variant="filled" leftSection={<Fire size={12} weight="fill" />}>
                     {currentLot.highestBidderFranchise}
                   </Badge>
                 )}
@@ -520,7 +517,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
         <Center style={{ flex: 1 }}>
           <Stack gap="md" align="center" style={{ maxWidth: 440, textAlign: "center" }}>
             <Paper p="lg" radius="xl" bg="rgba(76, 110, 245, 0.1)" withBorder style={{ borderColor: "rgba(76, 110, 245, 0.3)" }}>
-              <IconGavel size={36} color="#748ffc" />
+              <Gavel size={36} weight="bold" color="#748ffc" />
             </Paper>
 
             <Box>
@@ -567,7 +564,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                   aria-label="Upcoming Players"
                 >
                   <Group gap={6} wrap="nowrap">
-                    <IconStack2 size={14} />
+                    <Cards size={14} weight="bold" />
                     <Box component="span" visibleFrom="xs">Upcoming Players</Box>
                   </Group>
                 </Button>
@@ -583,7 +580,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                     aria-label="Configure Retentions"
                   >
                     <Group gap={6} wrap="nowrap">
-                      <IconShield size={14} />
+                      <Shield size={14} weight="bold" />
                       <Box component="span" visibleFrom="xs">Configure Retentions</Box>
                     </Group>
                   </Button>
@@ -596,7 +593,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                 onClick={onStartAuction}
               >
                 <Group gap={6} wrap="nowrap">
-                  <IconPlayerPlay size={14} />
+                  <Play size={14} weight="fill" />
                   <span>Start Auction</span>
                 </Group>
               </Button>
@@ -606,7 +603,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
       ) : (
         <Center style={{ flex: 1 }}>
           <Stack gap="xs" align="center" style={{ textAlign: "center" }}>
-            <IconAward size={40} color="#748ffc" />
+            <Trophy size={40} weight="bold" color="#748ffc" />
             <Title order={4} c="white">
               {isCompleted ? "Auction Completed!" : "Auction Arena"}
             </Title>

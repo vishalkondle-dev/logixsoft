@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { getCountryFlagUrl } from "../../lib/countryFlags";
-import { Globe, Plane } from "lucide-react";
+import { Globe, Airplane } from "@phosphor-icons/react";
 import { cn } from "../../lib/utils";
 
 export interface CountryFlagProps {
@@ -36,7 +36,7 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({
   const cfg = SIZE_CONFIG[size] || SIZE_CONFIG.sm;
 
   const fallback = (
-    <Globe className={cn(cfg.img, "text-blue-400 shrink-0", className)} />
+    <Globe size={16} weight="bold" className={cn("text-blue-400 shrink-0", className)} />
   );
 
   return (
@@ -68,7 +68,7 @@ export const CountryFlag: React.FC<CountryFlagProps> = ({
           className="p-0.5 rounded bg-amber-500/20 text-amber-400 inline-flex items-center shrink-0 ml-0.5"
           title="Overseas Player"
         >
-          <Plane className="w-2.5 h-2.5 fill-current" />
+          <Airplane size={12} weight="fill" />
         </span>
       )}
     </span>

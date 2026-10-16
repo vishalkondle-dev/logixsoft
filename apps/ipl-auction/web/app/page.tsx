@@ -24,20 +24,21 @@ import {
   Tooltip,
 } from "@mantine/core";
 import {
-  IconGavel,
-  IconPlus,
-  IconSparkles,
-  IconUsers,
-  IconWorld,
-  IconLock,
-  IconEye,
-  IconRefresh,
-  IconBroadcast,
-  IconArrowRight,
-  IconShield,
-  IconRobot,
-  IconCheck,
-} from "@tabler/icons-react";
+  Gavel,
+  Plus,
+  Sparkle,
+  Users,
+  Globe,
+  Lock,
+  Eye,
+  ArrowsClockwise,
+  Broadcast,
+  ArrowRight,
+  Shield,
+  Robot,
+  Check,
+  Cricket,
+} from "@phosphor-icons/react";
 import { fetchApi } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 import { UserMenu } from "../components/auth/UserMenu";
@@ -286,7 +287,7 @@ export default function HomePage() {
                     aria-label="Admin Panel"
                   >
                     <Group gap={6} wrap="nowrap">
-                      <IconShield size={14} />
+                      <Shield size={14} weight="bold" />
                       <Box component="span" visibleFrom="lg">Admin</Box>
                     </Group>
                   </Button>
@@ -309,7 +310,7 @@ export default function HomePage() {
                 color="orange"
                 variant="light"
                 size="md"
-                leftSection={<IconSparkles size={14} />}
+                leftSection={<Sparkle size={14} weight="fill" />}
               >
                 <Box component="span" hiddenFrom="xs">Workers AI Engine</Box>
                 <Box component="span" visibleFrom="xs">Cloudflare Workers AI + Clef-Flash Decision Engine</Box>
@@ -343,7 +344,7 @@ export default function HomePage() {
                       <Group justify="space-between" pb="xs" style={{ borderBottom: "1px solid var(--mantine-color-dark-4)" }}>
                         <Group gap="xs">
                           <ThemeIcon size={34} radius="md" color="orange" variant="light">
-                            <IconPlus size={18} />
+                            <Plus size={18} weight="bold" />
                           </ThemeIcon>
                           <Box>
                             <Text fw={700} size="sm">
@@ -478,7 +479,7 @@ export default function HomePage() {
                                   </Text>
                                 </Box>
                                 {isSelected && (
-                                  <IconCheck size={14} color="var(--mantine-color-orange-5)" />
+                                  <Check size={14} weight="bold" color="var(--mantine-color-orange-5)" />
                                 )}
                               </Paper>
                             );
@@ -531,9 +532,9 @@ export default function HomePage() {
                             size="sm"
                             leftSection={
                               isPublic ? (
-                                <IconWorld size={14} color="var(--mantine-color-teal-4)" />
+                                <Globe size={14} weight="bold" color="var(--mantine-color-teal-4)" />
                               ) : (
-                                <IconLock size={14} />
+                                <Lock size={14} weight="bold" />
                               )
                             }
                             onClick={() => setIsPublic(!isPublic)}
@@ -591,7 +592,7 @@ export default function HomePage() {
                         size="md"
                         fullWidth
                         loading={isCreating}
-                        leftSection={<IconPlus size={16} />}
+                        leftSection={<Plus size={16} weight="bold" />}
                       >
                         Create & Enter Auction Room
                       </Button>
@@ -616,7 +617,7 @@ export default function HomePage() {
                   <Stack gap="md">
                     <Group gap="xs" pb="xs" style={{ borderBottom: "1px solid var(--mantine-color-dark-4)" }}>
                       <ThemeIcon size={34} radius="md" color="blue" variant="light">
-                        <IconLock size={18} />
+                        <Lock size={18} weight="bold" />
                       </ThemeIcon>
                       <Box>
                         <Text fw={700} size="sm">
@@ -649,7 +650,7 @@ export default function HomePage() {
                           size="sm"
                           fullWidth
                           disabled={!roomIdInput.trim()}
-                          rightSection={<IconArrowRight size={14} />}
+                          rightSection={<ArrowRight size={14} weight="bold" />}
                         >
                           Join Room
                         </Button>
@@ -659,7 +660,7 @@ export default function HomePage() {
 
                   <Paper p="xs" radius="md" withBorder mt="md" style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
                     <Group gap="xs">
-                      <IconWorld size={14} color="var(--mantine-color-orange-5)" />
+                      <Globe size={14} weight="bold" color="var(--mantine-color-orange-5)" />
                       <Text size="xs" fw={600}>
                         Want to browse games?
                       </Text>
@@ -677,7 +678,7 @@ export default function HomePage() {
               <Group justify="space-between" align="flex-end" wrap="wrap">
                 <Box>
                   <Group gap="xs">
-                    <IconWorld size={20} color="var(--mantine-color-orange-5)" />
+                    <Globe size={20} weight="bold" color="var(--mantine-color-orange-5)" />
                     <Title order={3} fw={900}>
                       Public Auctions Directory
                     </Title>
@@ -715,7 +716,7 @@ export default function HomePage() {
                     onClick={loadPublicRooms}
                     title="Refresh Room Directory"
                   >
-                    <IconRefresh size={16} />
+                    <ArrowsClockwise size={16} weight="bold" />
                   </ActionIcon>
                 </Group>
               </Group>
@@ -724,7 +725,7 @@ export default function HomePage() {
               {filteredRooms.length === 0 ? (
                 <Paper p="xl" radius="lg" withBorder ta="center">
                   <Stack align="center" gap="xs">
-                    <IconWorld size={32} color="var(--mantine-color-dimmed)" />
+                    <Globe size={32} weight="bold" color="var(--mantine-color-dimmed)" />
                     <Text fw={700} size="sm">
                       No public rooms found in this category
                     </Text>
@@ -760,7 +761,7 @@ export default function HomePage() {
                               size="xs"
                               color={isLobby ? "teal" : isLive ? "yellow" : "gray"}
                               variant="light"
-                              leftSection={isLive ? <IconBroadcast size={10} /> : undefined}
+                              leftSection={isLive ? <Broadcast size={10} weight="bold" /> : undefined}
                             >
                               {room.status}
                             </Badge>
@@ -783,7 +784,7 @@ export default function HomePage() {
                           <SimpleGrid cols={2} spacing="xs">
                             <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
                               <Group gap={6} wrap="nowrap">
-                                <IconUsers size={14} color="var(--mantine-color-blue-4)" />
+                                <Users size={14} weight="bold" color="var(--mantine-color-blue-4)" />
                                 <Box style={{ minWidth: 0 }}>
                                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                                     Online
@@ -797,7 +798,7 @@ export default function HomePage() {
 
                             <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
                               <Group gap={6} wrap="nowrap">
-                                <IconRobot size={14} color="var(--mantine-color-teal-4)" />
+                                <Robot size={14} weight="bold" color="var(--mantine-color-teal-4)" />
                                 <Box style={{ minWidth: 0 }}>
                                   <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                                     Bot Teams
@@ -832,7 +833,7 @@ export default function HomePage() {
                               color="teal"
                               size="xs"
                               fullWidth
-                              leftSection={<IconPlus size={14} />}
+                              leftSection={<Plus size={14} weight="bold" />}
                               onClick={() => router.push(`/lobby/${room.id}`)}
                             >
                               Join Lobby
@@ -842,7 +843,7 @@ export default function HomePage() {
                               variant="default"
                               size="xs"
                               fullWidth
-                              leftSection={<IconEye size={14} color="var(--mantine-color-yellow-4)" />}
+                              leftSection={<Eye size={14} weight="bold" color="var(--mantine-color-yellow-4)" />}
                               onClick={() => router.push(`/summary/${room.id}`)}
                             >
                               View Summary
@@ -852,7 +853,7 @@ export default function HomePage() {
                               color="orange"
                               size="xs"
                               fullWidth
-                              leftSection={<IconEye size={14} />}
+                              leftSection={<Eye size={14} weight="bold" />}
                               onClick={() => router.push(`/auction/${room.id}`)}
                             >
                               Enter Auction Arena

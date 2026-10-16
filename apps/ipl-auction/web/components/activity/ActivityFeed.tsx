@@ -14,15 +14,15 @@ import {
   Button,
 } from "@mantine/core";
 import {
-  IconGavel,
-  IconCircleCheck,
-  IconCircleX,
-  IconPlayerPause,
-  IconPlayerPlay,
-  IconUserPlus,
-  IconInfoCircle,
-  IconArrowUp,
-} from "@tabler/icons-react";
+  Gavel,
+  CheckCircle,
+  XCircle,
+  Pause,
+  Play,
+  UserPlus,
+  Info,
+  ArrowUp,
+} from "@phosphor-icons/react";
 
 export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) => {
   const { snapshot } = useAuctionStore();
@@ -79,35 +79,35 @@ export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) =>
       case "BID_ACCEPTED":
       case "BID_PLACED":
         return {
-          icon: <IconGavel size={14} color="#748ffc" />,
+          icon: <Gavel size={14} weight="bold" color="#748ffc" />,
           label: evt.franchiseCode || "Bid",
           sub: "bid",
           amount: evt.amount ? formatRupees(evt.amount) : "",
         };
       case "PLAYER_SOLD":
         return {
-          icon: <IconCircleCheck size={14} color="#51cf66" />,
+          icon: <CheckCircle size={14} weight="fill" color="#51cf66" />,
           label: `SOLD • ${evt.franchiseCode || ""}`,
           sub: "",
           amount: evt.amount ? formatRupees(evt.amount) : "",
         };
       case "PLAYER_UNSOLD":
         return {
-          icon: <IconCircleX size={14} color="#fa5252" />,
+          icon: <XCircle size={14} weight="fill" color="#fa5252" />,
           label: "UNSOLD",
           sub: "",
           amount: evt.amount ? formatRupees(evt.amount) : "",
         };
       case "AUCTION_PAUSED":
         return {
-          icon: <IconPlayerPause size={14} color="#fcc419" />,
+          icon: <Pause size={14} weight="bold" color="#fcc419" />,
           label: "Paused",
           sub: "",
           amount: "",
         };
       case "AUCTION_RESUMED":
         return {
-          icon: <IconPlayerPlay size={14} color="#51cf66" />,
+          icon: <Play size={14} weight="fill" color="#51cf66" />,
           label: "Resumed",
           sub: "",
           amount: "",
@@ -122,7 +122,7 @@ export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) =>
           userName = evt.title.trim();
         }
         return {
-          icon: <IconUserPlus size={14} color="#91a7ff" />,
+          icon: <UserPlus size={14} weight="bold" color="#91a7ff" />,
           label: `${userName} Joined`,
           sub: "",
           amount: "",
@@ -134,7 +134,7 @@ export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) =>
           clean = clean.replace("Bidding opened for ", "Lot: ");
         }
         return {
-          icon: <IconInfoCircle size={14} color="#868e96" />,
+          icon: <Info size={14} weight="bold" color="#868e96" />,
           label: clean,
           sub: "",
           amount: evt.amount ? formatRupees(evt.amount) : "",
@@ -156,7 +156,7 @@ export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) =>
             size="compact-xs"
             radius="xl"
             color="blue"
-            leftSection={<IconArrowUp size={12} />}
+            leftSection={<ArrowUp size={12} weight="bold" />}
             onClick={scrollToTop}
           >
             New activity

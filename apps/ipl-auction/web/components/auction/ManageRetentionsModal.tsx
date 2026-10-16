@@ -26,11 +26,11 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
-  IconShield,
-  IconAlertTriangle,
-  IconPlane,
-  IconCheck,
-} from "@tabler/icons-react";
+  Shield,
+  Warning,
+  Airplane,
+  Check,
+} from "@phosphor-icons/react";
 
 interface ManageRetentionsModalProps {
   isOpen: boolean;
@@ -268,7 +268,7 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
         </Paper>
 
         {errorMsg && (
-          <Alert color="red" variant="light" icon={<IconAlertTriangle size={16} />} title="Retention Restriction">
+          <Alert color="red" variant="light" icon={<Warning size={16} weight="fill" />} title="Retention Restriction">
             {errorMsg}
           </Alert>
         )}
@@ -309,7 +309,7 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
                         <Text size="xs" fw={700} c="white" truncate>
                           {c.name}
                         </Text>
-                        {c.isOverseas && <IconPlane size={12} color="#f59f00" />}
+                        {c.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}
                         <Badge size="xs" color={c.isCapped ? "blue" : "teal"} variant="light">
                           {c.isCapped ? "CAPPED" : "UNCAPPED"}
                         </Badge>

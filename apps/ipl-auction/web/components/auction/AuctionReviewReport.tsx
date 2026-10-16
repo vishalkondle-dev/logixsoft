@@ -21,20 +21,19 @@ import {
   Tooltip,
 } from "@mantine/core";
 import {
-  IconTrophy,
-  IconAward,
-  IconUsers,
-  IconPlane,
-  IconArrowLeft,
-  IconCurrencyRupee,
-  IconCheck,
-  IconFlame,
-  IconRotateClockwise,
-  IconChevronDown,
-  IconChevronUp,
-  IconChartBar,
-  IconHistory,
-} from "@tabler/icons-react";
+  Trophy,
+  Medal,
+  Users,
+  Airplane,
+  ArrowLeft,
+  CurrencyInr,
+  Check,
+  Fire,
+  ArrowsClockwise,
+  CaretDown,
+  CaretUp,
+  ClockCounterClockwise,
+} from "@phosphor-icons/react";
 import { RoomSnapshot, FranchiseState, PurchasedPlayerRecord, PlayerRole } from "../../lib/types";
 import { TeamIdentity } from "../teams/TeamIdentity";
 import { CountryFlag } from "../common/CountryFlag";
@@ -145,7 +144,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
         <Group justify="space-between" wrap="wrap" gap="sm">
           <Group gap="sm">
             <ThemeIcon size={38} radius="md" color="yellow" variant="light">
-              <IconTrophy size={22} />
+              <Trophy size={22} weight="bold" />
             </ThemeIcon>
             <Box>
               <Group gap="xs">
@@ -172,7 +171,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                   aria-label="New Auction"
                 >
                   <Group gap={6} wrap="nowrap">
-                    <IconRotateClockwise size={14} color="var(--mantine-color-blue-4)" />
+                    <ArrowsClockwise size={14} weight="bold" color="var(--mantine-color-blue-4)" />
                     <Box component="span" visibleFrom="sm">New Auction</Box>
                   </Group>
                 </Button>
@@ -187,7 +186,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                 aria-label="Return to Arena"
               >
                 <Group gap={6} wrap="nowrap">
-                  <IconArrowLeft size={14} />
+                  <ArrowLeft size={14} weight="bold" />
                   <Box component="span" visibleFrom="sm">Return to Arena</Box>
                 </Group>
               </Button>
@@ -208,7 +207,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                   Total Spent
                 </Text>
                 <ThemeIcon size="sm" variant="light" color="teal">
-                  <IconCurrencyRupee size={14} />
+                  <CurrencyInr size={14} weight="bold" />
                 </ThemeIcon>
               </Group>
               <Text fw={900} size="lg" ff="monospace" c="teal">
@@ -226,7 +225,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                   Players Acquired
                 </Text>
                 <ThemeIcon size="sm" variant="light" color="blue">
-                  <IconUsers size={14} />
+                  <Users size={14} weight="bold" />
                 </ThemeIcon>
               </Group>
               <Text fw={900} size="lg" ff="monospace" c="blue">
@@ -244,7 +243,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                   Record Purchase
                 </Text>
                 <ThemeIcon size="sm" variant="light" color="orange">
-                  <IconFlame size={14} />
+                  <Fire size={14} weight="fill" />
                 </ThemeIcon>
               </Group>
               <Text fw={900} size="sm" c="orange" truncate>
@@ -274,7 +273,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                   Top Rated Squad
                 </Text>
                 <ThemeIcon size="sm" variant="light" color="grape">
-                  <IconAward size={14} />
+                  <Medal size={14} weight="bold" />
                 </ThemeIcon>
               </Group>
               <Text fw={900} size="sm" c="grape" truncate>
@@ -298,13 +297,13 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
           {/* Mantine Tabs Controls */}
           <Tabs value={activeTab} onChange={setActiveTab} color="orange" radius="md">
             <Tabs.List mb="md">
-              <Tabs.Tab value="squads" leftSection={<IconUsers size={15} />}>
+              <Tabs.Tab value="squads" leftSection={<Users size={15} weight="bold" />}>
                 <Box component="span" visibleFrom="xs">Franchise </Box>Squads ({teams.length})
               </Tabs.Tab>
-              <Tabs.Tab value="leaderboard" leftSection={<IconAward size={15} />}>
+              <Tabs.Tab value="leaderboard" leftSection={<Medal size={15} weight="bold" />}>
                 Top Buys ({allPurchasedPlayers.length})
               </Tabs.Tab>
-              <Tabs.Tab value="events" leftSection={<IconHistory size={15} />}>
+              <Tabs.Tab value="events" leftSection={<ClockCounterClockwise size={15} weight="bold" />}>
                 <Box component="span" visibleFrom="xs">Auction </Box>Timeline
               </Tabs.Tab>
             </Tabs.List>
@@ -365,7 +364,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                                   •
                                 </Text>
                                 <Group gap={2}>
-                                  <IconPlane size={11} color="var(--mantine-color-yellow-5)" />
+                                  <Airplane size={11} weight="fill" color="var(--mantine-color-yellow-5)" />
                                   <Text size="xs" c="dimmed" ff="monospace">
                                     {team.overseasCount}/{team.maxOverseas || 8}
                                   </Text>
@@ -399,7 +398,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                             )}
 
                             <ActionIcon variant="subtle" size="sm" color="gray">
-                              {isOpen ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                              {isOpen ? <CaretUp size={16} weight="bold" /> : <CaretDown size={16} weight="bold" />}
                             </ActionIcon>
                           </Group>
                         </Group>
@@ -427,7 +426,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                                 </Badge>
                               )}
                               <ActionIcon variant="subtle" size="sm" color="gray">
-                                {isOpen ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                                {isOpen ? <CaretUp size={16} weight="bold" /> : <CaretDown size={16} weight="bold" />}
                               </ActionIcon>
                             </Group>
                           </Group>
@@ -439,7 +438,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                               </Text>
                               <Text size="10px" c="dimmed">•</Text>
                               <Group gap={2}>
-                                <IconPlane size={10} color="var(--mantine-color-yellow-5)" />
+                                <Airplane size={10} weight="fill" color="var(--mantine-color-yellow-5)" />
                                 <Text size="10px" c="dimmed" ff="monospace">
                                   {team.overseasCount}/{team.maxOverseas || 8}
                                 </Text>
@@ -512,7 +511,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                                               )}
                                               {player.isOverseas && (
                                                 <Tooltip label={`Overseas (${player.country})`}>
-                                                  <IconPlane size={12} color="var(--mantine-color-yellow-5)" />
+                                                  <Airplane size={12} weight="fill" color="var(--mantine-color-yellow-5)" />
                                                 </Tooltip>
                                               )}
                                             </Group>
@@ -589,7 +588,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                                 </Text>
                                 {player.isOverseas && (
                                   <Tooltip label={`Overseas (${player.country})`}>
-                                    <IconPlane size={14} color="var(--mantine-color-yellow-5)" />
+                                    <Airplane size={14} weight="fill" color="var(--mantine-color-yellow-5)" />
                                   </Tooltip>
                                 )}
                                 <Badge size="xs" variant="outline" color="gray">

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { cn } from "../../lib/utils";
-import { Flame, CheckCircle, Tag, Shield } from "lucide-react";
+import { CheckCircle, Fire } from "@phosphor-icons/react";
 
 export interface PlayerJerseyShowcaseProps {
   playerName: string;
@@ -198,7 +198,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
       {status === "SOLD" ? (
         <div className="absolute top-2 left-2 z-10 pointer-events-none">
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 shadow-xs backdrop-blur-xs">
-            <CheckCircle className="w-2.5 h-2.5" />
+            <CheckCircle size={10} weight="fill" />
             <span>SOLD {activeCode}</span>
           </span>
         </div>
@@ -210,7 +210,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
               teamTheme.pillStyle
             )}
           >
-            <Flame className="w-3 h-3 animate-pulse" />
+            <Fire size={12} weight="fill" className="animate-pulse" />
             <span>{activeCode}</span>
           </span>
         </div>

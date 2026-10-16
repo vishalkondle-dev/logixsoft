@@ -12,7 +12,7 @@ import {
   Center,
   Divider,
 } from "@mantine/core";
-import { IconGavel, IconUser, IconSparkles } from "@tabler/icons-react";
+import { Gavel, User, Sparkle } from "@phosphor-icons/react";
 import { useAuthStore } from "../../stores/authStore";
 
 interface JoinNameModalProps {
@@ -67,7 +67,7 @@ export const JoinNameModal: React.FC<JoinNameModalProps> = ({ isOpen, onSetName 
             gradient={{ from: "orange.6", to: "red.7", deg: 45 }}
             style={{ boxShadow: "0 8px 24px rgba(234, 88, 12, 0.35)" }}
           >
-            <IconGavel size={32} />
+            <Gavel size={32} weight="bold" />
           </ThemeIcon>
         </Center>
 
@@ -83,7 +83,7 @@ export const JoinNameModal: React.FC<JoinNameModalProps> = ({ isOpen, onSetName 
         <form onSubmit={handleSubmit} style={{ width: "100%" }}>
           <Stack gap="sm">
             <TextInput
-              leftSection={<IconUser size={18} stroke={1.5} />}
+              leftSection={<User size={18} weight="bold" />}
               autoFocus
               required
               maxLength={40}
@@ -129,7 +129,7 @@ export const JoinNameModal: React.FC<JoinNameModalProps> = ({ isOpen, onSetName 
           radius="md"
           fullWidth
           size="sm"
-          leftSection={<IconSparkles size={16} color="#f59f00" />}
+          leftSection={<Sparkle size={16} weight="fill" color="#f59f00" />}
         >
           Sign in with Google (Auto-names you)
         </Button>

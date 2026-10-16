@@ -17,11 +17,11 @@ import {
   Button,
 } from "@mantine/core";
 import {
-  IconSend,
-  IconArrowDown,
-  IconWifi,
-  IconWifiOff,
-} from "@tabler/icons-react";
+  PaperPlaneRight,
+  ArrowDown,
+  WifiHigh,
+  WifiSlash,
+} from "@phosphor-icons/react";
 
 interface LiveChatProps {
   onSendMessage: (text: string) => void;
@@ -147,7 +147,7 @@ export const LiveChat: React.FC<LiveChatProps> = ({
             size="compact-xs"
             radius="xl"
             color="blue"
-            leftSection={<IconArrowDown size={12} />}
+            leftSection={<ArrowDown size={12} weight="bold" />}
             onClick={scrollToBottom}
           >
             New messages
@@ -175,9 +175,9 @@ export const LiveChat: React.FC<LiveChatProps> = ({
           radius="md"
           leftSection={
             isConnected ? (
-              <IconWifi size={14} color="#51cf66" />
+              <WifiHigh size={14} weight="bold" color="#51cf66" />
             ) : (
-              <IconWifiOff size={14} color="#f59f00" />
+              <WifiSlash size={14} weight="bold" color="#f59f00" />
             )
           }
           rightSection={
@@ -188,7 +188,7 @@ export const LiveChat: React.FC<LiveChatProps> = ({
               variant="filled"
               disabled={!inputText.trim() || !isConnected}
             >
-              <IconSend size={12} />
+              <PaperPlaneRight size={12} weight="bold" />
             </ActionIcon>
           }
         />

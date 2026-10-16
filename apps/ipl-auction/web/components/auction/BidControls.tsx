@@ -16,14 +16,14 @@ import {
   Progress,
 } from "@mantine/core";
 import {
-  IconGavel,
-  IconTrendingUp,
-  IconWallet,
-  IconClock,
-  IconAlertCircle,
-  IconShieldExclamation,
-  IconCheck,
-} from "@tabler/icons-react";
+  Gavel,
+  TrendUp,
+  Wallet,
+  Clock,
+  WarningCircle,
+  ShieldWarning,
+  Check,
+} from "@phosphor-icons/react";
 
 interface BidControlsProps {
   currentBid: number;
@@ -143,8 +143,9 @@ export const BidControls: React.FC<BidControlsProps> = ({
         <Group justify="space-between" wrap="nowrap" align="center" gap={6}>
           {/* Time Left */}
           <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-            <IconClock
+            <Clock
               size={20}
+              weight="bold"
               color={isRtmActive ? "#cc5de8" : isUrgent ? "#fa5252" : "#748ffc"}
             />
             <Box style={{ minWidth: 0 }}>
@@ -167,7 +168,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
 
           {/* Next Increment */}
           <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-            <IconTrendingUp size={20} color="#748ffc" />
+            <TrendUp size={20} weight="bold" color="#748ffc" />
             <Box style={{ minWidth: 0 }}>
               <Text size="9px" c="dimmed" fw={700} tt="uppercase" truncate>
                 Increment
@@ -182,7 +183,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
 
           {/* Your Purse */}
           <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-            <IconWallet size={20} color="#748ffc" />
+            <Wallet size={20} weight="bold" color="#748ffc" />
             <Box style={{ minWidth: 0 }}>
               <Text size="9px" c="dimmed" fw={700} tt="uppercase" truncate>
                 Purse
@@ -215,7 +216,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             disabled
             color="grape"
             variant="light"
-            leftSection={<IconShieldExclamation size={18} />}
+            leftSection={<ShieldWarning size={18} weight="bold" />}
           >
             <Box component="span" visibleFrom="sm">Right to Match (RTM) In Progress — </Box>
             Bidding Locked
@@ -227,7 +228,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             radius="md"
             variant="gradient"
             gradient={{ from: "orange.6", to: "amber.6", deg: 90 }}
-            leftSection={<IconGavel size={18} />}
+            leftSection={<Gavel size={18} weight="bold" />}
             onClick={handleClickBid}
             style={{ fontWeight: 900, letterSpacing: "0.04em" }}
           >
@@ -241,7 +242,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             disabled
             color="teal"
             variant="light"
-            leftSection={<IconCheck size={18} />}
+            leftSection={<Check size={18} weight="bold" />}
           >
             <Box component="span" visibleFrom="xs">You Hold the </Box>Highest Bid
           </Button>
@@ -253,7 +254,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             disabled
             color="orange"
             variant="light"
-            leftSection={<IconAlertCircle size={18} />}
+            leftSection={<WarningCircle size={18} weight="bold" />}
           >
             {rosterCheck.reason || "Maximum role quota reached"}
           </Button>
@@ -265,7 +266,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             disabled
             color="orange"
             variant="light"
-            leftSection={<IconShieldExclamation size={18} />}
+            leftSection={<ShieldWarning size={18} weight="bold" />}
           >
             <Box component="span" visibleFrom="xs">Must reserve </Box>{formatRupees(reserveNeeded)}<Box component="span" visibleFrom="xs"> for squad</Box>
           </Button>
@@ -277,7 +278,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             disabled
             color="red"
             variant="light"
-            leftSection={<IconAlertCircle size={18} />}
+            leftSection={<WarningCircle size={18} weight="bold" />}
           >
             Max Squad Limit ({myFranchise.maxSquad})
           </Button>
@@ -289,7 +290,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             disabled
             color="red"
             variant="light"
-            leftSection={<IconAlertCircle size={18} />}
+            leftSection={<WarningCircle size={18} weight="bold" />}
           >
             Insufficient Purse Balance
           </Button>
@@ -300,7 +301,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             radius="md"
             disabled
             variant="default"
-            leftSection={<IconGavel size={18} />}
+            leftSection={<Gavel size={18} weight="bold" />}
           >
             {nextLegalBid > 0
               ? `Next Lot: ${formatRupees(nextLegalBid)}`
@@ -314,7 +315,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             loading={isSubmitting}
             variant="gradient"
             gradient={{ from: "blue.6", to: "indigo.7", deg: 90 }}
-            leftSection={<IconGavel size={20} />}
+            leftSection={<Gavel size={20} weight="bold" />}
             onClick={handleClickBid}
             style={{ fontWeight: 900, letterSpacing: "0.04em", fontSize: 15 }}
           >

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ActionIcon, Tooltip, useMantineColorScheme, useComputedColorScheme } from "@mantine/core";
-import { IconSun, IconMoon } from "@tabler/icons-react";
+import { Sun, Moon } from "@phosphor-icons/react";
 
 interface ThemeToggleProps {
   className?: string;
@@ -34,9 +34,9 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className }) => {
         className={className}
       >
         {isDark ? (
-          <IconSun size={18} stroke={1.5} color="#ffd43b" />
+          <Sun size={18} weight="bold" color="#ffd43b" />
         ) : (
-          <IconMoon size={18} stroke={1.5} color="#4c6ef5" />
+          <Moon size={18} weight="bold" color="#4c6ef5" />
         )}
       </ActionIcon>
     </Tooltip>

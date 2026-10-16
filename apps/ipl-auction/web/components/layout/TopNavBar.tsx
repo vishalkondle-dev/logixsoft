@@ -20,13 +20,13 @@ import {
   Divider,
 } from "@mantine/core";
 import {
-  IconVolume,
-  IconVolumeOff,
-  IconShieldCheck,
-  IconUsers,
-  IconCopy,
-  IconCheck,
-} from "@tabler/icons-react";
+  SpeakerSimpleHigh,
+  SpeakerSimpleSlash,
+  ShieldCheck,
+  Users,
+  Copy,
+  Check,
+} from "@phosphor-icons/react";
 
 interface TopNavBarProps {
   roomId?: string;
@@ -113,7 +113,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
                     px={{ base: 6, sm: 8 }}
                     style={{ cursor: "pointer", fontFamily: "monospace", fontWeight: 700 }}
                     rightSection={
-                      copied ? <IconCheck size={12} color="#51cf66" /> : <IconCopy size={12} />
+                      copied ? <Check size={12} weight="bold" color="#51cf66" /> : <Copy size={12} weight="bold" />
                     }
                   >
                     {roomId}
@@ -161,7 +161,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
             variant="default"
             size="md"
             radius="md"
-            leftSection={<IconUsers size={14} color="#748ffc" />}
+            leftSection={<Users size={14} weight="bold" color="#748ffc" />}
             style={{ fontFamily: "monospace", fontWeight: 700 }}
           >
             {connectedHumans}
@@ -182,9 +182,9 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
             aria-label="Toggle voice announcements"
           >
             {voiceEnabled ? (
-              <IconVolume size={18} stroke={1.5} color="#51cf66" />
+              <SpeakerSimpleHigh size={18} weight="bold" color="#51cf66" />
             ) : (
-              <IconVolumeOff size={18} stroke={1.5} color="#868e96" />
+              <SpeakerSimpleSlash size={18} weight="bold" color="#868e96" />
             )}
           </ActionIcon>
         </Tooltip>
@@ -205,7 +205,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
               aria-label="Admin Panel"
             >
               <Group gap={6} wrap="nowrap">
-                <IconShieldCheck size={16} />
+                <ShieldCheck size={16} weight="bold" />
                 <Box component="span" visibleFrom="lg">Admin</Box>
               </Group>
             </Button>

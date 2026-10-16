@@ -19,11 +19,10 @@ import {
   Alert,
 } from "@mantine/core";
 import {
-  IconBolt,
-  IconClock,
-  IconShield,
-  IconPlane,
-} from "@tabler/icons-react";
+  Lightning,
+  Clock,
+  Airplane,
+} from "@phosphor-icons/react";
 
 interface RTMDecisionPromptProps {
   rtmState: RTMState;
@@ -92,12 +91,12 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
         >
           <Group justify="space-between">
             <Group gap={6}>
-              <IconBolt size={20} color="#fef08a" />
+              <Lightning size={20} weight="fill" color="#fef08a" />
               <Text size="xs" fw={900} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
                 Right to Match (RTM) Opportunity
               </Text>
             </Group>
-            <Badge color="dark" variant="filled" size="sm" leftSection={<IconClock size={12} />}>
+            <Badge color="dark" variant="filled" size="sm" leftSection={<Clock size={12} weight="bold" />}>
               {secondsRemaining}s
             </Badge>
           </Group>
@@ -115,7 +114,7 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
                 <Title order={3} c="white" fw={900}>
                   {rtmState.playerName}
                 </Title>
-                {rtmState.isOverseas && <IconPlane size={18} color="#f59f00" />}
+                {rtmState.isOverseas && <Airplane size={18} weight="fill" color="#f59f00" />}
               </Group>
               <Text size="xs" c="dimmed" mt={2}>
                 Role: <strong style={{ color: "#ffffff" }}>{rtmState.playerRole.replace(/_/g, " ")}</strong>
@@ -166,7 +165,7 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
                 gradient={{ from: "yellow.6", to: "orange.6", deg: 90 }}
                 size="md"
                 radius="md"
-                leftSection={<IconBolt size={18} />}
+                leftSection={<Lightning size={18} weight="fill" />}
                 onClick={() => onDecideRtm(true)}
               >
                 Match & Retain
@@ -195,7 +194,7 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
     >
       <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
         <ThemeIcon size="md" radius="sm" color="yellow" variant="light">
-          <IconBolt size={16} />
+          <Lightning size={16} weight="fill" />
         </ThemeIcon>
         <Box style={{ minWidth: 0 }}>
           <Text size="xs" fw={700} c="white">
@@ -208,7 +207,7 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
         </Box>
       </Group>
 
-      <Badge color="yellow" variant="filled" size="sm" leftSection={<IconClock size={12} />}>
+      <Badge color="yellow" variant="filled" size="sm" leftSection={<Clock size={12} weight="bold" />}>
         {secondsRemaining > 0 ? `${secondsRemaining}s` : "Resolving..."}
       </Badge>
     </Paper>

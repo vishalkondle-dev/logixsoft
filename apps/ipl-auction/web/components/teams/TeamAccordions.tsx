@@ -20,17 +20,17 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
-  IconChevronDown,
-  IconChevronUp,
-  IconUser,
-  IconRobot,
-  IconFlame,
-  IconPlane,
-  IconShield,
-  IconUserMinus,
-  IconUserX,
-  IconBolt,
-} from "@tabler/icons-react";
+  CaretDown,
+  CaretUp,
+  User,
+  Robot,
+  Fire,
+  Airplane,
+  Shield,
+  UserMinus,
+  UserCircleMinus,
+  Lightning,
+} from "@phosphor-icons/react";
 import { PurchasedPlayerRecord } from "../../lib/types";
 
 interface TeamAccordionsProps {
@@ -99,7 +99,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
         }}
       >
         <Group gap={6}>
-          <IconShield size={16} color="#748ffc" />
+          <Shield size={16} weight="bold" color="#748ffc" />
           <Text size="xs" fw={800} tt="uppercase" c="white" style={{ letterSpacing: "0.05em" }}>
             Franchises ({teamsList.length})
           </Text>
@@ -109,7 +109,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
           <Text size="10px" c="dimmed">
             Squad: {teamsList[0]?.minSquad || 18}–{teamsList[0]?.maxSquad || 25} • Max {teamsList[0]?.maxOverseas || 8}
           </Text>
-          <IconPlane size={12} color="#f59f00" />
+          <Airplane size={12} weight="fill" color="#f59f00" />
         </Group>
       </Box>
 
@@ -173,7 +173,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                             px={{ base: 4, sm: 6 }}
                           >
                             <Group gap={2} wrap="nowrap">
-                              <IconFlame size={10} color="#f59f00" />
+                              <Fire size={10} weight="fill" color="#f59f00" />
                               <Box component="span" visibleFrom="xs">BIDDING</Box>
                             </Group>
                           </Badge>
@@ -185,7 +185,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                       <Text size="xs" fw={900} ff="monospace" c="teal.4">
                         {formatRupees(team.remainingPurse)}
                       </Text>
-                      {isExpanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+                      {isExpanded ? <CaretUp size={14} weight="bold" /> : <CaretDown size={14} weight="bold" />}
                     </Group>
                   </Group>
 
@@ -193,11 +193,11 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                   <Group justify="space-between" wrap="nowrap">
                     <Group gap={6} wrap="nowrap">
                       {team.controller === "HUMAN" ? (
-                        <Badge size="xs" color="blue" variant="subtle" leftSection={<IconUser size={10} />}>
+                        <Badge size="xs" color="blue" variant="subtle" leftSection={<User size={10} weight="bold" />}>
                           <Box component="span" visibleFrom="xs">Human</Box>
                         </Badge>
                       ) : (
-                        <Badge size="xs" color="gray" variant="subtle" leftSection={<IconRobot size={10} />}>
+                        <Badge size="xs" color="gray" variant="subtle" leftSection={<Robot size={10} weight="bold" />}>
                           <Box component="span" visibleFrom="xs">AI</Box>
                         </Badge>
                       )}
@@ -205,7 +205,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                         • {team.squadCount}/{team.maxSquad}
                       </Text>
                       <Group gap={2} wrap="nowrap">
-                        <IconPlane size={10} color="#f59f00" />
+                        <Airplane size={10} weight="fill" color="#f59f00" />
                         <Text size="10px" c="dimmed">
                           {team.overseasCount}/{team.maxOverseas}
                         </Text>
@@ -238,7 +238,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                             }}
                           >
                             <Group gap={4} wrap="nowrap">
-                              <IconBolt size={10} />
+                              <Lightning size={10} weight="fill" />
                               <Box component="span" visibleFrom="xs">Claim</Box>
                             </Group>
                           </Button>
@@ -258,7 +258,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                               }
                             }}
                           >
-                            <IconUserMinus size={12} />
+                            <UserMinus size={12} weight="bold" />
                           </ActionIcon>
                           <ActionIcon
                             size="xs"
@@ -271,7 +271,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                               }
                             }}
                           >
-                            <IconUserX size={12} />
+                            <UserCircleMinus size={12} weight="bold" />
                           </ActionIcon>
                         </Group>
                       )}
@@ -330,7 +330,7 @@ function SquadGroup({ title, players }: { title: string; players: PurchasedPlaye
                   {p.rating}★
                 </Badge>
               )}
-              {p.isOverseas && <IconPlane size={12} color="#f59f00" />}
+              {p.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}
               {p.isRetained && (
                 <Badge size="xs" color="violet" variant="filled">
                   R

@@ -11,7 +11,7 @@ import {
   UnstyledButton,
   Paper,
 } from "@mantine/core";
-import { IconActivity, IconMessage } from "@tabler/icons-react";
+import { Broadcast, ChatCenteredText } from "@phosphor-icons/react";
 import { useRoomRouteGuard } from "../../../hooks/useRoomRouteGuard";
 import { useAuctionRoom } from "../../../hooks/useAuctionRoom";
 import { useAuctionVoice } from "../../../hooks/useAuctionVoice";
@@ -251,7 +251,7 @@ export default function AuctionPage({
                           : "1px solid transparent",
                     }}
                   >
-                    <IconActivity size={14} color="var(--mantine-color-blue-4)" />
+                    <Broadcast size={14} color="var(--mantine-color-blue-4)" />
                     <span>Activity</span>
                     {unreadActivityCount > 0 && activityTab !== "activity" && (
                       <Badge size="xs" color="blue" variant="filled">
@@ -284,7 +284,7 @@ export default function AuctionPage({
                           : "1px solid transparent",
                     }}
                   >
-                    <IconMessage size={14} color="var(--mantine-color-indigo-4)" />
+                    <ChatCenteredText size={14} color="var(--mantine-color-indigo-4)" />
                     <span>Live Chat</span>
                     {unreadChatCount > 0 && activityTab !== "chat" && (
                       <Badge size="xs" color="red" variant="filled">

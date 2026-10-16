@@ -20,24 +20,24 @@ import {
   SegmentedControl,
 } from "@mantine/core";
 import {
-  IconUsers,
-  IconShield,
-  IconCrown,
-  IconPlayerPlay,
-  IconRobot,
-  IconUserX,
-  IconUserCheck,
-  IconSparkles,
-  IconCopy,
-  IconCheck,
-  IconMessage,
-  IconActivity,
-  IconLayersLinked,
-  IconClock,
-  IconCoin,
-  IconChevronRight,
-  IconLogout,
-} from "@tabler/icons-react";
+  Users,
+  Shield,
+  Crown,
+  Play,
+  Robot,
+  UserCircleMinus,
+  UserCheck,
+  Sparkle,
+  Copy,
+  Check,
+  ChatCenteredText,
+  Broadcast,
+  Cards,
+  Clock,
+  Coins,
+  CaretRight,
+  SignOut,
+} from "@phosphor-icons/react";
 import { useRoomRouteGuard } from "../../../hooks/useRoomRouteGuard";
 import { useAuctionRoom } from "../../../hooks/useAuctionRoom";
 import { useAuctionStore } from "../../../stores/auctionStore";
@@ -198,7 +198,7 @@ export default function LobbyPage({
             {
               label: (
                 <Group gap={6} justify="center">
-                  <IconShield size={14} />
+                  <Shield size={14} />
                   <span>Franchises ({teamsList.length})</span>
                 </Group>
               ),
@@ -207,7 +207,7 @@ export default function LobbyPage({
             {
               label: (
                 <Group gap={6} justify="center">
-                  <IconMessage size={14} />
+                  <ChatCenteredText size={14} />
                   <span>Chat & Rules</span>
                   {unreadChatCount > 0 && (
                     <Badge size="xs" color="red" variant="filled" circle>
@@ -265,7 +265,7 @@ export default function LobbyPage({
                     <Group gap={6} wrap="wrap">
                       <Badge color="yellow" variant="light" size="xs">
                         <Group gap={4}>
-                          <IconClock size={11} />
+                          <Clock size={11} />
                           <span className="hidden sm:inline">LOBBY • WAITING FOR HOST</span>
                           <span className="sm:hidden">LOBBY</span>
                         </Group>
@@ -278,7 +278,7 @@ export default function LobbyPage({
                           color="teal"
                           variant="light"
                           size="xs"
-                          leftSection={<IconCrown size={11} />}
+                          leftSection={<Crown size={11} />}
                         >
                           Host
                         </Badge>
@@ -301,9 +301,9 @@ export default function LobbyPage({
                       px={{ base: 8, sm: "xs" }}
                       leftSection={
                         copiedLink ? (
-                          <IconCheck size={14} color="var(--mantine-color-teal-4)" />
+                          <Check size={14} color="var(--mantine-color-teal-4)" />
                         ) : (
-                          <IconCopy size={14} />
+                          <Copy size={14} />
                         )
                       }
                       onClick={handleCopyLink}
@@ -320,7 +320,7 @@ export default function LobbyPage({
               <Paper p={{ base: "xs", sm: "md" }} radius="lg" withBorder>
                 <Group justify="space-between" mb="xs">
                   <Group gap={6}>
-                    <IconUsers size={16} color="var(--mantine-color-blue-4)" />
+                    <Users size={16} color="var(--mantine-color-blue-4)" />
                     <Text fw={700} size="xs">
                       Participants ({joinedMembers.length || snapshot.connectedHumanCount || 1})
                     </Text>
@@ -384,7 +384,7 @@ export default function LobbyPage({
                               <Group gap={4}>
                                 {isHost ? (
                                   <Badge size="xs" color="yellow" variant="light" p={2}>
-                                    <IconCrown size={10} /> Host
+                                    <Crown size={10} /> Host
                                   </Badge>
                                 ) : team ? (
                                   <Badge
@@ -415,7 +415,7 @@ export default function LobbyPage({
                                   }
                                 }}
                               >
-                                <IconUserX size={14} />
+                                <UserCircleMinus size={14} />
                               </ActionIcon>
                             </Tooltip>
                           )}
@@ -430,7 +430,7 @@ export default function LobbyPage({
               <Box>
                 <Group justify="space-between" mb="xs">
                   <Group gap={6}>
-                    <IconShield size={16} color="var(--mantine-color-orange-5)" />
+                    <Shield size={16} color="var(--mantine-color-orange-5)" />
                     <Text fw={700} size="sm">
                       Select Franchise (10 Teams)
                     </Text>
@@ -498,7 +498,7 @@ export default function LobbyPage({
                                 color="teal"
                                 variant="light"
                                 px={4}
-                                leftSection={<IconUserCheck size={9} />}
+                                leftSection={<UserCheck size={9} />}
                               >
                                 <span className="hidden sm:inline">
                                   {isClaimedByMe ? "YOU" : "CLAIMED"}
@@ -510,7 +510,7 @@ export default function LobbyPage({
                                 color="gray"
                                 variant="outline"
                                 px={4}
-                                leftSection={<IconRobot size={9} />}
+                                leftSection={<Robot size={9} />}
                               >
                                 <span className="hidden sm:inline">BOT</span>
                               </Badge>
@@ -550,7 +550,7 @@ export default function LobbyPage({
                                   variant="light"
                                   fullWidth
                                   px={6}
-                                  leftSection={<IconLayersLinked size={13} />}
+                                  leftSection={<Cards size={13} />}
                                   onClick={() => setRetentionTeamCode(team.code)}
                                 >
                                   <span className="hidden sm:inline">Retentions</span> (
@@ -563,7 +563,7 @@ export default function LobbyPage({
                                 variant="subtle"
                                 fullWidth
                                 px={6}
-                                leftSection={<IconLogout size={13} />}
+                                leftSection={<SignOut size={13} />}
                                 onClick={releaseTeam}
                               >
                                 <span className="hidden sm:inline">Release</span>
@@ -576,7 +576,7 @@ export default function LobbyPage({
                                 color="orange"
                                 fullWidth
                                 px={6}
-                                rightSection={<IconChevronRight size={13} />}
+                                rightSection={<CaretRight size={13} />}
                                 onClick={() => {
                                   if (myFranchise) {
                                     takeOverTeam(team.code);
@@ -594,7 +594,7 @@ export default function LobbyPage({
                                   variant="subtle"
                                   fullWidth
                                   px={6}
-                                  leftSection={<IconLayersLinked size={13} />}
+                                  leftSection={<Cards size={13} />}
                                   onClick={() => setRetentionTeamCode(team.code)}
                                 >
                                   <span className="hidden sm:inline">Retentions</span>
@@ -610,7 +610,7 @@ export default function LobbyPage({
                                   variant="light"
                                   fullWidth
                                   px={6}
-                                  leftSection={<IconLayersLinked size={13} />}
+                                  leftSection={<Cards size={13} />}
                                   onClick={() => setRetentionTeamCode(team.code)}
                                 >
                                   <span className="hidden sm:inline">Retentions</span>
@@ -621,7 +621,7 @@ export default function LobbyPage({
                                 variant="default"
                                 fullWidth
                                 px={6}
-                                leftSection={<IconRobot size={13} />}
+                                leftSection={<Robot size={13} />}
                                 onClick={() => reassignToBot(team.code)}
                               >
                                 <span className="hidden sm:inline">Reassign</span>
@@ -688,7 +688,7 @@ export default function LobbyPage({
                       : "var(--mantine-color-dimmed)",
                 }}
               >
-                <IconMessage size={14} color="var(--mantine-color-indigo-4)" />
+                <ChatCenteredText size={14} color="var(--mantine-color-indigo-4)" />
                 <span>Live Chat</span>
                 {unreadChatCount > 0 && sidebarTab !== "chat" && (
                   <Badge size="xs" color="red" variant="filled">
@@ -716,7 +716,7 @@ export default function LobbyPage({
                       : "var(--mantine-color-dimmed)",
                 }}
               >
-                <IconActivity size={14} color="var(--mantine-color-blue-4)" />
+                <Broadcast size={14} color="var(--mantine-color-blue-4)" />
                 <span>Activity</span>
                 {unreadActivityCount > 0 && sidebarTab !== "activity" && (
                   <Badge size="xs" color="blue" variant="filled">
@@ -744,7 +744,7 @@ export default function LobbyPage({
                       : "var(--mantine-color-dimmed)",
                 }}
               >
-                <IconLayersLinked size={14} color="var(--mantine-color-teal-4)" />
+                <Cards size={14} color="var(--mantine-color-teal-4)" />
                 <span>Rules</span>
               </UnstyledButton>
             </Group>
@@ -778,7 +778,7 @@ export default function LobbyPage({
                     <Stack gap="xs">
                       <Group justify="space-between">
                         <Group gap={6}>
-                          <IconCoin size={14} color="var(--mantine-color-yellow-4)" />
+                          <Coins size={14} color="var(--mantine-color-yellow-4)" />
                           <Text size="xs" c="dimmed">
                             Purse
                           </Text>
@@ -790,7 +790,7 @@ export default function LobbyPage({
                       <Divider />
                       <Group justify="space-between">
                         <Group gap={6}>
-                          <IconUsers size={14} color="var(--mantine-color-blue-4)" />
+                          <Users size={14} color="var(--mantine-color-blue-4)" />
                           <Text size="xs" c="dimmed">
                             Squad Size
                           </Text>
@@ -802,7 +802,7 @@ export default function LobbyPage({
                       <Divider />
                       <Group justify="space-between">
                         <Group gap={6}>
-                          <IconClock size={14} color="var(--mantine-color-red-4)" />
+                          <Clock size={14} color="var(--mantine-color-red-4)" />
                           <Text size="xs" c="dimmed">
                             Bid Timer
                           </Text>
@@ -814,7 +814,7 @@ export default function LobbyPage({
                       <Divider />
                       <Group justify="space-between">
                         <Group gap={6}>
-                          <IconSparkles size={14} color="var(--mantine-color-grape-4)" />
+                          <Sparkle size={14} color="var(--mantine-color-grape-4)" />
                           <Text size="xs" c="dimmed">
                             Sets
                           </Text>
@@ -861,7 +861,7 @@ export default function LobbyPage({
                 color="teal"
                 size="md"
                 fullWidth
-                leftSection={<IconPlayerPlay size={18} />}
+                leftSection={<Play size={18} weight="fill" />}
                 onClick={startAuction}
               >
                 Start Auction Now

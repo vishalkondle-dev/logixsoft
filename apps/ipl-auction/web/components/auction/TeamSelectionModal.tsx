@@ -18,11 +18,11 @@ import {
   ScrollArea,
 } from "@mantine/core";
 import {
-  IconShield,
-  IconRobot,
-  IconLock,
-  IconCheck,
-} from "@tabler/icons-react";
+  Shield,
+  Robot,
+  Lock,
+  Check,
+} from "@phosphor-icons/react";
 
 interface TeamSelectionModalProps {
   isOpen: boolean;
@@ -49,7 +49,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
       radius="xl"
       title={
         <Group gap="xs">
-          <IconShield size={22} color="#748ffc" />
+          <Shield size={22} color="#748ffc" />
           <Box>
             <Title order={4} fw={800} c="white">
               Select Franchise to Bid
@@ -106,11 +106,11 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                     </Group>
 
                     {isAi ? (
-                      <Badge size="xs" color="teal" variant="light" leftSection={<IconRobot size={10} />}>
+                      <Badge size="xs" color="teal" variant="light" leftSection={<Robot size={10} weight="bold" />}>
                         Bot Available
                       </Badge>
                     ) : (
-                      <Badge size="xs" color="gray" variant="light" leftSection={<IconLock size={10} />}>
+                      <Badge size="xs" color="gray" variant="light" leftSection={<Lock size={10} weight="bold" />}>
                         Occupied
                       </Badge>
                     )}
@@ -125,7 +125,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                       <Button
                         size="xs"
                         color="blue"
-                        leftSection={<IconCheck size={14} />}
+                        leftSection={<Check size={14} weight="bold" />}
                         onClick={() => {
                           onSelectTeam(team.code);
                           onClose();

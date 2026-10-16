@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "../../lib/utils";
 import { PlayerRole } from "../../lib/types";
-import { Plane } from "lucide-react";
+import { Airplane } from "@phosphor-icons/react";
 
 interface PlayerIdentityProps {
   name: string;
@@ -59,7 +59,7 @@ export const PlayerIdentity: React.FC<PlayerIdentityProps> = ({
           title="Overseas Player"
           className="absolute -top-1.5 -right-1.5 bg-amber-400 text-slate-950 p-1 rounded-full shadow-md border border-amber-300 select-none flex items-center justify-center"
         >
-          <Plane className={size === "lg" ? "w-3 h-3 fill-current" : "w-2.5 h-2.5 fill-current"} />
+          <Airplane size={size === "lg" ? 14 : 11} weight="fill" />
         </span>
       )}
     </div>

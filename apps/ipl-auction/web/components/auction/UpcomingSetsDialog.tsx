@@ -23,14 +23,14 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import {
-  IconSearch,
-  IconStack2,
-  IconFlame,
-  IconCheck,
-  IconPlane,
-  IconChevronDown,
-  IconChevronUp,
-} from "@tabler/icons-react";
+  Cards,
+  MagnifyingGlass,
+  Fire,
+  Check,
+  Airplane,
+  CaretDown,
+  CaretUp,
+} from "@phosphor-icons/react";
 
 interface SetItem {
   id: string;
@@ -228,7 +228,7 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
       radius="xl"
       title={
         <Group gap="xs">
-          <IconStack2 size={20} color="#748ffc" />
+          <Cards size={20} color="#748ffc" />
           <Box>
             <Title order={4} fw={800} c="white">
               Upcoming Auction Sets & Players
@@ -253,7 +253,7 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
             <TextInput
               size="xs"
               placeholder="Search player, country..."
-              leftSection={<IconSearch size={14} />}
+              leftSection={<MagnifyingGlass size={14} weight="bold" />}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.currentTarget.value)}
               style={{ flex: 1 }}
@@ -321,12 +321,12 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                             {s.setName}
                           </Text>
                           {s.isCurrent && (
-                            <Badge size="xs" color="yellow" variant="light" leftSection={<IconFlame size={10} />}>
+                            <Badge size="xs" color="yellow" variant="light" leftSection={<Fire size={10} weight="fill" />}>
                               LIVE NOW
                             </Badge>
                           )}
                           {s.isCompleted && (
-                            <Badge size="xs" color="teal" variant="light" leftSection={<IconCheck size={10} />}>
+                            <Badge size="xs" color="teal" variant="light" leftSection={<Check size={10} weight="bold" />}>
                               COMPLETED
                             </Badge>
                           )}
@@ -336,7 +336,7 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                           <Text size="10px" c="dimmed" ff="monospace">
                             {playerCount} {playerCount === 1 ? "player" : "players"}
                           </Text>
-                          {isSetOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+                          {isSetOpen ? <CaretUp size={14} weight="bold" /> : <CaretDown size={14} weight="bold" />}
                         </Group>
                       </Group>
                     </UnstyledButton>
@@ -391,7 +391,7 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                                         <Text size="xs" fw={700} c="white" truncate>
                                           {p.name}
                                         </Text>
-                                        {p.isOverseas && <IconPlane size={12} color="#f59f00" />}
+                                        {p.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}
                                       </Group>
                                       <Group gap={4} wrap="nowrap">
                                         <CountryFlag country={p.country} size="xs" />

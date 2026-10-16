@@ -3,7 +3,7 @@
 import React from "react";
 import { useAuctionStore } from "../../stores/auctionStore";
 import { Paper, Group, UnstyledButton, Text, Indicator } from "@mantine/core";
-import { IconUsers, IconGavel, IconActivity } from "@tabler/icons-react";
+import { Users, Gavel, Broadcast } from "@phosphor-icons/react";
 
 export const MobileBottomNav: React.FC = () => {
   const {
@@ -52,7 +52,7 @@ export const MobileBottomNav: React.FC = () => {
             transition: "all 0.15s ease",
           }}
         >
-          <IconUsers size={20} stroke={2} />
+          <Users size={20} weight={activeMobileTab === "teams" ? "fill" : "bold"} />
           <Text size="9px" fw={800} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
             Teams
           </Text>
@@ -73,7 +73,7 @@ export const MobileBottomNav: React.FC = () => {
             transition: "all 0.15s ease",
           }}
         >
-          <IconGavel size={20} stroke={2} />
+          <Gavel size={20} weight={activeMobileTab === "auction" ? "fill" : "bold"} />
           <Text size="9px" fw={800} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
             Auction
           </Text>
@@ -100,7 +100,7 @@ export const MobileBottomNav: React.FC = () => {
             size={8}
             offset={2}
           >
-            <IconActivity size={20} stroke={2} />
+            <Broadcast size={20} weight={activeMobileTab === "activity" ? "fill" : "bold"} />
           </Indicator>
           <Text size="9px" fw={800} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
             Feed

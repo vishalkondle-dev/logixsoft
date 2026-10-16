@@ -18,11 +18,12 @@ import {
   Box,
 } from "@mantine/core";
 import {
-  IconHome,
-  IconArrowLeft,
-  IconSearch,
-  IconShieldExclamation,
-} from "@tabler/icons-react";
+  House,
+  ArrowLeft,
+  MagnifyingGlass,
+  ShieldWarning,
+  Cricket,
+} from "@phosphor-icons/react";
 
 interface InvalidRoomErrorProps {
   roomId: string;
@@ -79,7 +80,7 @@ export function InvalidRoomError({ roomId, errorMessage }: InvalidRoomErrorProps
                   border: "2px solid rgba(239, 68, 68, 0.5)",
                 }}
               >
-                <span style={{ fontSize: 24 }}>🏏</span>
+                <Cricket size={30} weight="fill" color="#ffffff" />
               </ThemeIcon>
             </Center>
 
@@ -88,7 +89,7 @@ export function InvalidRoomError({ roomId, errorMessage }: InvalidRoomErrorProps
               color="red"
               variant="light"
               size="sm"
-              leftSection={<IconShieldExclamation size={14} />}
+              leftSection={<ShieldWarning size={14} weight="bold" />}
               style={{ fontWeight: 800, letterSpacing: "0.05em" }}
             >
               <Box component="span" visibleFrom="xs">DRS DECISION: </Box>CLEAN BOWLED!
@@ -151,7 +152,7 @@ export function InvalidRoomError({ roomId, errorMessage }: InvalidRoomErrorProps
                 <Button
                   type="submit"
                   disabled={!newRoomId.trim()}
-                  leftSection={<IconSearch size={16} />}
+                  leftSection={<MagnifyingGlass size={16} weight="bold" />}
                   variant="filled"
                   color="blue"
                 >
@@ -165,7 +166,7 @@ export function InvalidRoomError({ roomId, errorMessage }: InvalidRoomErrorProps
               <Button
                 variant="default"
                 style={{ flex: 1 }}
-                leftSection={<IconArrowLeft size={16} />}
+                leftSection={<ArrowLeft size={16} weight="bold" />}
                 onClick={() => {
                   if (typeof window !== "undefined" && window.history.length > 1) {
                     router.back();
@@ -180,7 +181,7 @@ export function InvalidRoomError({ roomId, errorMessage }: InvalidRoomErrorProps
                 component={Link}
                 href="/"
                 style={{ flex: 1 }}
-                leftSection={<IconHome size={16} />}
+                leftSection={<House size={16} weight="bold" />}
                 variant="gradient"
                 gradient={{ from: "red.7", to: "orange.6", deg: 90 }}
               >

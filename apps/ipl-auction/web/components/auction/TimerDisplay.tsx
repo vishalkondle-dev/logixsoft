@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { useSyncTimer } from "../../hooks/useSyncTimer";
 import { Box, Group, Text, Progress, Badge } from "@mantine/core";
-import { IconClock, IconAlertTriangle } from "@tabler/icons-react";
+import { Clock, Warning } from "@phosphor-icons/react";
 
 interface TimerDisplayProps {
   timerDeadline: number | null;
@@ -83,7 +83,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     <Box w="100%" className={className}>
       <Group justify="space-between" mb={compact ? 2 : 4}>
         <Group gap={4}>
-          <IconClock size={compact ? 14 : 16} color="#748ffc" />
+          <Clock size={compact ? 14 : 16} weight="bold" color="#748ffc" />
           {!compact && (
             <Text size="11px" fw={800} tt="uppercase" c="dimmed" style={{ letterSpacing: "0.05em" }}>
               {isPaused ? "Countdown Paused" : "Hammer Countdown"}
@@ -92,7 +92,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
         </Group>
 
         <Group gap={4}>
-          {isUrgent && !isPaused && <IconAlertTriangle size={14} color="#fa5252" />}
+          {isUrgent && !isPaused && <Warning size={14} weight="fill" color="#fa5252" />}
           <Text
             size={compact ? "xs" : "sm"}
             fw={900}

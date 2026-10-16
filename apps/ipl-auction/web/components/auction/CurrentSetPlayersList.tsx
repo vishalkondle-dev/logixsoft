@@ -16,12 +16,10 @@ import {
   ScrollArea,
 } from "@mantine/core";
 import {
-  IconStack2,
-  IconFlame,
-  IconCircleCheck,
-  IconCircleX,
-  IconPlane,
-} from "@tabler/icons-react";
+  Cards,
+  Fire,
+  Airplane,
+} from "@phosphor-icons/react";
 
 interface CurrentSetPlayersListProps {
   roomId: string;
@@ -156,7 +154,7 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
         }}
       >
         <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-          <IconStack2 size={16} color="#f59f00" />
+          <Cards size={16} weight="bold" color="#f59f00" />
           <Text size="xs" fw={800} c="white" truncate title={currentSetName}>
             {currentSetName}
           </Text>
@@ -212,7 +210,7 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
                       #{player.lotNumber}
                     </Text>
                     <CountryFlag country={player.country} size="xs" showLabel={false} />
-                    {player.isOverseas && <IconPlane size={12} color="#f59f00" />}
+                    {player.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}
                     <Text size="xs" fw={isLive ? 900 : 700} c={isLive ? "yellow.3" : "white"} truncate>
                       {player.playerName}
                     </Text>
@@ -223,7 +221,7 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
 
                   <Group gap={6} wrap="nowrap">
                     {isLive ? (
-                      <Badge size="xs" color="yellow" variant="filled" leftSection={<IconFlame size={10} />}>
+                      <Badge size="xs" color="yellow" variant="filled" leftSection={<Fire size={10} weight="fill" />}>
                         LIVE
                       </Badge>
                     ) : isSold ? (

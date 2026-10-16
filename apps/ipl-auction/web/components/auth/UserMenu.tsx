@@ -12,6 +12,7 @@ import {
   Badge,
   Tooltip,
   Box,
+  ActionIcon,
 } from "@mantine/core";
 import {
   CaretDown,
@@ -30,22 +31,30 @@ export const UserMenu: React.FC<{ showAdminLink?: boolean }> = ({ showAdminLink 
 
   if (!isAuthenticated || !user) {
     return (
-      <Tooltip label="Sign In" withArrow position="bottom">
-        <Button
-          onClick={openAuthModal}
-          variant="default"
-          size="xs"
-          radius="md"
-          px={{ base: 8, sm: "xs" }}
-          aria-label="Sign In"
-        >
-          <Group gap={6} wrap="nowrap">
-            <GoogleLogo size={15} weight="bold" color="#ea4335" />
-            <Box component="span" visibleFrom="lg">
-              Sign In
-            </Box>
-          </Group>
-        </Button>
+      <Tooltip label="Sign In with Google" withArrow position="bottom">
+        <Box>
+          <ActionIcon
+            onClick={openAuthModal}
+            variant="default"
+            size="md"
+            radius="md"
+            hiddenFrom="lg"
+            aria-label="Sign In"
+          >
+            <GoogleLogo size={16} weight="bold" color="#ea4335" />
+          </ActionIcon>
+          <Button
+            onClick={openAuthModal}
+            variant="default"
+            size="xs"
+            radius="md"
+            visibleFrom="lg"
+            leftSection={<GoogleLogo size={15} weight="bold" color="#ea4335" />}
+            aria-label="Sign In"
+          >
+            Sign In
+          </Button>
+        </Box>
       </Tooltip>
     );
   }

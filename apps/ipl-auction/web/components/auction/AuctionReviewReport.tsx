@@ -164,32 +164,55 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
           <Group gap="xs">
             {onRestart && (
               <Tooltip label="New Auction" withArrow>
-                <Button
-                  variant="default"
-                  size="xs"
-                  onClick={onRestart}
-                  aria-label="New Auction"
-                >
-                  <Group gap={6} wrap="nowrap">
-                    <ArrowsClockwise size={14} weight="bold" color="var(--mantine-color-blue-4)" />
-                    <Box component="span" visibleFrom="sm">New Auction</Box>
-                  </Group>
-                </Button>
+                <Box>
+                  <ActionIcon
+                    variant="default"
+                    size="md"
+                    radius="md"
+                    hiddenFrom="sm"
+                    onClick={onRestart}
+                    aria-label="New Auction"
+                  >
+                    <ArrowsClockwise size={16} weight="bold" color="var(--mantine-color-blue-4)" />
+                  </ActionIcon>
+                  <Button
+                    variant="default"
+                    size="xs"
+                    visibleFrom="sm"
+                    leftSection={<ArrowsClockwise size={14} weight="bold" color="var(--mantine-color-blue-4)" />}
+                    onClick={onRestart}
+                    aria-label="New Auction"
+                  >
+                    New Auction
+                  </Button>
+                </Box>
               </Tooltip>
             )}
             <Tooltip label="Return to Arena" withArrow>
-              <Button
-                component={Link}
-                href="/"
-                size="xs"
-                color="orange"
-                aria-label="Return to Arena"
-              >
-                <Group gap={6} wrap="nowrap">
-                  <ArrowLeft size={14} weight="bold" />
-                  <Box component="span" visibleFrom="sm">Return to Arena</Box>
-                </Group>
-              </Button>
+              <Box>
+                <ActionIcon
+                  component={Link}
+                  href="/"
+                  size="md"
+                  radius="md"
+                  color="orange"
+                  hiddenFrom="sm"
+                  aria-label="Return to Arena"
+                >
+                  <ArrowLeft size={16} weight="bold" />
+                </ActionIcon>
+                <Button
+                  component={Link}
+                  href="/"
+                  size="xs"
+                  color="orange"
+                  visibleFrom="sm"
+                  leftSection={<ArrowLeft size={14} weight="bold" />}
+                  aria-label="Return to Arena"
+                >
+                  Return to Arena
+                </Button>
+              </Box>
             </Tooltip>
           </Group>
         </Group>

@@ -18,6 +18,7 @@ import {
   UnstyledButton,
   Tooltip,
   SegmentedControl,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   Users,
@@ -257,14 +258,17 @@ export default function LobbyPage({
                 <Group justify="space-between" align="center" wrap="wrap" gap="xs">
                   <Stack gap={4} style={{ maxWidth: 650, minWidth: 0 }}>
                     <Group gap={6} wrap="wrap">
-                      <Badge color="yellow" variant="light" size="xs">
-                        <Group gap={4}>
-                          <Clock size={11} />
-                          <span className="hidden sm:inline">LOBBY • WAITING FOR HOST</span>
-                          <span className="sm:hidden">LOBBY</span>
-                        </Group>
+                      <Badge
+                        color="yellow"
+                        variant="light"
+                        size="xs"
+                        leftSection={<Clock size={11} />}
+                        style={{ whiteSpace: "nowrap" }}
+                      >
+                        <span className="hidden sm:inline">WAITING FOR HOST</span>
+                        <span className="sm:hidden">LOBBY</span>
                       </Badge>
-                      <Badge color="blue" variant="light" size="xs">
+                      <Badge color="blue" variant="light" size="xs" style={{ whiteSpace: "nowrap" }}>
                         {snapshot.ruleset || "MEGA"}
                       </Badge>
                       {isCreator && (
@@ -273,6 +277,7 @@ export default function LobbyPage({
                           variant="light"
                           size="xs"
                           leftSection={<Crown size={11} />}
+                          style={{ whiteSpace: "nowrap" }}
                         >
                           Host
                         </Badge>
@@ -287,25 +292,39 @@ export default function LobbyPage({
                     </Text>
                   </Stack>
 
-                  {/* Share Invite Code Button */}
+                  {/* Share Invite Code Button: ActionIcon on mobile, Button on sm+ */}
                   <Tooltip label={copiedLink ? "Link Copied!" : "Share Room Link"} withArrow position="bottom">
-                    <Button
-                      variant="default"
-                      size="xs"
-                      px={{ base: 8, sm: "xs" }}
-                      leftSection={
-                        copiedLink ? (
-                          <Check size={14} color="var(--mantine-color-teal-4)" />
+                    <Box>
+                      <ActionIcon
+                        variant="default"
+                        size="md"
+                        radius="md"
+                        hiddenFrom="sm"
+                        onClick={handleCopyLink}
+                        aria-label="Share Room Link"
+                      >
+                        {copiedLink ? (
+                          <Check size={16} color="var(--mantine-color-teal-4)" />
                         ) : (
-                          <Copy size={14} />
-                        )
-                      }
-                      onClick={handleCopyLink}
-                    >
-                      <span className="hidden sm:inline">
+                          <Copy size={16} />
+                        )}
+                      </ActionIcon>
+                      <Button
+                        variant="default"
+                        size="xs"
+                        visibleFrom="sm"
+                        leftSection={
+                          copiedLink ? (
+                            <Check size={14} color="var(--mantine-color-teal-4)" />
+                          ) : (
+                            <Copy size={14} />
+                          )
+                        }
+                        onClick={handleCopyLink}
+                      >
                         {copiedLink ? "Copied!" : "Share Link"}
-                      </span>
-                    </Button>
+                      </Button>
+                    </Box>
                   </Tooltip>
                 </Group>
               </Paper>
@@ -487,27 +506,41 @@ export default function LobbyPage({
                             </Box>
 
                             {isHuman ? (
-                              <Badge
-                                size="xs"
-                                color="teal"
-                                variant="light"
-                                px={4}
-                                leftSection={<UserCheck size={9} />}
+                              <Tooltip
+                                label={
+                                  isClaimedByMe
+                                    ? "You (Human Controller)"
+                                    : `Claimed by ${team.humanDisplayName || "Human"}`
+                                }
+                                withArrow
                               >
-                                <span className="hidden sm:inline">
-                                  {isClaimedByMe ? "YOU" : "CLAIMED"}
-                                </span>
-                              </Badge>
+                                <Badge
+                                  size="xs"
+                                  color="teal"
+                                  variant="light"
+                                  px={5}
+                                  style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                                >
+                                  <Group gap={3} wrap="nowrap" align="center">
+                                    <UserCheck size={11} weight="bold" />
+                                    <span style={{ fontSize: 9, fontWeight: 800 }}>
+                                      {isClaimedByMe ? "YOU" : "USER"}
+                                    </span>
+                                  </Group>
+                                </Badge>
+                              </Tooltip>
                             ) : (
-                              <Badge
-                                size="xs"
-                                color="gray"
-                                variant="outline"
-                                px={4}
-                                leftSection={<Robot size={9} />}
-                              >
-                                <span className="hidden sm:inline">BOT</span>
-                              </Badge>
+                              <Tooltip label="AI Bot Controller" withArrow>
+                                <ThemeIcon
+                                  size="xs"
+                                  color="gray"
+                                  variant="subtle"
+                                  radius="sm"
+                                  style={{ flexShrink: 0 }}
+                                >
+                                  <Robot size={13} weight="bold" />
+                                </ThemeIcon>
+                              </Tooltip>
                             )}
                           </Group>
 
@@ -533,44 +566,58 @@ export default function LobbyPage({
                           </Stack>
                         </Box>
 
-                        {/* Action Buttons */}
-                        <Stack gap={4}>
+                        {/* Action Buttons: 1-row compact design, no empty whitespace */}
+                        <Box>
                           {isClaimedByMe ? (
-                            <>
-                              {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
+                            <Group gap={4} wrap="nowrap">
+                              {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" ? (
+                                <>
+                                  <Button
+                                    size="xs"
+                                    color="grape"
+                                    variant="light"
+                                    style={{ flex: 1, minWidth: 0 }}
+                                    px={6}
+                                    leftSection={<Cards size={13} weight="bold" />}
+                                    onClick={() => setRetentionTeamCode(team.code)}
+                                  >
+                                    <span className="hidden sm:inline">Retentions </span>(
+                                    {team.retainedPlayers?.length || 0})
+                                  </Button>
+                                  <Tooltip label="Release Franchise" withArrow>
+                                    <ActionIcon
+                                      size="input-xs"
+                                      color="red"
+                                      variant="subtle"
+                                      onClick={releaseTeam}
+                                      aria-label="Release Franchise"
+                                      style={{ flexShrink: 0 }}
+                                    >
+                                      <SignOut size={14} weight="bold" />
+                                    </ActionIcon>
+                                  </Tooltip>
+                                </>
+                              ) : (
                                 <Button
                                   size="xs"
-                                  color="grape"
-                                  variant="light"
+                                  color="red"
+                                  variant="subtle"
                                   fullWidth
-                                  px={6}
-                                  leftSection={<Cards size={13} />}
-                                  onClick={() => setRetentionTeamCode(team.code)}
+                                  leftSection={<SignOut size={13} weight="bold" />}
+                                  onClick={releaseTeam}
                                 >
-                                  <span className="hidden sm:inline">Retentions</span> (
-                                  {team.retainedPlayers?.length || 0})
+                                  Release Franchise
                                 </Button>
                               )}
-                              <Button
-                                size="xs"
-                                color="red"
-                                variant="subtle"
-                                fullWidth
-                                px={6}
-                                leftSection={<SignOut size={13} />}
-                                onClick={releaseTeam}
-                              >
-                                <span className="hidden sm:inline">Release</span>
-                              </Button>
-                            </>
+                            </Group>
                           ) : isBot ? (
-                            <>
+                            <Group gap={4} wrap="nowrap">
                               <Button
                                 size="xs"
                                 color="orange"
-                                fullWidth
+                                style={{ flex: 1, minWidth: 0 }}
                                 px={6}
-                                rightSection={<CaretRight size={13} />}
+                                rightSection={<CaretRight size={13} weight="bold" />}
                                 onClick={() => {
                                   if (myFranchise) {
                                     takeOverTeam(team.code);
@@ -582,53 +629,74 @@ export default function LobbyPage({
                                 Claim
                               </Button>
                               {isCreator && snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
-                                <Button
-                                  size="xs"
-                                  color="grape"
-                                  variant="subtle"
-                                  fullWidth
-                                  px={6}
-                                  leftSection={<Cards size={13} />}
-                                  onClick={() => setRetentionTeamCode(team.code)}
-                                >
-                                  <span className="hidden sm:inline">Retentions</span>
-                                </Button>
+                                <Tooltip label="Manage Retentions" withArrow>
+                                  <ActionIcon
+                                    size="input-xs"
+                                    color="grape"
+                                    variant="subtle"
+                                    onClick={() => setRetentionTeamCode(team.code)}
+                                    aria-label="Manage Retentions"
+                                    style={{ flexShrink: 0 }}
+                                  >
+                                    <Cards size={14} weight="bold" />
+                                  </ActionIcon>
+                                </Tooltip>
                               )}
-                            </>
+                            </Group>
                           ) : isCreator ? (
-                            <>
-                              {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
-                                <Button
-                                  size="xs"
-                                  color="grape"
-                                  variant="light"
-                                  fullWidth
-                                  px={6}
-                                  leftSection={<Cards size={13} />}
-                                  onClick={() => setRetentionTeamCode(team.code)}
-                                >
-                                  <span className="hidden sm:inline">Retentions</span>
-                                </Button>
-                              )}
-                              <Button
-                                size="xs"
-                                variant="default"
-                                fullWidth
-                                px={6}
-                                leftSection={<Robot size={13} />}
-                                onClick={() => reassignToBot(team.code)}
+                            <Group gap={4} wrap="nowrap">
+                              <Paper
+                                p="4px 6px"
+                                radius="xs"
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  backgroundColor: "var(--mantine-color-dark-8)",
+                                }}
                               >
-                                <span className="hidden sm:inline">Reassign</span>
-                              </Button>
-                            </>
+                                <Text size="10px" c="dimmed" truncate ta="center">
+                                  {team.humanDisplayName || "Human"}
+                                </Text>
+                              </Paper>
+                              {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
+                                <Tooltip label="Manage Retentions" withArrow>
+                                  <ActionIcon
+                                    size="input-xs"
+                                    color="grape"
+                                    variant="subtle"
+                                    onClick={() => setRetentionTeamCode(team.code)}
+                                    aria-label="Manage Retentions"
+                                    style={{ flexShrink: 0 }}
+                                  >
+                                    <Cards size={13} weight="bold" />
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                              <Tooltip label="Reassign to AI Bot" withArrow>
+                                <ActionIcon
+                                  size="input-xs"
+                                  variant="default"
+                                  onClick={() => reassignToBot(team.code)}
+                                  aria-label="Reassign to Bot"
+                                  style={{ flexShrink: 0 }}
+                                >
+                                  <Robot size={13} weight="bold" />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
                           ) : (
-                            <Paper p={3} radius="xs" ta="center" style={{ backgroundColor: "var(--mantine-color-dark-8)" }}>
+                            <Paper
+                              p={4}
+                              radius="xs"
+                              ta="center"
+                              style={{ backgroundColor: "var(--mantine-color-dark-8)" }}
+                            >
                               <Text size="10px" c="dimmed" truncate>
                                 {team.humanDisplayName || "Player"}
                               </Text>
                             </Paper>
                           )}
-                        </Stack>
+                        </Box>
                       </Paper>
                     );
                   })}

@@ -37,6 +37,7 @@ import {
   Airplane,
   Shield,
   Gavel,
+  User,
 } from "@phosphor-icons/react";
 import { GiBilledCap } from "react-icons/gi";
 import { getRoleIcon, getRoleMeta } from "../../lib/roleIcons";
@@ -396,39 +397,65 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                           {currentLot.playerName}
                         </Title>
 
-                        {/* Right-aligned tags and flag */}
-                        <Group gap={6} align="center" wrap="wrap">
-                          {currentLot.isCapped ? (
+                        {/* Right-aligned tags and flag: Icon on mobile, Icon+Text on sm+ */}
+                        <Group gap={5} align="center" wrap="wrap">
+                          {/* Capped / Uncapped Tag */}
+                          <Tooltip
+                            label={currentLot.isCapped ? "Capped Player" : "Uncapped Player"}
+                            withArrow
+                          >
                             <Badge
                               size="xs"
-                              color="teal"
+                              color={currentLot.isCapped ? "teal" : "gray"}
                               variant="light"
-                              leftSection={<GiBilledCap size={12} />}
-                              px={6}
+                              px={{ base: 5, sm: 8 }}
+                              style={{ whiteSpace: "nowrap" }}
                             >
-                              CAPPED
+                              <Group gap={4} wrap="nowrap" align="center">
+                                {currentLot.isCapped ? <GiBilledCap size={13} /> : <User size={11} />}
+                                <span className="hidden sm:inline">
+                                  {currentLot.isCapped ? "CAPPED" : "UNCAPPED"}
+                                </span>
+                              </Group>
                             </Badge>
-                          ) : (
-                            <Badge size="xs" color="gray" variant="light" px={6}>
-                              UNCAPPED
-                            </Badge>
-                          )}
+                          </Tooltip>
+
+                          {/* Overseas Tag */}
                           {currentLot.isOverseas && (
-                            <Badge
-                              size="xs"
-                              color="yellow"
-                              variant="light"
-                              leftSection={<Airplane size={11} weight="fill" />}
-                              px={6}
-                            >
-                              OVERSEAS
-                            </Badge>
+                            <Tooltip label="Overseas Player (Foreign Slot)" withArrow>
+                              <Badge
+                                size="xs"
+                                color="yellow"
+                                variant="light"
+                                px={{ base: 5, sm: 8 }}
+                                style={{ whiteSpace: "nowrap" }}
+                              >
+                                <Group gap={4} wrap="nowrap" align="center">
+                                  <Airplane size={12} weight="fill" />
+                                  <span className="hidden sm:inline">OVERSEAS</span>
+                                </Group>
+                              </Badge>
+                            </Tooltip>
                           )}
+
+                          {/* RTM Tag */}
                           {hasRtm && (
-                            <Badge size="xs" color="blue" variant="light" px={6}>
-                              RTM: {currentLot.previousFranchise}
-                            </Badge>
+                            <Tooltip label={`Right to Match available for ${currentLot.previousFranchise}`} withArrow>
+                              <Badge
+                                size="xs"
+                                color="blue"
+                                variant="light"
+                                px={{ base: 5, sm: 8 }}
+                                style={{ whiteSpace: "nowrap" }}
+                              >
+                                <Group gap={4} wrap="nowrap" align="center">
+                                  <Cards size={12} weight="bold" />
+                                  <span>RTM: {currentLot.previousFranchise}</span>
+                                </Group>
+                              </Badge>
+                            </Tooltip>
                           )}
+
                           <CountryFlag country={currentLot.country} size="xs" />
                         </Group>
                       </Group>
@@ -439,10 +466,13 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                           color={roleMeta.color}
                           size="sm"
                           variant="filled"
-                          leftSection={roleIcon}
-                          style={{ fontWeight: 800, textTransform: "uppercase" }}
+                          px={{ base: 7, sm: 10 }}
+                          style={{ fontWeight: 800, textTransform: "uppercase", whiteSpace: "nowrap" }}
                         >
-                          {roleMeta.label}
+                          <Group gap={4} wrap="nowrap" align="center">
+                            {roleIcon}
+                            <span>{roleMeta.label}</span>
+                          </Group>
                         </Badge>
                         <Text size="xs" c="dimmed" truncate>
                           {formatBattingStyle(currentLot.battingStyle)}

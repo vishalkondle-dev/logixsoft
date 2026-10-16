@@ -18,6 +18,7 @@ import {
   Button,
   Collapse,
   UnstyledButton,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   CaretDown,
@@ -171,10 +172,11 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                             color="yellow"
                             variant="light"
                             px={{ base: 4, sm: 6 }}
+                            style={{ whiteSpace: "nowrap" }}
                           >
-                            <Group gap={2} wrap="nowrap">
+                            <Group gap={3} wrap="nowrap" align="center">
                               <Fire size={10} weight="fill" color="#f59f00" />
-                              <Box component="span" visibleFrom="xs">BIDDING</Box>
+                              <span className="hidden xs:inline">BIDDING</span>
                             </Group>
                           </Badge>
                         </Tooltip>
@@ -191,16 +193,24 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
 
                   {/* Subtitle / Details */}
                   <Group justify="space-between" wrap="nowrap">
-                    <Group gap={6} wrap="nowrap">
-                      {team.controller === "HUMAN" ? (
-                        <Badge size="xs" color="blue" variant="subtle" leftSection={<User size={10} weight="bold" />}>
-                          <Box component="span" visibleFrom="xs">Human</Box>
-                        </Badge>
-                      ) : (
-                        <Badge size="xs" color="gray" variant="subtle" leftSection={<Robot size={10} weight="bold" />}>
-                          <Box component="span" visibleFrom="xs">AI</Box>
-                        </Badge>
-                      )}
+                    <Group gap={6} wrap="nowrap" align="center">
+                      <Tooltip
+                        label={team.controller === "HUMAN" ? "Human Controller" : "AI Bot Controller"}
+                        withArrow
+                      >
+                        <ThemeIcon
+                          size="xs"
+                          radius="sm"
+                          variant="subtle"
+                          color={team.controller === "HUMAN" ? "blue" : "gray"}
+                        >
+                          {team.controller === "HUMAN" ? (
+                            <User size={11} weight="bold" />
+                          ) : (
+                            <Robot size={11} weight="bold" />
+                          )}
+                        </ThemeIcon>
+                      </Tooltip>
                       <Text size="10px" c="dimmed">
                         • {team.squadCount}/{team.maxSquad}
                       </Text>

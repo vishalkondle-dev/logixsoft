@@ -145,3 +145,18 @@ body {
   }
 }
 
+/* Global Safeguards: Ensure all badges and buttons never show multiline text */
+.mantine-Badge-root {
+  white-space: nowrap !important;
+  max-width: 100%;
+}
+
+.mantine-Badge-label {
+  white-space: nowrap !important;
+  text-overflow: ellipsis;
+}
+
+.mantine-Button-label {
+  white-space: nowrap !important;
+}
+

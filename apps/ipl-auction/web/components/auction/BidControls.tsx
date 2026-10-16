@@ -232,7 +232,8 @@ export const BidControls: React.FC<BidControlsProps> = ({
             onClick={handleClickBid}
             style={{ fontWeight: 900, letterSpacing: "0.04em" }}
           >
-            <Box component="span" visibleFrom="xs">Select Team to Bid </Box>({formatRupees(nextLegalBid)})
+            <span className="hidden sm:inline">Select Team to Bid ({formatRupees(nextLegalBid)})</span>
+            <span className="sm:hidden">Bid {formatRupees(nextLegalBid)}</span>
           </Button>
         ) : isHighestBidder ? (
           <Button
@@ -244,7 +245,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             variant="light"
             leftSection={<Check size={18} weight="bold" />}
           >
-            <Box component="span" visibleFrom="xs">You Hold the </Box>Highest Bid
+            <span className="hidden sm:inline">You Hold the </span>Highest Bid
           </Button>
         ) : isRosterRestricted ? (
           <Button
@@ -268,7 +269,8 @@ export const BidControls: React.FC<BidControlsProps> = ({
             variant="light"
             leftSection={<ShieldWarning size={18} weight="bold" />}
           >
-            <Box component="span" visibleFrom="xs">Must reserve </Box>{formatRupees(reserveNeeded)}<Box component="span" visibleFrom="xs"> for squad</Box>
+            <span className="hidden sm:inline">Must reserve {formatRupees(reserveNeeded)} for squad</span>
+            <span className="sm:hidden">Reserve {formatRupees(reserveNeeded)}</span>
           </Button>
         ) : isSquadFull ? (
           <Button

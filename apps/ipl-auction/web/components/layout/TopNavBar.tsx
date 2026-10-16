@@ -195,20 +195,33 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
         {/* Admin Link */}
         {isAdmin && (
           <Tooltip label="Admin Panel" withArrow position="bottom">
-            <Button
-              component={Link}
-              href="/admin/dashboard"
-              size="xs"
-              variant="light"
-              color="yellow"
-              radius="md"
-              aria-label="Admin Panel"
-            >
-              <Group gap={6} wrap="nowrap">
+            <Box>
+              <ActionIcon
+                component={Link}
+                href="/admin/dashboard"
+                size="md"
+                variant="light"
+                color="yellow"
+                radius="md"
+                hiddenFrom="lg"
+                aria-label="Admin Panel"
+              >
                 <ShieldCheck size={16} weight="bold" />
-                <Box component="span" visibleFrom="lg">Admin</Box>
-              </Group>
-            </Button>
+              </ActionIcon>
+              <Button
+                component={Link}
+                href="/admin/dashboard"
+                size="xs"
+                variant="light"
+                color="yellow"
+                radius="md"
+                visibleFrom="lg"
+                leftSection={<ShieldCheck size={16} weight="bold" />}
+                aria-label="Admin Panel"
+              >
+                Admin
+              </Button>
+            </Box>
           </Tooltip>
         )}
 

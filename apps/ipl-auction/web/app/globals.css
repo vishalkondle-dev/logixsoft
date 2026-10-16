@@ -81,15 +81,15 @@ body {
     display: flex !important;
     flex-direction: row !important;
     align-items: stretch !important;
-    gap: 12px !important;
+    gap: 8px !important;
   }
   .auction-landscape-left {
-    flex: 1.15 !important;
+    flex: 1.25 !important;
     min-width: 0 !important;
     overflow-y: auto !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
   .auction-landscape-right {
     flex: 1 !important;
@@ -97,5 +97,9 @@ body {
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
+  }
+  .auction-player-card {
+    padding: 6px 8px !important;
+    gap: 8px !important;
   }
 }

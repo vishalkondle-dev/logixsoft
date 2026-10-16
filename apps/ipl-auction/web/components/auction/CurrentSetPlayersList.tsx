@@ -20,6 +20,7 @@ import {
   Fire,
   Airplane,
 } from "@phosphor-icons/react";
+import { getRoleIcon, getRoleMeta } from "../../lib/roleIcons";
 
 interface CurrentSetPlayersListProps {
   roomId: string;
@@ -214,8 +215,13 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
                     <Text size="xs" fw={isLive ? 900 : 700} c={isLive ? "yellow.3" : "white"} truncate>
                       {player.playerName}
                     </Text>
-                    <Badge size="xs" variant="outline" color="gray">
-                      {getShortRole(player.role)}
+                    <Badge
+                      size="xs"
+                      variant="light"
+                      color={getRoleMeta(player.role).color}
+                      leftSection={getRoleIcon(player.role, 10)}
+                    >
+                      {getRoleMeta(player.role).shortLabel}
                     </Badge>
                   </Group>
 

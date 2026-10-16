@@ -37,7 +37,6 @@ import {
   Shield,
   Robot,
   Check,
-  Cricket,
 } from "@phosphor-icons/react";
 import { fetchApi } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";

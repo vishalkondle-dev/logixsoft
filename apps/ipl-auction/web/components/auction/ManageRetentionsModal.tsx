@@ -31,6 +31,7 @@ import {
   Airplane,
   Check,
 } from "@phosphor-icons/react";
+import { GiBilledCap } from "react-icons/gi";
 
 interface ManageRetentionsModalProps {
   isOpen: boolean;
@@ -310,7 +311,12 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
                           {c.name}
                         </Text>
                         {c.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}
-                        <Badge size="xs" color={c.isCapped ? "blue" : "teal"} variant="light">
+                        <Badge
+                          size="xs"
+                          color={c.isCapped ? "blue" : "teal"}
+                          variant="light"
+                          leftSection={c.isCapped ? <GiBilledCap size={11} /> : undefined}
+                        >
                           {c.isCapped ? "CAPPED" : "UNCAPPED"}
                         </Badge>
                       </Group>

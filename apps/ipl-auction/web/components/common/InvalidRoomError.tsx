@@ -22,8 +22,8 @@ import {
   ArrowLeft,
   MagnifyingGlass,
   ShieldWarning,
-  Cricket,
 } from "@phosphor-icons/react";
+import { MdSportsCricket } from "react-icons/md";
 
 interface InvalidRoomErrorProps {
   roomId: string;
@@ -80,7 +80,7 @@ export function InvalidRoomError({ roomId, errorMessage }: InvalidRoomErrorProps
                   border: "2px solid rgba(239, 68, 68, 0.5)",
                 }}
               >
-                <Cricket size={30} weight="fill" color="#ffffff" />
+                <MdSportsCricket size={30} color="#ffffff" />
               </ThemeIcon>
             </Center>
 

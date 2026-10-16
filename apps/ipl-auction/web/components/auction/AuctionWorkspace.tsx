@@ -35,10 +35,11 @@ import {
   Trophy,
   Fire,
   Airplane,
-  GraduationCap,
   Shield,
   Gavel,
 } from "@phosphor-icons/react";
+import { GiBilledCap } from "react-icons/gi";
+import { getRoleIcon, getRoleMeta } from "../../lib/roleIcons";
 
 function playTickSound(second: number) {
   if (typeof window === "undefined") return;
@@ -337,158 +338,209 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
         >
           {/* Left Column in Landscape: Player Showcase + Valuation */}
           <Box className="auction-landscape-left" style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", minHeight: 0 }}>
-            {/* Card 1: Player Showcase Card */}
-            <Paper
-              withBorder
-              radius="xl"
-              p={{ base: 8, sm: "md" }}
-              style={{
-                backgroundColor: "#0b1024",
-                borderColor: "rgba(79, 70, 229, 0.3)",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                position: "relative",
-              }}
-            >
-              {/* Left Column: Jersey */}
-              <Box w={{ base: 70, sm: 80, md: 140 }} style={{ flexShrink: 0, textAlign: "center" }}>
-                <PlayerJerseyShowcase
-                  playerName={currentLot.playerName}
-                  teamCode={currentLot.highestBidderFranchise}
-                  soldToTeam={currentLot.soldToFranchise}
-                  status={currentLot.status}
-                  lotNumber={currentLot.lotNumber}
-                  size="sm"
-                />
-                <Group justify="center" gap={4} mt={{ base: 2, sm: 4 }}>
-                  {currentLot.isCapped && (
-                    <Tooltip label="Capped Player" withArrow>
-                      <Badge size="xs" color="teal" variant="light" px={{ base: 4, sm: 6 }} leftSection={<GraduationCap size={11} weight="fill" />}>
-                        <Box component="span" visibleFrom="xs">Capped</Box>
-                      </Badge>
-                    </Tooltip>
-                  )}
-                  {currentLot.isOverseas && (
-                    <Tooltip label="Overseas Player" withArrow>
-                      <Badge size="xs" color="yellow" variant="light" px={{ base: 4, sm: 6 }} leftSection={<Airplane size={10} weight="fill" />}>
-                        <Box component="span" visibleFrom="xs">Overseas</Box>
-                      </Badge>
-                    </Tooltip>
-                  )}
-                  <CountryFlag country={currentLot.country} size="xs" />
-                </Group>
-              </Box>
+            {/* Unified Redesigned Player Showcase & Auction Valuation Card */}
+            {(() => {
+              const roleMeta = getRoleMeta(currentLot.role);
+              const roleIcon = getRoleIcon(currentLot.role, 12);
 
-              {/* Right Column: Player Info & Stats */}
-              <Box style={{ flex: 1, minWidth: 0 }}>
-                <Title
-                  order={2}
-                  c="white"
-                  fw={900}
-                  lineClamp={1}
+              return (
+                <Paper
+                  className="auction-player-card"
+                  withBorder
+                  radius="xl"
+                  p={{ base: 8, sm: "md" }}
                   style={{
-                    fontSize: "clamp(1rem, 2.5vw, 1.4rem)",
-                    lineHeight: 1.15,
+                    backgroundColor: "#0b1024",
+                    borderColor: "rgba(79, 70, 229, 0.35)",
+                    display: "flex",
+                    alignItems: "stretch",
+                    gap: 10,
+                    position: "relative",
                   }}
                 >
-                  {currentLot.playerName}
-                </Title>
+                  {/* Left Column: Clean 3D Jersey Showcase (Name removed) */}
+                  <Box
+                    w={{ base: 70, xs: 80, sm: 96, md: 118 }}
+                    style={{
+                      flexShrink: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <PlayerJerseyShowcase
+                      playerName={currentLot.playerName}
+                      teamCode={currentLot.highestBidderFranchise}
+                      soldToTeam={currentLot.soldToFranchise}
+                      status={currentLot.status}
+                      lotNumber={currentLot.lotNumber}
+                      size="sm"
+                    />
+                  </Box>
 
-                <Group gap="xs" mt={2} mb={4}>
-                  <Badge color="indigo" size="sm" variant="filled">
-                    {getShortRole(currentLot.role)}
-                  </Badge>
-                  <Text size="xs" c="dimmed" truncate>
-                    {formatBattingStyle(currentLot.battingStyle)}
-                    {currentLot.bowlingStyle && currentLot.bowlingStyle !== "None" ? ` • ${currentLot.bowlingStyle}` : ""}
-                  </Text>
-                </Group>
+                  {/* Right Column: Player Info, Tags on Right, 2-line Stats, and Pricing Bar */}
+                  <Box style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    {/* Header: Player Name + Right-side Badges & Flag */}
+                    <Box>
+                      <Group justify="space-between" align="flex-start" wrap="wrap" gap={6}>
+                        <Title
+                          order={2}
+                          c="white"
+                          fw={900}
+                          lineClamp={1}
+                          style={{
+                            fontSize: "clamp(1.05rem, 2.2vw, 1.45rem)",
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {currentLot.playerName}
+                        </Title>
 
-                {/* Stats Grid */}
-                <SimpleGrid cols={{ base: 3, sm: 6 }} spacing={{ base: 4, sm: 6 }}>
-                  <Paper withBorder p={{ base: "2px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
-                    <Text size="9px" fw={700} c="dimmed" tt="uppercase">MAT</Text>
-                    <Text size="xs" fw={900} ff="monospace" c="white">{currentLot.matches}</Text>
-                  </Paper>
-                  <Paper withBorder p={{ base: "2px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
-                    <Text size="9px" fw={700} c="dimmed" tt="uppercase">RUNS</Text>
-                    <Text size="xs" fw={900} ff="monospace" c="white">{formatIndianNumber(currentLot.runs)}</Text>
-                  </Paper>
-                  <Paper withBorder p={{ base: "2px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
-                    <Text size="9px" fw={700} c="dimmed" tt="uppercase">AVG</Text>
-                    <Text size="xs" fw={900} ff="monospace" c="white">
-                      {currentLot.battingAverage > 0 ? currentLot.battingAverage.toFixed(1) : "-"}
-                    </Text>
-                  </Paper>
-                  <Paper withBorder p={{ base: "2px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
-                    <Text size="9px" fw={700} c="dimmed" tt="uppercase">SR</Text>
-                    <Text size="xs" fw={900} ff="monospace" c="white">
-                      {currentLot.strikeRate > 0 ? currentLot.strikeRate.toFixed(1) : "-"}
-                    </Text>
-                  </Paper>
-                  <Paper withBorder p={{ base: "2px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
-                    <Text size="9px" fw={700} c="dimmed" tt="uppercase">WKTS</Text>
-                    <Text size="xs" fw={900} ff="monospace" c="white">{currentLot.wickets}</Text>
-                  </Paper>
-                  <Paper withBorder p={{ base: "2px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
-                    <Text size="9px" fw={700} c="dimmed" tt="uppercase">ECON</Text>
-                    <Text size="xs" fw={900} ff="monospace" c="white">
-                      {currentLot.economy > 0 ? currentLot.economy.toFixed(1) : "-"}
-                    </Text>
-                  </Paper>
-                </SimpleGrid>
-              </Box>
-            </Paper>
+                        {/* Right-aligned tags and flag */}
+                        <Group gap={6} align="center" wrap="wrap">
+                          {currentLot.isCapped ? (
+                            <Badge
+                              size="xs"
+                              color="teal"
+                              variant="light"
+                              leftSection={<GiBilledCap size={12} />}
+                              px={6}
+                            >
+                              CAPPED
+                            </Badge>
+                          ) : (
+                            <Badge size="xs" color="gray" variant="light" px={6}>
+                              UNCAPPED
+                            </Badge>
+                          )}
+                          {currentLot.isOverseas && (
+                            <Badge
+                              size="xs"
+                              color="yellow"
+                              variant="light"
+                              leftSection={<Airplane size={11} weight="fill" />}
+                              px={6}
+                            >
+                              OVERSEAS
+                            </Badge>
+                          )}
+                          {hasRtm && (
+                            <Badge size="xs" color="blue" variant="light" px={6}>
+                              RTM: {currentLot.previousFranchise}
+                            </Badge>
+                          )}
+                          <CountryFlag country={currentLot.country} size="xs" />
+                        </Group>
+                      </Group>
 
-            {/* Card 2: Valuation & Highest Bid Banner */}
-            <Paper
-              withBorder
-              radius="xl"
-              p={{ base: 8, sm: "sm" }}
-              style={{
-                backgroundColor: "#0b1022",
-                borderColor: "rgba(79, 70, 229, 0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              {/* Base Price */}
-              <Box style={{ flexShrink: 0 }}>
-                <Text size="9px" fw={700} c="dimmed" tt="uppercase">
-                  Base Price
-                </Text>
-                <Text fz={{ base: "md", sm: "lg" }} fw={900} ff="monospace" c="yellow.4">
-                  {formatRupees(currentLot.basePrice)}
-                </Text>
-                {hasRtm && (
-                  <Badge size="xs" color="blue" variant="light" mt={2}>
-                    RTM: {currentLot.previousFranchise}
-                  </Badge>
-                )}
-              </Box>
+                      {/* Sub-header: Role Badge with bat/bowl/gloves icon + Batting/Bowling style */}
+                      <Group gap="xs" mt={4} mb={6} align="center" wrap="wrap">
+                        <Badge
+                          color={roleMeta.color}
+                          size="sm"
+                          variant="filled"
+                          leftSection={roleIcon}
+                          style={{ fontWeight: 800, textTransform: "uppercase" }}
+                        >
+                          {roleMeta.label}
+                        </Badge>
+                        <Text size="xs" c="dimmed" truncate>
+                          {formatBattingStyle(currentLot.battingStyle)}
+                          {currentLot.bowlingStyle && currentLot.bowlingStyle !== "None"
+                            ? ` • ${currentLot.bowlingStyle}`
+                            : ""}
+                        </Text>
+                      </Group>
+                    </Box>
 
-              <Divider orientation="vertical" h={36} color="dark.5" />
+                    {/* Stats Grid: Exactly 2 lines (3 cols x 2 rows) */}
+                    <SimpleGrid cols={3} spacing={6} my={4}>
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">MAT</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="white">{currentLot.matches}</Text>
+                      </Paper>
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">RUNS</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="white">{formatIndianNumber(currentLot.runs)}</Text>
+                      </Paper>
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">AVG</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="white">
+                          {currentLot.battingAverage > 0 ? currentLot.battingAverage.toFixed(1) : "-"}
+                        </Text>
+                      </Paper>
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">SR</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="white">
+                          {currentLot.strikeRate > 0 ? currentLot.strikeRate.toFixed(1) : "-"}
+                        </Text>
+                      </Paper>
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">WKTS</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="white">{currentLot.wickets}</Text>
+                      </Paper>
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">ECON</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="white">
+                          {currentLot.economy > 0 ? currentLot.economy.toFixed(1) : "-"}
+                        </Text>
+                      </Paper>
+                    </SimpleGrid>
 
-              {/* Current Highest Bid */}
-              <Group gap="xs">
-                <Box style={{ textAlign: "right" }}>
-                  <Text size="9px" fw={700} c="dimmed" tt="uppercase">
-                    {currentLot.highestBidderFranchise ? "Highest Bid" : "Opening Bid"}
-                  </Text>
-                  <Text fz={{ base: "md", sm: "xl" }} fw={900} ff="monospace" c="white">
-                    {currentLot.currentBid > 0 ? formatRupees(currentLot.currentBid) : formatRupees(currentLot.basePrice)}
-                  </Text>
-                </Box>
+                    {/* Integrated Valuation Bar: Base Price & Current Highest Bid */}
+                    <Paper
+                      withBorder
+                      radius="lg"
+                      p={{ base: "6px 8px", sm: "6px 12px" }}
+                      mt={4}
+                      style={{
+                        backgroundColor: "rgba(11, 16, 36, 0.75)",
+                        borderColor: "rgba(79, 70, 229, 0.35)",
+                      }}
+                    >
+                      <Group justify="space-between" align="center" wrap="nowrap" gap={6}>
+                        {/* Base Price */}
+                        <Box style={{ flexShrink: 0 }}>
+                          <Text size="9px" fw={700} c="dimmed" tt="uppercase">
+                            Base Price
+                          </Text>
+                          <Text fz={{ base: "xs", sm: "sm" }} fw={900} ff="monospace" c="yellow.4">
+                            {formatRupees(currentLot.basePrice)}
+                          </Text>
+                        </Box>
 
-                {currentLot.highestBidderFranchise && (
-                  <Badge size="md" color="yellow" variant="filled" leftSection={<Fire size={12} weight="fill" />}>
-                    {currentLot.highestBidderFranchise}
-                  </Badge>
-                )}
-              </Group>
-            </Paper>
+                        <Divider orientation="vertical" h={26} color="dark.4" />
+
+                        {/* Current / Highest Bid */}
+                        <Group gap={8} justify="flex-end" align="center" wrap="nowrap">
+                          <Box style={{ textAlign: "right" }}>
+                            <Text size="9px" fw={700} c="dimmed" tt="uppercase">
+                              {currentLot.highestBidderFranchise ? "Highest Bid" : "Opening Bid"}
+                            </Text>
+                            <Text fz={{ base: "sm", sm: "md" }} fw={900} ff="monospace" c="white">
+                              {currentLot.currentBid > 0
+                                ? formatRupees(currentLot.currentBid)
+                                : formatRupees(currentLot.basePrice)}
+                            </Text>
+                          </Box>
+
+                          {currentLot.highestBidderFranchise && (
+                            <Badge
+                              size="md"
+                              color="yellow"
+                              variant="filled"
+                              leftSection={<Fire size={12} weight="fill" />}
+                            >
+                              {currentLot.highestBidderFranchise}
+                            </Badge>
+                          )}
+                        </Group>
+                      </Group>
+                    </Paper>
+                  </Box>
+                </Paper>
+              );
+            })()}
           </Box>
 
           {/* Right Column in Landscape: Bid Controls */}

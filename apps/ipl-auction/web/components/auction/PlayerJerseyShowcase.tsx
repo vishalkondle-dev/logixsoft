@@ -95,31 +95,6 @@ const DEFAULT_GLOW = {
   label: "Auction Pool",
 };
 
-/**
- * Splits player full name into 1st line (first name) and 2nd line (last name)
- */
-function splitPlayerName(fullName: string): { first: string; last: string } {
-  if (!fullName) return { first: "", last: "PLAYER" };
-  const cleaned = fullName.trim();
-  const parts = cleaned.split(/\s+/);
-  if (parts.length === 1) {
-    return { first: "", last: parts[0].toUpperCase() };
-  }
-
-  // Handle suffixes like Jr, Sr, II, III
-  const suffixes = ["JR", "SR", "II", "III", "IV"];
-  let last = parts[parts.length - 1].toUpperCase();
-  let firstParts = parts.slice(0, -1);
-
-  if (suffixes.includes(last) && parts.length > 2) {
-    last = `${parts[parts.length - 2]} ${last}`.toUpperCase();
-    firstParts = parts.slice(0, -2);
-  }
-
-  const first = firstParts.join(" ").toUpperCase();
-  return { first, last };
-}
-
 export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
   playerName,
   teamCode,
@@ -148,27 +123,6 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
     }
     return `/jerseys/neutral_miniature.png`;
   }, [activeCode, imgError]);
-
-  const { first: firstName, last: lastName } = useMemo(() => {
-    return splitPlayerName(playerName);
-  }, [playerName]);
-
-  // Dynamic SVG font sizing according to string lengths
-  const firstNameStyles = useMemo(() => {
-    const len = firstName.length;
-    if (len <= 4) return { fontSize: 38, letterSpacing: 7, strokeWidth: 5.5 };
-    if (len <= 7) return { fontSize: 34, letterSpacing: 5.5, strokeWidth: 5 };
-    if (len <= 10) return { fontSize: 28, letterSpacing: 4, strokeWidth: 4.5 };
-    return { fontSize: 23, letterSpacing: 2.5, strokeWidth: 4 };
-  }, [firstName]);
-
-  const lastNameStyles = useMemo(() => {
-    const len = lastName.length;
-    if (len <= 4) return { fontSize: 58, letterSpacing: 8, strokeWidth: 7.5 };
-    if (len <= 7) return { fontSize: 52, letterSpacing: 6, strokeWidth: 7 };
-    if (len <= 10) return { fontSize: 44, letterSpacing: 4.5, strokeWidth: 6 };
-    return { fontSize: 36, letterSpacing: 3, strokeWidth: 5 };
-  }, [lastName]);
 
   const containerSizes = {
     sm: "w-24 h-28 xs:w-28 xs:h-32 sm:w-36 sm:h-44",
@@ -229,88 +183,6 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
           className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] pointer-events-none"
           loading="eager"
         />
-
-        {/* Dynamic Name in the Middle of the Jersey (SVG Overlay: 1st line First Name, 2nd line Last Name) */}
-        <svg
-          viewBox="0 0 1024 1024"
-          className="absolute inset-0 w-full h-full pointer-events-none select-none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <defs>
-            <filter id={`jerseyShadow-${pulseKey}`} x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#000000" floodOpacity="0.85" />
-            </filter>
-          </defs>
-
-          <g filter={`url(#jerseyShadow-${pulseKey})`}>
-            {firstName ? (
-              <>
-                {/* 1st Line: First Name */}
-                <text
-                  x="512"
-                  y={465}
-                  textAnchor="middle"
-                  fontSize={firstNameStyles.fontSize}
-                  fontWeight="800"
-                  letterSpacing={firstNameStyles.letterSpacing}
-                  fill="#FFFFFF"
-                  stroke="#080C14"
-                  strokeWidth={firstNameStyles.strokeWidth}
-                  strokeLinejoin="round"
-                  paintOrder="stroke fill"
-                  style={{
-                    fontFamily:
-                      "system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', sans-serif",
-                  }}
-                >
-                  {firstName}
-                </text>
-
-                {/* 2nd Line: Last Name */}
-                <text
-                  x="512"
-                  y={535}
-                  textAnchor="middle"
-                  fontSize={lastNameStyles.fontSize}
-                  fontWeight="900"
-                  letterSpacing={lastNameStyles.letterSpacing}
-                  fill="#FFFFFF"
-                  stroke="#080C14"
-                  strokeWidth={lastNameStyles.strokeWidth}
-                  strokeLinejoin="round"
-                  paintOrder="stroke fill"
-                  style={{
-                    fontFamily:
-                      "system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', sans-serif",
-                  }}
-                >
-                  {lastName}
-                </text>
-              </>
-            ) : (
-              /* Single Name Centered */
-              <text
-                x="512"
-                y={505}
-                textAnchor="middle"
-                fontSize={lastNameStyles.fontSize}
-                fontWeight="900"
-                letterSpacing={lastNameStyles.letterSpacing}
-                fill="#FFFFFF"
-                stroke="#080C14"
-                strokeWidth={lastNameStyles.strokeWidth}
-                strokeLinejoin="round"
-                paintOrder="stroke fill"
-                style={{
-                  fontFamily:
-                    "system-ui, -apple-system, 'Segoe UI', Roboto, 'Montserrat', sans-serif",
-                }}
-              >
-                {lastName}
-              </text>
-            )}
-          </g>
-        </svg>
 
         {/* Subtle Bottom Reflection / Shadow under Jersey */}
         <div className="absolute -bottom-2 w-3/4 h-3 rounded-[50%] bg-black/40 blur-md pointer-events-none" />

@@ -235,19 +235,13 @@ export default function LobbyPage({
       >
         {/* LEFT / CENTER COLUMN: Lobby Overview, Participants, and Teams */}
         <Box
-          style={{
-            flex: 1,
-            height: "100%",
-            overflow: "hidden",
-            minHeight: 0,
-          }}
-          className={`${mobileTab === "teams" ? "flex" : "hidden lg:flex"} flex-col`}
+          className={`lobby-column-teams ${mobileTab === "teams" ? "" : "lobby-hide-mobile"}`}
         >
           <ScrollArea
             style={{ flex: 1, height: "100%", minHeight: 0 }}
             p={{ base: "xs", sm: "md" }}
           >
-            <Stack gap="md" style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 72 }}>
+            <Stack gap="md" style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 24 }}>
               {/* Welcome & Room Status Banner */}
               <Paper
                 p={{ base: "xs", sm: "md" }}
@@ -642,19 +636,47 @@ export default function LobbyPage({
               </Box>
             </Stack>
           </ScrollArea>
+
+          {/* Action Bar (Start Auction / Waiting for Host) */}
+          <Paper
+            p="xs"
+            radius={0}
+            style={{
+              flexShrink: 0,
+              borderTop: "1px solid var(--mantine-color-dark-4)",
+              backgroundColor: "rgba(10, 14, 34, 0.95)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <Box style={{ maxWidth: 1100, margin: "0 auto" }}>
+              {isCreator ? (
+                <Button
+                  color="teal"
+                  size="md"
+                  fullWidth
+                  leftSection={<Play size={18} weight="fill" />}
+                  onClick={startAuction}
+                >
+                  Start Auction Now
+                </Button>
+              ) : (
+                <Paper p={6} radius="md" ta="center" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                  <Group justify="center" gap={6}>
+                    <Loader size={12} color="yellow" />
+                    <Text size="xs" fw={700} c="yellow">
+                      Waiting for Host to start auction...
+                    </Text>
+                  </Group>
+                </Paper>
+              )}
+            </Box>
+          </Paper>
         </Box>
 
         {/* RIGHT COLUMN: Sidebar (Chat, Activity, Room Rules & Host Start Auction) */}
         <Box
           component="aside"
-          style={{
-            borderLeft: "1px solid var(--mantine-color-dark-4)",
-            display: "flex",
-            flexDirection: "column",
-            backgroundColor: "var(--mantine-color-dark-8)",
-            minHeight: 0,
-          }}
-          className={`${mobileTab === "chat" ? "flex" : "hidden lg:flex"} w-full lg:w-80 xl:w-96 h-full`}
+          className={`lobby-column-chat ${mobileTab === "chat" ? "" : "lobby-hide-mobile"}`}
         >
           {/* Subtabs Header */}
           <Paper
@@ -839,45 +861,6 @@ export default function LobbyPage({
             )}
           </Box>
         </Box>
-
-        {/* Bottom Sticky Action Bar (Start Auction / Waiting for Host) */}
-        <Paper
-          p="xs"
-          radius={0}
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 90,
-            borderTop: "1px solid var(--mantine-color-dark-4)",
-            backgroundColor: "rgba(10, 14, 34, 0.95)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          <Box style={{ maxWidth: 1100, margin: "0 auto" }}>
-            {isCreator ? (
-              <Button
-                color="teal"
-                size="md"
-                fullWidth
-                leftSection={<Play size={18} weight="fill" />}
-                onClick={startAuction}
-              >
-                Start Auction Now
-              </Button>
-            ) : (
-              <Paper p={6} radius="md" ta="center" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
-                <Group justify="center" gap={6}>
-                  <Loader size={12} color="yellow" />
-                  <Text size="xs" fw={700} c="yellow">
-                    Waiting for Host to start auction...
-                  </Text>
-                </Group>
-              </Paper>
-            )}
-          </Box>
-        </Paper>
       </Box>
 
       {/* Mandatory Guest Name Modal */}

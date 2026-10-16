@@ -2,8 +2,28 @@
 
 import React, { useEffect, useState } from "react";
 import { RTMState, FranchiseState } from "../../lib/types";
-import { formatRupees, cn } from "../../lib/utils";
-import { Zap, Clock, Shield, Plane, AlertCircle } from "lucide-react";
+import { formatRupees } from "../../lib/utils";
+import {
+  Modal,
+  Paper,
+  Box,
+  Group,
+  Stack,
+  Text,
+  Title,
+  Badge,
+  Progress,
+  Button,
+  SimpleGrid,
+  ThemeIcon,
+  Alert,
+} from "@mantine/core";
+import {
+  IconBolt,
+  IconClock,
+  IconShield,
+  IconPlane,
+} from "@tabler/icons-react";
 
 interface RTMDecisionPromptProps {
   rtmState: RTMState;
@@ -44,131 +64,153 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
 
   const progressPercent = Math.max(0, Math.min(100, (secondsRemaining / 10) * 100));
 
-  // Human user must make the decision
   if (isMyDecision) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200">
-        <div className="bg-card border-2 border-amber-500/80 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden ring-4 ring-amber-500/20">
-          {/* Top urgency banner */}
-          <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 px-5 py-3 text-white flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 fill-current animate-pulse text-yellow-300" />
-              <span className="font-black text-sm tracking-wide uppercase">Right to Match (RTM) Opportunity</span>
-            </div>
-            <div className="flex items-center gap-1.5 font-mono font-bold text-xs bg-black/30 px-2.5 py-1 rounded-full">
-              <Clock className="w-3.5 h-3.5 text-yellow-300" />
-              <span>{secondsRemaining}s</span>
-            </div>
-          </div>
+      <Modal
+        opened={true}
+        onClose={() => {}}
+        withCloseButton={false}
+        centered
+        radius="xl"
+        padding={0}
+        overlayProps={{ backgroundOpacity: 0.8, blur: 8 }}
+        styles={{
+          content: {
+            backgroundColor: "#0d132a",
+            border: "2px solid rgba(245, 159, 0, 0.7)",
+            overflow: "hidden",
+          },
+        }}
+      >
+        {/* Top Header Banner */}
+        <Box
+          p="sm"
+          style={{
+            background: "linear-gradient(90deg, #d97706 0%, #ea580c 50%, #b45309 100%)",
+            color: "#ffffff",
+          }}
+        >
+          <Group justify="space-between">
+            <Group gap={6}>
+              <IconBolt size={20} color="#fef08a" />
+              <Text size="xs" fw={900} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
+                Right to Match (RTM) Opportunity
+              </Text>
+            </Group>
+            <Badge color="dark" variant="filled" size="sm" leftSection={<IconClock size={12} />}>
+              {secondsRemaining}s
+            </Badge>
+          </Group>
+        </Box>
 
-          {/* Progress countdown bar */}
-          <div className="w-full bg-secondary h-1.5 overflow-hidden">
-            <div
-              className="bg-amber-500 h-full transition-all duration-200 ease-linear"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
+        <Progress value={progressPercent} color="yellow" size={4} radius={0} />
 
-          {/* Content */}
-          <div className="p-6 flex flex-col gap-5 text-center">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+        <Box p="lg">
+          <Stack gap="md" align="center" style={{ textAlign: "center" }}>
+            <Box>
+              <Text size="xs" fw={700} tt="uppercase" c="dimmed">
                 Your Former Player
-              </div>
-              <h2 className="text-2xl font-black text-foreground flex items-center justify-center gap-2">
-                <span>{rtmState.playerName}</span>
-                {rtmState.isOverseas && (
-                  <span className="p-1 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 inline-flex items-center" title="Overseas Player">
-                    <Plane className="w-3.5 h-3.5 fill-current" />
-                  </span>
-                )}
-              </h2>
-              <div className="text-xs text-muted-foreground mt-1">
-                Role: <strong className="text-foreground">{rtmState.playerRole.replace(/_/g, " ")}</strong>
-              </div>
-            </div>
+              </Text>
+              <Group gap="xs" justify="center" mt={4}>
+                <Title order={3} c="white" fw={900}>
+                  {rtmState.playerName}
+                </Title>
+                {rtmState.isOverseas && <IconPlane size={18} color="#f59f00" />}
+              </Group>
+              <Text size="xs" c="dimmed" mt={2}>
+                Role: <strong style={{ color: "#ffffff" }}>{rtmState.playerRole.replace(/_/g, " ")}</strong>
+              </Text>
+            </Box>
 
-            {/* Bid info box */}
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col gap-2">
-              <div className="text-xs text-muted-foreground">
-                Hammer closed with highest bid by <strong className="text-foreground">{rtmState.highestBidderFranchise}</strong>
-              </div>
-              <div className="text-3xl font-black font-mono text-amber-600 dark:text-amber-400">
+            {/* Price Box */}
+            <Paper withBorder p="md" radius="md" w="100%" bg="rgba(245, 159, 0, 0.1)" style={{ borderColor: "rgba(245, 159, 0, 0.3)" }}>
+              <Text size="xs" c="dimmed">
+                Hammer closed with highest bid by <strong style={{ color: "#ffffff" }}>{rtmState.highestBidderFranchise}</strong>
+              </Text>
+              <Text size="xl" fw={900} ff="monospace" c="yellow.4" my={4}>
                 {formatRupees(rtmState.finalBidAmount)}
-              </div>
-              <div className="text-[11px] text-muted-foreground flex items-center justify-center gap-1">
-                <Shield className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                <span>
-                  Match this exact amount to immediately retain {rtmState.playerName} for your franchise!
-                </span>
-              </div>
-            </div>
+              </Text>
+              <Text size="11px" c="dimmed">
+                Match this exact amount to immediately retain {rtmState.playerName} for your franchise!
+              </Text>
+            </Paper>
 
-            {/* Purse & cards remaining status */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-secondary/40 border border-border/60 text-left">
-                <div className="text-[10px] text-muted-foreground">Your Remaining Purse</div>
-                <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+            {/* Purse & cards remaining */}
+            <SimpleGrid cols={2} w="100%" spacing="xs">
+              <Paper withBorder p="xs" radius="md" bg="dark.7" style={{ textAlign: "left" }}>
+                <Text size="10px" c="dimmed">Your Remaining Purse</Text>
+                <Text size="xs" fw={800} ff="monospace" c="teal.4">
                   {formatRupees(myFranchiseState?.remainingPurse || 0)}
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-secondary/40 border border-border/60 text-left">
-                <div className="text-[10px] text-muted-foreground">RTM Cards Remaining</div>
-                <div className="font-mono font-bold text-amber-600 dark:text-amber-400 text-sm">
+                </Text>
+              </Paper>
+              <Paper withBorder p="xs" radius="md" bg="dark.7" style={{ textAlign: "left" }}>
+                <Text size="10px" c="dimmed">RTM Cards Remaining</Text>
+                <Text size="xs" fw={800} ff="monospace" c="yellow.4">
                   {myFranchiseState?.rtmCardsRemaining || 1} Cards
-                </div>
-              </div>
-            </div>
+                </Text>
+              </Paper>
+            </SimpleGrid>
 
-            {/* Decision Buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
+            {/* Action Buttons */}
+            <SimpleGrid cols={2} w="100%" spacing="sm" pt="xs">
+              <Button
+                variant="default"
+                size="md"
+                radius="md"
                 onClick={() => onDecideRtm(false)}
-                className="py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider bg-secondary hover:bg-secondary/80 border border-border text-foreground transition-all cursor-pointer hover:border-border/80"
               >
                 Decline RTM
-              </button>
-
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="gradient"
+                gradient={{ from: "yellow.6", to: "orange.6", deg: 90 }}
+                size="md"
+                radius="md"
+                leftSection={<IconBolt size={18} />}
                 onClick={() => onDecideRtm(true)}
-                className="py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg shadow-amber-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <Zap className="w-4 h-4 fill-current text-yellow-300" />
-                <span>Match & Retain</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+                Match & Retain
+              </Button>
+            </SimpleGrid>
+          </Stack>
+        </Box>
+      </Modal>
     );
   }
 
-  // Spectator / Other team view: Informative notification banner
+  // Spectator / Other team view: Notification banner
   return (
-    <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-foreground flex items-center justify-between gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-150">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center font-black text-xs shrink-0 border border-amber-500/40">
-          RTM
-        </div>
-        <div className="min-w-0 text-xs">
-          <div className="font-bold flex items-center gap-1.5 flex-wrap">
-            <span className="text-amber-700 dark:text-amber-400">{rtmState.eligibleFranchise}</span>
-            <span>evaluating Right to Match (RTM) for</span>
-            <span className="underline font-black">{rtmState.playerName}</span>
-          </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">
-            Matching price: <strong className="font-mono text-emerald-600 dark:text-emerald-400">{formatRupees(rtmState.finalBidAmount)}</strong> (bid by {rtmState.highestBidderFranchise})
-          </div>
-        </div>
-      </div>
+    <Paper
+      withBorder
+      p="sm"
+      radius="md"
+      bg="rgba(245, 159, 0, 0.12)"
+      style={{
+        borderColor: "rgba(245, 159, 0, 0.4)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+      }}
+    >
+      <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+        <ThemeIcon size="md" radius="sm" color="yellow" variant="light">
+          <IconBolt size={16} />
+        </ThemeIcon>
+        <Box style={{ minWidth: 0 }}>
+          <Text size="xs" fw={700} c="white">
+            <span style={{ color: "#fcc419" }}>{rtmState.eligibleFranchise}</span> evaluating Right to Match (RTM) for{" "}
+            <strong>{rtmState.playerName}</strong>
+          </Text>
+          <Text size="11px" c="dimmed">
+            Matching price: <strong style={{ color: "#51cf66", fontFamily: "monospace" }}>{formatRupees(rtmState.finalBidAmount)}</strong> (bid by {rtmState.highestBidderFranchise})
+          </Text>
+        </Box>
+      </Group>
 
-      <div className="flex items-center gap-1.5 font-mono text-xs font-bold px-2 py-1 rounded bg-black/40 text-amber-300 shrink-0">
-        <Clock className="w-3.5 h-3.5 animate-spin" />
-        <span>{secondsRemaining > 0 ? `${secondsRemaining}s` : "Resolving..."}</span>
-      </div>
-    </div>
+      <Badge color="yellow" variant="filled" size="sm" leftSection={<IconClock size={12} />}>
+        {secondsRemaining > 0 ? `${secondsRemaining}s` : "Resolving..."}
+      </Badge>
+    </Paper>
   );
 };

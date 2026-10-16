@@ -2,29 +2,43 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
+import {
+  Box,
+  Stack,
+  Group,
+  SimpleGrid,
+  Paper,
+  Badge,
+  Button,
+  Tabs,
+  Collapse,
+  Text,
+  Title,
+  ThemeIcon,
+  Divider,
+  ScrollArea,
+  ActionIcon,
+  Tooltip,
+} from "@mantine/core";
+import {
+  IconTrophy,
+  IconAward,
+  IconUsers,
+  IconPlane,
+  IconArrowLeft,
+  IconCurrencyRupee,
+  IconCheck,
+  IconFlame,
+  IconRotateClockwise,
+  IconChevronDown,
+  IconChevronUp,
+  IconChartBar,
+  IconHistory,
+} from "@tabler/icons-react";
 import { RoomSnapshot, FranchiseState, PurchasedPlayerRecord, PlayerRole } from "../../lib/types";
 import { TeamIdentity } from "../teams/TeamIdentity";
 import { CountryFlag } from "../common/CountryFlag";
-import { formatRupees, cn } from "../../lib/utils";
-import {
-  Trophy,
-  Award,
-  Users,
-  Plane,
-  ArrowLeft,
-  DollarSign,
-  CheckCircle2,
-  TrendingUp,
-  RotateCcw,
-  Layers,
-  Sparkles,
-  Gavel,
-  Shield,
-  Clock,
-  ChevronDown,
-  ChevronUp,
-  Flame,
-} from "lucide-react";
+import { formatRupees } from "../../lib/utils";
 
 interface AuctionReviewReportProps {
   snapshot: RoomSnapshot;
@@ -35,9 +49,8 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
   snapshot,
   onRestart,
 }) => {
-  const [activeTab, setActiveTab] = useState<"squads" | "leaderboard" | "events">("squads");
+  const [activeTab, setActiveTab] = useState<string | null>("squads");
   const [expandedFranchises, setExpandedFranchises] = useState<Record<string, boolean>>({
-    // By default first 4 franchises open
     CSK: true,
     MI: true,
     RCB: true,
@@ -61,7 +74,7 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
     let bestTeam: FranchiseState | null = null;
 
     teams.forEach((t) => {
-      spent += (t.totalPurse - t.remainingPurse);
+      spent += t.totalPurse - t.remainingPurse;
       if (t.averageRating !== null && t.averageRating > topRating) {
         topRating = t.averageRating;
         bestTeam = t;
@@ -105,397 +118,561 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden min-h-0 bg-background text-foreground select-none">
+    <Box
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        overflow: "hidden",
+        minHeight: 0,
+        backgroundColor: "var(--mantine-color-body)",
+        userSelect: "none",
+      }}
+    >
       {/* Header Banner */}
-      <header className="border-b border-border/80 bg-card/60 backdrop-blur-xs px-4 py-3 flex-shrink-0 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shadow-md">
-            <Trophy className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight">{snapshot.name}</h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                AUCTION CONCLUDED
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Official Franchise Rosters, Financial Breakdown & Squad Analytics
-            </p>
-          </div>
-        </div>
+      <Paper
+        p="sm"
+        withBorder
+        radius={0}
+        style={{
+          borderTop: 0,
+          borderLeft: 0,
+          borderRight: 0,
+          flexShrink: 0,
+          background: "var(--mantine-color-dark-8)",
+        }}
+      >
+        <Group justify="space-between" wrap="wrap" gap="sm">
+          <Group gap="sm">
+            <ThemeIcon size={38} radius="md" color="yellow" variant="light">
+              <IconTrophy size={22} />
+            </ThemeIcon>
+            <Box>
+              <Group gap="xs">
+                <Title order={4} style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>
+                  {snapshot.name}
+                </Title>
+                <Badge color="yellow" variant="light" size="xs">
+                  AUCTION CONCLUDED
+                </Badge>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Official Franchise Rosters, Financial Breakdown & 3-Pillar Squad Analytics
+              </Text>
+            </Box>
+          </Group>
 
-        <div className="flex items-center gap-2">
-          {onRestart && (
-            <button
-              onClick={onRestart}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-secondary hover:bg-secondary/80 text-foreground border border-border/80 transition-colors cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span className="hidden sm:inline">New Auction</span>
-            </button>
-          )}
-          <Link
-            href="/"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity shadow-xs"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Arena</span>
-          </Link>
-        </div>
-      </header>
+          <Group gap="xs">
+            {onRestart && (
+              <Tooltip label="New Auction" withArrow>
+                <Button
+                  variant="default"
+                  size="xs"
+                  onClick={onRestart}
+                  aria-label="New Auction"
+                >
+                  <Group gap={6} wrap="nowrap">
+                    <IconRotateClockwise size={14} color="var(--mantine-color-blue-4)" />
+                    <Box component="span" visibleFrom="sm">New Auction</Box>
+                  </Group>
+                </Button>
+              </Tooltip>
+            )}
+            <Tooltip label="Return to Arena" withArrow>
+              <Button
+                component={Link}
+                href="/"
+                size="xs"
+                color="orange"
+                aria-label="Return to Arena"
+              >
+                <Group gap={6} wrap="nowrap">
+                  <IconArrowLeft size={14} />
+                  <Box component="span" visibleFrom="sm">Return to Arena</Box>
+                </Group>
+              </Button>
+            </Tooltip>
+          </Group>
+        </Group>
+      </Paper>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
-        {/* Metric Cards Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {/* 1. Total Purse Spent */}
-          <div className="p-3.5 rounded-xl bg-card border border-border/80 shadow-2xs space-y-1">
-            <div className="flex items-center justify-between text-muted-foreground text-xs">
-              <span>Total Purse Spent</span>
-              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
-              {formatRupees(totalSpent)}
-            </div>
-            <div className="text-[10px] text-muted-foreground">
-              Across all 10 franchises (out of ₹1,200 Cr)
-            </div>
-          </div>
+      <ScrollArea style={{ flex: 1, minHeight: 0 }} p="md">
+        <Stack gap="md" style={{ maxWidth: 1200, margin: "0 auto" }}>
+          {/* Metric Cards Row */}
+          <SimpleGrid cols={{ base: 2, md: 4 }} spacing="sm">
+            {/* 1. Total Purse Spent */}
+            <Paper p="sm" radius="md" withBorder>
+              <Group justify="space-between" mb={4}>
+                <Text size="xs" c="dimmed">
+                  Total Spent
+                </Text>
+                <ThemeIcon size="sm" variant="light" color="teal">
+                  <IconCurrencyRupee size={14} />
+                </ThemeIcon>
+              </Group>
+              <Text fw={900} size="lg" ff="monospace" c="teal">
+                {formatRupees(totalSpent)}
+              </Text>
+              <Text size="xs" c="dimmed" mt={2}>
+                Across all 10 franchises
+              </Text>
+            </Paper>
 
-          {/* 2. Total Players Sold */}
-          <div className="p-3.5 rounded-xl bg-card border border-border/80 shadow-2xs space-y-1">
-            <div className="flex items-center justify-between text-muted-foreground text-xs">
-              <span>Players Acquired</span>
-              <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="text-lg font-black font-mono text-blue-600 dark:text-blue-400">
-              {allPurchasedPlayers.length}
-            </div>
-            <div className="text-[10px] text-muted-foreground">
-              Total squad recruits confirmed
-            </div>
-          </div>
+            {/* 2. Total Players Acquired */}
+            <Paper p="sm" radius="md" withBorder>
+              <Group justify="space-between" mb={4}>
+                <Text size="xs" c="dimmed">
+                  Players Acquired
+                </Text>
+                <ThemeIcon size="sm" variant="light" color="blue">
+                  <IconUsers size={14} />
+                </ThemeIcon>
+              </Group>
+              <Text fw={900} size="lg" ff="monospace" c="blue">
+                {allPurchasedPlayers.length}
+              </Text>
+              <Text size="xs" c="dimmed" mt={2}>
+                Total squad recruits confirmed
+              </Text>
+            </Paper>
 
-          {/* 3. Most Expensive Player */}
-          <div className="p-3.5 rounded-xl bg-card border border-border/80 shadow-2xs space-y-1">
-            <div className="flex items-center justify-between text-muted-foreground text-xs">
-              <span>Record Purchase</span>
-              <Flame className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="text-sm font-black text-amber-600 dark:text-amber-400 truncate">
-              {mostExpensivePlayer ? mostExpensivePlayer.name : "None"}
-            </div>
-            <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1.5">
-              {mostExpensivePlayer ? (
-                <>
-                  <span className="font-bold text-foreground">{formatRupees(mostExpensivePlayer.purchasePrice)}</span>
-                  <span>•</span>
-                  <span className="font-bold text-amber-600 dark:text-amber-400">{mostExpensivePlayer.franchiseCode}</span>
-                </>
-              ) : (
-                "No bids completed"
-              )}
-            </div>
-          </div>
+            {/* 3. Most Expensive Player */}
+            <Paper p="sm" radius="md" withBorder>
+              <Group justify="space-between" mb={4}>
+                <Text size="xs" c="dimmed">
+                  Record Purchase
+                </Text>
+                <ThemeIcon size="sm" variant="light" color="orange">
+                  <IconFlame size={14} />
+                </ThemeIcon>
+              </Group>
+              <Text fw={900} size="sm" c="orange" truncate>
+                {mostExpensivePlayer ? mostExpensivePlayer.name : "None"}
+              </Text>
+              <Text size="xs" c="dimmed" ff="monospace" mt={2}>
+                {mostExpensivePlayer ? (
+                  <>
+                    <Text span fw={700} c="bright">
+                      {formatRupees(mostExpensivePlayer.purchasePrice)}
+                    </Text>{" "}
+                    •{" "}
+                    <Text span fw={700} c="orange">
+                      {mostExpensivePlayer.franchiseCode}
+                    </Text>
+                  </>
+                ) : (
+                  "No bids completed"
+                )}
+              </Text>
+            </Paper>
 
-          {/* 4. Top Rated Franchise */}
-          <div className="p-3.5 rounded-xl bg-card border border-border/80 shadow-2xs space-y-1">
-            <div className="flex items-center justify-between text-muted-foreground text-xs">
-              <span>Top Rated Squad</span>
-              <Award className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div className="text-sm font-black text-purple-600 dark:text-purple-400 truncate">
-              {topRatedTeam ? topRatedTeam.name : "Evaluating..."}
-            </div>
-            <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1.5">
-              {topRatedTeam?.averageRating ? (
-                <>
-                  <span className="font-bold text-foreground">{topRatedTeam.averageRating.toFixed(1)} Rating</span>
-                  <span>•</span>
-                  <span>{topRatedTeam.purchasedPlayers.length} Players</span>
-                </>
-              ) : (
-                "Min 3 players required"
-              )}
-            </div>
-          </div>
-        </div>
+            {/* 4. Top Rated Franchise */}
+            <Paper p="sm" radius="md" withBorder>
+              <Group justify="space-between" mb={4}>
+                <Text size="xs" c="dimmed">
+                  Top Rated Squad
+                </Text>
+                <ThemeIcon size="sm" variant="light" color="grape">
+                  <IconAward size={14} />
+                </ThemeIcon>
+              </Group>
+              <Text fw={900} size="sm" c="grape" truncate>
+                {topRatedTeam ? topRatedTeam.name : "Evaluating..."}
+              </Text>
+              <Text size="xs" c="dimmed" ff="monospace" mt={2}>
+                {topRatedTeam?.averageRating ? (
+                  <>
+                    <Text span fw={700} c="bright">
+                      {topRatedTeam.averageRating.toFixed(1)} ★
+                    </Text>{" "}
+                    • {topRatedTeam.purchasedPlayers.length} Players
+                  </>
+                ) : (
+                  "Min 3 players required"
+                )}
+              </Text>
+            </Paper>
+          </SimpleGrid>
 
-        {/* Tab Controls */}
-        <div className="flex items-center border-b border-border/80 bg-secondary/30 rounded-lg p-1 max-w-md">
-          <button
-            onClick={() => setActiveTab("squads")}
-            className={cn(
-              "flex-1 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer text-center",
-              activeTab === "squads"
-                ? "bg-card text-foreground shadow-2xs border border-border/70"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Franchise Squads (10)
-          </button>
-          <button
-            onClick={() => setActiveTab("leaderboard")}
-            className={cn(
-              "flex-1 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer text-center ml-1",
-              activeTab === "leaderboard"
-                ? "bg-card text-foreground shadow-2xs border border-border/70"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Top Buys ({allPurchasedPlayers.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("events")}
-            className={cn(
-              "flex-1 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer text-center ml-1",
-              activeTab === "events"
-                ? "bg-card text-foreground shadow-2xs border border-border/70"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Auction Timeline
-          </button>
-        </div>
+          {/* Mantine Tabs Controls */}
+          <Tabs value={activeTab} onChange={setActiveTab} color="orange" radius="md">
+            <Tabs.List mb="md">
+              <Tabs.Tab value="squads" leftSection={<IconUsers size={15} />}>
+                <Box component="span" visibleFrom="xs">Franchise </Box>Squads ({teams.length})
+              </Tabs.Tab>
+              <Tabs.Tab value="leaderboard" leftSection={<IconAward size={15} />}>
+                Top Buys ({allPurchasedPlayers.length})
+              </Tabs.Tab>
+              <Tabs.Tab value="events" leftSection={<IconHistory size={15} />}>
+                <Box component="span" visibleFrom="xs">Auction </Box>Timeline
+              </Tabs.Tab>
+            </Tabs.List>
 
-        {/* TAB 1: SQUADS & FRANCHISES */}
-        {activeTab === "squads" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {teams.map((team, idx) => {
-              const isOpen = Boolean(expandedFranchises[team.code]);
-              const grouped = groupPlayersByRole(team.purchasedPlayers || []);
-              const spent = team.totalPurse - team.remainingPurse;
+            {/* TAB 1: SQUADS & FRANCHISES */}
+            <Tabs.Panel value="squads">
+              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="sm">
+                {teams.map((team, idx) => {
+                  const isOpen = Boolean(expandedFranchises[team.code]);
+                  const grouped = groupPlayersByRole(team.purchasedPlayers || []);
+                  const spent = team.totalPurse - team.remainingPurse;
 
-              return (
-                <div
-                  key={team.code}
-                  className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs flex flex-col"
-                >
-                  {/* Franchise Header */}
-                  <div
-                    onClick={() => toggleFranchise(team.code)}
-                    className="p-3 bg-secondary/40 hover:bg-secondary/70 border-b border-border/60 flex items-center justify-between cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className={cn(
-                        "w-5 h-5 rounded-md font-mono font-black text-[10px] flex items-center justify-center shrink-0",
-                        idx === 0 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
-                        idx === 1 ? "bg-slate-400/20 text-slate-300 border border-slate-400/30" :
-                        idx === 2 ? "bg-amber-700/20 text-amber-600 border border-amber-700/30" :
-                        "bg-secondary text-muted-foreground"
-                      )}>
-                        #{idx + 1}
-                      </span>
-                      <TeamIdentity code={team.code} size="md" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-black text-xs text-foreground truncate">{team.name}</span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-secondary text-muted-foreground">
-                            {team.controller}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-2 mt-0.5">
-                          <span>{team.purchasedPlayers.length}/{team.maxSquad || 25} Squad</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-0.5">
-                            <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
-                            {team.overseasCount}/{team.maxOverseas || 8}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                  return (
+                    <Paper key={team.code} radius="md" withBorder style={{ overflow: "hidden" }}>
+                      {/* Franchise Header Accordion Bar */}
+                      <Box
+                        p="sm"
+                        onClick={() => toggleFranchise(team.code)}
+                        style={{
+                          cursor: "pointer",
+                          backgroundColor: "var(--mantine-color-dark-7)",
+                          transition: "background-color 150ms ease",
+                        }}
+                      >
+                        {/* Desktop / Tablet Layout (>= sm) */}
+                        <Group justify="space-between" wrap="nowrap" visibleFrom="sm">
+                          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                            <Badge
+                              size="sm"
+                              variant="light"
+                              color={
+                                idx === 0
+                                  ? "yellow"
+                                  : idx === 1
+                                    ? "gray"
+                                    : idx === 2
+                                      ? "orange"
+                                      : "dark"
+                              }
+                            >
+                              #{idx + 1}
+                            </Badge>
+                            <TeamIdentity code={team.code} size="md" />
+                            <Box style={{ minWidth: 0 }}>
+                              <Group gap={6} wrap="nowrap">
+                                <Text fw={900} size="xs" truncate>
+                                  {team.name}
+                                </Text>
+                                <Badge size="xs" variant="outline" color="gray">
+                                  {team.controller}
+                                </Badge>
+                              </Group>
+                              <Group gap="xs" mt={2}>
+                                <Text size="xs" c="dimmed" ff="monospace">
+                                  {team.purchasedPlayers.length}/{team.maxSquad || 25} Squad
+                                </Text>
+                                <Text size="xs" c="dimmed">
+                                  •
+                                </Text>
+                                <Group gap={2}>
+                                  <IconPlane size={11} color="var(--mantine-color-yellow-5)" />
+                                  <Text size="xs" c="dimmed" ff="monospace">
+                                    {team.overseasCount}/{team.maxOverseas || 8}
+                                  </Text>
+                                </Group>
+                              </Group>
+                            </Box>
+                          </Group>
 
-                    <div className="flex items-center gap-3 flex-shrink-0 text-right">
-                      <div>
-                        <div className="font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
-                          {formatRupees(team.remainingPurse)}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">
-                          Spent: {formatRupees(spent)}
-                        </div>
-                      </div>
-                      {team.averageRating !== null && (
-                        <div className="flex flex-col items-end">
-                          <div className="px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-mono text-[11px] font-black">
-                            {team.averageRating.toFixed(1)} ★
-                          </div>
-                          {team.playersRating !== undefined && team.playersRating !== null && (
-                            <div className="text-[9px] font-mono text-muted-foreground mt-0.5">
-                              Players: {team.playersRating.toFixed(1)} • Bal: {team.squadBalanceRating ?? 100}% • Purse: {team.purseBalanceRating ?? 100}%
-                            </div>
+                          <Group gap="md" wrap="nowrap" style={{ flexShrink: 0 }}>
+                            <Box style={{ textAlign: "right" }}>
+                              <Text fw={900} size="xs" ff="monospace" c="teal">
+                                {formatRupees(team.remainingPurse)}
+                              </Text>
+                              <Text size="xs" c="dimmed">
+                                Spent: {formatRupees(spent)}
+                              </Text>
+                            </Box>
+
+                            {team.averageRating !== null && (
+                              <Box style={{ textAlign: "right" }}>
+                                <Badge size="md" color="grape" variant="light">
+                                  {team.averageRating.toFixed(1)} ★
+                                </Badge>
+                                {team.playersRating !== undefined && team.playersRating !== null && (
+                                  <Text size="xs" c="dimmed" ff="monospace" mt={2}>
+                                    P: {team.playersRating.toFixed(1)} • Bal:{" "}
+                                    {team.squadBalanceRating ?? 100}%
+                                  </Text>
+                                )}
+                              </Box>
+                            )}
+
+                            <ActionIcon variant="subtle" size="sm" color="gray">
+                              {isOpen ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                            </ActionIcon>
+                          </Group>
+                        </Group>
+
+                        {/* Mobile Clean 2-Row Stack Layout (< sm) */}
+                        <Stack gap={6} hiddenFrom="sm">
+                          <Group justify="space-between" wrap="nowrap">
+                            <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+                              <Badge size="xs" variant="light" color={idx === 0 ? "yellow" : idx === 1 ? "gray" : idx === 2 ? "orange" : "dark"}>
+                                #{idx + 1}
+                              </Badge>
+                              <TeamIdentity code={team.code} size="sm" />
+                              <Text fw={900} size="xs" truncate style={{ maxWidth: 130 }}>
+                                {team.name}
+                              </Text>
+                              <Badge size="xs" variant="outline" color="gray">
+                                {team.controller}
+                              </Badge>
+                            </Group>
+
+                            <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }}>
+                              {team.averageRating !== null && (
+                                <Badge size="sm" color="grape" variant="light">
+                                  {team.averageRating.toFixed(1)} ★
+                                </Badge>
+                              )}
+                              <ActionIcon variant="subtle" size="sm" color="gray">
+                                {isOpen ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                              </ActionIcon>
+                            </Group>
+                          </Group>
+
+                          <Group justify="space-between" wrap="nowrap" pt={2} style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                            <Group gap={6} wrap="nowrap">
+                              <Text size="10px" c="dimmed" ff="monospace">
+                                {team.purchasedPlayers.length}/{team.maxSquad || 25} Squad
+                              </Text>
+                              <Text size="10px" c="dimmed">•</Text>
+                              <Group gap={2}>
+                                <IconPlane size={10} color="var(--mantine-color-yellow-5)" />
+                                <Text size="10px" c="dimmed" ff="monospace">
+                                  {team.overseasCount}/{team.maxOverseas || 8}
+                                </Text>
+                              </Group>
+                            </Group>
+
+                            <Group gap="xs" wrap="nowrap">
+                              <Text size="10px" fw={800} ff="monospace" c="teal">
+                                {formatRupees(team.remainingPurse)}
+                              </Text>
+                              {team.playersRating !== undefined && team.playersRating !== null && (
+                                <Text size="10px" c="dimmed" ff="monospace">
+                                  (P: {team.playersRating.toFixed(1)})
+                                </Text>
+                              )}
+                            </Group>
+                          </Group>
+                        </Stack>
+                      </Box>
+
+                      {/* Purchased Players Grouped */}
+                      <Collapse expanded={isOpen}>
+                        <Box p="sm">
+                          {team.purchasedPlayers.length === 0 ? (
+                            <Text size="xs" c="dimmed" ta="center" fs="italic" py="sm">
+                              No players acquired during this auction.
+                            </Text>
+                          ) : (
+                            <Stack gap="xs">
+                              {(
+                                ["BATTER", "WICKETKEEPER", "ALL_ROUNDER", "BOWLER"] as PlayerRole[]
+                              ).map((role) => {
+                                const playersInRole = grouped[role];
+                                if (playersInRole.length === 0) return null;
+
+                                return (
+                                  <Box key={role}>
+                                    <Group justify="space-between" pb={2} mb={4} style={{ borderBottom: "1px solid var(--mantine-color-dark-5)" }}>
+                                      <Text size="xs" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.05em" }}>
+                                        {role}S
+                                      </Text>
+                                      <Badge size="xs" variant="default">
+                                        {playersInRole.length}
+                                      </Badge>
+                                    </Group>
+
+                                    <Stack gap={4}>
+                                      {playersInRole.map((player) => (
+                                        <Paper
+                                          key={player.id || player.lotNumber}
+                                          p={6}
+                                          radius="xs"
+                                          withBorder
+                                          style={{
+                                            backgroundColor: "var(--mantine-color-dark-6)",
+                                          }}
+                                        >
+                                          <Group justify="space-between" wrap="nowrap">
+                                            <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                                              <Text size="xs" c="dimmed" ff="monospace">
+                                                #{String(player.lotNumber).padStart(3, "0")}
+                                              </Text>
+                                              <Text size="xs" fw={700} truncate>
+                                                {player.name}
+                                              </Text>
+                                              {player.rating && (
+                                                <Badge size="xs" color="grape" variant="light">
+                                                  {player.rating}★
+                                                </Badge>
+                                              )}
+                                              {player.isOverseas && (
+                                                <Tooltip label={`Overseas (${player.country})`}>
+                                                  <IconPlane size={12} color="var(--mantine-color-yellow-5)" />
+                                                </Tooltip>
+                                              )}
+                                            </Group>
+                                            <Text fw={700} size="xs" ff="monospace" c="teal">
+                                              {formatRupees(player.purchasePrice)}
+                                            </Text>
+                                          </Group>
+                                        </Paper>
+                                      ))}
+                                    </Stack>
+                                  </Box>
+                                );
+                              })}
+                            </Stack>
                           )}
-                        </div>
-                      )}
-                      <div className="text-muted-foreground">
-                        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </div>
-                    </div>
-                  </div>
+                        </Box>
+                      </Collapse>
+                    </Paper>
+                  );
+                })}
+              </SimpleGrid>
+            </Tabs.Panel>
 
-                  {/* Purchased Players Grouped */}
-                  {isOpen && (
-                    <div className="p-3 space-y-3 flex-1 text-xs">
-                      {team.purchasedPlayers.length === 0 ? (
-                        <div className="text-center py-4 text-muted-foreground text-xs italic">
-                          No players acquired during this auction.
-                        </div>
-                      ) : (
-                        (["BATTER", "WICKETKEEPER", "ALL_ROUNDER", "BOWLER"] as PlayerRole[]).map((role) => {
-                          const playersInRole = grouped[role];
-                          if (playersInRole.length === 0) return null;
+            {/* TAB 2: TOP BUYS LEADERBOARD */}
+            <Tabs.Panel value="leaderboard">
+              <Paper radius="md" withBorder style={{ overflow: "hidden" }}>
+                <Box p="sm" style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                  <Group justify="space-between">
+                    <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: "0.05em" }}>
+                      All Purchased Players (Ranked by Sale Price)
+                    </Text>
+                    <Badge variant="light" color="blue" size="sm">
+                      {allPurchasedPlayers.length} total players
+                    </Badge>
+                  </Group>
+                </Box>
 
-                          return (
-                            <div key={role} className="space-y-1">
-                              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between border-b border-border/40 pb-0.5">
-                                <span>{role}S</span>
-                                <span className="font-mono">{playersInRole.length}</span>
-                              </div>
+                {allPurchasedPlayers.length === 0 ? (
+                  <Box p="xl" ta="center">
+                    <Text size="sm" c="dimmed" fs="italic">
+                      No players were purchased in this auction.
+                    </Text>
+                  </Box>
+                ) : (
+                  <Stack gap={0}>
+                    {allPurchasedPlayers.map((player, idx) => (
+                      <Box
+                        key={`${player.id}-${idx}`}
+                        p="sm"
+                        style={{
+                          borderBottom: "1px solid var(--mantine-color-dark-5)",
+                          backgroundColor:
+                            idx % 2 === 0
+                              ? "var(--mantine-color-dark-8)"
+                              : "var(--mantine-color-dark-7)",
+                        }}
+                      >
+                        <Group justify="space-between" wrap="nowrap">
+                          <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                            <Badge
+                              size="md"
+                              variant="filled"
+                              color={idx < 3 ? "yellow" : "dark"}
+                              w={46}
+                              px={4}
+                              style={{ textAlign: "center", flexShrink: 0 }}
+                            >
+                              #{idx + 1}
+                            </Badge>
+                            <Box style={{ minWidth: 0 }}>
+                              <Group gap="xs" wrap="nowrap">
+                                <Text fw={700} size="sm" truncate>
+                                  {player.name}
+                                </Text>
+                                {player.isOverseas && (
+                                  <Tooltip label={`Overseas (${player.country})`}>
+                                    <IconPlane size={14} color="var(--mantine-color-yellow-5)" />
+                                  </Tooltip>
+                                )}
+                                <Badge size="xs" variant="outline" color="gray">
+                                  {player.role}
+                                </Badge>
+                              </Group>
+                              <Group gap="xs" mt={2}>
+                                <CountryFlag country={player.country} size="xs" />
+                                <Text size="xs" c="dimmed" ff="monospace">
+                                  {player.country} • Lot #{player.lotNumber}
+                                </Text>
+                              </Group>
+                            </Box>
+                          </Group>
 
-                              <div className="space-y-1 pt-1">
-                                {playersInRole.map((player) => (
-                                  <div
-                                    key={player.id || player.lotNumber}
-                                    className="flex items-center justify-between py-1 px-2 rounded-md bg-secondary/30 hover:bg-secondary/60 text-xs transition-colors"
-                                  >
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <span className="font-mono text-[10px] text-muted-foreground w-6">
-                                        #{String(player.lotNumber).padStart(3, "0")}
-                                      </span>
-                                      <span className="font-bold text-foreground truncate">{player.name}</span>
-                                      {player.rating && (
-                                        <span className="text-[8px] font-mono font-bold px-1 rounded bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 shrink-0" title={`Stats Rating: ${player.rating}`}>
-                                          {player.rating}★
-                                        </span>
-                                      )}
+                          <Group gap="md" wrap="nowrap" style={{ flexShrink: 0 }}>
+                            <TeamIdentity code={player.franchiseCode} size="md" />
+                            <Text fw={900} size="sm" ff="monospace" c="teal">
+                              {formatRupees(player.purchasePrice)}
+                            </Text>
+                          </Group>
+                        </Group>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
+            </Tabs.Panel>
 
-                                      {player.isOverseas && (
-                                        <span title={`Overseas (${player.country})`}>
-                                          <Plane className="w-3 h-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs flex-shrink-0">
-                                      {formatRupees(player.purchasePrice)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+            {/* TAB 3: TIMELINE & EVENTS */}
+            <Tabs.Panel value="events">
+              <Paper radius="md" withBorder style={{ overflow: "hidden" }}>
+                <Box p="sm" style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                  <Group justify="space-between">
+                    <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: "0.05em" }}>
+                      Authoritative Event Stream
+                    </Text>
+                    <Badge variant="light" color="cyan" size="sm">
+                      {snapshot.recentEvents?.length || 0} events recorded
+                    </Badge>
+                  </Group>
+                </Box>
 
-        {/* TAB 2: TOP PURCHASES LEADERBOARD */}
-        {activeTab === "leaderboard" && (
-          <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-            <div className="p-3 bg-secondary/30 border-b border-border/60 flex items-center justify-between">
-              <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                All Purchased Players (Ranked by Sale Price)
-              </span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {allPurchasedPlayers.length} total players
-              </span>
-            </div>
-
-            {allPurchasedPlayers.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground text-xs italic">
-                No players were purchased in this auction.
-              </div>
-            ) : (
-              <div className="divide-y divide-border/50">
-                {allPurchasedPlayers.map((player, idx) => (
-                  <div
-                    key={`${player.id}-${idx}`}
-                    className="flex items-center justify-between p-3 hover:bg-secondary/30 transition-colors text-xs"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-secondary text-foreground font-mono font-black text-xs flex items-center justify-center flex-shrink-0">
-                        #{idx + 1}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-foreground text-sm truncate">{player.name}</span>
-                          {player.isOverseas && (
-                            <span title={`Overseas (${player.country})`}>
-                              <Plane className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                            </span>
-                          )}
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-secondary text-muted-foreground uppercase">
-                            {player.role}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground font-mono mt-0.5 flex items-center gap-1.5">
-                          <CountryFlag country={player.country} size="xs" />
-                          <span>{player.country} • Lot #{player.lotNumber}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 flex-shrink-0 text-right">
-                      <TeamIdentity code={player.franchiseCode} size="md" />
-                      <div className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                        {formatRupees(player.purchasePrice)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: TIMELINE & EVENTS */}
-        {activeTab === "events" && (
-          <div className="rounded-xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-            <div className="p-3 bg-secondary/30 border-b border-border/60 flex items-center justify-between">
-              <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                Authoritative Event Stream
-              </span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {snapshot.recentEvents?.length || 0} events recorded
-              </span>
-            </div>
-
-            <div className="p-3 space-y-2">
-              {(snapshot.recentEvents || []).map((evt) => (
-                <div
-                  key={evt.id || evt.sequence}
-                  className="flex items-start gap-2.5 p-2 rounded-lg bg-secondary/20 border border-border/50 text-xs"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-foreground">{evt.title}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        {new Date(evt.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{evt.description}</p>
-                    {evt.franchiseCode && (
-                      <div className="mt-1 flex items-center gap-1.5">
-                        <TeamIdentity code={evt.franchiseCode} size="sm" />
-                        {evt.amount && (
-                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                            {formatRupees(evt.amount)}
-                          </span>
+                <Box p="sm">
+                  <Stack gap="xs">
+                    {(snapshot.recentEvents || []).map((evt) => (
+                      <Paper
+                        key={evt.id || evt.sequence}
+                        p="xs"
+                        radius="sm"
+                        withBorder
+                        style={{ backgroundColor: "var(--mantine-color-dark-6)" }}
+                      >
+                        <Group justify="space-between" mb={2}>
+                          <Text fw={700} size="xs">
+                            {evt.title}
+                          </Text>
+                          <Text size="xs" c="dimmed" ff="monospace">
+                            {new Date(evt.timestamp).toLocaleTimeString()}
+                          </Text>
+                        </Group>
+                        <Text size="xs" c="dimmed">
+                          {evt.description}
+                        </Text>
+                        {evt.franchiseCode && (
+                          <Group gap="xs" mt="xs">
+                            <TeamIdentity code={evt.franchiseCode} size="sm" />
+                            {evt.amount && (
+                              <Text fw={700} size="xs" ff="monospace" c="teal">
+                                {formatRupees(evt.amount)}
+                              </Text>
+                            )}
+                          </Group>
                         )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              </Paper>
+            </Tabs.Panel>
+          </Tabs>
+        </Stack>
+      </ScrollArea>
+    </Box>
   );
 };

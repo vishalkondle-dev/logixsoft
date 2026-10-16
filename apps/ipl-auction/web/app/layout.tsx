@@ -1,10 +1,21 @@
-import type { Metadata } from "next";
+import "@mantine/core/styles.css";
+import "@mantine/notifications/styles.css";
 import "./globals.css";
-import { ThemeProvider } from "../components/layout/ThemeProvider";
+import React from "react";
+import type { Metadata, Viewport } from "next";
+import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
+import { Providers } from "../components/providers";
 
 export const metadata: Metadata = {
   title: "IPL Auction Simulator — Production Edition",
-  description: "Real-time cricket auction simulator powered by Cloudflare Durable Objects, Workers AI & Next.js 16.",
+  description: "Real-time cricket auction simulator powered by Cloudflare Durable Objects, Workers AI & Mantine UI.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -13,11 +24,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-          {children}
-        </ThemeProvider>
+    <html lang="en" data-mantine-color-scheme="dark" className="dark">
+      <head>
+        <ColorSchemeScript defaultColorScheme="dark" />
+      </head>
+      <body>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

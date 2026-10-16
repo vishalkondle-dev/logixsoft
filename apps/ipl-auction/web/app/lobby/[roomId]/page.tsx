@@ -1,6 +1,43 @@
 "use client";
 
 import React, { use, useState } from "react";
+import {
+  Box,
+  Stack,
+  Group,
+  SimpleGrid,
+  Paper,
+  Badge,
+  Button,
+  ActionIcon,
+  Text,
+  Title,
+  Loader,
+  ScrollArea,
+  Divider,
+  UnstyledButton,
+  Tooltip,
+  SegmentedControl,
+} from "@mantine/core";
+import {
+  IconUsers,
+  IconShield,
+  IconCrown,
+  IconPlayerPlay,
+  IconRobot,
+  IconUserX,
+  IconUserCheck,
+  IconSparkles,
+  IconCopy,
+  IconCheck,
+  IconMessage,
+  IconActivity,
+  IconLayersLinked,
+  IconClock,
+  IconCoin,
+  IconChevronRight,
+  IconLogout,
+} from "@tabler/icons-react";
 import { useRoomRouteGuard } from "../../../hooks/useRoomRouteGuard";
 import { useAuctionRoom } from "../../../hooks/useAuctionRoom";
 import { useAuctionStore } from "../../../stores/auctionStore";
@@ -11,26 +48,6 @@ import { JoinNameModal } from "../../../components/auth/JoinNameModal";
 import { LiveChat } from "../../../components/chat/LiveChat";
 import { ActivityFeed } from "../../../components/activity/ActivityFeed";
 import { ManageRetentionsModal } from "../../../components/auction/ManageRetentionsModal";
-import { cn } from "../../../lib/utils";
-import {
-  Users,
-  Shield,
-  Crown,
-  Play,
-  Bot,
-  UserX,
-  UserCheck,
-  Sparkles,
-  Copy,
-  Check,
-  MessageSquare,
-  Activity,
-  Layers,
-  Clock,
-  Coins,
-  ChevronRight,
-  LogOut,
-} from "lucide-react";
 
 export default function LobbyPage({
   params,
@@ -50,7 +67,6 @@ export default function LobbyPage({
     claimTeam,
     takeOverTeam,
     reassignToBot,
-    banUser,
     kickUser,
     releaseTeam,
     sendChat,
@@ -59,7 +75,7 @@ export default function LobbyPage({
     currentUserId,
   } = useAuctionRoom(roomId);
 
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [guestName, setGuestName] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("ipl_auction_user_name");
@@ -68,6 +84,7 @@ export default function LobbyPage({
   });
 
   const [copiedLink, setCopiedLink] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"teams" | "chat">("teams");
   const [sidebarTab, setSidebarTab] = useState<"chat" | "activity" | "rules">("chat");
   const [retentionTeamCode, setRetentionTeamCode] = useState<string | null>(null);
 
@@ -81,13 +98,12 @@ export default function LobbyPage({
   const isCreatorStored =
     typeof window !== "undefined" && localStorage.getItem(`ipl_room_creator_${roomId}`) === "true";
   const isCreator = Boolean(
-    (snapshot?.creatorId && (
-      snapshot.creatorId === currentUserId ||
-      snapshot.creatorId === "host" ||
-      snapshot.creatorId === "official_host" ||
-      snapshot.creatorId === "guest_creator"
-    )) ||
-    isCreatorStored
+    (snapshot?.creatorId &&
+      (snapshot.creatorId === currentUserId ||
+        snapshot.creatorId === "host" ||
+        snapshot.creatorId === "official_host" ||
+        snapshot.creatorId === "guest_creator")) ||
+      isCreatorStored
   );
 
   const handleCopyLink = () => {
@@ -105,16 +121,27 @@ export default function LobbyPage({
 
   if (isValidating || !snapshot) {
     return (
-      <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-background text-foreground space-y-4">
-        <div className="relative w-16 h-16 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-          <span className="text-2xl">🏏</span>
-        </div>
-        <div className="text-center space-y-1">
-          <p className="font-mono text-sm font-bold text-foreground">Preparing Auction Lobby...</p>
-          <p className="text-xs text-muted-foreground">Checking pitch and room code {roomId}</p>
-        </div>
-      </div>
+      <Box
+        style={{
+          minHeight: "100dvh",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "var(--mantine-color-body)",
+        }}
+      >
+        <Stack align="center" gap="xs">
+          <Loader size="lg" color="orange" />
+          <Text size="sm" fw={700} ff="monospace">
+            Preparing Auction Lobby...
+          </Text>
+          <Text size="xs" c="dimmed">
+            Checking pitch and room code {roomId}
+          </Text>
+        </Stack>
+      </Box>
     );
   }
 
@@ -122,477 +149,736 @@ export default function LobbyPage({
   const humanTeamsCount = teamsList.filter((t) => t.controller === "HUMAN").length;
   const botTeamsCount = teamsList.filter((t) => t.controller === "AI").length;
 
-  // Joined participants list from snapshot or reconstructed from human teams
-  const joinedMembers = snapshot.members && snapshot.members.length > 0
-    ? snapshot.members
-    : teamsList
-        .filter((t) => t.controller === "HUMAN" && t.humanUserId)
-        .map((t) => ({
-          sessionId: t.humanUserId!,
-          userId: t.humanUserId!,
-          displayName: t.humanDisplayName || "Player",
-          isGuest: !t.humanUserId?.startsWith("usr_"),
-          claimedFranchise: t.code,
-          connected: true,
-          lastSeen: Date.now(),
-        }));
+  const joinedMembers =
+    snapshot.members && snapshot.members.length > 0
+      ? snapshot.members
+      : teamsList
+          .filter((t) => t.controller === "HUMAN" && t.humanUserId)
+          .map((t) => ({
+            sessionId: t.humanUserId!,
+            userId: t.humanUserId!,
+            displayName: t.humanDisplayName || "Player",
+            isGuest: !t.humanUserId?.startsWith("usr_"),
+            claimedFranchise: t.code,
+            connected: true,
+            lastSeen: Date.now(),
+          }));
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background text-foreground select-none">
+    <Box
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        width: "100%",
+        overflow: "hidden",
+        backgroundColor: "var(--mantine-color-body)",
+        userSelect: "none",
+      }}
+    >
       {/* Top Navigation Bar */}
       <TopNavBar roomId={roomId} roomName={snapshot.name} />
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden min-h-0 flex flex-col lg:flex-row">
-        {/* LEFT / CENTER COLUMN: Lobby Overview, Participants, and Teams */}
-        <section className="flex-1 h-full overflow-y-auto p-4 sm:p-6 space-y-6 min-h-0">
-          {/* Welcome & Room Status Banner */}
-          <div className="bg-gradient-to-r from-primary/15 via-secondary/40 to-background border border-primary/25 rounded-2xl p-4 sm:p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-80 h-full bg-radial from-primary/10 to-transparent pointer-events-none" />
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-mono text-[11px] font-black border border-amber-500/30">
-                    LOBBY • WAITING FOR HOST
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-mono text-[11px] font-bold border border-blue-500/25">
-                    {snapshot.ruleset || "MEGA"} AUCTION
-                  </span>
-                  {isCreator && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[11px] font-bold border border-emerald-500/30 flex items-center gap-1">
-                      <Crown className="w-3 h-3" />
-                      Room Host
-                    </span>
+      {/* Mobile Tab Switcher (<lg) */}
+      <Paper
+        p={6}
+        radius={0}
+        hiddenFrom="lg"
+        style={{
+          borderBottom: "1px solid var(--mantine-color-dark-4)",
+          backgroundColor: "var(--mantine-color-dark-8)",
+        }}
+      >
+        <SegmentedControl
+          value={mobileTab}
+          onChange={(v) => setMobileTab(v as "teams" | "chat")}
+          fullWidth
+          size="xs"
+          data={[
+            {
+              label: (
+                <Group gap={6} justify="center">
+                  <IconShield size={14} />
+                  <span>Franchises ({teamsList.length})</span>
+                </Group>
+              ),
+              value: "teams",
+            },
+            {
+              label: (
+                <Group gap={6} justify="center">
+                  <IconMessage size={14} />
+                  <span>Chat & Rules</span>
+                  {unreadChatCount > 0 && (
+                    <Badge size="xs" color="red" variant="filled" circle>
+                      {unreadChatCount}
+                    </Badge>
                   )}
-                </div>
+                </Group>
+              ),
+              value: "chat",
+            },
+          ]}
+        />
+      </Paper>
 
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
-                  {snapshot.name || "IPL 2026 Auction Arena"}
-                </h1>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Claim your favorite franchise before the hammer falls. The host will start the live bidding when ready.
-                </p>
-              </div>
+      {/* Main Content Area */}
+      <Box
+        component="main"
+        style={{
+          flex: 1,
+          overflow: "hidden",
+          minHeight: 0,
+          position: "relative",
+        }}
+        className="flex flex-col lg:flex-row"
+      >
+        {/* LEFT / CENTER COLUMN: Lobby Overview, Participants, and Teams */}
+        <Box
+          style={{
+            flex: 1,
+            height: "100%",
+            overflow: "hidden",
+            minHeight: 0,
+          }}
+          className={`${mobileTab === "teams" ? "flex" : "hidden lg:flex"} flex-col`}
+        >
+          <ScrollArea
+            style={{ flex: 1, height: "100%", minHeight: 0 }}
+            p={{ base: "xs", sm: "md" }}
+          >
+            <Stack gap="md" style={{ maxWidth: 1100, margin: "0 auto", paddingBottom: 72 }}>
+              {/* Welcome & Room Status Banner */}
+              <Paper
+                p={{ base: "xs", sm: "md" }}
+                radius="lg"
+                withBorder
+                style={{
+                  position: "relative",
+                  overflow: "hidden",
+                  background:
+                    "linear-gradient(135deg, rgba(234, 88, 12, 0.12) 0%, rgba(30, 41, 59, 0.4) 100%)",
+                }}
+              >
+                <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                  <Stack gap={4} style={{ maxWidth: 650, minWidth: 0 }}>
+                    <Group gap={6} wrap="wrap">
+                      <Badge color="yellow" variant="light" size="xs">
+                        <Group gap={4}>
+                          <IconClock size={11} />
+                          <span className="hidden sm:inline">LOBBY • WAITING FOR HOST</span>
+                          <span className="sm:hidden">LOBBY</span>
+                        </Group>
+                      </Badge>
+                      <Badge color="blue" variant="light" size="xs">
+                        {snapshot.ruleset || "MEGA"}
+                      </Badge>
+                      {isCreator && (
+                        <Badge
+                          color="teal"
+                          variant="light"
+                          size="xs"
+                          leftSection={<IconCrown size={11} />}
+                        >
+                          Host
+                        </Badge>
+                      )}
+                    </Group>
 
-              {/* Share Invite Code Button */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={handleCopyLink}
-                  className="px-3.5 py-2 rounded-xl bg-card border border-border hover:bg-secondary/60 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs"
-                >
-                  {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-primary" />}
-                  <span>{copiedLink ? "Link Copied!" : "Share Room Link"}</span>
-                </button>
-              </div>
-            </div>
-          </div>
+                    <Title order={4} fw={900} style={{ letterSpacing: "-0.02em" }} lineClamp={1}>
+                      {snapshot.name || "IPL 2026 Auction Arena"}
+                    </Title>
+                    <Text size="xs" c="dimmed" lineClamp={2}>
+                      Claim your favorite franchise before the hammer falls. The host will start live bidding.
+                    </Text>
+                  </Stack>
 
-          {/* JOINED PLAYERS & PARTICIPANTS PANEL */}
-          <div className="bg-card/70 border border-border/80 rounded-2xl p-4 sm:p-5 space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-400" />
-                <h2 className="text-sm font-bold text-foreground">
-                  Joined Participants ({joinedMembers.length || snapshot.connectedHumanCount || 1})
-                </h2>
-              </div>
-              <span className="text-[11px] text-muted-foreground font-mono">
-                {isCreator ? "👑 You can manage and kick participants below" : "Lobby Presence"}
-              </span>
-            </div>
+                  {/* Share Invite Code Button */}
+                  <Tooltip label={copiedLink ? "Link Copied!" : "Share Room Link"} withArrow position="bottom">
+                    <Button
+                      variant="default"
+                      size="xs"
+                      px={{ base: 8, sm: "xs" }}
+                      leftSection={
+                        copiedLink ? (
+                          <IconCheck size={14} color="var(--mantine-color-teal-4)" />
+                        ) : (
+                          <IconCopy size={14} />
+                        )
+                      }
+                      onClick={handleCopyLink}
+                    >
+                      <span className="hidden sm:inline">
+                        {copiedLink ? "Copied!" : "Share Link"}
+                      </span>
+                    </Button>
+                  </Tooltip>
+                </Group>
+              </Paper>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-              {joinedMembers.map((m, idx) => {
-                const isMe = m.userId === currentUserId;
-                const isHost = m.userId === snapshot.creatorId || (isCreator && isMe);
-                const team = m.claimedFranchise ? snapshot.teams?.[m.claimedFranchise] : null;
+              {/* JOINED PLAYERS & PARTICIPANTS PANEL */}
+              <Paper p={{ base: "xs", sm: "md" }} radius="lg" withBorder>
+                <Group justify="space-between" mb="xs">
+                  <Group gap={6}>
+                    <IconUsers size={16} color="var(--mantine-color-blue-4)" />
+                    <Text fw={700} size="xs">
+                      Participants ({joinedMembers.length || snapshot.connectedHumanCount || 1})
+                    </Text>
+                  </Group>
+                  <Text size="xs" c="dimmed" ff="monospace" visibleFrom="sm">
+                    {isCreator ? "👑 Manage participants below" : "Lobby Presence"}
+                  </Text>
+                </Group>
 
-                return (
-                  <div
-                    key={m.sessionId || idx}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border transition-all text-xs",
-                      isMe
-                        ? "bg-primary/10 border-primary/40 shadow-xs"
-                        : "bg-secondary/30 border-border/70 hover:bg-secondary/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {/* Avatar / Initial */}
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 text-white shadow-xs"
+                <SimpleGrid cols={{ base: 2, sm: 2, md: 3 }} spacing="xs">
+                  {joinedMembers.map((m, idx) => {
+                    const isMe = m.userId === currentUserId;
+                    const isHost = m.userId === snapshot.creatorId || (isCreator && isMe);
+                    const team = m.claimedFranchise ? snapshot.teams?.[m.claimedFranchise] : null;
+
+                    return (
+                      <Paper
+                        key={m.sessionId || idx}
+                        p="xs"
+                        radius="md"
+                        withBorder
                         style={{
-                          backgroundColor: team ? team.primaryColor : "#4f46e5",
+                          backgroundColor: isMe
+                            ? "rgba(234, 88, 12, 0.08)"
+                            : "var(--mantine-color-dark-7)",
+                          borderColor: isMe ? "var(--mantine-color-orange-6)" : undefined,
                         }}
                       >
-                        {m.displayName ? m.displayName.charAt(0).toUpperCase() : "P"}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold truncate text-foreground">
-                            {m.displayName || "Participant"}
-                          </span>
-                          {isMe && (
-                            <span className="text-[10px] font-mono text-primary font-bold">(You)</span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          {isHost ? (
-                            <span className="text-amber-400 font-bold flex items-center gap-0.5">
-                              <Crown className="w-2.5 h-2.5" /> Host
-                            </span>
-                          ) : team ? (
-                            <span
-                              className="font-bold px-1.5 py-0.2 rounded text-[9px] text-white"
-                              style={{ backgroundColor: team.primaryColor }}
+                        <Group justify="space-between" wrap="nowrap">
+                          <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+                            <Box
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyCenter: "center",
+                                fontWeight: 900,
+                                fontSize: 11,
+                                flexShrink: 0,
+                                color: "#fff",
+                                backgroundColor: team ? team.primaryColor : "#4f46e5",
+                              }}
                             >
-                              {team.code}
-                            </span>
-                          ) : (
-                            <span>Spectator</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                              <span style={{ margin: "auto" }}>
+                                {m.displayName ? m.displayName.charAt(0).toUpperCase() : "P"}
+                              </span>
+                            </Box>
 
-                    {/* Host Kick / Ban Controls */}
-                    {isCreator && !isHost && !isMe && (
-                      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                        <button
-                          onClick={() => {
-                            if (confirm(`Remove ${m.displayName || "this user"} from the lobby?`)) {
-                              kickUser(m.userId);
-                            }
+                            <Box style={{ minWidth: 0 }}>
+                              <Text fw={700} size="xs" truncate>
+                                {m.displayName || "Participant"}
+                                {isMe && (
+                                  <Text span c="orange" fw={700} ml={4}>
+                                    (You)
+                                  </Text>
+                                )}
+                              </Text>
+
+                              <Group gap={4}>
+                                {isHost ? (
+                                  <Badge size="xs" color="yellow" variant="light" p={2}>
+                                    <IconCrown size={10} /> Host
+                                  </Badge>
+                                ) : team ? (
+                                  <Badge
+                                    size="xs"
+                                    style={{ backgroundColor: team.primaryColor, color: "#fff" }}
+                                    p={2}
+                                  >
+                                    {team.code}
+                                  </Badge>
+                                ) : (
+                                  <Text size="10px" c="dimmed">
+                                    Spectator
+                                  </Text>
+                                )}
+                              </Group>
+                            </Box>
+                          </Group>
+
+                          {isCreator && !isHost && !isMe && (
+                            <Tooltip label="Remove user from lobby">
+                              <ActionIcon
+                                color="red"
+                                variant="light"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm(`Remove ${m.displayName || "this user"}?`)) {
+                                    kickUser(m.userId);
+                                  }
+                                }}
+                              >
+                                <IconUserX size={14} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                        </Group>
+                      </Paper>
+                    );
+                  })}
+                </SimpleGrid>
+              </Paper>
+
+              {/* FRANCHISE SELECTION & TAKEOVER GRID */}
+              <Box>
+                <Group justify="space-between" mb="xs">
+                  <Group gap={6}>
+                    <IconShield size={16} color="var(--mantine-color-orange-5)" />
+                    <Text fw={700} size="sm">
+                      Select Franchise (10 Teams)
+                    </Text>
+                  </Group>
+                  <Text size="xs" c="dimmed" ff="monospace">
+                    {humanTeamsCount} Human / {botTeamsCount} Bot
+                  </Text>
+                </Group>
+
+                <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} spacing="xs">
+                  {teamsList.map((team) => {
+                    const isClaimedByMe = myFranchise === team.code;
+                    const isBot = team.controller === "AI";
+                    const isHuman = team.controller === "HUMAN";
+
+                    return (
+                      <Paper
+                        key={team.code}
+                        p="xs"
+                        radius="md"
+                        withBorder
+                        style={{
+                          position: "relative",
+                          overflow: "hidden",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          backgroundColor: isClaimedByMe
+                            ? "var(--mantine-color-dark-6)"
+                            : "var(--mantine-color-dark-7)",
+                          borderColor: isClaimedByMe
+                            ? "var(--mantine-color-orange-5)"
+                            : undefined,
+                          boxShadow: isClaimedByMe ? "0 0 0 1px var(--mantine-color-orange-5)" : undefined,
+                        }}
+                      >
+                        <Box
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 3,
+                            backgroundColor: team.primaryColor,
                           }}
-                          title="Remove user from lobby"
-                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors cursor-pointer"
-                        >
-                          <UserX className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                        />
 
-          {/* FRANCHISE SELECTION & TAKEOVER GRID */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-primary" />
-                <h2 className="text-sm font-bold text-foreground">
-                  Select Your Franchise (10 Teams)
-                </h2>
-              </div>
-              <span className="text-[11px] text-muted-foreground font-mono">
-                {humanTeamsCount} Human / {botTeamsCount} AI Bots
-              </span>
-            </div>
+                        <Box pt={2}>
+                          <Group justify="space-between" align="flex-start" wrap="nowrap" mb={4}>
+                            <Box style={{ minWidth: 0 }}>
+                              <Badge
+                                size="xs"
+                                style={{ backgroundColor: team.primaryColor, color: "#fff" }}
+                              >
+                                {team.code}
+                              </Badge>
+                              <Text fw={700} size="xs" truncate mt={2}>
+                                {team.name}
+                              </Text>
+                            </Box>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-              {teamsList.map((team) => {
-                const isClaimedByMe = myFranchise === team.code;
-                const isBot = team.controller === "AI";
-                const isHuman = team.controller === "HUMAN";
+                            {isHuman ? (
+                              <Badge
+                                size="xs"
+                                color="teal"
+                                variant="light"
+                                px={4}
+                                leftSection={<IconUserCheck size={9} />}
+                              >
+                                <span className="hidden sm:inline">
+                                  {isClaimedByMe ? "YOU" : "CLAIMED"}
+                                </span>
+                              </Badge>
+                            ) : (
+                              <Badge
+                                size="xs"
+                                color="gray"
+                                variant="outline"
+                                px={4}
+                                leftSection={<IconRobot size={9} />}
+                              >
+                                <span className="hidden sm:inline">BOT</span>
+                              </Badge>
+                            )}
+                          </Group>
 
-                return (
-                  <div
-                    key={team.code}
-                    className={cn(
-                      "rounded-xl border p-3 flex flex-col justify-between transition-all relative overflow-hidden",
-                      isClaimedByMe
-                        ? "bg-card border-primary ring-2 ring-primary/40 shadow-md"
-                        : "bg-card/60 border-border/80 hover:border-border hover:bg-card/90"
-                    )}
-                  >
-                    {/* Top Team Color Accent Bar */}
-                    <div
-                      className="absolute top-0 left-0 right-0 h-1"
-                      style={{ backgroundColor: team.primaryColor }}
-                    />
+                          <Stack gap={2} mb="xs">
+                            <Group justify="space-between">
+                              <Text size="10px" c="dimmed">
+                                Purse:
+                              </Text>
+                              <Text size="xs" fw={700} ff="monospace" c="teal">
+                                ₹{(team.remainingPurse / 10000000).toFixed(1)} Cr
+                              </Text>
+                            </Group>
+                            {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
+                              <Group justify="space-between">
+                                <Text size="10px" c="dimmed">
+                                  Retained:
+                                </Text>
+                                <Text size="10px" fw={700} ff="monospace" c="grape">
+                                  {team.retainedPlayers?.length || 0} ({team.rtmCardsRemaining ?? 0} RTM)
+                                </Text>
+                              </Group>
+                            )}
+                          </Stack>
+                        </Box>
 
-                    <div>
-                      {/* Team Header */}
-                      <div className="flex items-start justify-between gap-1.5 pt-1 mb-2">
-                        <div className="min-w-0">
-                          <span
-                            className="inline-block px-1.5 py-0.5 rounded text-[10px] font-black text-white font-mono shadow-xs"
-                            style={{ backgroundColor: team.primaryColor }}
-                          >
-                            {team.code}
-                          </span>
-                          <h3 className="font-bold text-xs truncate mt-1 text-foreground">
-                            {team.name}
-                          </h3>
-                        </div>
-
-                        {/* Controller Badge */}
-                        {isHuman ? (
-                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-mono text-[9px] font-bold border border-emerald-500/30 flex items-center gap-0.5">
-                            <UserCheck className="w-2.5 h-2.5" />
-                            {isClaimedByMe ? "YOU" : "CLAIMED"}
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground font-mono text-[9px] font-medium border border-border flex items-center gap-0.5">
-                            <Bot className="w-2.5 h-2.5" />
-                            BOT
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Team Details */}
-                      <div className="text-[11px] text-muted-foreground space-y-1 mb-3">
-                        <div className="flex justify-between">
-                          <span>Owner:</span>
-                          <span className="font-medium text-foreground truncate max-w-[100px]">
-                            {isClaimedByMe ? "You" : team.humanDisplayName || "AI Bot"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Purse:</span>
-                          <span className="font-mono font-bold text-emerald-400">
-                            ₹{(team.remainingPurse / 10000000).toFixed(1)} Cr
-                          </span>
-                        </div>
-                        {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
-                          <div className="flex justify-between items-center text-[10px] pt-1 border-t border-border/40">
-                            <span className="text-muted-foreground flex items-center gap-1">
-                              <Layers className="w-2.5 h-2.5 text-purple-400" /> Retentions:
-                            </span>
-                            <span className="font-mono font-semibold text-purple-400">
-                              {team.retainedPlayers?.length || 0} ({team.rtmCardsRemaining ?? (snapshot.ruleset === "MEGA" ? Math.max(0, 6 - (team.retainedPlayers?.length || 0)) : 0)} RTM)
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Action Button */}
-                    <div className="space-y-1.5">
-                      {isClaimedByMe ? (
-                        <>
-                          {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
-                            <button
-                              onClick={() => setRetentionTeamCode(team.code)}
-                              className="w-full py-1.5 px-2 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 text-xs font-bold border border-purple-500/30 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                            >
-                              <Layers className="w-3.5 h-3.5 text-purple-400" />
-                              <span>Manage Retentions ({team.retainedPlayers?.length || 0})</span>
-                            </button>
+                        {/* Action Buttons */}
+                        <Stack gap={4}>
+                          {isClaimedByMe ? (
+                            <>
+                              {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
+                                <Button
+                                  size="xs"
+                                  color="grape"
+                                  variant="light"
+                                  fullWidth
+                                  px={6}
+                                  leftSection={<IconLayersLinked size={13} />}
+                                  onClick={() => setRetentionTeamCode(team.code)}
+                                >
+                                  <span className="hidden sm:inline">Retentions</span> (
+                                  {team.retainedPlayers?.length || 0})
+                                </Button>
+                              )}
+                              <Button
+                                size="xs"
+                                color="red"
+                                variant="subtle"
+                                fullWidth
+                                px={6}
+                                leftSection={<IconLogout size={13} />}
+                                onClick={releaseTeam}
+                              >
+                                <span className="hidden sm:inline">Release</span>
+                              </Button>
+                            </>
+                          ) : isBot ? (
+                            <>
+                              <Button
+                                size="xs"
+                                color="orange"
+                                fullWidth
+                                px={6}
+                                rightSection={<IconChevronRight size={13} />}
+                                onClick={() => {
+                                  if (myFranchise) {
+                                    takeOverTeam(team.code);
+                                  } else {
+                                    claimTeam(team.code);
+                                  }
+                                }}
+                              >
+                                Claim
+                              </Button>
+                              {isCreator && snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
+                                <Button
+                                  size="xs"
+                                  color="grape"
+                                  variant="subtle"
+                                  fullWidth
+                                  px={6}
+                                  leftSection={<IconLayersLinked size={13} />}
+                                  onClick={() => setRetentionTeamCode(team.code)}
+                                >
+                                  <span className="hidden sm:inline">Retentions</span>
+                                </Button>
+                              )}
+                            </>
+                          ) : isCreator ? (
+                            <>
+                              {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
+                                <Button
+                                  size="xs"
+                                  color="grape"
+                                  variant="light"
+                                  fullWidth
+                                  px={6}
+                                  leftSection={<IconLayersLinked size={13} />}
+                                  onClick={() => setRetentionTeamCode(team.code)}
+                                >
+                                  <span className="hidden sm:inline">Retentions</span>
+                                </Button>
+                              )}
+                              <Button
+                                size="xs"
+                                variant="default"
+                                fullWidth
+                                px={6}
+                                leftSection={<IconRobot size={13} />}
+                                onClick={() => reassignToBot(team.code)}
+                              >
+                                <span className="hidden sm:inline">Reassign</span>
+                              </Button>
+                            </>
+                          ) : (
+                            <Paper p={3} radius="xs" ta="center" style={{ backgroundColor: "var(--mantine-color-dark-8)" }}>
+                              <Text size="10px" c="dimmed" truncate>
+                                {team.humanDisplayName || "Player"}
+                              </Text>
+                            </Paper>
                           )}
-                          <button
-                            onClick={releaseTeam}
-                            className="w-full py-1 px-2 rounded-lg bg-red-500/15 hover:bg-red-500/25 text-red-400 text-[11px] font-bold border border-red-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <LogOut className="w-3 h-3" />
-                            <span>Release Team (To Bot)</span>
-                          </button>
-                        </>
-                      ) : isBot ? (
-                        <>
-                          <button
-                            onClick={() => {
-                              if (myFranchise) {
-                                takeOverTeam(team.code);
-                              } else {
-                                claimTeam(team.code);
-                              }
-                            }}
-                            className="w-full py-1.5 px-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <span>Claim Team</span>
-                            <ChevronRight className="w-3 h-3" />
-                          </button>
-                          {isCreator && snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
-                            <button
-                              onClick={() => setRetentionTeamCode(team.code)}
-                              className="w-full py-1 px-2 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-[10px] font-semibold border border-purple-500/25 transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <Layers className="w-3 h-3 text-purple-400" />
-                              <span>Configure Retentions</span>
-                            </button>
-                          )}
-                        </>
-                      ) : isCreator ? (
-                        <>
-                          {snapshot.enableRetentions && snapshot.ruleset !== "SPRINT_XI" && (
-                            <button
-                              onClick={() => setRetentionTeamCode(team.code)}
-                              className="w-full py-1 px-2 rounded-lg bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 text-[11px] font-bold border border-purple-500/30 transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                            >
-                              <Layers className="w-3 h-3 text-purple-400" />
-                              <span>Configure Retentions</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => reassignToBot(team.code)}
-                            title="Reassign human team to AI bot"
-                            className="w-full py-1 px-2 rounded-lg bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground text-[10px] font-semibold border border-border transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <Bot className="w-3 h-3" />
-                            <span>Reassign to Bot</span>
-                          </button>
-                        </>
-                      ) : (
-                        <div className="w-full py-1 text-center text-[10px] text-muted-foreground font-mono bg-secondary/30 rounded-lg">
-                          Claimed by {team.humanDisplayName || "Player"}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+                        </Stack>
+                      </Paper>
+                    );
+                  })}
+                </SimpleGrid>
+              </Box>
+            </Stack>
+          </ScrollArea>
+        </Box>
 
         {/* RIGHT COLUMN: Sidebar (Chat, Activity, Room Rules & Host Start Auction) */}
-        <aside className="w-full lg:w-80 xl:w-96 h-80 lg:h-full border-t lg:border-t-0 lg:border-l border-border/80 flex flex-col bg-background/50 min-h-0">
+        <Box
+          component="aside"
+          style={{
+            borderLeft: "1px solid var(--mantine-color-dark-4)",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "var(--mantine-color-dark-8)",
+            minHeight: 0,
+          }}
+          className={`${mobileTab === "chat" ? "flex" : "hidden lg:flex"} w-full lg:w-80 xl:w-96 h-full`}
+        >
           {/* Subtabs Header */}
-          <div className="flex items-center border-b border-border/80 bg-secondary/30 px-3 py-1.5 flex-shrink-0">
-            <button
-              onClick={() => setSidebarTab("chat")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer",
-                sidebarTab === "chat"
-                  ? "bg-card text-foreground shadow-2xs border border-border/70"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Live Chat</span>
-              {unreadChatCount > 0 && sidebarTab !== "chat" && (
-                <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-mono text-[9px] font-black">
-                  {unreadChatCount}
-                </span>
-              )}
-            </button>
+          <Paper
+            p={4}
+            radius={0}
+            style={{
+              borderTop: 0,
+              borderLeft: 0,
+              borderRight: 0,
+              borderBottom: "1px solid var(--mantine-color-dark-5)",
+              backgroundColor: "var(--mantine-color-dark-9)",
+            }}
+          >
+            <Group grow gap={4}>
+              <UnstyledButton
+                onClick={() => setSidebarTab("chat")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "6px 8px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  backgroundColor:
+                    sidebarTab === "chat" ? "var(--mantine-color-dark-6)" : "transparent",
+                  color:
+                    sidebarTab === "chat"
+                      ? "var(--mantine-color-white)"
+                      : "var(--mantine-color-dimmed)",
+                }}
+              >
+                <IconMessage size={14} color="var(--mantine-color-indigo-4)" />
+                <span>Live Chat</span>
+                {unreadChatCount > 0 && sidebarTab !== "chat" && (
+                  <Badge size="xs" color="red" variant="filled">
+                    {unreadChatCount}
+                  </Badge>
+                )}
+              </UnstyledButton>
 
-            <button
-              onClick={() => setSidebarTab("activity")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ml-1",
-                sidebarTab === "activity"
-                  ? "bg-card text-foreground shadow-2xs border border-border/70"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Activity className="w-3.5 h-3.5 text-blue-400" />
-              <span>Activity</span>
-              {unreadActivityCount > 0 && sidebarTab !== "activity" && (
-                <span className="px-1.5 py-0.2 rounded-full bg-blue-500 text-white font-mono text-[9px] font-black">
-                  {unreadActivityCount}
-                </span>
-              )}
-            </button>
+              <UnstyledButton
+                onClick={() => setSidebarTab("activity")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "6px 8px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  backgroundColor:
+                    sidebarTab === "activity" ? "var(--mantine-color-dark-6)" : "transparent",
+                  color:
+                    sidebarTab === "activity"
+                      ? "var(--mantine-color-white)"
+                      : "var(--mantine-color-dimmed)",
+                }}
+              >
+                <IconActivity size={14} color="var(--mantine-color-blue-4)" />
+                <span>Activity</span>
+                {unreadActivityCount > 0 && sidebarTab !== "activity" && (
+                  <Badge size="xs" color="blue" variant="filled">
+                    {unreadActivityCount}
+                  </Badge>
+                )}
+              </UnstyledButton>
 
-            <button
-              onClick={() => setSidebarTab("rules")}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ml-1",
-                sidebarTab === "rules"
-                  ? "bg-card text-foreground shadow-2xs border border-border/70"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Layers className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Rules</span>
-            </button>
-          </div>
+              <UnstyledButton
+                onClick={() => setSidebarTab("rules")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "6px 8px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  backgroundColor:
+                    sidebarTab === "rules" ? "var(--mantine-color-dark-6)" : "transparent",
+                  color:
+                    sidebarTab === "rules"
+                      ? "var(--mantine-color-white)"
+                      : "var(--mantine-color-dimmed)",
+                }}
+              >
+                <IconLayersLinked size={14} color="var(--mantine-color-teal-4)" />
+                <span>Rules</span>
+              </UnstyledButton>
+            </Group>
+          </Paper>
 
           {/* Subtab Content Area */}
-          <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+          <Box style={{ flex: 1, overflow: "hidden", minHeight: 0, display: "flex", flexDirection: "column" }}>
             {sidebarTab === "chat" && (
               <LiveChat onSendMessage={sendChat} isConnected={isConnected} />
             )}
 
             {sidebarTab === "activity" && (
-              <div className="flex-1 overflow-y-auto">
+              <Box style={{ flex: 1, overflowY: "auto" }}>
                 <ActivityFeed />
-              </div>
+              </Box>
             )}
 
             {sidebarTab === "rules" && (
-              <div className="p-4 space-y-4 overflow-y-auto text-xs">
-                <div className="space-y-1">
-                  <h4 className="font-bold text-foreground">Auction Specifications</h4>
-                  <p className="text-muted-foreground text-[11px]">
-                    Official BCCI IPL 2026 Regulations applied to this room.
-                  </p>
-                </div>
+              <ScrollArea style={{ flex: 1 }} p="md">
+                <Stack gap="md">
+                  <Box>
+                    <Text fw={700} size="sm">
+                      Auction Specifications
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Official BCCI IPL 2026 Regulations applied to this room.
+                    </Text>
+                  </Box>
 
-                <div className="space-y-2 border border-border/70 rounded-xl p-3 bg-card/40">
-                  <div className="flex justify-between items-center py-1 border-b border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <Coins className="w-3.5 h-3.5 text-amber-400" /> Purse
-                    </span>
-                    <span className="font-mono font-bold text-foreground">
-                      {snapshot.ruleset === "SPRINT_XI" ? "₹50 Crore" : "₹120 Crore"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-1 border-b border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-blue-400" /> Squad Size
-                    </span>
-                    <span className="font-mono font-bold text-foreground">
-                      {snapshot.ruleset === "SPRINT_XI" ? "11 Players" : "18 – 25 Players"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-1 border-b border-border/40">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-red-400" /> Bid Timer
-                    </span>
-                    <span className="font-mono font-bold text-foreground">10s per Increment</span>
-                  </div>
-                  <div className="flex justify-between items-center py-1">
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Sets
-                    </span>
-                    <span className="font-mono font-bold text-foreground">
-                      {snapshot.totalLots || 472} Auction Lots
-                    </span>
-                  </div>
-                </div>
+                  <Paper p="sm" radius="md" withBorder>
+                    <Stack gap="xs">
+                      <Group justify="space-between">
+                        <Group gap={6}>
+                          <IconCoin size={14} color="var(--mantine-color-yellow-4)" />
+                          <Text size="xs" c="dimmed">
+                            Purse
+                          </Text>
+                        </Group>
+                        <Text size="xs" fw={700} ff="monospace">
+                          {snapshot.ruleset === "SPRINT_XI" ? "₹50 Crore" : "₹120 Crore"}
+                        </Text>
+                      </Group>
+                      <Divider />
+                      <Group justify="space-between">
+                        <Group gap={6}>
+                          <IconUsers size={14} color="var(--mantine-color-blue-4)" />
+                          <Text size="xs" c="dimmed">
+                            Squad Size
+                          </Text>
+                        </Group>
+                        <Text size="xs" fw={700} ff="monospace">
+                          {snapshot.ruleset === "SPRINT_XI" ? "11 Players" : "18 – 25 Players"}
+                        </Text>
+                      </Group>
+                      <Divider />
+                      <Group justify="space-between">
+                        <Group gap={6}>
+                          <IconClock size={14} color="var(--mantine-color-red-4)" />
+                          <Text size="xs" c="dimmed">
+                            Bid Timer
+                          </Text>
+                        </Group>
+                        <Text size="xs" fw={700} ff="monospace">
+                          10s per Increment
+                        </Text>
+                      </Group>
+                      <Divider />
+                      <Group justify="space-between">
+                        <Group gap={6}>
+                          <IconSparkles size={14} color="var(--mantine-color-grape-4)" />
+                          <Text size="xs" c="dimmed">
+                            Sets
+                          </Text>
+                        </Group>
+                        <Text size="xs" fw={700} ff="monospace">
+                          {snapshot.totalLots || 472} Lots
+                        </Text>
+                      </Group>
+                    </Stack>
+                  </Paper>
 
-                <div className="p-3 bg-secondary/30 rounded-xl border border-border/60 space-y-1 text-[11px] text-muted-foreground">
-                  <span className="font-bold text-foreground">Takeover Rule:</span>
-                  <p>
-                    Anyone in the auction arena can take over any AI bot franchise at any time. Human-claimed teams cannot be usurped.
-                  </p>
-                </div>
-              </div>
+                  <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                    <Text fw={700} size="xs" mb={2}>
+                      Takeover Rule:
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Anyone in the arena can take over any AI bot franchise at any time.
+                    </Text>
+                  </Paper>
+                </Stack>
+              </ScrollArea>
             )}
-          </div>
+          </Box>
+        </Box>
 
-          {/* Bottom Host Action Bar */}
-          <div className="p-3.5 border-t border-border/80 bg-card/60 flex-shrink-0">
+        {/* Bottom Sticky Action Bar (Start Auction / Waiting for Host) */}
+        <Paper
+          p="xs"
+          radius={0}
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 90,
+            borderTop: "1px solid var(--mantine-color-dark-4)",
+            backgroundColor: "rgba(10, 14, 34, 0.95)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <Box style={{ maxWidth: 1100, margin: "0 auto" }}>
             {isCreator ? (
-              <button
+              <Button
+                color="teal"
+                size="md"
+                fullWidth
+                leftSection={<IconPlayerPlay size={18} />}
                 onClick={startAuction}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-950/30 flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Play className="w-4 h-4 fill-white" />
-                <span>Start Auction Now</span>
-              </button>
+                Start Auction Now
+              </Button>
             ) : (
-              <div className="p-3 rounded-xl bg-secondary/40 border border-border/60 text-center space-y-1">
-                <div className="flex items-center justify-center gap-1.5 text-amber-400 font-bold text-xs">
-                  <Clock className="w-3.5 h-3.5 animate-spin" />
-                  <span>Waiting for Host</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  The auction will begin as soon as the host clicks Start. You will automatically move to the arena.
-                </p>
-              </div>
+              <Paper p={6} radius="md" ta="center" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                <Group justify="center" gap={6}>
+                  <Loader size={12} color="yellow" />
+                  <Text size="xs" fw={700} c="yellow">
+                    Waiting for Host to start auction...
+                  </Text>
+                </Group>
+              </Paper>
             )}
-          </div>
-        </aside>
-      </main>
+          </Box>
+        </Paper>
+      </Box>
 
       {/* Mandatory Guest Name Modal */}
       <JoinNameModal
@@ -617,6 +903,6 @@ export default function LobbyPage({
           }}
         />
       )}
-    </div>
+    </Box>
   );
 }

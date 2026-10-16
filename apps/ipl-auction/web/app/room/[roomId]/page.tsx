@@ -2,6 +2,7 @@
 
 import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Box, Loader, Stack, Text } from "@mantine/core";
 import { useRoomRouteGuard } from "../../../hooks/useRoomRouteGuard";
 import { InvalidRoomError } from "../../../components/common/InvalidRoomError";
 
@@ -35,15 +36,26 @@ export default function LegacyRoomRedirectPage({
   }
 
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-background text-foreground space-y-4">
-      <div className="relative w-16 h-16 flex items-center justify-center">
-        <div className="absolute inset-0 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-        <span className="text-2xl">🏏</span>
-      </div>
-      <div className="text-center space-y-1">
-        <p className="font-mono text-sm font-bold text-foreground">Redirecting to Auction Flow...</p>
-        <p className="text-xs text-muted-foreground">Checking live status of room {roomId}</p>
-      </div>
-    </div>
+    <Box
+      style={{
+        minHeight: "100dvh",
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "var(--mantine-color-body)",
+      }}
+    >
+      <Stack align="center" gap="xs">
+        <Loader size="lg" color="orange" />
+        <Text size="sm" fw={700} ff="monospace">
+          Redirecting to Auction Flow...
+        </Text>
+        <Text size="xs" c="dimmed">
+          Checking live status of room {roomId}
+        </Text>
+      </Stack>
+    </Box>
   );
 }

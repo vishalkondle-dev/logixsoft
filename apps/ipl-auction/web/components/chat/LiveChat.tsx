@@ -3,8 +3,25 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuctionStore } from "../../stores/auctionStore";
 import { TeamIdentity } from "../teams/TeamIdentity";
-import { Send, ArrowDown, Wifi, WifiOff } from "lucide-react";
-import { cn } from "../../lib/utils";
+import {
+  Box,
+  Stack,
+  Group,
+  ScrollArea,
+  TextInput,
+  ActionIcon,
+  Paper,
+  Text,
+  Badge,
+  Avatar,
+  Button,
+} from "@mantine/core";
+import {
+  IconSend,
+  IconArrowDown,
+  IconWifi,
+  IconWifiOff,
+} from "@tabler/icons-react";
 
 interface LiveChatProps {
   onSendMessage: (text: string) => void;
@@ -23,14 +40,14 @@ export const LiveChat: React.FC<LiveChatProps> = ({
   const [hasNewMessagesAbove, setHasNewMessagesAbove] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   const messages = snapshot?.recentChat || [];
 
-  const handleScroll = () => {
-    if (!scrollContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-    const atBottom = scrollHeight - scrollTop - clientHeight < 40;
+  const handleScrollPosition = (position: { y: number }) => {
+    if (!viewportRef.current) return;
+    const { scrollHeight, clientHeight } = viewportRef.current;
+    const atBottom = scrollHeight - position.y - clientHeight < 40;
     setIsAtBottom(atBottom);
     if (atBottom) {
       setHasNewMessagesAbove(false);
@@ -62,89 +79,120 @@ export const LiveChat: React.FC<LiveChatProps> = ({
   };
 
   return (
-    <div className={cn("flex flex-col h-full overflow-hidden min-h-0 relative", className)}>
-      {/* Scrollable Messages Region */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2.5"
+    <Box
+      h="100%"
+      pos="relative"
+      className={className}
+      style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
+    >
+      <ScrollArea
+        style={{ flex: 1 }}
+        p="xs"
+        viewportRef={viewportRef}
+        onScrollPositionChange={handleScrollPosition}
       >
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-muted-foreground text-xs italic">
+          <Text size="xs" c="dimmed" fs="italic" ta="center" py="xl">
             No chat messages yet. Send a message to the room!
-          </div>
+          </Text>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className="flex flex-col gap-1 text-xs">
-              <div className="flex items-center gap-1.5">
-                {msg.franchiseCode ? (
-                  <TeamIdentity code={msg.franchiseCode} size="sm" />
-                ) : (
-                  <div className="w-5 h-5 rounded bg-secondary font-bold text-[10px] flex items-center justify-center text-muted-foreground select-none">
-                    {msg.displayName[0]?.toUpperCase() || "U"}
-                  </div>
-                )}
-                <span className="font-bold text-foreground text-[11px] truncate">
-                  {msg.displayName}
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono ml-auto">
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
+          <Stack gap="xs">
+            {messages.map((msg) => (
+              <Box key={msg.id}>
+                <Group justify="space-between" mb={2}>
+                  <Group gap={6}>
+                    {msg.franchiseCode ? (
+                      <TeamIdentity code={msg.franchiseCode} size="sm" />
+                    ) : (
+                      <Avatar size={18} radius="xl" color="gray">
+                        {msg.displayName[0]?.toUpperCase() || "U"}
+                      </Avatar>
+                    )}
+                    <Text size="xs" fw={700} c="white">
+                      {msg.displayName}
+                    </Text>
+                  </Group>
+                  <Text size="10px" c="dimmed" ff="monospace">
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                </Group>
 
-              <div className="pl-6.5">
-                <div className="inline-block px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-secondary/70 border border-slate-200 dark:border-border/50 text-foreground text-xs leading-relaxed break-words max-w-[90%] shadow-2xs">
-                  {msg.text}
-                </div>
-              </div>
-            </div>
-          ))
+                <Paper
+                  withBorder
+                  p="6px 10px"
+                  radius="md"
+                  bg="dark.7"
+                  style={{
+                    display: "inline-block",
+                    maxWidth: "92%",
+                    wordBreak: "break-word",
+                    borderColor: "rgba(255, 255, 255, 0.08)",
+                  }}
+                >
+                  <Text size="xs" c="white">
+                    {msg.text}
+                  </Text>
+                </Paper>
+              </Box>
+            ))}
+            <div ref={messagesEndRef} />
+          </Stack>
         )}
-        <div ref={messagesEndRef} />
-      </div>
+      </ScrollArea>
 
-      {/* New Message Floating Pill Indicator */}
+      {/* Floating Pill */}
       {hasNewMessagesAbove && (
-        <button
-          onClick={scrollToBottom}
-          className="absolute bottom-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-primary text-primary-foreground shadow-lg animate-bounce cursor-pointer"
-        >
-          <ArrowDown className="w-3.5 h-3.5" />
-          <span>New messages</span>
-        </button>
+        <Box pos="absolute" bottom={58} left="50%" style={{ transform: "translateX(-50%)", zIndex: 10 }}>
+          <Button
+            size="compact-xs"
+            radius="xl"
+            color="blue"
+            leftSection={<IconArrowDown size={12} />}
+            onClick={scrollToBottom}
+          >
+            New messages
+          </Button>
+        </Box>
       )}
 
-      {/* Sticky Message Input Footer */}
-      <form
+      {/* Input Footer */}
+      <Box
+        component="form"
         onSubmit={handleSend}
-        className="p-2 border-t border-border/80 bg-card flex items-center gap-1.5 flex-shrink-0"
+        p="xs"
+        style={{
+          borderTop: "1px solid rgba(79, 70, 229, 0.2)",
+          backgroundColor: "#0d132a",
+        }}
       >
-        <div className="flex items-center pl-1 text-muted-foreground" title={isConnected ? "WebSocket Connected" : "Connecting..."}>
-          {isConnected ? (
-            <Wifi className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          ) : (
-            <WifiOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 animate-pulse" />
-          )}
-        </div>
-
-        <input
-          type="text"
+        <TextInput
           value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
+          onChange={(e) => setInputText(e.currentTarget.value)}
           placeholder={isConnected ? "Type message... (Enter to send)" : "Connecting to room..."}
           disabled={!isConnected}
           maxLength={300}
-          className="flex-1 px-3 py-1.5 rounded-lg text-xs bg-secondary/50 border border-border/80 focus:outline-hidden focus:ring-1 focus:ring-primary text-foreground disabled:opacity-50"
+          size="xs"
+          radius="md"
+          leftSection={
+            isConnected ? (
+              <IconWifi size={14} color="#51cf66" />
+            ) : (
+              <IconWifiOff size={14} color="#f59f00" />
+            )
+          }
+          rightSection={
+            <ActionIcon
+              type="submit"
+              size="xs"
+              color="blue"
+              variant="filled"
+              disabled={!inputText.trim() || !isConnected}
+            >
+              <IconSend size={12} />
+            </ActionIcon>
+          }
         />
-
-        <button
-          type="submit"
-          disabled={!inputText.trim() || !isConnected}
-          className="p-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-        >
-          <Send className="w-3.5 h-3.5" />
-        </button>
-      </form>
-    </div>
+      </Box>
+    </Box>
   );
 };

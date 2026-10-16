@@ -3,8 +3,26 @@
 import React from "react";
 import { FranchiseState } from "../../lib/types";
 import { TeamIdentity } from "../teams/TeamIdentity";
-import { formatRupees, cn } from "../../lib/utils";
-import { X, Shield, Bot, User, Lock, CheckCircle2 } from "lucide-react";
+import { formatRupees } from "../../lib/utils";
+import {
+  Modal,
+  Box,
+  Group,
+  Stack,
+  Text,
+  Title,
+  SimpleGrid,
+  Paper,
+  Badge,
+  Button,
+  ScrollArea,
+} from "@mantine/core";
+import {
+  IconShield,
+  IconRobot,
+  IconLock,
+  IconCheck,
+} from "@tabler/icons-react";
 
 interface TeamSelectionModalProps {
   isOpen: boolean;
@@ -21,129 +39,121 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   onSelectTeam,
   nextLegalBid,
 }) => {
-  if (!isOpen) return null;
-
   const teamsList = Object.values(teams || {});
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div
-        className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Modal Header */}
-        <div className="px-5 py-4 border-b border-border/80 flex items-center justify-between bg-secondary/30 flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-foreground">Select Franchise to Bid</h2>
-              <p className="text-xs text-muted-foreground">
-                Choose an available AI bot team to take over and start placing bids.
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
-            title="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Modal Content - Franchises Grid */}
-        <div className="flex-1 overflow-y-auto p-4 min-h-0 space-y-2.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+    <Modal
+      opened={isOpen}
+      onClose={onClose}
+      size="lg"
+      radius="xl"
+      title={
+        <Group gap="xs">
+          <IconShield size={22} color="#748ffc" />
+          <Box>
+            <Title order={4} fw={800} c="white">
+              Select Franchise to Bid
+            </Title>
+            <Text size="11px" c="dimmed">
+              Choose an available AI bot team to take over and start placing bids.
+            </Text>
+          </Box>
+        </Group>
+      }
+      styles={{
+        content: {
+          backgroundColor: "#0b1024",
+          border: "1px solid rgba(79, 70, 229, 0.4)",
+        },
+      }}
+    >
+      <Stack gap="md">
+        <ScrollArea h={420} type="auto">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             {teamsList.map((team) => {
               const isAi = team.controller === "AI";
-              const isHuman = team.controller === "HUMAN";
-              const canAfford = nextLegalBid ? team.remainingPurse >= nextLegalBid : true;
 
               return (
-                <div
+                <Paper
                   key={team.code}
-                  className={cn(
-                    "p-3 rounded-xl border flex flex-col justify-between gap-3 transition-all",
-                    isAi
-                      ? "bg-secondary/30 border-border hover:border-primary/50 hover:bg-secondary/50"
-                      : "bg-secondary/10 border-border/50 opacity-60 cursor-not-allowed"
-                  )}
+                  withBorder
+                  p="sm"
+                  radius="md"
+                  style={{
+                    backgroundColor: isAi ? "rgba(15, 23, 42, 0.6)" : "rgba(15, 23, 42, 0.2)",
+                    borderColor: isAi ? "rgba(79, 70, 229, 0.3)" : "rgba(255, 255, 255, 0.05)",
+                    opacity: isAi ? 1 : 0.6,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <Group justify="space-between" wrap="nowrap" align="flex-start">
+                    <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
                       <TeamIdentity code={team.code} size="md" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-foreground truncate">
+                      <Box style={{ minWidth: 0 }}>
+                        <Text size="xs" fw={800} c="white" truncate>
                           {team.name}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-1.5 mt-0.5">
-                          <span>{team.squadCount}/{team.maxSquad} Squad</span>
-                          <span>•</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatRupees(team.remainingPurse)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      {isAi ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                          <Bot className="w-2.5 h-2.5" />
-                          <span>Bot Available</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground border border-border">
-                          <Lock className="w-2.5 h-2.5" />
-                          <span>Occupied</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-border/40 flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground truncate">
-                      {isAi ? "Available to claim immediately" : `Controlled by ${team.humanDisplayName || "Human"}`}
-                    </span>
+                        </Text>
+                        <Text size="10px" c="dimmed" ff="monospace">
+                          {team.squadCount}/{team.maxSquad} Squad •{" "}
+                          <span style={{ color: "#51cf66", fontWeight: 700 }}>
+                            {formatRupees(team.remainingPurse)}
+                          </span>
+                        </Text>
+                      </Box>
+                    </Group>
 
                     {isAi ? (
-                      <button
+                      <Badge size="xs" color="teal" variant="light" leftSection={<IconRobot size={10} />}>
+                        Bot Available
+                      </Badge>
+                    ) : (
+                      <Badge size="xs" color="gray" variant="light" leftSection={<IconLock size={10} />}>
+                        Occupied
+                      </Badge>
+                    )}
+                  </Group>
+
+                  <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <Text size="10px" c="dimmed" truncate style={{ maxWidth: 140 }}>
+                      {isAi ? "Available to claim" : `Controlled by ${team.humanDisplayName || "Human"}`}
+                    </Text>
+
+                    {isAi ? (
+                      <Button
+                        size="xs"
+                        color="blue"
+                        leftSection={<IconCheck size={14} />}
                         onClick={() => {
                           onSelectTeam(team.code);
                           onClose();
                         }}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer flex items-center gap-1"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Take Over</span>
-                      </button>
+                        Take Over
+                      </Button>
                     ) : (
-                      <button
-                        disabled
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-secondary text-muted-foreground cursor-not-allowed border border-border/60"
-                      >
+                      <Button size="xs" disabled variant="default">
                         Unavailable
-                      </button>
+                      </Button>
                     )}
-                  </div>
-                </div>
+                  </Group>
+                </Paper>
               );
             })}
-          </div>
-        </div>
+          </SimpleGrid>
+        </ScrollArea>
 
-        {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-border/80 bg-secondary/30 flex items-center justify-between text-xs text-muted-foreground flex-shrink-0">
-          <span>Only AI-controlled teams can be claimed.</span>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground border border-border transition-colors cursor-pointer font-semibold"
-          >
+        <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <Text size="11px" c="dimmed">
+            Only AI-controlled teams can be claimed.
+          </Text>
+          <Button variant="default" size="xs" onClick={onClose}>
             Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
 };

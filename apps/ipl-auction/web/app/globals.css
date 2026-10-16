@@ -74,3 +74,28 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
 }
+
+/* Mobile Landscape Auction Optimization */
+@media (max-height: 520px) and (orientation: landscape) {
+  .auction-landscape-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .auction-landscape-left {
+    flex: 1.15 !important;
+    min-width: 0 !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .auction-landscape-right {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+  }
+}

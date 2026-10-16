@@ -27,17 +27,17 @@ export function formatIndianNumber(val: number): string {
   return val.toLocaleString("en-IN");
 }
 
-export const FRANCHISE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  CSK: { bg: "bg-[#f9cd05]", text: "text-neutral-900", border: "border-[#f9cd05]" },
-  MI: { bg: "bg-[#004ba0]", text: "text-white", border: "border-[#004ba0]" },
-  RCB: { bg: "bg-[#d71920]", text: "text-white", border: "border-[#d71920]" },
-  KKR: { bg: "bg-[#3a225d]", text: "text-amber-300", border: "border-[#3a225d]" },
-  SRH: { bg: "bg-[#f26522]", text: "text-white", border: "border-[#f26522]" },
-  DC: { bg: "bg-[#0078bc]", text: "text-white", border: "border-[#0078bc]" },
-  RR: { bg: "bg-[#ea1a85]", text: "text-white", border: "border-[#ea1a85]" },
-  GT: { bg: "bg-[#1c2c5b]", text: "text-amber-200", border: "border-[#1c2c5b]" },
-  LSG: { bg: "bg-[#a72056]", text: "text-white", border: "border-[#a72056]" },
-  PBKS: { bg: "bg-[#dd1f2d]", text: "text-white", border: "border-[#dd1f2d]" },
+export const FRANCHISE_COLORS: Record<string, { bg: string; text: string; border: string; hex: string }> = {
+  CSK: { bg: "bg-[#f9cd05]", text: "text-neutral-900", border: "border-[#f9cd05]", hex: "#f9cd05" },
+  MI: { bg: "bg-[#004ba0]", text: "text-white", border: "border-[#004ba0]", hex: "#004ba0" },
+  RCB: { bg: "bg-[#d71920]", text: "text-white", border: "border-[#d71920]", hex: "#d71920" },
+  KKR: { bg: "bg-[#3a225d]", text: "text-amber-300", border: "border-[#3a225d]", hex: "#3a225d" },
+  SRH: { bg: "bg-[#f26522]", text: "text-white", border: "border-[#f26522]", hex: "#f26522" },
+  DC: { bg: "bg-[#0078bc]", text: "text-white", border: "border-[#0078bc]", hex: "#0078bc" },
+  RR: { bg: "bg-[#ea1a85]", text: "text-white", border: "border-[#ea1a85]", hex: "#ea1a85" },
+  GT: { bg: "bg-[#1c2c5b]", text: "text-amber-200", border: "border-[#1c2c5b]", hex: "#1c2c5b" },
+  LSG: { bg: "bg-[#a72056]", text: "text-white", border: "border-[#a72056]", hex: "#a72056" },
+  PBKS: { bg: "bg-[#dd1f2d]", text: "text-white", border: "border-[#dd1f2d]", hex: "#dd1f2d" },
 };
 
 export function getBidIncrement(bidAmount: number): number {

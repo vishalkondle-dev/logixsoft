@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use } from "react";
+import { Box, Loader, Stack, Text, Paper } from "@mantine/core";
 import { useRoomRouteGuard } from "../../../hooks/useRoomRouteGuard";
 import { useAuctionRoom } from "../../../hooks/useAuctionRoom";
 import { useAuctionStore } from "../../../stores/auctionStore";
@@ -32,25 +33,46 @@ export default function SummaryPage({
 
   if (isValidating || !snapshot) {
     return (
-      <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-background text-foreground space-y-4">
-        <div className="relative w-16 h-16 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-          <span className="text-2xl">🏆</span>
-        </div>
-        <div className="text-center space-y-1">
-          <p className="font-mono text-sm font-bold text-foreground">Generating Post-Auction Summary...</p>
-          <p className="text-xs text-muted-foreground">Compiling team squads and awards for {roomId}</p>
-        </div>
-      </div>
+      <Box
+        style={{
+          minHeight: "100dvh",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "var(--mantine-color-body)",
+        }}
+      >
+        <Stack align="center" gap="xs">
+          <Loader size="lg" color="orange" />
+          <Text size="sm" fw={700} ff="monospace">
+            Generating Post-Auction Summary...
+          </Text>
+          <Text size="xs" c="dimmed">
+            Compiling team squads and awards for {roomId}
+          </Text>
+        </Stack>
+      </Box>
     );
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background text-foreground select-none">
+    <Box
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        width: "100%",
+        overflow: "hidden",
+        backgroundColor: "var(--mantine-color-body)",
+        userSelect: "none",
+      }}
+    >
       <TopNavBar roomId={roomId} roomName={snapshot?.name} />
-      <main className="flex-1 overflow-hidden min-h-0 relative">
+      <Box component="main" style={{ flex: 1, overflow: "hidden", minHeight: 0, position: "relative" }}>
         <AuctionReviewReport snapshot={snapshot} onRestart={startAuction} />
-      </main>
-    </div>
+      </Box>
+    </Box>
   );
 }

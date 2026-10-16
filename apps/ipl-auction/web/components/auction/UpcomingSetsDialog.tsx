@@ -1,21 +1,36 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { formatRupees, cn } from "../../lib/utils";
+import { formatRupees } from "../../lib/utils";
 import { fetchApi } from "../../lib/api";
 import { PlayerIdentity } from "./PlayerIdentity";
 import { CountryFlag } from "../common/CountryFlag";
 import { PlayerRole } from "../../lib/types";
 import {
-  Search,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Layers,
-  Plane,
-  CheckCircle2,
-  Flame,
-} from "lucide-react";
+  Modal,
+  Box,
+  Group,
+  Stack,
+  Text,
+  Title,
+  TextInput,
+  Select,
+  Button,
+  Badge,
+  Paper,
+  ScrollArea,
+  Collapse,
+  UnstyledButton,
+} from "@mantine/core";
+import {
+  IconSearch,
+  IconStack2,
+  IconFlame,
+  IconCheck,
+  IconPlane,
+  IconChevronDown,
+  IconChevronUp,
+} from "@tabler/icons-react";
 
 interface SetItem {
   id: string;
@@ -28,7 +43,7 @@ interface SetItem {
 }
 
 interface PlayerItem {
-  globalNumber: number; // 1, 2, ...
+  globalNumber: number;
   id: string;
   name: string;
   role: PlayerRole;
@@ -70,21 +85,19 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
 
     const loadData = async () => {
       try {
-        // Fetch sets metadata
         const setsRes = await fetchApi<{ sets: SetItem[] }>("/api/players/sets");
         const loadedSets = (setsRes.sets || []).sort((a, b) => a.displayOrder - b.displayOrder);
         setSets(loadedSets);
 
         let playersList: PlayerItem[] = [];
 
-        // If roomId is available, attempt to fetch authoritative lots from room
         if (roomId) {
           try {
             const roomLotsRes = await fetchApi<{ lots: any[] }>(`/api/rooms/${roomId}/lots`);
             if (roomLotsRes.lots && roomLotsRes.lots.length > 0) {
               playersList = roomLotsRes.lots.map((lot) => ({
-                globalNumber: lot.lotNumber,
-                id: lot.playerId || lot.id,
+                globalNumber: lot.orderInSet || lot.lotNumber,
+                id: lot.id,
                 name: lot.playerName,
                 role: lot.role,
                 country: lot.country,
@@ -99,50 +112,36 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                 finalPrice: lot.finalPrice,
               }));
             }
-          } catch (e) {
-            console.warn("Failed to load room lots, falling back to players API", e);
-          }
+          } catch {}
         }
 
-        // Fallback: fetch all players from /api/players if room lots not loaded
         if (playersList.length === 0) {
           const playersRes = await fetchApi<{ players: any[] }>("/api/players");
-          const rawPlayers = playersRes.players || [];
-
-          // Group by set in set order to assign unique incremental numbers 001, 002, ...
           let counter = 1;
-          for (const s of loadedSets) {
-            const inSet = rawPlayers.filter((p) => p.setId === s.id);
-            for (const p of inSet) {
-              playersList.push({
-                globalNumber: counter++,
-                id: p.id,
-                name: p.name,
-                role: p.role,
-                country: p.country,
-                isOverseas: p.isOverseas,
-                battingStyle: p.battingStyle,
-                bowlingStyle: p.bowlingStyle,
-                basePrice: p.basePrice,
-                setId: p.setId,
-                setCode: s.setCode,
-                status: "PENDING",
-              });
-            }
-          }
+          playersList = (playersRes.players || []).map((p: any) => ({
+            globalNumber: counter++,
+            id: p.id,
+            name: p.name,
+            role: p.role,
+            country: p.country,
+            isOverseas: p.isOverseas,
+            battingStyle: p.battingStyle,
+            bowlingStyle: p.bowlingStyle,
+            basePrice: p.basePrice,
+            setId: p.setId,
+            setCode: p.setCode,
+            status: "PENDING",
+          }));
         }
 
         setAllPlayers(playersList);
 
-        // Expand active set by default
-        const initialOpen: Record<string, boolean> = {};
-        const activeSet = loadedSets.find((s) => s.setCode === currentSetCode) || loadedSets[0];
-        if (activeSet) {
-          initialOpen[activeSet.id] = true;
+        const currentSet = loadedSets.find((s) => s.setCode === currentSetCode) || loadedSets[0];
+        if (currentSet) {
+          setOpenSets({ [currentSet.id]: true });
         }
-        setOpenSets(initialOpen);
       } catch (err) {
-        console.error("Failed to load upcoming sets and players:", err);
+        console.error("Failed to load upcoming sets catalog:", err);
       } finally {
         setIsLoading(false);
       }
@@ -151,16 +150,6 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
     loadData();
   }, [isOpen, currentSetCode, roomId]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // When search or filter changes, automatically expand sets that contain matches
   useEffect(() => {
     if (!searchQuery && roleFilter === "ALL") return;
 
@@ -198,287 +187,268 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
     setOpenSets({});
   };
 
-  // Group filtered players by set
   const setGroups = useMemo(() => {
     const query = searchQuery.toLowerCase();
 
-    return sets.map((s) => {
-      const playersInSet = allPlayers
-        .filter((p) => p.setId === s.id)
-        .filter((p) => {
-          const matchQuery =
-            !query ||
-            p.name.toLowerCase().includes(query) ||
-            p.country.toLowerCase().includes(query);
-          const matchRole = roleFilter === "ALL" || p.role === roleFilter;
-          return matchQuery && matchRole;
-        });
+    return sets
+      .map((s) => {
+        const playersInSet = allPlayers
+          .filter((p) => p.setId === s.id)
+          .filter((p) => {
+            const matchQuery =
+              !query ||
+              p.name.toLowerCase().includes(query) ||
+              p.country.toLowerCase().includes(query);
+            const matchRole = roleFilter === "ALL" || p.role === roleFilter;
+            return matchQuery && matchRole;
+          });
 
-      const isCurrent = s.setCode === currentSetCode;
-      const allInSet = allPlayers.filter((p) => p.setId === s.id);
-      const isCompleted =
-        allInSet.length > 0 &&
-        allInSet.every((p) => p.status === "SOLD" || p.status === "UNSOLD");
+        const isCurrent = s.setCode === currentSetCode;
+        const allInSet = allPlayers.filter((p) => p.setId === s.id);
+        const isCompleted =
+          allInSet.length > 0 &&
+          allInSet.every((p) => p.status === "SOLD" || p.status === "UNSOLD");
 
-      return {
-        ...s,
-        players: playersInSet,
-        totalInSet: allInSet.length,
-        isCurrent,
-        isCompleted,
-      };
-    }).filter((s) => ((searchQuery || roleFilter !== "ALL") ? s.players.length > 0 : s.totalInSet > 0));
+        return {
+          ...s,
+          players: playersInSet,
+          totalInSet: allInSet.length,
+          isCurrent,
+          isCompleted,
+        };
+      })
+      .filter((s) => (searchQuery || roleFilter !== "ALL" ? s.players.length > 0 : s.totalInSet > 0));
   }, [sets, allPlayers, searchQuery, roleFilter, currentSetCode]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-4xl h-[88vh] max-h-[800px] bg-card border border-border/80 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-foreground">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/80 bg-secondary/30">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold tracking-tight">Upcoming Auction Sets & Players</h2>
-              <p className="text-[11px] text-muted-foreground">
-                Sets proceed in sequential order • Players within sets are dynamically nominated
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Toolbar: Search, Role Filter, Expand/Collapse */}
-        <div className="px-5 py-3 border-b border-border/60 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <div className="flex flex-1 items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search player name, nationality..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs bg-secondary/50 border border-border/80 focus:outline-hidden focus:ring-1 focus:ring-primary text-foreground"
-              />
-            </div>
-
-            <select
+    <Modal
+      opened={isOpen}
+      onClose={onClose}
+      size="xl"
+      radius="xl"
+      title={
+        <Group gap="xs">
+          <IconStack2 size={20} color="#748ffc" />
+          <Box>
+            <Title order={4} fw={800} c="white">
+              Upcoming Auction Sets & Players
+            </Title>
+            <Text size="10px" c="dimmed">
+              Sets proceed in sequential order • Players within sets are dynamically nominated
+            </Text>
+          </Box>
+        </Group>
+      }
+      styles={{
+        content: {
+          backgroundColor: "#0b1024",
+          border: "1px solid rgba(79, 70, 229, 0.4)",
+        },
+      }}
+    >
+      <Stack gap="sm">
+        {/* Toolbar */}
+        <Group justify="space-between" wrap="wrap">
+          <Group gap="xs" style={{ flex: 1, minWidth: 260 }}>
+            <TextInput
+              size="xs"
+              placeholder="Search player, country..."
+              leftSection={<IconSearch size={14} />}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.currentTarget.value)}
+              style={{ flex: 1 }}
+            />
+            <Select
+              size="xs"
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-2.5 py-1.5 rounded-lg text-xs bg-secondary/50 border border-border/80 text-foreground cursor-pointer focus:outline-hidden"
-            >
-              <option value="ALL">All Roles</option>
-              <option value="BATTER">Batters</option>
-              <option value="BOWLER">Bowlers</option>
-              <option value="ALL_ROUNDER">All-rounders</option>
-              <option value="WICKETKEEPER">Wicketkeepers</option>
-            </select>
-          </div>
+              onChange={(val) => setRoleFilter(val || "ALL")}
+              data={[
+                { value: "ALL", label: "All Roles" },
+                { value: "BATTER", label: "Batters" },
+                { value: "BOWLER", label: "Bowlers" },
+                { value: "ALL_ROUNDER", label: "All-rounders" },
+                { value: "WICKETKEEPER", label: "Wicketkeepers" },
+              ]}
+              style={{ width: 130 }}
+            />
+          </Group>
 
-          <div className="flex items-center gap-1.5 self-end sm:self-center">
-            <button
-              onClick={expandAll}
-              className="text-[11px] font-semibold px-2 py-1 rounded bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/60 transition-colors cursor-pointer"
-            >
+          <Group gap="xs">
+            <Button size="compact-xs" variant="default" onClick={expandAll}>
               Expand All
-            </button>
-            <button
-              onClick={collapseAll}
-              className="text-[11px] font-semibold px-2 py-1 rounded bg-secondary/70 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/60 transition-colors cursor-pointer"
-            >
+            </Button>
+            <Button size="compact-xs" variant="default" onClick={collapseAll}>
               Collapse All
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Group>
+        </Group>
 
-        {/* Sets Accordions Container */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+        {/* Sets List */}
+        <ScrollArea h={480} type="auto">
           {isLoading ? (
-            <div className="py-16 text-center text-xs text-muted-foreground">
+            <Text size="xs" c="dimmed" ta="center" py="xl">
               Loading auction sets and dynamic catalog...
-            </div>
+            </Text>
           ) : (
-            setGroups.map((s) => {
-              const isOpen = !!openSets[s.id];
-              const playerCount = s.players.length;
+            <Stack gap="xs">
+              {setGroups.map((s) => {
+                const isSetOpen = !!openSets[s.id];
+                const playerCount = s.players.length;
 
-              return (
-                <div
-                  key={s.id}
-                  className={cn(
-                    "rounded-xl border transition-all overflow-hidden",
-                    s.isCurrent
-                      ? "border-amber-500/50 bg-amber-500/5 shadow-xs"
-                      : "border-border/70 bg-card/60"
-                  )}
-                >
-                  {/* Accordion Header */}
-                  <button
-                    type="button"
-                    onClick={() => toggleSet(s.id)}
-                    className={cn(
-                      "w-full px-4 py-3 flex items-center justify-between text-left transition-colors cursor-pointer",
-                      isOpen ? "bg-muted/30 border-b border-border/60" : "hover:bg-secondary/40"
-                    )}
+                return (
+                  <Paper
+                    key={s.id}
+                    withBorder
+                    radius="md"
+                    style={{
+                      overflow: "hidden",
+                      backgroundColor: s.isCurrent ? "rgba(245, 159, 0, 0.06)" : "rgba(15, 23, 42, 0.6)",
+                      borderColor: s.isCurrent ? "rgba(245, 159, 0, 0.4)" : "rgba(79, 70, 229, 0.2)",
+                    }}
                   >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <span className="font-mono text-xs px-2 py-0.5 rounded font-black bg-secondary border border-border text-foreground">
-                        {s.setCode}
-                      </span>
-                      <span className="font-bold text-xs sm:text-sm text-foreground truncate">
-                        {s.setName}
-                      </span>
+                    <UnstyledButton
+                      onClick={() => toggleSet(s.id)}
+                      p="xs"
+                      w="100%"
+                      style={{ display: "block" }}
+                    >
+                      <Group justify="space-between" wrap="nowrap">
+                        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                          <Badge size="xs" variant="filled" color="dark">
+                            {s.setCode}
+                          </Badge>
+                          <Text size="xs" fw={800} c="white" truncate>
+                            {s.setName}
+                          </Text>
+                          {s.isCurrent && (
+                            <Badge size="xs" color="yellow" variant="light" leftSection={<IconFlame size={10} />}>
+                              LIVE NOW
+                            </Badge>
+                          )}
+                          {s.isCompleted && (
+                            <Badge size="xs" color="teal" variant="light" leftSection={<IconCheck size={10} />}>
+                              COMPLETED
+                            </Badge>
+                          )}
+                        </Group>
 
-                      {s.isCurrent && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40">
-                          <Flame className="w-2.5 h-2.5 animate-pulse" />
-                          LIVE NOW
-                        </span>
-                      )}
+                        <Group gap="xs" wrap="nowrap">
+                          <Text size="10px" c="dimmed" ff="monospace">
+                            {playerCount} {playerCount === 1 ? "player" : "players"}
+                          </Text>
+                          {isSetOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+                        </Group>
+                      </Group>
+                    </UnstyledButton>
 
-                      {s.isCompleted && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="w-2.5 h-2.5" />
-                          COMPLETED
-                        </span>
-                      )}
-                    </div>
+                    <Collapse expanded={isSetOpen}>
+                      <Box p="xs" style={{ borderTop: "1px solid rgba(79, 70, 229, 0.2)", backgroundColor: "rgba(0,0,0,0.2)" }}>
+                        {s.players.length === 0 ? (
+                          <Text size="xs" c="dimmed" fs="italic" ta="center" py="xs">
+                            No players match the filter in this set.
+                          </Text>
+                        ) : (
+                          <Stack gap={4}>
+                            {s.players.map((p) => {
+                              const formattedNum = String(p.globalNumber).padStart(3, "0");
+                              return (
+                                <Paper
+                                  key={p.id}
+                                  withBorder
+                                  p="xs"
+                                  radius="sm"
+                                  bg={
+                                    p.status === "ACTIVE"
+                                      ? "rgba(245, 159, 0, 0.1)"
+                                      : p.status === "SOLD"
+                                      ? "rgba(16, 185, 129, 0.08)"
+                                      : "dark.8"
+                                  }
+                                  style={{
+                                    borderColor:
+                                      p.status === "ACTIVE"
+                                        ? "rgba(245, 159, 0, 0.4)"
+                                        : "rgba(255, 255, 255, 0.08)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 8,
+                                  }}
+                                >
+                                  <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                                    <Text size="xs" fw={700} ff="monospace" c="dimmed" w={32}>
+                                      #{formattedNum}
+                                    </Text>
+                                    <PlayerIdentity
+                                      name={p.name}
+                                      role={p.role}
+                                      country={p.country}
+                                      isOverseas={p.isOverseas}
+                                      size="sm"
+                                    />
+                                    <Box style={{ minWidth: 0 }}>
+                                      <Group gap={4} wrap="nowrap">
+                                        <Text size="xs" fw={700} c="white" truncate>
+                                          {p.name}
+                                        </Text>
+                                        {p.isOverseas && <IconPlane size={12} color="#f59f00" />}
+                                      </Group>
+                                      <Group gap={4} wrap="nowrap">
+                                        <CountryFlag country={p.country} size="xs" />
+                                        <Text size="10px" c="dimmed">
+                                          {p.country} • {p.role.replace(/_/g, " ")}
+                                        </Text>
+                                      </Group>
+                                    </Box>
+                                  </Group>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-[11px] font-mono text-muted-foreground">
-                        {playerCount} {playerCount === 1 ? "player" : "players"}
-                      </span>
-                      {isOpen ? (
-                        <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </button>
+                                  <Group gap="xs" wrap="nowrap">
+                                    <Box style={{ textAlign: "right" }}>
+                                      <Text size="xs" fw={800} ff="monospace" c="teal.4">
+                                        {formatRupees(p.basePrice)}
+                                      </Text>
+                                      <Text size="9px" c="dimmed">
+                                        Base
+                                      </Text>
+                                    </Box>
 
-                  {/* Accordion Body (Players List) */}
-                  {isOpen && (
-                    <div className="p-2 space-y-1.5 bg-muted/10">
-                      {s.players.length === 0 ? (
-                        <div className="py-4 text-center text-xs text-muted-foreground italic">
-                          No players match the filter in this set.
-                        </div>
-                      ) : (
-                        s.players.map((p) => {
-                          const formattedNum = String(p.globalNumber).padStart(3, "0");
-
-                          return (
-                            <div
-                              key={p.id}
-                              className={cn(
-                                "flex items-center justify-between p-2 sm:p-2.5 rounded-lg border transition-colors",
-                                p.status === "ACTIVE"
-                                  ? "bg-amber-500/10 border-amber-500/40 shadow-xs"
-                                  : p.status === "SOLD"
-                                  ? "bg-emerald-500/5 border-emerald-500/20"
-                                  : "bg-card/70 border-border/50 hover:bg-secondary/40"
-                              )}
-                            >
-                              {/* Left: Global Number + Avatar + Identity */}
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <span className="font-mono text-xs font-bold text-muted-foreground w-8 shrink-0">
-                                  #{formattedNum}
-                                </span>
-
-                                <PlayerIdentity
-                                  name={p.name}
-                                  role={p.role}
-                                  country={p.country}
-                                  isOverseas={p.isOverseas}
-                                  size="sm"
-                                />
-
-                                <div className="truncate">
-                                  <div className="text-xs font-bold text-foreground flex items-center gap-1.5 truncate">
-                                    <span className="truncate">{p.name}</span>
-                                    {p.isOverseas && (
-                                      <span
-                                        className="p-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 inline-flex items-center shrink-0"
-                                        title="Overseas Player"
-                                      >
-                                        <Plane className="w-2.5 h-2.5 fill-current" />
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-[10px] text-muted-foreground flex items-center gap-1.5 truncate mt-0.5">
-                                    <CountryFlag country={p.country} size="xs" />
-                                    <span>{p.country}</span>
-                                    <span>•</span>
-                                    <span className="capitalize">
-                                      {p.role.replace(/_/g, " ").toLowerCase()}
-                                    </span>
-                                    {p.battingStyle && (
-                                      <>
-                                        <span className="hidden sm:inline">•</span>
-                                        <span className="hidden sm:inline text-muted-foreground/80">
-                                          {p.battingStyle}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Right: Base Price & Status Badge */}
-                              <div className="flex items-center gap-2.5 flex-shrink-0 text-right">
-                                <div>
-                                  <div className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                    {formatRupees(p.basePrice)}
-                                  </div>
-                                  <div className="text-[9px] text-muted-foreground">Base</div>
-                                </div>
-
-                                <div className="min-w-[70px]">
-                                  {p.status === "ACTIVE" && (
-                                    <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/40">
-                                      IN AUCTION
-                                    </span>
-                                  )}
-                                  {p.status === "SOLD" && (
-                                    <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40">
-                                      {p.soldToFranchise || "SOLD"}
-                                      {p.finalPrice ? ` (${formatRupees(p.finalPrice)})` : ""}
-                                    </span>
-                                  )}
-                                  {p.status === "UNSOLD" && (
-                                    <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/40">
-                                      UNSOLD
-                                    </span>
-                                  )}
-                                  {(!p.status || p.status === "PENDING") && (
-                                    <span className="text-[10px] text-muted-foreground font-medium">
-                                      Upcoming
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })
+                                    <Box w={75}>
+                                      {p.status === "ACTIVE" && (
+                                        <Badge size="xs" color="yellow" variant="light">
+                                          IN AUCTION
+                                        </Badge>
+                                      )}
+                                      {p.status === "SOLD" && (
+                                        <Badge size="xs" color="teal" variant="light">
+                                          {p.soldToFranchise || "SOLD"}
+                                        </Badge>
+                                      )}
+                                      {p.status === "UNSOLD" && (
+                                        <Badge size="xs" color="red" variant="light">
+                                          UNSOLD
+                                        </Badge>
+                                      )}
+                                      {(!p.status || p.status === "PENDING") && (
+                                        <Text size="10px" c="dimmed">
+                                          Upcoming
+                                        </Text>
+                                      )}
+                                    </Box>
+                                  </Group>
+                                </Paper>
+                              );
+                            })}
+                          </Stack>
+                        )}
+                      </Box>
+                    </Collapse>
+                  </Paper>
+                );
+              })}
+            </Stack>
           )}
-        </div>
-      </div>
-    </div>
+        </ScrollArea>
+      </Stack>
+    </Modal>
   );
 };

@@ -2,8 +2,8 @@
 
 import React from "react";
 import { useAuctionStore } from "../../stores/auctionStore";
-import { Users, Gavel, BarChart2 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { Paper, Group, UnstyledButton, Text, Indicator } from "@mantine/core";
+import { IconUsers, IconGavel, IconActivity } from "@tabler/icons-react";
 
 export const MobileBottomNav: React.FC = () => {
   const {
@@ -16,55 +16,97 @@ export const MobileBottomNav: React.FC = () => {
   const totalUnread = unreadChatCount + unreadActivityCount;
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#070b1a] border-t border-indigo-950/80 px-4 py-1 flex items-center justify-around select-none shadow-2xl pb-[env(safe-area-inset-bottom,0.5rem)]">
-      {/* TEAMS */}
-      <button
-        onClick={() => setActiveMobileTab("teams")}
-        className={cn(
-          "flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 cursor-pointer",
-          activeMobileTab === "teams"
-            ? "text-indigo-400 bg-[#141838] border-t-2 border-indigo-500 rounded-t-xl shadow-[0_-4px_16px_rgba(99,102,241,0.25)]"
-            : "text-slate-400 hover:text-white"
-        )}
-      >
-        <Users className="w-5 h-5 stroke-[2.2]" />
-        <span>Teams</span>
-      </button>
+    <Paper
+      component="nav"
+      hiddenFrom="lg"
+      className="lg:hidden"
+      pos="fixed"
+      bottom={0}
+      left={0}
+      right={0}
+      h={58}
+      px="md"
+      style={{
+        zIndex: 100,
+        backgroundColor: "rgba(7, 11, 26, 0.95)",
+        borderTop: "1px solid rgba(79, 70, 229, 0.25)",
+        backdropFilter: "blur(12px)",
+        userSelect: "none",
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      <Group justify="space-around" w="100%" gap={0}>
+        {/* TEAMS */}
+        <UnstyledButton
+          onClick={() => setActiveMobileTab("teams")}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            padding: "6px 16px",
+            borderRadius: 8,
+            color: activeMobileTab === "teams" ? "#91a7ff" : "#868e96",
+            backgroundColor: activeMobileTab === "teams" ? "rgba(76, 110, 245, 0.15)" : "transparent",
+            transition: "all 0.15s ease",
+          }}
+        >
+          <IconUsers size={20} stroke={2} />
+          <Text size="9px" fw={800} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
+            Teams
+          </Text>
+        </UnstyledButton>
 
-      {/* AUCTION (Default Active) */}
-      <button
-        onClick={() => setActiveMobileTab("auction")}
-        className={cn(
-          "flex flex-col items-center gap-1 py-1.5 px-7 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 cursor-pointer relative",
-          activeMobileTab === "auction"
-            ? "text-indigo-400 bg-[#181d3d] border-t-2 border-indigo-500 rounded-t-xl shadow-[0_-4px_16px_rgba(99,102,241,0.3)]"
-            : "text-slate-400 hover:text-white"
-        )}
-      >
-        <Gavel className="w-5 h-5 stroke-[2.2]" />
-        <span>Auction</span>
-      </button>
+        {/* AUCTION */}
+        <UnstyledButton
+          onClick={() => setActiveMobileTab("auction")}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            padding: "6px 24px",
+            borderRadius: 8,
+            color: activeMobileTab === "auction" ? "#91a7ff" : "#868e96",
+            backgroundColor: activeMobileTab === "auction" ? "rgba(76, 110, 245, 0.2)" : "transparent",
+            transition: "all 0.15s ease",
+          }}
+        >
+          <IconGavel size={20} stroke={2} />
+          <Text size="9px" fw={800} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
+            Auction
+          </Text>
+        </UnstyledButton>
 
-      {/* ACTIVITY & CHAT */}
-      <button
-        onClick={() => setActiveMobileTab("activity")}
-        className={cn(
-          "flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-200 cursor-pointer relative",
-          activeMobileTab === "activity"
-            ? "text-indigo-400 bg-[#141838] border-t-2 border-indigo-500 rounded-t-xl shadow-[0_-4px_16px_rgba(99,102,241,0.25)]"
-            : "text-slate-400 hover:text-white"
-        )}
-      >
-        <div className="relative">
-          <BarChart2 className="w-5 h-5 stroke-[2.2]" />
-          {totalUnread > 0 && activeMobileTab !== "activity" && (
-            <span className="absolute -top-1 -right-2 px-1 py-0.2 rounded-full bg-red-500 text-white font-mono text-[9px] font-black leading-none animate-pulse">
-              {totalUnread > 9 ? "9+" : totalUnread}
-            </span>
-          )}
-        </div>
-        <span>Activity</span>
-      </button>
-    </nav>
+        {/* ACTIVITY & CHAT */}
+        <UnstyledButton
+          onClick={() => setActiveMobileTab("activity")}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            padding: "6px 16px",
+            borderRadius: 8,
+            color: activeMobileTab === "activity" ? "#91a7ff" : "#868e96",
+            backgroundColor: activeMobileTab === "activity" ? "rgba(76, 110, 245, 0.15)" : "transparent",
+            transition: "all 0.15s ease",
+          }}
+        >
+          <Indicator
+            disabled={totalUnread === 0 || activeMobileTab === "activity"}
+            color="red"
+            size={8}
+            offset={2}
+          >
+            <IconActivity size={20} stroke={2} />
+          </Indicator>
+          <Text size="9px" fw={800} tt="uppercase" style={{ letterSpacing: "0.06em" }}>
+            Feed
+          </Text>
+        </UnstyledButton>
+      </Group>
+    </Paper>
   );
 };

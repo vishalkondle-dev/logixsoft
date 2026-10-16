@@ -1,6 +1,17 @@
 "use client";
 
 import React, { use } from "react";
+import {
+  Box,
+  Stack,
+  Group,
+  Loader,
+  Text,
+  Badge,
+  UnstyledButton,
+  Paper,
+} from "@mantine/core";
+import { IconActivity, IconMessage } from "@tabler/icons-react";
 import { useRoomRouteGuard } from "../../../hooks/useRoomRouteGuard";
 import { useAuctionRoom } from "../../../hooks/useAuctionRoom";
 import { useAuctionVoice } from "../../../hooks/useAuctionVoice";
@@ -15,8 +26,6 @@ import { LiveChat } from "../../../components/chat/LiveChat";
 import { CurrentSetPlayersList } from "../../../components/auction/CurrentSetPlayersList";
 import { JoinNameModal } from "../../../components/auth/JoinNameModal";
 import { InvalidRoomError } from "../../../components/common/InvalidRoomError";
-import { cn } from "../../../lib/utils";
-import { Activity, MessageSquare } from "lucide-react";
 
 export default function AuctionPage({
   params,
@@ -52,7 +61,7 @@ export default function AuctionPage({
   // Initialize latest-event-wins voice listener
   useAuctionVoice();
 
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [guestName, setGuestName] = React.useState<string | null>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("ipl_auction_user_name");
@@ -70,8 +79,11 @@ export default function AuctionPage({
     unreadActivityCount,
   } = useAuctionStore();
 
-  const isCreatorStored = typeof window !== "undefined" && localStorage.getItem(`ipl_room_creator_${roomId}`) === "true";
-  const isCreator = Boolean((snapshot?.creatorId && snapshot?.creatorId === currentUserId) || isCreatorStored);
+  const isCreatorStored =
+    typeof window !== "undefined" && localStorage.getItem(`ipl_room_creator_${roomId}`) === "true";
+  const isCreator = Boolean(
+    (snapshot?.creatorId && snapshot?.creatorId === currentUserId) || isCreatorStored
+  );
 
   // If probing or invalid
   if (isInvalidRoom) {
@@ -80,30 +92,68 @@ export default function AuctionPage({
 
   if (isValidating || !snapshot) {
     return (
-      <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-background text-foreground space-y-4">
-        <div className="relative w-16 h-16 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-          <span className="text-2xl">🔨</span>
-        </div>
-        <div className="text-center space-y-1">
-          <p className="font-mono text-sm font-bold text-foreground">Entering Auction Arena...</p>
-          <p className="text-xs text-muted-foreground">Connecting to room {roomId}</p>
-        </div>
-      </div>
+      <Box
+        style={{
+          minHeight: "100dvh",
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "var(--mantine-color-body)",
+        }}
+      >
+        <Stack align="center" gap="xs">
+          <Loader size="lg" color="orange" />
+          <Text size="sm" fw={700} ff="monospace">
+            Entering Auction Arena...
+          </Text>
+          <Text size="xs" c="dimmed">
+            Connecting to room {roomId}
+          </Text>
+        </Stack>
+      </Box>
     );
   }
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-background text-foreground select-none">
+    <Box
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        width: "100%",
+        overflow: "hidden",
+        backgroundColor: "var(--mantine-color-body)",
+        userSelect: "none",
+      }}
+    >
       {/* Compact Top Navigation Bar */}
       <TopNavBar roomId={roomId} roomName={snapshot?.name} />
 
       {/* Main Responsive Grid Area */}
-      <main className="flex-1 overflow-hidden min-h-0 relative">
+      <Box component="main" style={{ flex: 1, overflow: "hidden", minHeight: 0, position: "relative" }}>
         {/* DESKTOP VIEW (>= 1024px): 25fr 45fr 30fr Grid */}
-        <div className="hidden lg:grid grid-cols-[25fr_45fr_30fr] h-full w-full overflow-hidden min-h-0 divide-x divide-border/80">
+        <Box
+          className="hidden lg:grid"
+          style={{
+            gridTemplateColumns: "25fr 45fr 30fr",
+            height: "100%",
+            width: "100%",
+            overflow: "hidden",
+            minHeight: 0,
+          }}
+        >
           {/* LEFT COLUMN: 25% - Teams & 1-Click Bot Takeover */}
-          <section className="h-full overflow-hidden min-h-0">
+          <Box
+            component="section"
+            style={{
+              height: "100%",
+              overflow: "hidden",
+              minHeight: 0,
+              borderRight: "1px solid var(--mantine-color-dark-4)",
+            }}
+          >
             <TeamAccordions
               onClaimTeam={claimTeam}
               onTakeOverTeam={takeOverTeam}
@@ -112,19 +162,22 @@ export default function AuctionPage({
               isCreator={isCreator}
               currentUserId={currentUserId}
             />
-          </section>
+          </Box>
 
           {/* CENTER COLUMN: 45% - Main Auction Workspace */}
-          <section className="h-full overflow-hidden min-h-0">
+          <Box
+            component="section"
+            style={{
+              height: "100%",
+              overflow: "hidden",
+              minHeight: 0,
+              borderRight: "1px solid var(--mantine-color-dark-4)",
+            }}
+          >
             <AuctionWorkspace
               onPlaceBid={(amount) => {
                 if (snapshot?.currentLot && myFranchise) {
-                  placeBid(
-                    amount,
-                    myFranchise,
-                    snapshot.currentLot.id,
-                    snapshot.stateVersion
-                  );
+                  placeBid(amount, myFranchise, snapshot.currentLot.id, snapshot.stateVersion);
                 }
               }}
               onStartAuction={startAuction}
@@ -136,72 +189,142 @@ export default function AuctionPage({
               onDecideRtm={decideRtm}
               serverOffset={serverTimeOffset}
             />
-          </section>
+          </Box>
 
-          {/* RIGHT COLUMN: 30% - Vertically Divided: (a) Activity & Live Chat (b) Current Set Players List */}
-          <section className="h-full flex flex-col overflow-hidden min-h-0 bg-background/30 divide-y divide-border/80">
-            {/* Upper Part (a): Activity & Live Chat */}
-            <div className="h-[52%] flex flex-col overflow-hidden min-h-0">
+          {/* RIGHT COLUMN: 30% - Upper (Activity / Chat), Lower (Current Set Players) */}
+          <Box
+            component="section"
+            style={{
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              minHeight: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.2)",
+            }}
+          >
+            {/* Upper Part: Activity & Live Chat */}
+            <Box
+              style={{
+                height: "52%",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                minHeight: 0,
+                borderBottom: "1px solid var(--mantine-color-dark-4)",
+              }}
+            >
               {/* Activity & Chat Tab Header */}
-              <div className="flex items-center border-b border-border/80 bg-secondary/30 px-3 py-1 flex-shrink-0">
-                <button
-                  onClick={() => setActivityTab("activity")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer",
-                    activityTab === "activity"
-                      ? "bg-card text-foreground shadow-2xs border border-border/70"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Activity className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Activity</span>
-                  {unreadActivityCount > 0 && activityTab !== "activity" && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-blue-500 text-white font-mono text-[9px] font-black">
-                      {unreadActivityCount}
-                    </span>
-                  )}
-                </button>
+              <Paper
+                p={4}
+                radius={0}
+                style={{
+                  borderTop: 0,
+                  borderLeft: 0,
+                  borderRight: 0,
+                  borderBottom: "1px solid var(--mantine-color-dark-5)",
+                  backgroundColor: "var(--mantine-color-dark-8)",
+                }}
+              >
+                <Group gap={4}>
+                  <UnstyledButton
+                    onClick={() => setActivityTab("activity")}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      backgroundColor:
+                        activityTab === "activity"
+                          ? "var(--mantine-color-dark-6)"
+                          : "transparent",
+                      color:
+                        activityTab === "activity"
+                          ? "var(--mantine-color-white)"
+                          : "var(--mantine-color-dimmed)",
+                      border:
+                        activityTab === "activity"
+                          ? "1px solid var(--mantine-color-dark-4)"
+                          : "1px solid transparent",
+                    }}
+                  >
+                    <IconActivity size={14} color="var(--mantine-color-blue-4)" />
+                    <span>Activity</span>
+                    {unreadActivityCount > 0 && activityTab !== "activity" && (
+                      <Badge size="xs" color="blue" variant="filled">
+                        {unreadActivityCount}
+                      </Badge>
+                    )}
+                  </UnstyledButton>
 
-                <button
-                  onClick={() => setActivityTab("chat")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ml-1",
-                    activityTab === "chat"
-                      ? "bg-card text-foreground shadow-2xs border border-border/70"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Live Chat</span>
-                  {unreadChatCount > 0 && activityTab !== "chat" && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-red-500 text-white font-mono text-[9px] font-black">
-                      {unreadChatCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+                  <UnstyledButton
+                    onClick={() => setActivityTab("chat")}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      backgroundColor:
+                        activityTab === "chat"
+                          ? "var(--mantine-color-dark-6)"
+                          : "transparent",
+                      color:
+                        activityTab === "chat"
+                          ? "var(--mantine-color-white)"
+                          : "var(--mantine-color-dimmed)",
+                      border:
+                        activityTab === "chat"
+                          ? "1px solid var(--mantine-color-dark-4)"
+                          : "1px solid transparent",
+                    }}
+                  >
+                    <IconMessage size={14} color="var(--mantine-color-indigo-4)" />
+                    <span>Live Chat</span>
+                    {unreadChatCount > 0 && activityTab !== "chat" && (
+                      <Badge size="xs" color="red" variant="filled">
+                        {unreadChatCount}
+                      </Badge>
+                    )}
+                  </UnstyledButton>
+                </Group>
+              </Paper>
 
               {/* Active Sub-tab View */}
-              <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+              <Box style={{ flex: 1, overflow: "hidden", minHeight: 0, display: "flex", flexDirection: "column" }}>
                 {activityTab === "activity" ? (
                   <ActivityFeed />
                 ) : (
                   <LiveChat onSendMessage={sendChat} isConnected={isConnected} />
                 )}
-              </div>
-            </div>
+              </Box>
+            </Box>
 
-            {/* Lower Part (b): Current Set Players List */}
-            <div className="h-[48%] flex flex-col overflow-hidden min-h-0">
+            {/* Lower Part: Current Set Players List */}
+            <Box style={{ height: "48%", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
               <CurrentSetPlayersList roomId={roomId} />
-            </div>
-          </section>
-        </div>
+            </Box>
+          </Box>
+        </Box>
 
-        {/* MOBILE VIEW (< 1024px): Tab Switching with Persistent WebSocket Connection */}
-        <div className="lg:hidden h-full w-full overflow-hidden min-h-0 pb-14">
+        {/* MOBILE VIEW (< 1024px) */}
+        <Box
+          className="lg:hidden"
+          style={{
+            height: "100%",
+            width: "100%",
+            overflow: "hidden",
+            minHeight: 0,
+            paddingBottom: 56,
+          }}
+        >
           {activeMobileTab === "teams" && (
-            <div className="h-full overflow-hidden min-h-0">
+            <Box style={{ height: "100%", overflow: "hidden", minHeight: 0 }}>
               <TeamAccordions
                 onClaimTeam={claimTeam}
                 onTakeOverTeam={takeOverTeam}
@@ -210,20 +333,15 @@ export default function AuctionPage({
                 isCreator={isCreator}
                 currentUserId={currentUserId}
               />
-            </div>
+            </Box>
           )}
 
           {activeMobileTab === "auction" && (
-            <div className="h-full overflow-hidden min-h-0 max-w-2xl mx-auto w-full">
+            <Box style={{ height: "100%", overflow: "hidden", minHeight: 0, maxWidth: 860, margin: "0 auto" }}>
               <AuctionWorkspace
                 onPlaceBid={(amount) => {
                   if (snapshot?.currentLot && myFranchise) {
-                    placeBid(
-                      amount,
-                      myFranchise,
-                      snapshot.currentLot.id,
-                      snapshot.stateVersion
-                    );
+                    placeBid(amount, myFranchise, snapshot.currentLot.id, snapshot.stateVersion);
                   }
                 }}
                 onStartAuction={startAuction}
@@ -235,55 +353,92 @@ export default function AuctionPage({
                 onDecideRtm={decideRtm}
                 serverOffset={serverTimeOffset}
               />
-            </div>
+            </Box>
           )}
 
           {activeMobileTab === "activity" && (
-            <div className="h-full flex flex-col overflow-hidden min-h-0 divide-y divide-border/80">
-              {/* Activity vs Chat subtabs */}
-              <div className="h-[55%] flex flex-col overflow-hidden min-h-0">
-                <div className="flex items-center border-b border-border/80 bg-secondary/30 px-3 py-1 flex-shrink-0">
-                  <button
-                    onClick={() => setActivityTab("activity")}
-                    className={cn(
-                      "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer text-center",
-                      activityTab === "activity"
-                        ? "bg-card text-foreground shadow-2xs border border-border/70"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    Activity
-                  </button>
-                  <button
-                    onClick={() => setActivityTab("chat")}
-                    className={cn(
-                      "flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer text-center ml-1",
-                      activityTab === "chat"
-                        ? "bg-card text-foreground shadow-2xs border border-border/70"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    Live Chat {unreadChatCount > 0 && `(${unreadChatCount})`}
-                  </button>
-                </div>
+            <Box style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+              <Box
+                style={{
+                  height: "55%",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  minHeight: 0,
+                  borderBottom: "1px solid var(--mantine-color-dark-4)",
+                }}
+              >
+                <Paper
+                  p={4}
+                  radius={0}
+                  style={{
+                    borderTop: 0,
+                    borderLeft: 0,
+                    borderRight: 0,
+                    borderBottom: "1px solid var(--mantine-color-dark-5)",
+                    backgroundColor: "var(--mantine-color-dark-8)",
+                  }}
+                >
+                  <Group grow gap={4}>
+                    <UnstyledButton
+                      onClick={() => setActivityTab("activity")}
+                      style={{
+                        textAlign: "center",
+                        padding: "6px 12px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        backgroundColor:
+                          activityTab === "activity"
+                            ? "var(--mantine-color-dark-6)"
+                            : "transparent",
+                        color:
+                          activityTab === "activity"
+                            ? "var(--mantine-color-white)"
+                            : "var(--mantine-color-dimmed)",
+                      }}
+                    >
+                      Activity
+                    </UnstyledButton>
+                    <UnstyledButton
+                      onClick={() => setActivityTab("chat")}
+                      style={{
+                        textAlign: "center",
+                        padding: "6px 12px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        backgroundColor:
+                          activityTab === "chat"
+                            ? "var(--mantine-color-dark-6)"
+                            : "transparent",
+                        color:
+                          activityTab === "chat"
+                            ? "var(--mantine-color-white)"
+                            : "var(--mantine-color-dimmed)",
+                      }}
+                    >
+                      Live Chat {unreadChatCount > 0 && `(${unreadChatCount})`}
+                    </UnstyledButton>
+                  </Group>
+                </Paper>
 
-                <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+                <Box style={{ flex: 1, overflow: "hidden", minHeight: 0, display: "flex", flexDirection: "column" }}>
                   {activityTab === "activity" ? (
                     <ActivityFeed />
                   ) : (
                     <LiveChat onSendMessage={sendChat} isConnected={isConnected} />
                   )}
-                </div>
-              </div>
+                </Box>
+              </Box>
 
-              {/* Lower Part: Current Set Players List */}
-              <div className="h-[45%] flex flex-col overflow-hidden min-h-0">
+              <Box style={{ height: "45%", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
                 <CurrentSetPlayersList roomId={roomId} />
-              </div>
-            </div>
+              </Box>
+            </Box>
           )}
-        </div>
-      </main>
+        </Box>
+      </Box>
 
       {/* Mandatory Mobile Bottom Navigation */}
       <MobileBottomNav />
@@ -296,6 +451,6 @@ export default function AuctionPage({
           updateDisplayName(name);
         }}
       />
-    </div>
+    </Box>
   );
 }

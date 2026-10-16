@@ -2,8 +2,8 @@
 
 import React, { useEffect, useRef } from "react";
 import { useSyncTimer } from "../../hooks/useSyncTimer";
-import { cn } from "../../lib/utils";
-import { Timer, AlertTriangle } from "lucide-react";
+import { Box, Group, Text, Progress, Badge } from "@mantine/core";
+import { IconClock, IconAlertTriangle } from "@tabler/icons-react";
 
 interface TimerDisplayProps {
   timerDeadline: number | null;
@@ -26,12 +26,10 @@ function playTickSound(second: number) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    // 3s: 800Hz, 2s: 1000Hz, 1s: 1250Hz (sharp, rising urgency tick)
     const freq = second === 1 ? 1250 : second === 2 ? 1000 : 800;
     osc.type = "sine";
     osc.frequency.setValueAtTime(freq, ctx.currentTime);
 
-    // Fast, crisp woodblock-style tick click
     gain.gain.setValueAtTime(0.18, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
 
@@ -40,9 +38,7 @@ function playTickSound(second: number) {
 
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.05);
-  } catch (err) {
-    // Autoplay policy or unsupported audio environment silently ignored
-  }
+  } catch (err) {}
 }
 
 export const TimerDisplay: React.FC<TimerDisplayProps> = ({
@@ -75,54 +71,46 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     }
   }, [secondsLeft, isPaused, timerDeadline, remainingMs]);
 
-  return (
-    <div className={cn("w-full flex flex-col gap-1", compact ? "gap-0.5" : "gap-1.5", className)}>
-      <div className="flex items-center justify-between text-xs font-semibold px-0.5">
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <Timer className={cn("text-primary", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
-          {!compact && (
-            <span className="uppercase tracking-wider text-[11px] font-bold">
-              {isPaused ? "Countdown Paused" : "Hammer Countdown"}
-            </span>
-          )}
-        </div>
+  const progressColor = isPaused
+    ? "yellow"
+    : isUrgent
+    ? "red"
+    : percentage > 50
+    ? "blue"
+    : "orange";
 
-        <div className="flex items-center gap-1">
-          {isUrgent && !isPaused && (
-            <AlertTriangle className={cn("text-red-500 animate-pulse-fast", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
+  return (
+    <Box w="100%" className={className}>
+      <Group justify="space-between" mb={compact ? 2 : 4}>
+        <Group gap={4}>
+          <IconClock size={compact ? 14 : 16} color="#748ffc" />
+          {!compact && (
+            <Text size="11px" fw={800} tt="uppercase" c="dimmed" style={{ letterSpacing: "0.05em" }}>
+              {isPaused ? "Countdown Paused" : "Hammer Countdown"}
+            </Text>
           )}
-          <span
-            className={cn(
-              "font-mono font-black tabular-nums transition-colors",
-              compact ? "text-xs" : "text-sm",
-              isPaused
-                ? "text-amber-600 dark:text-amber-400"
-                : isUrgent
-                ? "text-red-500 animate-pulse-fast"
-                : "text-foreground"
-            )}
+        </Group>
+
+        <Group gap={4}>
+          {isUrgent && !isPaused && <IconAlertTriangle size={14} color="#fa5252" />}
+          <Text
+            size={compact ? "xs" : "sm"}
+            fw={900}
+            ff="monospace"
+            c={isPaused ? "yellow.4" : isUrgent ? "red.5" : "white"}
           >
             {isPaused ? "PAUSED" : `${secondsLeft}s`}
-          </span>
-        </div>
-      </div>
+          </Text>
+        </Group>
+      </Group>
 
-      {/* Progress Bar */}
-      <div className={cn("w-full bg-slate-200 dark:bg-secondary/80 rounded-full overflow-hidden p-0.5 border border-slate-300/80 dark:border-border/50", compact ? "h-1.5" : "h-2")}>
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-75 ease-linear",
-            isPaused
-              ? "bg-amber-400"
-              : isUrgent
-              ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
-              : percentage > 50
-              ? "bg-blue-500"
-              : "bg-amber-500"
-          )}
-          style={{ width: `${isPaused ? 50 : percentage}%` }}
-        />
-      </div>
-    </div>
+      <Progress
+        value={isPaused ? 50 : percentage}
+        color={progressColor}
+        size={compact ? "xs" : "sm"}
+        radius="xl"
+        animated={isUrgent && !isPaused}
+      />
+    </Box>
   );
 };

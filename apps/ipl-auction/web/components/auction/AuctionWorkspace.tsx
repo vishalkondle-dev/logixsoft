@@ -26,6 +26,7 @@ import {
   SimpleGrid,
   Divider,
   Center,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   Cards,
@@ -397,60 +398,59 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                           {currentLot.playerName}
                         </Title>
 
-                        {/* Right-aligned tags and flag: Icon on mobile, Icon+Text on sm+ */}
-                        <Group gap={5} align="center" wrap="wrap">
-                          {/* Capped / Uncapped Tag */}
+                        {/* Right-aligned tags and flag: Icons only, no redundant text */}
+                        <Group gap={6} align="center" wrap="nowrap">
+                          {/* Capped / Uncapped Icon */}
                           <Tooltip
-                            label={currentLot.isCapped ? "Capped Player" : "Uncapped Player"}
+                            label={
+                              currentLot.isCapped
+                                ? "Capped Player (International Experience)"
+                                : "Uncapped Player (Domestic/Emerging)"
+                            }
                             withArrow
                           >
-                            <Badge
-                              size="xs"
+                            <ThemeIcon
+                              size="sm"
+                              radius="md"
+                              variant={currentLot.isCapped ? "light" : "subtle"}
                               color={currentLot.isCapped ? "teal" : "gray"}
-                              variant="light"
-                              px={{ base: 5, sm: 8 }}
-                              style={{ whiteSpace: "nowrap" }}
                             >
-                              <Group gap={4} wrap="nowrap" align="center">
-                                {currentLot.isCapped ? <GiBilledCap size={13} /> : <User size={11} />}
-                                <span className="hidden sm:inline">
-                                  {currentLot.isCapped ? "CAPPED" : "UNCAPPED"}
-                                </span>
-                              </Group>
-                            </Badge>
+                              {currentLot.isCapped ? (
+                                <GiBilledCap size={15} />
+                              ) : (
+                                <User size={13} weight="bold" />
+                              )}
+                            </ThemeIcon>
                           </Tooltip>
 
-                          {/* Overseas Tag */}
+                          {/* Overseas Airplane Icon */}
                           {currentLot.isOverseas && (
                             <Tooltip label="Overseas Player (Foreign Slot)" withArrow>
-                              <Badge
-                                size="xs"
-                                color="yellow"
-                                variant="light"
-                                px={{ base: 5, sm: 8 }}
-                                style={{ whiteSpace: "nowrap" }}
-                              >
-                                <Group gap={4} wrap="nowrap" align="center">
-                                  <Airplane size={12} weight="fill" />
-                                  <span className="hidden sm:inline">OVERSEAS</span>
-                                </Group>
-                              </Badge>
+                              <ThemeIcon size="sm" radius="md" variant="light" color="yellow">
+                                <Airplane size={14} weight="fill" />
+                              </ThemeIcon>
                             </Tooltip>
                           )}
 
-                          {/* RTM Tag */}
+                          {/* RTM Tag: Cards icon + Franchise Code */}
                           {hasRtm && (
-                            <Tooltip label={`Right to Match available for ${currentLot.previousFranchise}`} withArrow>
+                            <Tooltip
+                              label={`Right to Match (RTM) available for ${currentLot.previousFranchise}`}
+                              withArrow
+                            >
                               <Badge
                                 size="xs"
+                                radius="md"
                                 color="blue"
                                 variant="light"
-                                px={{ base: 5, sm: 8 }}
+                                px={6}
                                 style={{ whiteSpace: "nowrap" }}
                               >
-                                <Group gap={4} wrap="nowrap" align="center">
+                                <Group gap={3} wrap="nowrap" align="center">
                                   <Cards size={12} weight="bold" />
-                                  <span>RTM: {currentLot.previousFranchise}</span>
+                                  <span style={{ fontWeight: 800 }}>
+                                    {currentLot.previousFranchise}
+                                  </span>
                                 </Group>
                               </Badge>
                             </Tooltip>
@@ -460,21 +460,20 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                         </Group>
                       </Group>
 
-                      {/* Sub-header: Role Badge with bat/bowl/gloves icon + Batting/Bowling style */}
-                      <Group gap="xs" mt={4} mb={6} align="center" wrap="wrap">
-                        <Badge
-                          color={roleMeta.color}
-                          size="sm"
-                          variant="filled"
-                          px={{ base: 7, sm: 10 }}
-                          style={{ fontWeight: 800, textTransform: "uppercase", whiteSpace: "nowrap" }}
-                        >
-                          <Group gap={4} wrap="nowrap" align="center">
+                      {/* Sub-header: Role Icon (Bat/Bowl/Gloves) + Batting/Bowling style */}
+                      <Group gap="xs" mt={4} mb={6} align="center" wrap="nowrap">
+                        <Tooltip label={roleMeta.label} withArrow>
+                          <ThemeIcon
+                            size="sm"
+                            radius="md"
+                            variant="filled"
+                            color={roleMeta.color}
+                            aria-label={roleMeta.label}
+                          >
                             {roleIcon}
-                            <span>{roleMeta.label}</span>
-                          </Group>
-                        </Badge>
-                        <Text size="xs" c="dimmed" truncate>
+                          </ThemeIcon>
+                        </Tooltip>
+                        <Text size="xs" fw={700} c="white" truncate>
                           {formatBattingStyle(currentLot.battingStyle)}
                           {currentLot.bowlingStyle && currentLot.bowlingStyle !== "None"
                             ? ` • ${currentLot.bowlingStyle}`

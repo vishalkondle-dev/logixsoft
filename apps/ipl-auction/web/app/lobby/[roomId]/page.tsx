@@ -272,15 +272,16 @@ export default function LobbyPage({
                         {snapshot.ruleset || "MEGA"}
                       </Badge>
                       {isCreator && (
-                        <Badge
-                          color="teal"
-                          variant="light"
-                          size="xs"
-                          leftSection={<Crown size={11} />}
-                          style={{ whiteSpace: "nowrap" }}
-                        >
-                          Host
-                        </Badge>
+                        <Tooltip label="Room Host" withArrow>
+                          <ThemeIcon
+                            color="teal"
+                            variant="light"
+                            size="xs"
+                            radius="sm"
+                          >
+                            <Crown size={12} weight="bold" />
+                          </ThemeIcon>
+                        </Tooltip>
                       )}
                     </Group>
 
@@ -509,25 +510,20 @@ export default function LobbyPage({
                               <Tooltip
                                 label={
                                   isClaimedByMe
-                                    ? "You (Human Controller)"
+                                    ? "Claimed by You (Human Controller)"
                                     : `Claimed by ${team.humanDisplayName || "Human"}`
                                 }
                                 withArrow
                               >
-                                <Badge
+                                <ThemeIcon
                                   size="xs"
                                   color="teal"
                                   variant="light"
-                                  px={5}
-                                  style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                                  radius="sm"
+                                  style={{ flexShrink: 0 }}
                                 >
-                                  <Group gap={3} wrap="nowrap" align="center">
-                                    <UserCheck size={11} weight="bold" />
-                                    <span style={{ fontSize: 9, fontWeight: 800 }}>
-                                      {isClaimedByMe ? "YOU" : "USER"}
-                                    </span>
-                                  </Group>
-                                </Badge>
+                                  <UserCheck size={13} weight="bold" />
+                                </ThemeIcon>
                               </Tooltip>
                             ) : (
                               <Tooltip label="AI Bot Controller" withArrow>

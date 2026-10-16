@@ -14,6 +14,8 @@ import {
   Text,
   Badge,
   ScrollArea,
+  ThemeIcon,
+  Tooltip,
 } from "@mantine/core";
 import {
   Cards,
@@ -215,14 +217,16 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
                     <Text size="xs" fw={isLive ? 900 : 700} c={isLive ? "yellow.3" : "white"} truncate>
                       {player.playerName}
                     </Text>
-                    <Badge
-                      size="xs"
-                      variant="light"
-                      color={getRoleMeta(player.role).color}
-                      leftSection={getRoleIcon(player.role, 10)}
-                    >
-                      {getRoleMeta(player.role).shortLabel}
-                    </Badge>
+                    <Tooltip label={getRoleMeta(player.role).label} withArrow>
+                      <ThemeIcon
+                        size="xs"
+                        radius="xs"
+                        variant="light"
+                        color={getRoleMeta(player.role).color}
+                      >
+                        {getRoleIcon(player.role, 11)}
+                      </ThemeIcon>
+                    </Tooltip>
                   </Group>
 
                   <Group gap={6} wrap="nowrap">

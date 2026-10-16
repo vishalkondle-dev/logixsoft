@@ -31,6 +31,7 @@ import {
   UserMinus,
   UserCircleMinus,
   Lightning,
+  UserCheck,
 } from "@phosphor-icons/react";
 import { PurchasedPlayerRecord } from "../../lib/types";
 
@@ -161,24 +162,17 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                         {team.shortName}
                       </Text>
                       {isMyFranchise && (
-                        <Badge size="xs" color="blue" variant="filled">
-                          YOU
-                        </Badge>
+                        <Tooltip label="Your Claimed Franchise" withArrow>
+                          <ThemeIcon size="xs" radius="sm" color="blue" variant="filled">
+                            <UserCheck size={11} weight="bold" />
+                          </ThemeIcon>
+                        </Tooltip>
                       )}
                       {isLeading && (
                         <Tooltip label="Currently Highest Bidder" withArrow>
-                          <Badge
-                            size="xs"
-                            color="yellow"
-                            variant="light"
-                            px={{ base: 4, sm: 6 }}
-                            style={{ whiteSpace: "nowrap" }}
-                          >
-                            <Group gap={3} wrap="nowrap" align="center">
-                              <Fire size={10} weight="fill" color="#f59f00" />
-                              <span className="hidden xs:inline">BIDDING</span>
-                            </Group>
-                          </Badge>
+                          <ThemeIcon size="xs" radius="sm" color="yellow" variant="light">
+                            <Fire size={11} weight="fill" color="#f59f00" />
+                          </ThemeIcon>
                         </Tooltip>
                       )}
                     </Group>

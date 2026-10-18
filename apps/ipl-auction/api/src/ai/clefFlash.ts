@@ -303,8 +303,13 @@ export class ClefFlashService {
     lotsRemaining: number = 20,
     totalLots: number = 61
   ): Promise<AIDecisionResult> {
+    const isHumanLeading = Boolean(
+      lot.highestBidderFranchise &&
+      teams[lot.highestBidderFranchise]?.controller === "HUMAN"
+    );
+
     // 1. Identify eligible AI franchises
-    const eligibleTeams: { code: string; team: FranchiseState; ceiling: number }[] = [];
+    const eligibleTeams: { code: string; team: FranchiseState; ceiling: number; scoutingTier: string }[] = [];
 
     for (const [code, team] of Object.entries(teams)) {
       if (team.controller !== "AI") continue;
@@ -318,9 +323,9 @@ export class ClefFlashService {
       const minReserve = spotsRemaining * 3000000;
       if (team.remainingPurse - nextLegalBid < minReserve) continue;
 
-      const val = calculateDetailedValuation(lot, team, difficulty, lotsRemaining, totalLots, teams);
+      const val = calculateDetailedValuation(lot, team, difficulty, lotsRemaining, totalLots, teams, isHumanLeading);
       if (val.isDesirable && val.ceiling >= nextLegalBid) {
-        eligibleTeams.push({ code, team, ceiling: val.ceiling });
+        eligibleTeams.push({ code, team, ceiling: val.ceiling, scoutingTier: val.scoutingTier || "SECONDARY_TARGET" });
       }
     }
 
@@ -356,6 +361,8 @@ export class ClefFlashService {
           currentBid: lot.currentBid,
           nextLegalBid,
           currentLeader: lot.highestBidderFranchise,
+          isHumanLeading,
+          humanLeaderName: isHumanLeading ? (teams[lot.highestBidderFranchise!]?.name || lot.highestBidderFranchise) : null,
           difficulty,
           lotsRemaining,
           totalLots,
@@ -370,6 +377,7 @@ export class ClefFlashService {
               inRoleCount: inRole,
               overseas: e.team.overseasCount,
               valuationCeiling: e.ceiling,
+              scoutingTier: e.scoutingTier,
             };
           }),
         };
@@ -377,7 +385,7 @@ export class ClefFlashService {
         const criteria: Record<string, string> = {};
         for (const e of eligibleTeams) {
           const inRole = (e.team.purchasedPlayers || []).filter((p) => p.role === lot.role).length;
-          criteria[e.code] = `Franchise ${e.code}: ₹${(e.team.remainingPurse / 10000000).toFixed(2)} Cr purse, ${inRole} current ${lot.role}s, valuation ceiling ₹${(e.ceiling / 10000000).toFixed(2)} Cr`;
+          criteria[e.code] = `Franchise ${e.code} (${e.scoutingTier}): ₹${(e.team.remainingPurse / 10000000).toFixed(2)} Cr purse, ${inRole} current ${lot.role}s, valuation ceiling ₹${(e.ceiling / 10000000).toFixed(2)} Cr`;
         }
 
         const modelResult = await Promise.race([
@@ -387,11 +395,15 @@ export class ClefFlashService {
             questions: {
               should_bid: {
                 type: "bool",
-                instructions: `Should an eligible AI franchise place the next legal bid of ₹${nextLegalBid.toLocaleString("en-IN")} for ${lot.playerName} (${lot.role}, SR: ${lot.strikeRate}, Econ: ${lot.economy}, Base: ₹${lot.basePrice.toLocaleString("en-IN")})? Answer 'no' if the player has poor stats, is overpriced, or not needed.`,
+                instructions: isHumanLeading
+                  ? `Human user (${teams[lot.highestBidderFranchise!]?.name || "Human User"}) currently holds the highest bid of ₹${lot.currentBid.toLocaleString("en-IN")} for ${lot.playerName}. Should an eligible AI franchise challenge the human with the next legal bid of ₹${nextLegalBid.toLocaleString("en-IN")}? Answer 'yes' if any AI team has budget headroom and targets this player.`
+                  : `Should an eligible AI franchise place the next legal bid of ₹${nextLegalBid.toLocaleString("en-IN")} for ${lot.playerName} (${lot.role}, SR: ${lot.strikeRate}, Econ: ${lot.economy}, Base: ₹${lot.basePrice.toLocaleString("en-IN")})? Answer 'no' if the player has poor stats, is overpriced, or not needed.`,
               },
               bidder: {
                 type: "choice",
-                instructions: "Which eligible AI franchise has the strongest squad fit and financial reason to bid?",
+                instructions: isHumanLeading
+                  ? `Which eligible AI franchise should contest the human leader for ${lot.playerName}? Prioritize franchises with CORE_TARGET or SECONDARY_TARGET priority.`
+                  : "Which eligible AI franchise has the strongest squad fit and financial reason to bid?",
                 criteria,
               },
               valuation_assessment: {
@@ -439,6 +451,6 @@ export class ClefFlashService {
     }
 
     // 3. Deterministic rule-based fallback
-    return FallbackAIEngine.evaluateBidding(lot, teams, nextLegalBid, difficulty, lotsRemaining, totalLots);
+    return FallbackAIEngine.evaluateBidding(lot, teams, nextLegalBid, difficulty, lotsRemaining, totalLots, isHumanLeading);
   }
 }

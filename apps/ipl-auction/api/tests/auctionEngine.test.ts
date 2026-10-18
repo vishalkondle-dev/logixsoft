@@ -107,4 +107,127 @@ describe("Auction Engine & Domain Logic Unit Tests", () => {
     const a2 = AudioAnnouncementService.createBidAnnouncement(22000000, "Mumbai Indians");
     expect(a2.sequence).toBeGreaterThan(a1.sequence);
   });
+
+  it("distributes distinct scouting tiers and staggered ceilings across franchises", () => {
+    const lot = {
+      id: "lot_kl",
+      lotNumber: 1,
+      setId: "set_1",
+      setCode: "BA1",
+      setName: "Set 1",
+      orderInSet: 1,
+      playerId: "p_kl",
+      playerName: "KL Rahul",
+      country: "India",
+      isOverseas: false,
+      role: "WICKETKEEPER" as const,
+      basePrice: 20000000,
+      matches: 120,
+      runs: 4200,
+      battingAverage: 45,
+      strikeRate: 135,
+      wickets: 0,
+      economy: 0,
+      isCapped: true,
+      hiddenRatingOverall: 89,
+      status: "ACTIVE" as const,
+      currentBid: 0,
+      highestBidderFranchise: null,
+      soldToFranchise: null,
+      finalPrice: null,
+    };
+
+    const valuations = SEED_FRANCHISES.map((f) => {
+      const franchiseState = {
+        code: f.code,
+        name: f.name,
+        totalPurse: 1200000000,
+        remainingPurse: 1200000000,
+        squadCount: 0,
+        minSquad: 18,
+        maxSquad: 25,
+        overseasCount: 0,
+        maxOverseas: 8,
+        rtmCardsRemaining: 1,
+        purchasedPlayers: [],
+        controller: "AI" as const,
+      };
+      return calculatePlayerValuation(lot, franchiseState, "normal", 20, 61);
+    });
+
+    // Ceilings must not all be identical across the 10 franchises
+    const uniqueValuations = new Set(valuations);
+    expect(uniqueValuations.size).toBeGreaterThan(3);
+  });
+
+  it("applies paddle tenacity and counter-bids when a human user takes the lead", () => {
+    const lot = {
+      id: "lot_shami",
+      lotNumber: 2,
+      setId: "set_1",
+      setCode: "BO1",
+      setName: "Set 1",
+      orderInSet: 2,
+      playerId: "p_shami",
+      playerName: "Mohammed Shami",
+      country: "India",
+      isOverseas: false,
+      role: "BOWLER" as const,
+      basePrice: 20000000,
+      matches: 110,
+      runs: 100,
+      battingAverage: 8,
+      strikeRate: 90,
+      wickets: 130,
+      economy: 8.2,
+      isCapped: true,
+      hiddenRatingOverall: 88,
+      status: "ACTIVE" as const,
+      currentBid: 50000000, // ₹5.0 Cr
+      highestBidderFranchise: "CSK", // CSK is human-controlled
+      soldToFranchise: null,
+      finalPrice: null,
+    };
+
+    const teams: Record<string, any> = {
+      CSK: {
+        code: "CSK",
+        totalPurse: 1200000000,
+        remainingPurse: 1150000000,
+        squadCount: 0,
+        minSquad: 18,
+        maxSquad: 25,
+        overseasCount: 0,
+        maxOverseas: 8,
+        controller: "HUMAN", // Human is leading
+      },
+      GT: {
+        code: "GT",
+        totalPurse: 1200000000,
+        remainingPurse: 1200000000,
+        squadCount: 0,
+        minSquad: 18,
+        maxSquad: 25,
+        overseasCount: 0,
+        maxOverseas: 8,
+        controller: "AI",
+      },
+      MI: {
+        code: "MI",
+        totalPurse: 1200000000,
+        remainingPurse: 1200000000,
+        squadCount: 0,
+        minSquad: 18,
+        maxSquad: 25,
+        overseasCount: 0,
+        maxOverseas: 8,
+        controller: "AI",
+      },
+    };
+
+    // Human leading with ₹5.0 Cr, next legal bid is ₹5.5 Cr
+    const decision = FallbackAIEngine.evaluateBidding(lot, teams, 55000000, "normal", 20, 61, true);
+    expect(decision.shouldBid).toBe(true);
+    expect(["GT", "MI"]).toContain(decision.bidderFranchiseCode);
+  });
 });

@@ -34,7 +34,8 @@ export class FallbackAIEngine {
     nextLegalBid: number,
     difficulty: "easy" | "normal" | "hard" = "normal",
     lotsRemaining: number = 20,
-    totalLots: number = 61
+    totalLots: number = 61,
+    isHumanLeading: boolean = false
   ): AIDecisionResult {
     const candidates: CandidateBidder[] = [];
 
@@ -52,8 +53,8 @@ export class FallbackAIEngine {
       const minReserve = spotsRemaining * 3000000; // ₹30 Lakh base per remaining spot
       if (team.remainingPurse - nextLegalBid < minReserve) continue;
 
-      // Detailed valuation check factoring in entire room state
-      const val = calculateDetailedValuation(lot, team, difficulty, lotsRemaining, totalLots, teams);
+      // Detailed valuation check factoring in entire room state, scouting tier, and human rivalry
+      const val = calculateDetailedValuation(lot, team, difficulty, lotsRemaining, totalLots, teams, isHumanLeading);
       if (!val.isDesirable || val.ceiling < nextLegalBid || val.roleNeedFactor <= 0.20) continue;
 
       const surplus = val.ceiling - nextLegalBid;
@@ -67,9 +68,22 @@ export class FallbackAIEngine {
       const pursePerSlot = team.remainingPurse / slotsRemaining;
       const purseFactor = Math.min(1.4, Math.max(0.7, pursePerSlot / 50000000));
 
+      // Rivalry & Paddle war elasticity:
+      // When a human participant holds the lead, teams targeting this player contest the human enthusiastically!
+      let rivalryBoost = 1.0;
+      if (isHumanLeading) {
+        if (val.scoutingTier === "CORE_TARGET") {
+          rivalryBoost = 1.85;
+        } else if (val.scoutingTier === "SECONDARY_TARGET") {
+          rivalryBoost = 1.40;
+        } else {
+          rivalryBoost = 0.85;
+        }
+      }
+
       // Stochastic jitter (0.80 to 1.20) represents varying paddle raise timing in an auction
       const jitter = 0.80 + Math.random() * 0.40;
-      const weight = surplusRatio * Math.pow(val.squadNeedFactor, 2.0) * val.roleNeedFactor * purseFactor * jitter;
+      const weight = surplusRatio * Math.pow(val.squadNeedFactor, 2.0) * val.roleNeedFactor * purseFactor * jitter * rivalryBoost;
 
       candidates.push({
         code,
@@ -89,10 +103,22 @@ export class FallbackAIEngine {
       };
     }
 
-    // Sort by highest weighted bid desire
-    candidates.sort((a, b) => b.weight - a.weight);
+    // Weighted roulette wheel selection among motivated candidates:
+    // This creates authentic, unpredictable paddle wars where different teams react dynamically!
+    let totalWeight = 0;
+    for (const c of candidates) {
+      totalWeight += c.weight;
+    }
+    let roll = Math.random() * totalWeight;
+    let winner = candidates[0];
+    for (const c of candidates) {
+      roll -= c.weight;
+      if (roll <= 0) {
+        winner = c;
+        break;
+      }
+    }
 
-    const winner = candidates[0];
     return {
       shouldBid: true,
       bidderFranchiseCode: winner.code,

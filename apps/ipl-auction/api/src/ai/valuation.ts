@@ -2,30 +2,75 @@ import { FranchiseState, AuctionLot } from "../types/auction";
 
 export interface AIFranchiseProfile {
   franchiseCode: string;
-  aggression: number; // 1.02 - 1.10
+  aggression: number; // 1.05 - 1.15
   rolePriority: Record<string, number>;
   maxPurseRatioPerPlayer: number; // e.g. 0.20 (max 20% of total purse on one star)
+  paddleTenacity: number; // 1.18 - 1.28 (elasticity when challenged by human/rivals)
 }
 
-// Balanced, realistic aggression across all 10 IPL franchises
+// Balanced, distinct personalities across all 10 IPL franchises
 export const FRANCHISE_AI_PROFILES: Record<string, AIFranchiseProfile> = {
-  CSK: { franchiseCode: "CSK", aggression: 1.06, rolePriority: { ALL_ROUNDER: 1.25, BATTER: 1.1, BOWLER: 1.05, WICKETKEEPER: 1.1 }, maxPurseRatioPerPlayer: 0.20 },
-  MI: { franchiseCode: "MI", aggression: 1.08, rolePriority: { BOWLER: 1.25, ALL_ROUNDER: 1.15, BATTER: 1.1, WICKETKEEPER: 1.0 }, maxPurseRatioPerPlayer: 0.22 },
-  RCB: { franchiseCode: "RCB", aggression: 1.08, rolePriority: { BATTER: 1.25, ALL_ROUNDER: 1.1, BOWLER: 1.15, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.22 },
-  KKR: { franchiseCode: "KKR", aggression: 1.07, rolePriority: { ALL_ROUNDER: 1.25, BOWLER: 1.2, BATTER: 1.05, WICKETKEEPER: 1.0 }, maxPurseRatioPerPlayer: 0.20 },
-  SRH: { franchiseCode: "SRH", aggression: 1.07, rolePriority: { BATTER: 1.25, BOWLER: 1.15, ALL_ROUNDER: 1.05, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.21 },
-  DC: { franchiseCode: "DC", aggression: 1.05, rolePriority: { BATTER: 1.15, BOWLER: 1.15, ALL_ROUNDER: 1.1, WICKETKEEPER: 1.1 }, maxPurseRatioPerPlayer: 0.19 },
-  RR: { franchiseCode: "RR", aggression: 1.06, rolePriority: { BOWLER: 1.2, BATTER: 1.15, ALL_ROUNDER: 1.05, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.20 },
-  GT: { franchiseCode: "GT", aggression: 1.06, rolePriority: { BOWLER: 1.25, ALL_ROUNDER: 1.15, BATTER: 1.05, WICKETKEEPER: 1.0 }, maxPurseRatioPerPlayer: 0.20 },
-  LSG: { franchiseCode: "LSG", aggression: 1.05, rolePriority: { ALL_ROUNDER: 1.2, BATTER: 1.1, BOWLER: 1.1, WICKETKEEPER: 1.1 }, maxPurseRatioPerPlayer: 0.20 },
-  PBKS: { franchiseCode: "PBKS", aggression: 1.08, rolePriority: { ALL_ROUNDER: 1.15, BATTER: 1.15, BOWLER: 1.15, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.22 },
+  CSK: { franchiseCode: "CSK", aggression: 1.09, rolePriority: { ALL_ROUNDER: 1.25, BATTER: 1.15, BOWLER: 1.05, WICKETKEEPER: 1.15 }, maxPurseRatioPerPlayer: 0.20, paddleTenacity: 1.22 },
+  MI: { franchiseCode: "MI", aggression: 1.12, rolePriority: { BOWLER: 1.25, ALL_ROUNDER: 1.15, BATTER: 1.15, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.22, paddleTenacity: 1.26 },
+  RCB: { franchiseCode: "RCB", aggression: 1.12, rolePriority: { BATTER: 1.25, ALL_ROUNDER: 1.15, BOWLER: 1.15, WICKETKEEPER: 1.10 }, maxPurseRatioPerPlayer: 0.22, paddleTenacity: 1.26 },
+  KKR: { franchiseCode: "KKR", aggression: 1.09, rolePriority: { ALL_ROUNDER: 1.25, BOWLER: 1.20, BATTER: 1.05, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.20, paddleTenacity: 1.20 },
+  SRH: { franchiseCode: "SRH", aggression: 1.11, rolePriority: { BATTER: 1.25, BOWLER: 1.15, ALL_ROUNDER: 1.10, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.21, paddleTenacity: 1.23 },
+  DC: { franchiseCode: "DC", aggression: 1.08, rolePriority: { BATTER: 1.15, BOWLER: 1.15, ALL_ROUNDER: 1.10, WICKETKEEPER: 1.15 }, maxPurseRatioPerPlayer: 0.19, paddleTenacity: 1.18 },
+  RR: { franchiseCode: "RR", aggression: 1.08, rolePriority: { BOWLER: 1.20, BATTER: 1.15, ALL_ROUNDER: 1.05, WICKETKEEPER: 1.10 }, maxPurseRatioPerPlayer: 0.20, paddleTenacity: 1.18 },
+  GT: { franchiseCode: "GT", aggression: 1.08, rolePriority: { BOWLER: 1.25, ALL_ROUNDER: 1.15, BATTER: 1.10, WICKETKEEPER: 1.05 }, maxPurseRatioPerPlayer: 0.20, paddleTenacity: 1.20 },
+  LSG: { franchiseCode: "LSG", aggression: 1.09, rolePriority: { ALL_ROUNDER: 1.20, BATTER: 1.15, BOWLER: 1.10, WICKETKEEPER: 1.15 }, maxPurseRatioPerPlayer: 0.20, paddleTenacity: 1.20 },
+  PBKS: { franchiseCode: "PBKS", aggression: 1.12, rolePriority: { ALL_ROUNDER: 1.20, BATTER: 1.15, BOWLER: 1.15, WICKETKEEPER: 1.10 }, maxPurseRatioPerPlayer: 0.22, paddleTenacity: 1.25 },
 };
+
+export type ScoutingPriority = "CORE_TARGET" | "SECONDARY_TARGET" | "OPPORTUNISTIC" | "PASS";
+
+export interface ScoutingAssessment {
+  tier: ScoutingPriority;
+  multiplier: number;
+}
+
+/**
+ * Deterministically computes a franchise's unique scouting affinity for any given player.
+ * Ensures ceilings across all 10 franchises are realistically staggered rather than identical.
+ */
+export function getScoutingTargetTier(
+  playerId: string,
+  franchiseCode: string
+): ScoutingAssessment {
+  const key = `${playerId || "player"}_${franchiseCode}`;
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash |= 0;
+  }
+  const normalized = Math.abs(hash % 100);
+
+  // Staggered Priority Distribution across all 10 franchises:
+  // 0 - 24 (25%): CORE_TARGET (Franchise's primary scouted target: 1.25 - 1.48x)
+  // 25 - 64 (40%): SECONDARY_TARGET (Solid squad fit at market price: 1.00 - 1.18x)
+  // 65 - 89 (25%): OPPORTUNISTIC (Bargain hunter, drops out early: 0.78 - 0.95x)
+  // 90 - 99 (10%): PASS (Tactical mismatch: 0.55 - 0.72x)
+  if (normalized < 25) {
+    const sub = (normalized / 25) * 0.23;
+    return { tier: "CORE_TARGET", multiplier: 1.25 + sub };
+  } else if (normalized < 65) {
+    const sub = ((normalized - 25) / 40) * 0.18;
+    return { tier: "SECONDARY_TARGET", multiplier: 1.00 + sub };
+  } else if (normalized < 90) {
+    const sub = ((normalized - 65) / 25) * 0.17;
+    return { tier: "OPPORTUNISTIC", multiplier: 0.78 + sub };
+  } else {
+    const sub = ((normalized - 90) / 10) * 0.17;
+    return { tier: "PASS", multiplier: 0.55 + sub };
+  }
+}
 
 export interface ValuationResult {
   ceiling: number;
   squadNeedFactor: number;
   roleNeedFactor: number;
   isDesirable: boolean;
+  scoutingTier?: ScoutingPriority;
 }
 
 /**
@@ -33,8 +78,8 @@ export interface ValuationResult {
  * Factors in:
  * 1. Player rating & base price
  * 2. Positional / Role need of the franchise
- * 3. Relative squad deficit across the room (ensuring all 10 franchises acquire balanced rosters)
- * 4. Squad size saturation cooling (preventing any franchise from hoarding 25 players while others have few)
+ * 3. Scouting target priority tier (diversifying valuation across teams)
+ * 4. Human challenge paddle tenacity (preventing abrupt, predictable surrender against human bids)
  * 5. Minimum purse reserves for remaining slots
  */
 export function calculateDetailedValuation(
@@ -43,75 +88,76 @@ export function calculateDetailedValuation(
   difficulty: "easy" | "normal" | "hard" = "normal",
   lotsRemaining: number = 20,
   totalLots: number = 61,
-  allTeams?: Record<string, FranchiseState>
+  allTeams?: Record<string, FranchiseState>,
+  isHumanLeading: boolean = false
 ): ValuationResult {
   const profile = FRANCHISE_AI_PROFILES[franchise.code] || {
     franchiseCode: franchise.code,
     aggression: 1.05,
     rolePriority: {},
     maxPurseRatioPerPlayer: 0.2,
+    paddleTenacity: 1.20,
   };
 
   const rating = lot.hiddenRatingOverall || 70;
   const inRoleCount = (franchise.purchasedPlayers || []).filter((p) => p.role === lot.role).length;
 
-  // =========================================================================
-  // 1. UNSOLD FILTERS: POOR STATS, OVERSEAS QUALITY GATE, AND ROLE SATURATION
-  // =========================================================================
+  // Scouting Target Tier Assessment (Diversifies valuation across all 10 franchises)
+  const scouting = getScoutingTargetTier(lot.playerId || lot.id, franchise.code);
 
-  // A. Bottom-tier rating: players with rating < 60 have no commercial demand in IPL
-  if (rating < 60) {
-    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+  // If this franchise considers the player a tactical PASS and base price is significant, they pass
+  if (scouting.tier === "PASS" && lot.matches > 5 && lot.basePrice >= 10000000 && rating < 88) {
+    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: "PASS" };
   }
 
   // B. Overseas quota discipline: Overseas slots (max 8) are precious.
   // Franchises never spend an overseas slot on a mediocre/unproven overseas player.
   if (lot.isOverseas) {
     if (franchise.overseasCount >= franchise.maxOverseas) {
-      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
     }
     if (rating < 76) {
-      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
     }
     if (franchise.overseasCount >= 7 && rating < 88) {
       // Final overseas spot strictly reserved for elite match-winners
-      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
     }
     if (franchise.overseasCount >= 5 && rating < 80) {
-      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
     }
   }
 
   // C. Cricket Stat Quality Gates: If a player's career numbers are uncompetitive for T20, pass!
   if (lot.matches >= 10) {
     if (lot.role === "BATTER" && (lot.strikeRate < 118 || (lot.battingAverage < 19 && lot.strikeRate < 128))) {
-      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
     }
     if (lot.role === "BOWLER" && (lot.economy > 9.3 || (lot.economy > 8.8 && (lot.wickets / lot.matches) < 0.60))) {
-      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
     }
     if (lot.role === "ALL_ROUNDER" && lot.strikeRate < 115 && lot.economy > 9.0) {
-      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+      return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
     }
   }
 
   // D. Role Saturation Hard Stops:
   if (lot.role === "WICKETKEEPER" && inRoleCount >= 2) {
-    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
   }
   if (lot.role === "BATTER" && inRoleCount >= 7 && rating < 88) {
-    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
   }
   if (lot.role === "BOWLER" && inRoleCount >= 8 && rating < 88) {
-    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
   }
   if (lot.role === "ALL_ROUNDER" && inRoleCount >= 6 && rating < 88) {
-    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
   }
 
   // Max squad hard stop
   if (franchise.squadCount >= franchise.maxSquad) {
-    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
   }
 
   // =========================================================================
@@ -242,7 +288,7 @@ export function calculateDetailedValuation(
   }
 
   if (roleNeedFactor <= 0.10) {
-    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
+    return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false, scoutingTier: scouting.tier };
   }
 
   // Difficulty adjustment
@@ -250,8 +296,18 @@ export function calculateDetailedValuation(
   if (difficulty === "easy") difficultyFactor = 0.92;
   if (difficulty === "hard") difficultyFactor = 1.08;
 
-  // Raw calculated willingness
-  let calculatedCeiling = fairMarketValue * profile.aggression * roleNeedFactor * squadNeedFactor * difficultyFactor;
+  // Raw calculated willingness multiplied by scouting target priority
+  let calculatedCeiling = fairMarketValue * profile.aggression * roleNeedFactor * squadNeedFactor * scouting.multiplier * difficultyFactor;
+
+  // HUMAN CHALLENGE & PADDLE ELASTICITY
+  // When a human participant holds the lead, motivated AI franchises do NOT abruptly surrender at their exact baseline.
+  // They apply paddle tenacity (up to 18% - 28% stretch) to challenge the human, creating authentic paddle wars!
+  if (isHumanLeading && scouting.tier !== "PASS") {
+    const tenacityMultiplier = scouting.tier === "CORE_TARGET"
+      ? profile.paddleTenacity
+      : 1.0 + (profile.paddleTenacity - 1.0) * 0.60;
+    calculatedCeiling *= tenacityMultiplier;
+  }
 
   // =========================================================================
   // 5. BUDGET PACING ACROSS ALL SETS (NEVER BLOW BUDGET EARLY)
@@ -263,19 +319,17 @@ export function calculateDetailedValuation(
   const avgPursePerSpot = franchise.remainingPurse / spotsToFill;
 
   // Cap maximum bid based on tier and average purse per spot:
-  // Marquee (88+): Can spend up to 3.2x average per spot
-  // Quality Starter (80-87): Max 1.8x average per spot
-  // Rotation (74-79): Max 1.2x average per spot
-  // Backup / Uncapped (<74): Max 0.8x average per spot
+  // When human is leading and this is a core or secondary target, allow tierSpendCap to flex by 15%
+  const capFlex = (isHumanLeading && scouting.tier !== "PASS") ? 1.15 : 1.0;
   let tierSpendCap = maxAvailable;
   if (rating >= 88) {
-    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 3.2, franchise.totalPurse * 0.22);
+    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 3.4 * capFlex, franchise.totalPurse * 0.24);
   } else if (rating >= 80) {
-    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 1.8, franchise.totalPurse * 0.12);
+    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 2.0 * capFlex, franchise.totalPurse * 0.14);
   } else if (rating >= 74) {
-    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 1.2, franchise.totalPurse * 0.07);
+    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 1.35 * capFlex, franchise.totalPurse * 0.09);
   } else {
-    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 0.85, 20000000);
+    tierSpendCap = Math.min(maxAvailable, avgPursePerSpot * 0.90 * capFlex, 25000000);
   }
 
   const finalCeiling = Math.min(calculatedCeiling, tierSpendCap, maxAvailable);
@@ -288,6 +342,7 @@ export function calculateDetailedValuation(
     squadNeedFactor,
     roleNeedFactor,
     isDesirable,
+    scoutingTier: scouting.tier,
   };
 }
 
@@ -300,7 +355,8 @@ export function calculatePlayerValuation(
   difficulty: "easy" | "normal" | "hard" = "normal",
   lotsRemaining: number = 20,
   totalLots: number = 61,
-  allTeams?: Record<string, FranchiseState>
+  allTeams?: Record<string, FranchiseState>,
+  isHumanLeading: boolean = false
 ): number {
-  return calculateDetailedValuation(lot, franchise, difficulty, lotsRemaining, totalLots, allTeams).ceiling;
+  return calculateDetailedValuation(lot, franchise, difficulty, lotsRemaining, totalLots, allTeams, isHumanLeading).ceiling;
 }

@@ -189,7 +189,8 @@ roomsRouter.get("/:roomId", async (c) => {
   try {
     const id = c.env.AUCTION_ROOM.idFromName(roomId);
     const stub = c.env.AUCTION_ROOM.get(id);
-    let snapshot = await stub.getSnapshot();
+    const franchiseCode = c.req.query("franchiseCode") || undefined;
+    let snapshot = await stub.getSnapshot(franchiseCode);
 
     if (!snapshot.roomId && publicRoomsRegistry.has(roomId)) {
       const r = publicRoomsRegistry.get(roomId)!;
@@ -198,7 +199,7 @@ roomsRouter.get("/:roomId", async (c) => {
       if (r.status === "LIVE") {
         await stub.startAuction();
       }
-      snapshot = await stub.getSnapshot();
+      snapshot = await stub.getSnapshot(franchiseCode);
     }
 
     if (!snapshot.roomId) {

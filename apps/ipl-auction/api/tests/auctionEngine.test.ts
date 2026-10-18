@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateNextLegalBid } from "../src/types/auction";
+import { calculateNextLegalBid, FranchiseState } from "../src/types/auction";
 import { calculatePlayerHiddenRatings, calculateTeamAverageRating } from "../src/services/ratingService";
 import { FallbackAIEngine } from "../src/ai/fallbackEngine";
 import { calculatePlayerValuation } from "../src/ai/valuation";
@@ -121,6 +121,8 @@ describe("Auction Engine & Domain Logic Unit Tests", () => {
       country: "India",
       isOverseas: false,
       role: "WICKETKEEPER" as const,
+      battingStyle: "Right-hand bat",
+      bowlingStyle: "None",
       basePrice: 20000000,
       matches: 120,
       runs: 4200,
@@ -138,9 +140,12 @@ describe("Auction Engine & Domain Logic Unit Tests", () => {
     };
 
     const valuations = SEED_FRANCHISES.map((f) => {
-      const franchiseState = {
+      const franchiseState: FranchiseState = {
         code: f.code,
         name: f.name,
+        shortName: f.shortName,
+        primaryColor: f.primaryColor,
+        secondaryColor: f.secondaryColor,
         totalPurse: 1200000000,
         remainingPurse: 1200000000,
         squadCount: 0,
@@ -150,6 +155,9 @@ describe("Auction Engine & Domain Logic Unit Tests", () => {
         maxOverseas: 8,
         rtmCardsRemaining: 1,
         purchasedPlayers: [],
+        retainedPlayers: [],
+        retentionSpent: 0,
+        averageRating: 80,
         controller: "AI" as const,
       };
       return calculatePlayerValuation(lot, franchiseState, "normal", 20, 61);
@@ -173,6 +181,8 @@ describe("Auction Engine & Domain Logic Unit Tests", () => {
       country: "India",
       isOverseas: false,
       role: "BOWLER" as const,
+      battingStyle: "Right-hand bat",
+      bowlingStyle: "Right-arm fast",
       basePrice: 20000000,
       matches: 110,
       runs: 100,

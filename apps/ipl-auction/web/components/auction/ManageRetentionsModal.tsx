@@ -58,29 +58,10 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
   useEffect(() => {
     if (franchiseState && Array.isArray(franchiseState.retainedPlayers)) {
       setSelectedIds(franchiseState.retainedPlayers.map((p) => p.id));
-    } else if (config) {
-      if (isMega) {
-        let capped = 0;
-        let uncapped = 0;
-        const initial: string[] = [];
-        for (const id of config.defaultRetainedIds) {
-          if (initial.length >= 6) break;
-          const cand = config.candidates.find((c) => c.id === id);
-          if (!cand) continue;
-          if (cand.isCapped && capped < 5) {
-            capped++;
-            initial.push(cand.id);
-          } else if (!cand.isCapped && uncapped < 2) {
-            uncapped++;
-            initial.push(cand.id);
-          }
-        }
-        setSelectedIds(initial);
-      } else {
-        setSelectedIds(config.defaultRetainedIds.slice(0, 11));
-      }
+    } else {
+      setSelectedIds([]);
     }
-  }, [franchiseState, config, isOpen, isMega]);
+  }, [franchiseState, isOpen]);
 
   if (!isOpen || !config) return null;
 

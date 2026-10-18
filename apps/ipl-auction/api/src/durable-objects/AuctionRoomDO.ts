@@ -296,7 +296,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
         controller: "AI",
         averageRating: null,
         purchasedPlayers: [],
-        rtmCardsRemaining: 0,
+        rtmCardsRemaining: this.ruleset === "MEGA" ? 6 : 0,
         retainedPlayers: [],
         retentionSpent: 0,
       };
@@ -410,57 +410,31 @@ export class AuctionRoomDO extends DurableObject<Env> {
       );
     }
 
-    if (this.enableRetentions && this.ruleset !== "SPRINT_XI") {
-      this.applyDefaultRetentions();
-    } else {
-      this.initializeDefaultLots();
-    }
+    // Default should be 0 retentions. Lobby starts with 0 retentions for all teams.
+    this.initializeDefaultLots();
 
     this.persistState();
   }
 
-  private applyDefaultRetentions() {
-    if (this.ruleset === "SPRINT_XI" || !this.enableRetentions) {
+  private async evaluateAndApplyAIBotRetentions() {
+    if (!this.enableRetentions || this.ruleset === "SPRINT_XI") {
       return;
     }
 
-    const allRetainedNames = new Set<string>();
-
     for (const [code, franchise] of this.teams.entries()) {
-      const official = OFFICIAL_FRANCHISE_RETENTIONS[code];
-      if (!official) continue;
-
-      const candidates = official.candidates;
-      const defaultIds = new Set(official.defaultRetainedIds);
-
-      let retainedCandidates: RetentionCandidate[] = [];
-
-      if (this.ruleset === "MEGA") {
-        // Mega: max 6 retentions (max 5 capped, max 2 uncapped)
-        let capped = 0;
-        let uncapped = 0;
-        for (const id of official.defaultRetainedIds) {
-          if (retainedCandidates.length >= 6) break;
-          const c = candidates.find((cand) => cand.id === id);
-          if (!c) continue;
-          if (c.isCapped && capped < 5) {
-            capped++;
-            retainedCandidates.push(c);
-          } else if (!c.isCapped && uncapped < 2) {
-            uncapped++;
-            retainedCandidates.push(c);
-          }
-        }
-      } else {
-        // Classic: top 11 authentic candidates
-        const classicDefaultIds = new Set(official.defaultRetainedIds.slice(0, 11));
-        retainedCandidates = candidates.filter((c) => classicDefaultIds.has(c.id));
+      // If controller is AI and team has 0 retentions, let AI evaluate its retentions
+      if (franchise.controller !== "AI" || (franchise.retainedPlayers && franchise.retainedPlayers.length > 0)) {
+        continue;
       }
 
-      const { totalDeduction, rtmCards } = calculateRetentionDeduction(retainedCandidates, this.ruleset);
+      const official = OFFICIAL_FRANCHISE_RETENTIONS[code];
+      if (!official || !official.candidates || official.candidates.length === 0) {
+        continue;
+      }
 
-      const retainedInfos: RetainedPlayerInfo[] = retainedCandidates.map((c, idx) => {
-        allRetainedNames.add(c.name.trim().toLowerCase());
+      const candidatesWithRatings = official.candidates.map((c) => {
+        const found = SEED_PLAYERS.find((sp) => sp.name.trim().toLowerCase() === c.name.trim().toLowerCase());
+        const rating = found?.hiddenRatingOverall || 75;
         return {
           id: c.id,
           name: c.name,
@@ -468,16 +442,51 @@ export class AuctionRoomDO extends DurableObject<Env> {
           country: c.country,
           isOverseas: c.isOverseas,
           isCapped: c.isCapped,
-          retentionPrice: c.officialPrice,
-          slotNumber: idx + 1,
+          officialPrice: c.officialPrice,
+          matches: c.matches || 0,
+          runs: c.runs || 0,
+          battingAverage: c.battingAverage || 0,
+          strikeRate: c.strikeRate || 0,
+          wickets: c.wickets || 0,
+          economy: c.economy || 0,
+          rating,
         };
       });
+
+      const decision = await ClefFlashService.decideFranchiseRetentions(this.env, {
+        franchise: {
+          code: franchise.code,
+          name: franchise.name,
+          totalPurse: franchise.totalPurse,
+          remainingPurse: franchise.remainingPurse,
+          maxSquad: franchise.maxSquad,
+          minSquad: franchise.minSquad,
+          maxOverseas: franchise.maxOverseas,
+        },
+        candidates: candidatesWithRatings,
+        ruleset: this.ruleset,
+      });
+
+      const selectedCandidates = official.candidates.filter((c) => decision.retainedIds.includes(c.id));
+      const { totalDeduction, rtmCards } = calculateRetentionDeduction(selectedCandidates, this.ruleset);
+
+      const retainedInfos: RetainedPlayerInfo[] = selectedCandidates.map((c, idx) => ({
+        id: c.id,
+        name: c.name,
+        role: c.role,
+        country: c.country,
+        isOverseas: c.isOverseas,
+        isCapped: c.isCapped,
+        retentionPrice: c.officialPrice,
+        slotNumber: idx + 1,
+      }));
 
       franchise.retainedPlayers = retainedInfos;
       franchise.retentionSpent = totalDeduction;
       franchise.remainingPurse = Math.max(0, franchise.totalPurse - totalDeduction);
       franchise.rtmCardsRemaining = rtmCards;
-      franchise.squadCount = retainedCandidates.length;
+      franchise.squadCount = selectedCandidates.length;
+      franchise.overseasCount = selectedCandidates.filter((c) => c.isOverseas).length;
       franchise.purchasedPlayers = retainedInfos.map((r) => {
         const found = SEED_PLAYERS.find((sp) => sp.name.trim().toLowerCase() === r.name.trim().toLowerCase());
         return {
@@ -494,15 +503,13 @@ export class AuctionRoomDO extends DurableObject<Env> {
         };
       });
 
-      const squadForEval = franchise.purchasedPlayers.map((p) => {
-        return {
-          id: p.id,
-          name: p.name,
-          role: p.role,
-          isOverseas: p.isOverseas,
-          overallRating: p.rating || 75,
-        };
-      });
+      const squadForEval = franchise.purchasedPlayers.map((p) => ({
+        id: p.id,
+        name: p.name,
+        role: p.role,
+        isOverseas: p.isOverseas,
+        overallRating: p.rating || 75,
+      }));
       const evalResult = calculateTeamOverallRating(squadForEval, franchise.remainingPurse, franchise.totalPurse, this.ruleset);
       if (evalResult) {
         franchise.averageRating = evalResult.overallRating;
@@ -516,15 +523,29 @@ export class AuctionRoomDO extends DurableObject<Env> {
         franchise.code,
         JSON.stringify(franchise)
       );
+
+      this.recordActivityEvent(
+        "RETENTIONS_UPDATED",
+        "Retentions Finalized",
+        decision.reason,
+        franchise.code
+      );
     }
 
+    // Now refresh all lots excluding ALL retained players across all teams
+    const allRetainedNames = new Set<string>();
+    for (const t of this.teams.values()) {
+      for (const p of t.retainedPlayers || []) {
+        allRetainedNames.add(p.name.trim().toLowerCase());
+      }
+    }
     this.refreshLotsExcludingRetentions(allRetainedNames);
   }
 
-  async getSnapshot(): Promise<RoomSnapshot> {
+  async getSnapshot(recipientFranchiseCode?: string): Promise<RoomSnapshot> {
     this.checkInactivityTimeouts();
     await this.ensureActiveLotProgression();
-    return this.buildSnapshot();
+    return this.buildSnapshot(recipientFranchiseCode);
   }
 
   async getLots(): Promise<AuctionLot[]> {
@@ -1312,9 +1333,24 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
   // --- Authoritative Auction State Machine ---
   async startAuction() {
+    if (this.status === "LIVE") return;
+
+    // Requirement: If retentions enabled, bot teams evaluate and decide retentions before live bidding commences!
+    if (this.enableRetentions && this.ruleset !== "SPRINT_XI") {
+      await this.evaluateAndApplyAIBotRetentions();
+    }
+
     this.status = "LIVE";
     this.pauseReason = null;
     this.stateVersion++;
+    this.persistState();
+
+    // Broadcast authoritative snapshot revealing all finalized rosters to clients
+    this.broadcast({
+      type: "ROOM_SNAPSHOT",
+      payload: this.buildSnapshot(),
+    });
+
     await this.startActiveLot();
   }
 
@@ -2341,12 +2377,14 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
     this.broadcast({ type: "TEAM_UPDATED", payload: { franchise: team } });
     this.broadcast({ type: "ROOM_SNAPSHOT", payload: this.buildSnapshot() });
-    this.recordActivityEvent(
-      "RETENTIONS_UPDATED",
-      "Retentions Configured",
-      `${team.name} configured retentions: ${selectedCandidates.length} retained (₹${(totalDeduction / 10000000).toFixed(1)} Cr), ${rtmCards} RTM card(s) available.`,
-      team.code
-    );
+    if (this.status !== "LOBBY") {
+      this.recordActivityEvent(
+        "RETENTIONS_UPDATED",
+        "Retentions Configured",
+        `${team.name} configured retentions: ${selectedCandidates.length} retained (₹${(totalDeduction / 10000000).toFixed(1)} Cr), ${rtmCards} RTM card(s) available.`,
+        team.code
+      );
+    }
 
     ws?.send(
       JSON.stringify({
@@ -2819,7 +2857,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
     }
   }
 
-  private buildSnapshot(): RoomSnapshot {
+  private buildSnapshot(recipientFranchiseCode?: string): RoomSnapshot {
     const isLobby = this.status === "LOBBY";
     const currentLot = isLobby || this.activeLotIndex < 0 ? null : (this.lots[this.activeLotIndex] || null);
     let nextBid = 0;
@@ -2838,7 +2876,21 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
     const teamsObj: Record<string, FranchiseState> = {};
     for (const [code, state] of this.teams.entries()) {
-      teamsObj[code] = state;
+      if (isLobby && code !== recipientFranchiseCode) {
+        // Requirement: In lobby no one should be able to see other teams retentions
+        teamsObj[code] = {
+          ...state,
+          retainedPlayers: [],
+          purchasedPlayers: [],
+          retentionSpent: 0,
+          remainingPurse: state.totalPurse,
+          rtmCardsRemaining: this.ruleset === "MEGA" ? 6 : 0,
+          squadCount: 0,
+          overseasCount: 0,
+        };
+      } else {
+        teamsObj[code] = state;
+      }
     }
 
     const completedLots = isLobby
@@ -2886,8 +2938,45 @@ export class AuctionRoomDO extends DurableObject<Env> {
   }
 
   private broadcast(message: ServerMessage) {
-    const serialized = JSON.stringify(message);
+    const isLobby = this.status === "LOBBY";
     const sockets = this.ctx.getWebSockets();
+
+    if (isLobby && (message.type === "ROOM_SNAPSHOT" || message.type === "TEAM_UPDATED")) {
+      for (const ws of sockets) {
+        try {
+          const sessId = this.socketSessionIds.get(ws);
+          const member = sessId ? this.members.get(sessId) : null;
+          const myFranchise = member?.claimedFranchise || undefined;
+
+          if (message.type === "ROOM_SNAPSHOT") {
+            const sanitizedSnapshot = this.buildSnapshot(myFranchise);
+            ws.send(JSON.stringify({ type: "ROOM_SNAPSHOT", payload: sanitizedSnapshot }));
+          } else if (message.type === "TEAM_UPDATED") {
+            const t = message.payload.franchise;
+            if (t.code === myFranchise) {
+              ws.send(JSON.stringify(message));
+            } else {
+              const maskedTeam = {
+                ...t,
+                retainedPlayers: [],
+                purchasedPlayers: [],
+                retentionSpent: 0,
+                remainingPurse: t.totalPurse,
+                rtmCardsRemaining: this.ruleset === "MEGA" ? 6 : 0,
+                squadCount: 0,
+                overseasCount: 0,
+              };
+              ws.send(JSON.stringify({ type: "TEAM_UPDATED", payload: { franchise: maskedTeam } }));
+            }
+          }
+        } catch (e) {
+          // Socket closed
+        }
+      }
+      return;
+    }
+
+    const serialized = JSON.stringify(message);
     for (const ws of sockets) {
       try {
         ws.send(serialized);

@@ -88,6 +88,7 @@ export default function LobbyPage({
   const [mobileTab, setMobileTab] = useState<"teams" | "chat">("teams");
   const [sidebarTab, setSidebarTab] = useState<"chat" | "activity" | "rules">("chat");
   const [retentionTeamCode, setRetentionTeamCode] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
 
   const {
     snapshot,
@@ -554,9 +555,15 @@ export default function LobbyPage({
                                 <Text size="10px" c="dimmed">
                                   Retained:
                                 </Text>
-                                <Text size="10px" fw={700} ff="monospace" c="grape">
-                                  {team.retainedPlayers?.length || 0} ({team.rtmCardsRemaining ?? 0} RTM)
-                                </Text>
+                                {isClaimedByMe ? (
+                                  <Text size="10px" fw={700} ff="monospace" c="grape">
+                                    {team.retainedPlayers?.length || 0} ({team.rtmCardsRemaining ?? 0} RTM)
+                                  </Text>
+                                ) : (
+                                  <Badge size="xs" variant="outline" color="gray" styles={{ root: { textTransform: "none", fontSize: 9, padding: "0 4px", height: 16 } }}>
+                                    🔒 Confidential
+                                  </Badge>
+                                )}
                               </Group>
                             )}
                           </Stack>
@@ -718,10 +725,14 @@ export default function LobbyPage({
                   color="teal"
                   size="md"
                   fullWidth
-                  leftSection={<Play size={18} weight="fill" />}
-                  onClick={startAuction}
+                  loading={isStarting}
+                  leftSection={!isStarting && <Play size={18} weight="fill" />}
+                  onClick={() => {
+                    setIsStarting(true);
+                    startAuction();
+                  }}
                 >
-                  Start Auction Now
+                  {isStarting ? "Evaluating AI Retentions & Starting Auction..." : "Start Auction Now"}
                 </Button>
               ) : (
                 <Paper p={6} radius="md" ta="center" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>

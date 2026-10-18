@@ -1,5 +1,11 @@
 import { FranchiseState, AuctionLot } from "../types/auction";
-import { AIDecisionResult, FallbackAIEngine } from "./fallbackEngine";
+import {
+  AIDecisionResult,
+  FallbackAIEngine,
+  FranchiseRetentionCandidate,
+  FranchiseRetentionDecisionContext,
+  FranchiseRetentionDecisionResult,
+} from "./fallbackEngine";
 import { calculatePlayerValuation, calculateDetailedValuation } from "./valuation";
 import { evaluateRosterBalance } from "../services/rosterBalanceService";
 
@@ -452,5 +458,126 @@ export class ClefFlashService {
 
     // 3. Deterministic rule-based fallback
     return FallbackAIEngine.evaluateBidding(lot, teams, nextLegalBid, difficulty, lotsRemaining, totalLots, isHumanLeading);
+  }
+
+  /**
+   * Invokes Cloudflare Clef-Flash (@cf/cloudflare/clef-flash) typed decision engine
+   * to evaluate AI franchise retentions from their last year squad candidates.
+   * Considers cricket statistics, capped/uncapped rules, retention cost slabs (18Cr, 14Cr, etc.),
+   * and trade-off between retaining players vs keeping Right-To-Match (RTM) cards or clean slate.
+   *
+   * Gracefully falls back to FallbackAIEngine.evaluateFranchiseRetentions.
+   */
+  static async decideFranchiseRetentions(
+    env: ClefFlashEnv,
+    context: FranchiseRetentionDecisionContext
+  ): Promise<FranchiseRetentionDecisionResult> {
+    const { franchise, candidates, ruleset = "MEGA" } = context;
+
+    if (!candidates || candidates.length === 0) {
+      return {
+        retainedIds: [],
+        strategy: "clean_slate",
+        reason: `${franchise.code} has no previous squad candidates. 0 retentions, 6 RTM cards available.`,
+        source: "DETERMINISTIC_ENGINE",
+      };
+    }
+
+    if (env.AI && typeof env.AI.run === "function") {
+      try {
+        const topCandidates = [...candidates]
+          .sort((a, b) => b.rating - a.rating)
+          .slice(0, 8);
+
+        const compactRetentionState = {
+          franchise: franchise.code,
+          franchiseName: franchise.name,
+          totalPurse: franchise.totalPurse,
+          ruleset,
+          candidatePoolCount: candidates.length,
+          topCandidates: topCandidates.map((c) => ({
+            id: c.id,
+            name: c.name,
+            role: c.role,
+            isOverseas: c.isOverseas,
+            isCapped: c.isCapped,
+            rating: c.rating,
+            runs: c.runs,
+            wickets: c.wickets,
+            strikeRate: c.strikeRate,
+            economy: c.economy,
+            price: c.officialPrice,
+          })),
+        };
+
+        const modelResult = await Promise.race([
+          env.AI.run("@cf/cloudflare/clef-flash", {
+            model: "clef-flash",
+            state: JSON.stringify(compactRetentionState),
+            questions: {
+              retention_strategy: {
+                type: "choice",
+                instructions: `Choose the optimal retention strategy for ${franchise.name} in the IPL Mega Auction. Retaining top stars costs 18Cr, 14Cr, 11Cr, etc., reducing auction purse. Releasing players grants Right-to-Match (RTM) cards in open auction. Clean slate keeps maximum purse and 6 RTMs.`,
+                criteria: {
+                  core_retention: `Retain 4-6 marquee icons (accepting high purse deduction to lock down irreplaceable match-winners)`,
+                  selective_retention: `Retain 1-3 critical players and uncapped bargains (preserving high purse and 3-5 RTM cards)`,
+                  clean_slate: `Clean complete team with 0 retentions (maximize auction purse with 6 RTM cards to build fresh squad)`,
+                },
+              },
+              prioritize_uncapped_value: {
+                type: "bool",
+                instructions: `Should ${franchise.code} prioritize retaining promising uncapped performers at the ₹4 Cr bargain rate?`,
+              },
+            },
+          }),
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error("Clef-Flash retention decision timeout")), 2500)
+          ),
+        ]);
+
+        if (modelResult) {
+          const strategyChoice = modelResult?.questions?.retention_strategy?.answer ?? modelResult?.retention_strategy;
+          const wantUncapped =
+            modelResult?.questions?.prioritize_uncapped_value?.answer === true ||
+            modelResult?.questions?.prioritize_uncapped_value?.answer === "yes" ||
+            modelResult?.questions?.prioritize_uncapped_value?.answer === "true";
+
+          const decidedStrategy: "core_retention" | "selective_retention" | "clean_slate" =
+            strategyChoice === "clean_slate"
+              ? "clean_slate"
+              : strategyChoice === "selective_retention"
+              ? "selective_retention"
+              : "core_retention";
+
+          if (decidedStrategy === "clean_slate") {
+            return {
+              retainedIds: [],
+              strategy: "clean_slate",
+              reason: `Clef-Flash selected clean slate strategy for ${franchise.code}: 0 retentions, 6 RTM cards, 100% auction purse available.`,
+              source: "CLEF_FLASH",
+            };
+          }
+
+          const selected = FallbackAIEngine.selectCandidatesForStrategy(
+            candidates,
+            decidedStrategy,
+            wantUncapped,
+            franchise.totalPurse,
+            ruleset
+          );
+
+          return {
+            retainedIds: selected.map((s) => s.id),
+            strategy: decidedStrategy,
+            reason: `Clef-Flash selected ${decidedStrategy} for ${franchise.code}: retained ${selected.length} players (${selected.map((s) => s.name).join(", ")}), keeping ${Math.max(0, 6 - selected.length)} RTM cards.`,
+            source: "CLEF_FLASH",
+          };
+        }
+      } catch (err) {
+        // Fall through to deterministic fallback
+      }
+    }
+
+    return FallbackAIEngine.evaluateFranchiseRetentions(context);
   }
 }

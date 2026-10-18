@@ -22,6 +22,7 @@ import {
   Robot,
   Lock,
   Check,
+  Eye,
 } from "@phosphor-icons/react";
 
 interface TeamSelectionModalProps {
@@ -29,6 +30,7 @@ interface TeamSelectionModalProps {
   onClose: () => void;
   teams: Record<string, FranchiseState>;
   onSelectTeam: (franchiseCode: string) => void;
+  onSkip?: () => void;
   nextLegalBid?: number;
 }
 
@@ -37,6 +39,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
   onClose,
   teams,
   onSelectTeam,
+  onSkip,
   nextLegalBid,
 }) => {
   const teamsList = Object.values(teams || {});
@@ -147,11 +150,25 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
 
         <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid var(--ipl-border)" }}>
           <Text size="11px" c="dimmed">
-            Only AI-controlled teams can be claimed.
+            You can also choose a franchise anytime from the left panel.
           </Text>
-          <Button variant="default" size="xs" onClick={onClose}>
-            Cancel
-          </Button>
+          <Group gap="xs">
+            <Button
+              variant="subtle"
+              color="gray"
+              size="xs"
+              leftSection={<Eye size={14} weight="bold" />}
+              onClick={() => {
+                onSkip?.();
+                onClose();
+              }}
+            >
+              Skip & Spectate
+            </Button>
+            <Button variant="default" size="xs" onClick={onClose}>
+              Close
+            </Button>
+          </Group>
         </Group>
       </Stack>
     </Modal>

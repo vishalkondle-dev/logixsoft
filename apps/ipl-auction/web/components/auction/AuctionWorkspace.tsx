@@ -8,6 +8,7 @@ import { UpcomingSetsDialog } from "./UpcomingSetsDialog";
 import { TeamSelectionModal } from "./TeamSelectionModal";
 import { ManageRetentionsModal } from "./ManageRetentionsModal";
 import { RTMDecisionPrompt } from "./RTMDecisionPrompt";
+import { PlayerSoldCelebration } from "./PlayerSoldCelebration";
 import { CountryFlag } from "../common/CountryFlag";
 import { formatRupees, formatIndianNumber, calculateNextLegalBid, getBidIncrement } from "../../lib/utils";
 import {
@@ -113,6 +114,29 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
   const [isTeamSelectModalOpen, setIsTeamSelectModalOpen] = useState(false);
   const [isRetentionsModalOpen, setIsRetentionsModalOpen] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [soldCelebration, setSoldCelebration] = useState<{
+    opened: boolean;
+    playerName: string;
+    playerRole?: string;
+    isOverseas?: boolean;
+    franchiseCode: string;
+    franchiseName?: string;
+    amount: number;
+  }>({
+    opened: false,
+    playerName: "",
+    franchiseCode: "",
+    amount: 0,
+  });
+
+  const hasPromptedTeamSelectRef = React.useRef(false);
+  React.useEffect(() => {
+    // Automatically present team selection modal on join if user hasn't selected a team
+    if (snapshot && !myFranchise && !hasPromptedTeamSelectRef.current) {
+      hasPromptedTeamSelectRef.current = true;
+      setIsTeamSelectModalOpen(true);
+    }
+  }, [snapshot, myFranchise]);
 
   React.useEffect(() => {
     setAudioUnlocked(getIsAudioUnlocked());
@@ -133,10 +157,31 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
       lastSoldLotIdRef.current = currentLot.id;
       // Always play the authentic sold proclamation and gavel strike sound effect
       playSoldGavelSound();
+
+      // Trigger paper blast celebration with winning team's logo and colors
+      const winningFranchise = currentLot.soldToFranchise || currentLot.highestBidderFranchise || "IPL";
+      const winningAmount = currentLot.finalPrice || currentLot.currentBid || currentLot.basePrice;
+      setSoldCelebration({
+        opened: true,
+        playerName: currentLot.playerName,
+        playerRole: currentLot.role,
+        isOverseas: currentLot.isOverseas,
+        franchiseCode: winningFranchise,
+        franchiseName: snapshot?.teams?.[winningFranchise]?.name,
+        amount: winningAmount,
+      });
     }
-  }, [currentLot?.status, currentLot?.id]);
+  }, [currentLot?.status, currentLot?.id, currentLot?.soldToFranchise, currentLot?.highestBidderFranchise, currentLot?.finalPrice, currentLot?.currentBid, snapshot?.teams]);
 
   const userFranchiseState = myFranchise && snapshot?.teams ? snapshot.teams[myFranchise] : null;
+
+  const handleCloseTeamSelect = (skipped: boolean = false) => {
+    setIsTeamSelectModalOpen(false);
+    // If auction was paused due to no humans, resume it once the user closes the modal / is ready
+    if (snapshot?.status === "PAUSED" && snapshot?.pauseReason === "NO_HUMANS_CONNECTED") {
+      onResumeAuction?.();
+    }
+  };
 
   let effectiveNextBid = 0;
   let effectiveIncrement = 500000;
@@ -734,10 +779,25 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
 
       <TeamSelectionModal
         isOpen={isTeamSelectModalOpen}
-        onClose={() => setIsTeamSelectModalOpen(false)}
+        onClose={() => handleCloseTeamSelect(false)}
+        onSkip={() => handleCloseTeamSelect(true)}
         teams={snapshot?.teams || {}}
-        onSelectTeam={(code) => onClaimTeam?.(code)}
+        onSelectTeam={(code) => {
+          onClaimTeam?.(code);
+          handleCloseTeamSelect(false);
+        }}
         nextLegalBid={effectiveNextBid}
+      />
+
+      <PlayerSoldCelebration
+        opened={soldCelebration.opened}
+        onClose={() => setSoldCelebration((prev) => ({ ...prev, opened: false }))}
+        playerName={soldCelebration.playerName}
+        playerRole={soldCelebration.playerRole}
+        isOverseas={soldCelebration.isOverseas}
+        franchiseCode={soldCelebration.franchiseCode}
+        franchiseName={soldCelebration.franchiseName}
+        amount={soldCelebration.amount}
       />
 
       <UpcomingSetsDialog

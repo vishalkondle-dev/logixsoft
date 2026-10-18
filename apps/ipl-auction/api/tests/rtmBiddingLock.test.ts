@@ -196,21 +196,25 @@ describe("RTM Bidding Lock Tests", () => {
       expect(decision.reason).toContain("breach mandatory reserve");
     });
 
-    it("consults Laya AI when env.AI is provided", async () => {
-      const mockLayaAI = {
+    it("consults Clef-Flash AI when env.AI is provided", async () => {
+      const mockClefAI = {
         run: async () => ({
-          response: JSON.stringify({
-            exercise: false,
-            confidence: 0.92,
-            reason: "Laya evaluated that spending 11.5 Cr on an overseas wicketkeeper restricts bowling budget.",
-          }),
+          questions: {
+            exercise_rtm: {
+              answer: "no",
+              confidence: 0.94,
+            },
+            strategic_reason: {
+              answer: "overpriced_bid",
+            },
+          },
         }),
       };
 
-      const decision = await ClefFlashService.decideRTM({ AI: mockLayaAI }, baseContext);
+      const decision = await ClefFlashService.decideRTM({ AI: mockClefAI }, baseContext);
       expect(decision.exercise).toBe(false);
-      expect(decision.source).toBe("LAYA_LLM");
-      expect(decision.reason).toContain("restricts bowling budget");
+      expect(decision.source).toBe("CLEF_FLASH");
+      expect(decision.reason).toContain("exceeds strategic valuation ceiling");
     });
   });
 });

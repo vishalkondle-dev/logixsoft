@@ -98,6 +98,7 @@ export interface AuctionLot {
   economy: number;
   isCapped: boolean;
   previousFranchise?: string | null;
+  lastYearPrice?: number | null;
   // Hidden ratings: NEVER exposed to client in public messages!
   hiddenRatingOverall?: number;
   hiddenRatingBatting?: number;

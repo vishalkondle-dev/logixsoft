@@ -68,33 +68,16 @@ export interface RTMDecisionResult {
   exercise: boolean;
   confidence?: number;
   reason: string;
-  source: "LAYA_LLM" | "CLEF_FLASH" | "DETERMINISTIC_ENGINE";
-}
-
-function extractJson(text: string): any {
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[0]);
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  }
+  source: "CLEF_FLASH" | "DETERMINISTIC_ENGINE";
 }
 
 export class ClefFlashService {
   /**
-   * Invokes "Laya" (Meta LLaMA 3.1 8B Instruct on Cloudflare Workers AI) to make an informed,
-   * comprehensive RTM decision based on complete player details, squad composition, role deficits,
-   * remaining purse, and the exact winning bid to match.
+   * Invokes Cloudflare Clef-Flash (@cf/cloudflare/clef-flash) typed decision engine
+   * to evaluate Right to Match (RTM) card exercise with complete cricket stats,
+   * roster balance, remaining purse, and financial discipline.
    *
-   * If Workers AI is unavailable or times out, gracefully falls back to evaluateDeterministicRTM.
+   * Gracefully falls back to evaluateDeterministicRTM if unavailable.
    */
   static async decideRTM(
     env: ClefFlashEnv,
@@ -113,75 +96,93 @@ export class ClefFlashService {
       };
     }
 
-    // 1. If Cloudflare Workers AI is available, ask Laya (LLaMA)
+    // 1. If Cloudflare Workers AI is available, ask Clef-Flash typed decision engine
     if (env.AI && typeof env.AI.run === "function") {
       try {
-        const systemPrompt = `You are "Laya", the Lead IPL Auction Strategist and Chief Decision Engine for franchise ${formerTeam.name} (${formerTeam.code}).
-You must decide whether to EXERCISE the Right to Match (RTM) card or DECLINE it for your former player.
+        const compactRTMState = {
+          formerFranchise: formerTeam.code,
+          player: {
+            name: player.name,
+            role: player.role,
+            isOverseas: player.isOverseas,
+            isCapped: player.isCapped,
+            rating: player.rating,
+            matches: player.matches,
+            runs: player.runs,
+            battingAverage: player.battingAverage,
+            strikeRate: player.strikeRate,
+            wickets: player.wickets,
+            economy: player.economy,
+            basePrice: player.basePrice,
+          },
+          winningBid: rtmValue.finalBid,
+          winningBidder: rtmValue.highestBidderCode,
+          fairCeiling: formerTeam.fairValuationCeiling,
+          remainingPurse: formerTeam.remainingPurse,
+          purseAfterMatch: formerTeam.purseAfterMatch,
+          budgetPerSpotAfterMatch: Math.round(formerTeam.budgetPerRemainingSlotAfterMatch),
+          squadCount: formerTeam.squadCount,
+          minSquad: formerTeam.minSquad,
+          maxSquad: formerTeam.maxSquad,
+          overseasCount: formerTeam.overseasCount,
+          maxOverseas: formerTeam.maxOverseas,
+          roleCounts: formerTeam.roleCounts,
+          neededRoles: formerTeam.neededRoles,
+        };
 
-CRITICAL INSTRUCTIONS:
-- You must NOT blindly exercise RTM for every former player.
-- DECLINE if the winning bid of ₹${rtmValue.finalBid.toLocaleString("en-IN")} is significantly above your realistic valuation of ₹${formerTeam.fairValuationCeiling.toLocaleString("en-IN")} (overpriced/inflated bid).
-- DECLINE if your franchise already has strong depth in this role (${player.role}) and needs funds for deficient roles (${formerTeam.neededRoles.join(", ") || "none"}).
-- DECLINE if matching starves your budget, leaving inadequate funds (only ₹${Math.round(formerTeam.budgetPerRemainingSlotAfterMatch).toLocaleString("en-IN")} per spot) to complete the required ${formerTeam.minSquad} squad members.
-- DECLINE if overseas quota is constrained (${formerTeam.overseasCount}/${formerTeam.maxOverseas}) and the player is not a top-tier marquee player.
-- EXERCISE only if the player represents genuine tactical value, fills a crucial team need, and fits comfortably within your remaining budget.
+        const modelResult = await Promise.race([
+          env.AI.run("@cf/cloudflare/clef-flash", {
+            model: "clef-flash",
+            state: JSON.stringify(compactRTMState),
+            questions: {
+              exercise_rtm: {
+                type: "noul",
+                instructions: `Should former franchise ${formerTeam.code} match winning bid ₹${rtmValue.finalBid.toLocaleString("en-IN")} to retain ${player.name} (${player.role}, SR: ${player.strikeRate}, Econ: ${player.economy})? Answer 'no' if the price exceeds fair value of ₹${formerTeam.fairValuationCeiling.toLocaleString("en-IN")} or harms squad balance.`,
+              },
+              strategic_reason: {
+                type: "choice",
+                instructions: "Select the most accurate reason for this decision:",
+                criteria: {
+                  tactical_fit_fair_price: `Retain ${player.name}: critical squad need at acceptable market value`,
+                  overpriced_bid: `Decline RTM: ₹${(rtmValue.finalBid / 10000000).toFixed(2)} Cr exceeds strategic valuation ceiling of ₹${(formerTeam.fairValuationCeiling / 10000000).toFixed(2)} Cr`,
+                  budget_preservation: `Decline RTM: preserve remaining purse to fill remaining ${Math.max(1, formerTeam.minSquad - formerTeam.squadCount)} squad spots`,
+                  role_depth_sufficient: `Decline RTM: franchise already has adequate depth in ${player.role}`,
+                },
+              },
+            },
+          }),
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error("Clef-Flash RTM timeout")), 2200)
+          ),
+        ]);
 
-Respond ONLY with a valid JSON object in this format:
-{"exercise": boolean, "confidence": number, "reason": "concise explanation"}`;
+        if (modelResult) {
+          const exerciseValue = modelResult?.questions?.exercise_rtm?.answer ?? modelResult?.exercise_rtm;
+          const choiceReason = modelResult?.questions?.strategic_reason?.answer ?? modelResult?.strategic_reason;
+          const exercise = exerciseValue === "yes" || exerciseValue === true || exerciseValue === "true";
+          const confidence = modelResult?.questions?.exercise_rtm?.confidence || 0.90;
 
-        const userPrompt = `PLAYER PROFILE:
-- Name: ${player.name}
-- Role: ${player.role} (${player.isOverseas ? "Overseas" : "Indian"}, ${player.isCapped ? "Capped" : "Uncapped"})
-- Base Price: ₹${player.basePrice.toLocaleString("en-IN")} | Hidden Quality Rating: ${player.rating}/100
-- Career Stats: ${player.matches} Matches, ${player.runs} Runs (Avg ${player.battingAverage}, SR ${player.strikeRate}), ${player.wickets} Wkts (Econ ${player.economy})
-
-RTM SITUATION:
-- Winning Bid (Match Price): ₹${rtmValue.finalBid.toLocaleString("en-IN")} (won by ${rtmValue.highestBidderCode})
-- RTM Cards Remaining: ${formerTeam.rtmCardsRemaining}
-
-FRANCHISE SQUAD & PURSE CONTEXT:
-- Total Purse: ₹${formerTeam.totalPurse.toLocaleString("en-IN")}
-- Current Remaining Purse: ₹${formerTeam.remainingPurse.toLocaleString("en-IN")}
-- Purse Left If You Match: ₹${formerTeam.purseAfterMatch.toLocaleString("en-IN")}
-- Squad Count: ${formerTeam.squadCount}/${formerTeam.maxSquad} (Mandatory Min: ${formerTeam.minSquad})
-- Overseas Quota: ${formerTeam.overseasCount}/${formerTeam.maxOverseas}
-- Current Squad Roster:
-  * Batters (${formerTeam.roleCounts.BATTER}): [${formerTeam.currentSquad.batters.join(", ") || "None"}]
-  * Bowlers (${formerTeam.roleCounts.BOWLER}): [${formerTeam.currentSquad.bowlers.join(", ") || "None"}]
-  * All-Rounders (${formerTeam.roleCounts.ALL_ROUNDER}): [${formerTeam.currentSquad.allRounders.join(", ") || "None"}]
-  * Wicketkeepers (${formerTeam.roleCounts.WICKETKEEPER}): [${formerTeam.currentSquad.wicketkeepers.join(", ") || "None"}]
-- Deficient Roles Still Urgently Needed: [${formerTeam.neededRoles.join(", ") || "None"}]
-- Strategic Fair Valuation Ceiling: ₹${formerTeam.fairValuationCeiling.toLocaleString("en-IN")}
-- Average Budget Left Per Remaining Empty Spot: ₹${Math.round(formerTeam.budgetPerRemainingSlotAfterMatch).toLocaleString("en-IN")}
-
-Should ${formerTeam.code} EXERCISE the RTM or DECLINE?`;
-
-        const aiPromise = env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          max_tokens: 180,
-          temperature: 0.1,
-        });
-
-        const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error("Laya AI timeout")), 2200)
-        );
-
-        const aiResponse: any = await Promise.race([aiPromise, timeoutPromise]);
-        if (aiResponse) {
-          const rawText = aiResponse.response || aiResponse.text || JSON.stringify(aiResponse);
-          const parsed = extractJson(rawText);
-          if (parsed && typeof parsed.exercise === "boolean") {
-            return {
-              exercise: parsed.exercise,
-              confidence: parsed.confidence || 0.85,
-              reason: parsed.reason || (parsed.exercise ? `Laya recommended matching ₹${rtmValue.finalBid.toLocaleString("en-IN")}.` : `Laya recommended declining to preserve purse and squad balance.`),
-              source: "LAYA_LLM",
-            };
+          let reasonText = "";
+          if (exercise) {
+            reasonText = `Clef-Flash exercised RTM: Matched ₹${rtmValue.finalBid.toLocaleString("en-IN")} for ${player.name} based on tactical squad need.`;
+          } else {
+            if (choiceReason === "overpriced_bid") {
+              reasonText = `Clef-Flash declined RTM: Winning bid ₹${rtmValue.finalBid.toLocaleString("en-IN")} exceeds strategic valuation ceiling.`;
+            } else if (choiceReason === "budget_preservation") {
+              reasonText = `Clef-Flash declined RTM: Preserving purse to complete remaining squad spots.`;
+            } else if (choiceReason === "role_depth_sufficient") {
+              reasonText = `Clef-Flash declined RTM: Adequate depth in ${player.role} already secured.`;
+            } else {
+              reasonText = `Clef-Flash declined RTM: Passing on ₹${rtmValue.finalBid.toLocaleString("en-IN")} to preserve purse balance.`;
+            }
           }
+
+          return {
+            exercise,
+            confidence,
+            reason: reasonText,
+            source: "CLEF_FLASH",
+          };
         }
       } catch (aiErr) {
         // Fall through to deterministic fallback
@@ -330,25 +331,37 @@ Should ${formerTeam.code} EXERCISE the RTM or DECLINE?`;
       };
     }
 
-    // 2. If Cloudflare Workers AI is available, run Laya / Clef-Flash
+    // 2. If Cloudflare Workers AI is available, run Clef-Flash
     if (env.AI && typeof env.AI.run === "function") {
       try {
         const compactState = {
           player: {
             name: lot.playerName,
             role: lot.role,
+            country: lot.country,
             isOverseas: lot.isOverseas,
+            isCapped: lot.isCapped,
             basePrice: lot.basePrice,
-            rating: lot.hiddenRatingOverall,
+            lastYearPrice: lot.lastYearPrice || null,
+            rating: lot.hiddenRatingOverall || 70,
+            matches: lot.matches,
+            runs: lot.runs,
+            battingAverage: lot.battingAverage,
+            strikeRate: lot.strikeRate,
+            wickets: lot.wickets,
+            economy: lot.economy,
+            battingStyle: lot.battingStyle,
+            bowlingStyle: lot.bowlingStyle,
           },
           currentBid: lot.currentBid,
           nextLegalBid,
           currentLeader: lot.highestBidderFranchise,
           difficulty,
           lotsRemaining,
+          totalLots,
           eligibleFranchises: eligibleTeams.map((e) => {
             const inRole = (e.team.purchasedPlayers || []).filter((p) => p.role === lot.role).length;
-            const spotsLeft = Math.max(1, e.team.maxSquad - e.team.squadCount);
+            const spotsLeft = Math.max(1, e.team.minSquad - e.team.squadCount);
             return {
               code: e.code,
               purse: e.team.remainingPurse,
@@ -364,7 +377,7 @@ Should ${formerTeam.code} EXERCISE the RTM or DECLINE?`;
         const criteria: Record<string, string> = {};
         for (const e of eligibleTeams) {
           const inRole = (e.team.purchasedPlayers || []).filter((p) => p.role === lot.role).length;
-          criteria[e.code] = `Franchise ${e.code} with ₹${(e.team.remainingPurse / 10000000).toFixed(2)} Cr purse, ${inRole} current ${lot.role}s, valuation ceiling ₹${(e.ceiling / 10000000).toFixed(2)} Cr`;
+          criteria[e.code] = `Franchise ${e.code}: ₹${(e.team.remainingPurse / 10000000).toFixed(2)} Cr purse, ${inRole} current ${lot.role}s, valuation ceiling ₹${(e.ceiling / 10000000).toFixed(2)} Cr`;
         }
 
         const modelResult = await Promise.race([
@@ -374,17 +387,25 @@ Should ${formerTeam.code} EXERCISE the RTM or DECLINE?`;
             questions: {
               should_bid: {
                 type: "noul",
-                instructions: "Should an eligible AI franchise place the next legal bid for this player?",
+                instructions: `Should an eligible AI franchise place the next legal bid of ₹${nextLegalBid.toLocaleString("en-IN")} for ${lot.playerName} (${lot.role}, SR: ${lot.strikeRate}, Econ: ${lot.economy}, Base: ₹${lot.basePrice.toLocaleString("en-IN")})? Answer 'no' if the player has poor stats, is overpriced, or not needed.`,
               },
               bidder: {
                 type: "choice",
                 instructions: "Which eligible AI franchise has the strongest squad fit and financial reason to bid?",
                 criteria,
               },
+              valuation_assessment: {
+                type: "choice",
+                instructions: "Is this player good value or overpriced at this price point?",
+                criteria: {
+                  fair_value: "Bid is fair market value given player statistics and squad need",
+                  overpriced: "Player statistics do not justify placing this bid amount",
+                },
+              },
             },
           }),
           new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error("AI bidding timeout")), 2000)
+            setTimeout(() => reject(new Error("Clef-Flash bidding timeout")), 2000)
           ),
         ]);
 
@@ -392,15 +413,23 @@ Should ${formerTeam.code} EXERCISE the RTM or DECLINE?`;
           // Parse typed output
           const shouldBidValue = modelResult?.questions?.should_bid?.answer ?? modelResult?.should_bid;
           const chosenBidder = modelResult?.questions?.bidder?.answer ?? modelResult?.bidder;
+          const valuationCheck = modelResult?.questions?.valuation_assessment?.answer ?? modelResult?.valuation_assessment;
 
           const wantsToBid = shouldBidValue === "yes" || shouldBidValue === true || shouldBidValue === "true";
-          if (wantsToBid && chosenBidder && eligibleTeams.some((e) => e.code === chosenBidder)) {
+          const isOverpriced = valuationCheck === "overpriced";
+
+          if (wantsToBid && !isOverpriced && chosenBidder && eligibleTeams.some((e) => e.code === chosenBidder)) {
             const matched = eligibleTeams.find((e) => e.code === chosenBidder)!;
             return {
               shouldBid: true,
               bidderFranchiseCode: chosenBidder,
               valuationCeiling: matched.ceiling,
-              reason: `Laya AI selected ${chosenBidder} (probability: ${modelResult?.questions?.bidder?.confidence || "high"}).`,
+              reason: `Clef-Flash selected ${chosenBidder} (probability: ${modelResult?.questions?.bidder?.confidence || "high"}).`,
+            };
+          } else if (isOverpriced || !wantsToBid) {
+            return {
+              shouldBid: false,
+              reason: `Clef-Flash determined ${lot.playerName} is overpriced at ₹${nextLegalBid.toLocaleString("en-IN")}.`,
             };
           }
         }

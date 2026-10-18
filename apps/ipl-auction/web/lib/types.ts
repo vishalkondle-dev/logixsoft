@@ -98,6 +98,7 @@ export interface AuctionLot {
   economy: number;
   isCapped: boolean;
   previousFranchise?: string | null;
+  lastYearPrice?: number | null;
   status: "PENDING" | "ACTIVE" | "SOLD" | "UNSOLD";
   currentBid: number;
   highestBidderFranchise: string | null;

@@ -21,6 +21,7 @@ import {
   Wallet,
   Clock,
   WarningCircle,
+  Shield,
   ShieldWarning,
   Check,
 } from "@phosphor-icons/react";
@@ -226,14 +227,22 @@ export const BidControls: React.FC<BidControlsProps> = ({
             fullWidth
             size="md"
             radius="md"
-            variant="gradient"
-            gradient={{ from: "orange.6", to: "amber.6", deg: 90 }}
-            leftSection={<Gavel size={18} weight="bold" />}
             onClick={handleClickBid}
-            style={{ fontWeight: 900, letterSpacing: "0.04em" }}
+            leftSection={<Shield size={20} weight="bold" color="#ffffff" />}
+            styles={{
+              root: {
+                fontWeight: 900,
+                letterSpacing: "0.02em",
+                backgroundColor: "#4f46e5",
+                color: "#ffffff",
+                boxShadow: "0 4px 14px rgba(79, 70, 229, 0.4)",
+                transition: "all 0.15s ease",
+              },
+            }}
           >
-            <span className="hidden sm:inline">Select Team to Bid ({formatRupees(nextLegalBid)})</span>
-            <span className="sm:hidden">Bid {formatRupees(nextLegalBid)}</span>
+            <Text component="span" size="sm" fw={900} c="#ffffff">
+              Select Franchise to Place Bid {nextLegalBid > 0 ? `(${formatRupees(nextLegalBid)})` : ""}
+            </Text>
           </Button>
         ) : isHighestBidder ? (
           <Button

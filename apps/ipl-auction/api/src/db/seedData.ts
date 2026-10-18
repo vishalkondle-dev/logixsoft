@@ -17402,6 +17402,7 @@ export function computeDynamicAuctionLots(
         economy: p.economy,
         isCapped: p.isCapped,
         previousFranchise: p.previousFranchise || null,
+        lastYearPrice: p.officialPrice || null,
         hiddenRatingOverall: p.hiddenRatingOverall,
         status: "PENDING",
         currentBid: 0,

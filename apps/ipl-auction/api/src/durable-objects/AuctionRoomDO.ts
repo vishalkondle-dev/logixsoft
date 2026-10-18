@@ -748,9 +748,13 @@ export class AuctionRoomDO extends DurableObject<Env> {
           );
         }
 
-        // Resume if paused solely because of zero human presence
+        // Resume if paused solely because of zero human presence, only if user already has a claimed franchise
         if (this.status === "PAUSED" && this.pauseReason === "NO_HUMANS_CONNECTED") {
-          await this.resumeAuction("SYSTEM_AUTO_RESUME");
+          if (claimedFranchise) {
+            await this.resumeAuction("SYSTEM_AUTO_RESUME");
+          } else {
+            console.log(`[Auto-Pause Preserved] Participant ${presence.displayName} joined without a team. Waiting for team selection modal.`);
+          }
         }
         break;
       }

@@ -8,6 +8,7 @@ import { TeamIdentity } from "../teams/TeamIdentity";
 import { UserMenu } from "../auth/UserMenu";
 import { AuthModal } from "../auth/AuthModal";
 import { ThemeToggle } from "./ThemeToggle";
+import { unlockAudio, testAudioOutput, playHammerSound } from "../../lib/auctionSound";
 import {
   Group,
   Text,
@@ -26,7 +27,9 @@ import {
   Users,
   Copy,
   Check,
+  DownloadSimple,
 } from "@phosphor-icons/react";
+import { usePwaStore } from "../../stores/pwaStore";
 
 interface TopNavBarProps {
   roomId?: string;
@@ -39,6 +42,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
 }) => {
   const { voiceEnabled, setVoiceEnabled, snapshot, myFranchise } = useAuctionStore();
   const { isAdmin } = useAuthStore();
+  const { isInstallable, promptInstall } = usePwaStore();
 
   const isLive = snapshot?.status === "LIVE";
   const connectedHumans = snapshot?.connectedHumanCount || 1;
@@ -53,8 +57,8 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        borderBottom: "1px solid rgba(79, 70, 229, 0.2)",
-        backgroundColor: "rgba(10, 14, 34, 0.95)",
+        borderBottom: "1px solid var(--ipl-border)",
+        backgroundColor: "var(--ipl-nav-bg)",
         backdropFilter: "blur(12px)",
         position: "sticky",
         top: 0,
@@ -70,12 +74,12 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
             h={32}
             style={{
               borderRadius: 8,
-              backgroundColor: "#141b3d",
-              border: "1px solid rgba(99, 102, 241, 0.4)",
+              backgroundColor: "var(--ipl-bg-card-subtle)",
+              border: "1px solid var(--ipl-border)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#ffffff",
+              color: "var(--ipl-text-main)",
               fontWeight: 900,
               fontSize: 12,
               letterSpacing: "0.05em",
@@ -85,13 +89,13 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           </Box>
         </Link>
 
-        <Divider orientation="vertical" h={20} color="dark.5" />
+        <Divider orientation="vertical" h={20} color="var(--ipl-border)" />
 
         <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
           <Text
             size="xs"
             fw={800}
-            c="white"
+            c="var(--mantine-color-text)"
             truncate
             visibleFrom="md"
             style={{ maxWidth: 160 }}
@@ -142,7 +146,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
 
         {myFranchise && (
           <>
-            <Divider orientation="vertical" h={20} color="dark.5" visibleFrom="xs" />
+            <Divider orientation="vertical" h={20} color="var(--ipl-border)" visibleFrom="xs" />
             <Group gap={6} visibleFrom="xs">
               <Text size="10px" fw={700} c="dimmed">
                 TEAM:
@@ -178,7 +182,14 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
             variant="default"
             size="md"
             radius="md"
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            onClick={() => {
+              const nextState = !voiceEnabled;
+              setVoiceEnabled(nextState);
+              if (nextState) {
+                unlockAudio();
+                playHammerSound();
+              }
+            }}
             aria-label="Toggle voice announcements"
           >
             {voiceEnabled ? (
@@ -189,8 +200,43 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
           </ActionIcon>
         </Tooltip>
 
+        {/* Test Audio Button */}
+        <Tooltip label="Test Audio: Plays 'Going once... Going twice... SOLD!'" withArrow position="bottom">
+          <Button
+            size="xs"
+            variant="light"
+            color="orange"
+            radius="md"
+            leftSection={<SpeakerSimpleHigh size={14} weight="bold" />}
+            onClick={() => {
+              setVoiceEnabled(true);
+              testAudioOutput();
+            }}
+            aria-label="Test Sound"
+            visibleFrom="xs"
+          >
+            Test Sound
+          </Button>
+        </Tooltip>
+
         {/* Theme Mode Toggle */}
         <ThemeToggle />
+
+        {/* PWA Install Button */}
+        {isInstallable && (
+          <Tooltip label="Install App" withArrow position="bottom">
+            <ActionIcon
+              variant="light"
+              color="orange"
+              size="md"
+              radius="md"
+              onClick={promptInstall}
+              aria-label="Install IPL Auction App"
+            >
+              <DownloadSimple size={18} weight="bold" />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
         {/* Admin Link */}
         {isAdmin && (

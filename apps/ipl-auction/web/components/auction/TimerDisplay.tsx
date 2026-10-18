@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { useSyncTimer } from "../../hooks/useSyncTimer";
 import { Box, Group, Text, Progress, Badge } from "@mantine/core";
 import { Clock, Warning } from "@phosphor-icons/react";
+import { playTickSound } from "../../lib/auctionSound";
 
 interface TimerDisplayProps {
   timerDeadline: number | null;
@@ -11,34 +12,6 @@ interface TimerDisplayProps {
   isPaused?: boolean;
   compact?: boolean;
   className?: string;
-}
-
-function playTickSound(second: number) {
-  if (typeof window === "undefined") return;
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
-    }
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    const freq = second === 1 ? 1250 : second === 2 ? 1000 : 800;
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.05);
-  } catch (err) {}
 }
 
 export const TimerDisplay: React.FC<TimerDisplayProps> = ({

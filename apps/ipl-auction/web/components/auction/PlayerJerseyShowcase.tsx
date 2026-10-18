@@ -133,7 +133,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-gradient-to-b from-[#181a32] via-[#0d1228] to-[#080d1e] border border-orange-500/50 backdrop-blur-xs select-none transition-all duration-300 shadow-xl overflow-hidden group aspect-[3/4]",
+        "relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-gradient-to-b from-slate-100 via-slate-50 to-slate-200 dark:from-[#181a32] dark:via-[#0d1228] dark:to-[#080d1e] border border-orange-500/30 dark:border-orange-500/50 backdrop-blur-xs select-none transition-all duration-300 shadow-md dark:shadow-xl overflow-hidden group aspect-[3/4]",
         className
       )}
     >
@@ -148,27 +148,15 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
         )}
       />
 
-      {/* Top Floating Status Pill - Hidden until a bid is placed */}
-      {status === "SOLD" ? (
+      {/* Top Floating Status Pill: Only show final SOLD status on jersey; active bidder badge is in pricing section */}
+      {status === "SOLD" && (
         <div className="absolute top-2 left-2 z-10 pointer-events-none">
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 shadow-xs backdrop-blur-xs">
             <CheckCircle size={10} weight="fill" />
             <span>SOLD {activeCode}</span>
           </span>
         </div>
-      ) : activeCode ? (
-        <div className="absolute top-2 left-2 z-10 pointer-events-none">
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-xs backdrop-blur-xs",
-              teamTheme.pillStyle
-            )}
-          >
-            <Fire size={12} weight="fill" className="animate-pulse" />
-            <span>{activeCode}</span>
-          </span>
-        </div>
-      ) : null}
+      )}
 
       {/* 3D Miniature Jersey Graphic Stage */}
       <div

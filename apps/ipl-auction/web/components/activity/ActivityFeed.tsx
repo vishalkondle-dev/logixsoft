@@ -184,9 +184,9 @@ export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) =>
                   withBorder
                   p="6px 10px"
                   radius="md"
-                  bg="dark.8"
+                  bg="var(--ipl-bg-card)"
                   style={{
-                    borderColor: "rgba(79, 70, 229, 0.2)",
+                    borderColor: "var(--ipl-border)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -205,7 +205,7 @@ export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) =>
                         }}
                       />
                     )}
-                    <Text size="xs" fw={700} c="white" truncate>
+                    <Text size="xs" fw={700} c="var(--mantine-color-text)" truncate>
                       {item.label}
                     </Text>
                   </Group>

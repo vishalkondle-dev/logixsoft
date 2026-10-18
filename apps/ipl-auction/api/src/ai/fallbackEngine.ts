@@ -54,7 +54,7 @@ export class FallbackAIEngine {
 
       // Detailed valuation check factoring in entire room state
       const val = calculateDetailedValuation(lot, team, difficulty, lotsRemaining, totalLots, teams);
-      if (!val.isDesirable || val.ceiling < nextLegalBid) continue;
+      if (!val.isDesirable || val.ceiling < nextLegalBid || val.roleNeedFactor <= 0.20) continue;
 
       const surplus = val.ceiling - nextLegalBid;
       const surplusRatio = Math.max(0.05, surplus / (val.ceiling + 1));

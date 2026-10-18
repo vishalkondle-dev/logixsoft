@@ -8,5 +8,10 @@ directory = ".open-next/assets"
 binding = "ASSETS"
 
 [vars]
-NEXT_PUBLIC_API_URL = "https://auction.logixsoft.in"
-NEXT_PUBLIC_WS_URL = "wss://auction.logixsoft.in"
+NEXT_PUBLIC_API_URL = "https://ipl-auction-api.vishalkondle-dev.workers.dev"
+NEXT_PUBLIC_WS_URL = "wss://ipl-auction-api.vishalkondle-dev.workers.dev"
+
+routes = [
+  { pattern = "auction.logixsoft.in/*", zone_name = "logixsoft.in" }
+]
+workers_dev = true

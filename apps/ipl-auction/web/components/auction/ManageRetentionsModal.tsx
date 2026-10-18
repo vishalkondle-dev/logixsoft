@@ -190,7 +190,7 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
             RTM
           </Badge>
           <Box>
-            <Title order={4} fw={800} c="white">
+            <Title order={4} fw={800} c="var(--mantine-color-text)">
               Manage {franchiseCode} Retentions & RTM
             </Title>
             <Text size="11px" c="dimmed">
@@ -203,19 +203,19 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
       }
       styles={{
         content: {
-          backgroundColor: "#0b1024",
-          border: "1px solid rgba(79, 70, 229, 0.4)",
+          backgroundColor: "var(--ipl-modal-bg)",
+          border: "1px solid var(--ipl-border)",
         },
       }}
     >
       <Stack gap="md">
         {/* Top Summary Metrics */}
         <SimpleGrid cols={3} spacing="xs">
-          <Paper withBorder p="xs" radius="md" bg="dark.7" style={{ textAlign: "center" }}>
+          <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ textAlign: "center", borderColor: "var(--ipl-border)" }}>
             <Text size="10px" fw={700} tt="uppercase" c="dimmed">
               Retained Players
             </Text>
-            <Text size="sm" fw={800} c="white" mt={2}>
+            <Text size="sm" fw={800} c="var(--mantine-color-text)" mt={2}>
               {selectedIds.length} / {maxAllowed}
             </Text>
             <Text size="10px" c="dimmed">
@@ -223,11 +223,11 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
             </Text>
           </Paper>
 
-          <Paper withBorder p="xs" radius="md" bg="dark.7" style={{ textAlign: "center" }}>
+          <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ textAlign: "center", borderColor: "var(--ipl-border)" }}>
             <Text size="10px" fw={700} tt="uppercase" c="dimmed">
               Retention Cost
             </Text>
-            <Text size="sm" fw={800} ff="monospace" c="yellow.4" mt={2}>
+            <Text size="sm" fw={800} ff="monospace" c="yellow.5" mt={2}>
               {formatRupees(totalDeduction)}
             </Text>
             <Text size="10px" c="dimmed">
@@ -235,11 +235,11 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
             </Text>
           </Paper>
 
-          <Paper withBorder p="xs" radius="md" bg="dark.7" style={{ textAlign: "center" }}>
+          <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ textAlign: "center", borderColor: "var(--ipl-border)" }}>
             <Text size="10px" fw={700} tt="uppercase" c="dimmed">
               RTM Cards
             </Text>
-            <Text size="sm" fw={800} ff="monospace" c="teal.4" mt={2}>
+            <Text size="sm" fw={800} ff="monospace" c="teal.5" mt={2}>
               {rtmCards} Cards
             </Text>
             <Text size="10px" c="dimmed">
@@ -251,17 +251,17 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
         {/* Quick actions notice */}
         <Paper withBorder p="xs" radius="md" bg="rgba(245, 159, 0, 0.08)" style={{ borderColor: "rgba(245, 159, 0, 0.3)" }}>
           <Group justify="space-between">
-            <Text size="11px" c="yellow.4">
+            <Text size="11px" c="yellow.5">
               {isMega
                 ? "Slabs: 1st Capped ₹18 Cr • 2nd ₹14 Cr • 3rd ₹11 Cr • 4th ₹18 Cr • 5th ₹14 Cr • Uncapped ₹4 Cr"
                 : "Official Contracts: Deducted from ₹120 Cr starting purse"}
             </Text>
             <Group gap="xs">
-              <UnstyledButton onClick={handleResetToDefault} style={{ fontSize: 11, color: "#fcc419", fontWeight: 700 }}>
+              <UnstyledButton onClick={handleResetToDefault} style={{ fontSize: 11, color: "#f59f00", fontWeight: 700 }}>
                 Reset Official
               </UnstyledButton>
               <Text size="11px" c="dimmed">•</Text>
-              <UnstyledButton onClick={handleClearAll} style={{ fontSize: 11, color: "#fcc419", fontWeight: 700 }}>
+              <UnstyledButton onClick={handleClearAll} style={{ fontSize: 11, color: "#f59f00", fontWeight: 700 }}>
                 Clear All
               </UnstyledButton>
             </Group>
@@ -289,8 +289,8 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
                   onClick={() => handleToggle(c)}
                   style={{
                     cursor: "pointer",
-                    backgroundColor: isSelected ? "rgba(79, 70, 229, 0.15)" : "rgba(15, 23, 42, 0.6)",
-                    borderColor: isSelected ? "rgba(99, 102, 241, 0.8)" : "rgba(79, 70, 229, 0.2)",
+                    backgroundColor: isSelected ? "rgba(79, 70, 229, 0.12)" : "var(--ipl-bg-card)",
+                    borderColor: isSelected ? "rgba(99, 102, 241, 0.8)" : "var(--ipl-border)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -307,7 +307,7 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
                     />
                     <Box style={{ minWidth: 0 }}>
                       <Group gap={6} wrap="nowrap">
-                        <Text size="xs" fw={700} c="white" truncate>
+                        <Text size="xs" fw={700} c="var(--mantine-color-text)" truncate>
                           {c.name}
                         </Text>
                         {c.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}
@@ -330,7 +330,7 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
                   </Group>
 
                   <Box style={{ textAlign: "right", flexShrink: 0 }}>
-                    <Text size="xs" fw={800} ff="monospace" c="white">
+                    <Text size="xs" fw={800} ff="monospace" c="var(--mantine-color-text)">
                       {formatRupees(c.officialPrice)}
                     </Text>
                     <Text size="9px" c="dimmed">
@@ -344,7 +344,7 @@ export const ManageRetentionsModal: React.FC<ManageRetentionsModalProps> = ({
         </ScrollArea>
 
         {/* Footer */}
-        <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid var(--ipl-border)" }}>
           <Text size="xs" c="dimmed">
             Remaining Purse: <strong style={{ color: "#51cf66", fontFamily: "monospace" }}>{formatRupees(remainingPurse)}</strong>
           </Text>

@@ -75,7 +75,7 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
         overlayProps={{ backgroundOpacity: 0.8, blur: 8 }}
         styles={{
           content: {
-            backgroundColor: "#0d132a",
+            backgroundColor: "var(--ipl-modal-bg)",
             border: "2px solid rgba(245, 159, 0, 0.7)",
             overflow: "hidden",
           },
@@ -111,22 +111,22 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
                 Your Former Player
               </Text>
               <Group gap="xs" justify="center" mt={4}>
-                <Title order={3} c="white" fw={900}>
+                <Title order={3} c="var(--mantine-color-text)" fw={900}>
                   {rtmState.playerName}
                 </Title>
                 {rtmState.isOverseas && <Airplane size={18} weight="fill" color="#f59f00" />}
               </Group>
               <Text size="xs" c="dimmed" mt={2}>
-                Role: <strong style={{ color: "#ffffff" }}>{rtmState.playerRole.replace(/_/g, " ")}</strong>
+                Role: <strong style={{ color: "var(--mantine-color-text)" }}>{rtmState.playerRole.replace(/_/g, " ")}</strong>
               </Text>
             </Box>
 
             {/* Price Box */}
             <Paper withBorder p="md" radius="md" w="100%" bg="rgba(245, 159, 0, 0.1)" style={{ borderColor: "rgba(245, 159, 0, 0.3)" }}>
               <Text size="xs" c="dimmed">
-                Hammer closed with highest bid by <strong style={{ color: "#ffffff" }}>{rtmState.highestBidderFranchise}</strong>
+                Hammer closed with highest bid by <strong style={{ color: "var(--mantine-color-text)" }}>{rtmState.highestBidderFranchise}</strong>
               </Text>
-              <Text size="xl" fw={900} ff="monospace" c="yellow.4" my={4}>
+              <Text size="xl" fw={900} ff="monospace" c="yellow.5" my={4}>
                 {formatRupees(rtmState.finalBidAmount)}
               </Text>
               <Text size="11px" c="dimmed">
@@ -136,15 +136,15 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
 
             {/* Purse & cards remaining */}
             <SimpleGrid cols={2} w="100%" spacing="xs">
-              <Paper withBorder p="xs" radius="md" bg="dark.7" style={{ textAlign: "left" }}>
+              <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ textAlign: "left", borderColor: "var(--ipl-border)" }}>
                 <Text size="10px" c="dimmed">Your Remaining Purse</Text>
-                <Text size="xs" fw={800} ff="monospace" c="teal.4">
+                <Text size="xs" fw={800} ff="monospace" c="teal.5">
                   {formatRupees(myFranchiseState?.remainingPurse || 0)}
                 </Text>
               </Paper>
-              <Paper withBorder p="xs" radius="md" bg="dark.7" style={{ textAlign: "left" }}>
+              <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ textAlign: "left", borderColor: "var(--ipl-border)" }}>
                 <Text size="10px" c="dimmed">RTM Cards Remaining</Text>
-                <Text size="xs" fw={800} ff="monospace" c="yellow.4">
+                <Text size="xs" fw={800} ff="monospace" c="yellow.5">
                   {myFranchiseState?.rtmCardsRemaining || 1} Cards
                 </Text>
               </Paper>
@@ -197,8 +197,8 @@ export const RTMDecisionPrompt: React.FC<RTMDecisionPromptProps> = ({
           <Lightning size={16} weight="fill" />
         </ThemeIcon>
         <Box style={{ minWidth: 0 }}>
-          <Text size="xs" fw={700} c="white">
-            <span style={{ color: "#fcc419" }}>{rtmState.eligibleFranchise}</span> evaluating Right to Match (RTM) for{" "}
+          <Text size="xs" fw={700} c="var(--mantine-color-text)">
+            <span style={{ color: "#f59f00" }}>{rtmState.eligibleFranchise}</span> evaluating Right to Match (RTM) for{" "}
             <strong>{rtmState.playerName}</strong>
           </Text>
           <Text size="11px" c="dimmed">

@@ -108,7 +108,7 @@ export const LiveChat: React.FC<LiveChatProps> = ({
                         {msg.displayName[0]?.toUpperCase() || "U"}
                       </Avatar>
                     )}
-                    <Text size="xs" fw={700} c="white">
+                    <Text size="xs" fw={700} c="var(--mantine-color-text)">
                       {msg.displayName}
                     </Text>
                   </Group>
@@ -121,15 +121,15 @@ export const LiveChat: React.FC<LiveChatProps> = ({
                   withBorder
                   p="6px 10px"
                   radius="md"
-                  bg="dark.7"
+                  bg="var(--ipl-bg-card)"
                   style={{
                     display: "inline-block",
                     maxWidth: "92%",
                     wordBreak: "break-word",
-                    borderColor: "rgba(255, 255, 255, 0.08)",
+                    borderColor: "var(--ipl-border)",
                   }}
                 >
-                  <Text size="xs" c="white">
+                  <Text size="xs" c="var(--mantine-color-text)">
                     {msg.text}
                   </Text>
                 </Paper>
@@ -161,8 +161,8 @@ export const LiveChat: React.FC<LiveChatProps> = ({
         onSubmit={handleSend}
         p="xs"
         style={{
-          borderTop: "1px solid rgba(79, 70, 229, 0.2)",
-          backgroundColor: "#0d132a",
+          borderTop: "1px solid var(--ipl-border)",
+          backgroundColor: "var(--ipl-bg-card-subtle)",
         }}
       >
         <TextInput

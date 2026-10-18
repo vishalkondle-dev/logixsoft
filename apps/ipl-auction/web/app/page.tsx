@@ -247,7 +247,8 @@ export default function HomePage() {
           position: "sticky",
           top: 0,
           zIndex: 40,
-          backgroundColor: "var(--mantine-color-dark-8)",
+          backgroundColor: "var(--ipl-nav-bg)",
+          borderColor: "var(--ipl-border)",
         }}
       >
         <Container size="lg">
@@ -340,7 +341,7 @@ export default function HomePage() {
                 <Paper p="lg" radius="lg" withBorder>
                   <form onSubmit={handleCreateRoom}>
                     <Stack gap="md">
-                      <Group justify="space-between" pb="xs" style={{ borderBottom: "1px solid var(--mantine-color-dark-4)" }}>
+                      <Group justify="space-between" pb="xs" style={{ borderBottom: "1px solid var(--ipl-border)" }}>
                         <Group gap="xs">
                           <ThemeIcon size={34} radius="md" color="orange" variant="light">
                             <Plus size={18} weight="bold" />
@@ -442,10 +443,10 @@ export default function HomePage() {
                                   gap: 8,
                                   backgroundColor: isSelected
                                     ? "rgba(234, 88, 12, 0.12)"
-                                    : "var(--mantine-color-dark-7)",
+                                    : "var(--ipl-bg-card-subtle)",
                                   borderColor: isSelected
                                     ? "var(--mantine-color-orange-5)"
-                                    : undefined,
+                                    : "var(--ipl-border)",
                                   boxShadow: isSelected
                                     ? "0 0 0 1px var(--mantine-color-orange-5)"
                                     : undefined,
@@ -544,7 +545,7 @@ export default function HomePage() {
                       </SimpleGrid>
 
                       {/* Retentions & RTM Switch */}
-                      <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                      <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
                         <Group justify="space-between" wrap="nowrap">
                           <Group gap="xs" style={{ minWidth: 0 }}>
                             <ThemeIcon size={32} radius="md" color="yellow" variant="light">
@@ -614,7 +615,7 @@ export default function HomePage() {
                   }}
                 >
                   <Stack gap="md">
-                    <Group gap="xs" pb="xs" style={{ borderBottom: "1px solid var(--mantine-color-dark-4)" }}>
+                    <Group gap="xs" pb="xs" style={{ borderBottom: "1px solid var(--ipl-border)" }}>
                       <ThemeIcon size={34} radius="md" color="blue" variant="light">
                         <Lock size={18} weight="bold" />
                       </ThemeIcon>
@@ -657,7 +658,7 @@ export default function HomePage() {
                     </form>
                   </Stack>
 
-                  <Paper p="xs" radius="md" withBorder mt="md" style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                  <Paper p="xs" radius="md" withBorder mt="md" style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
                     <Group gap="xs">
                       <Globe size={14} weight="bold" color="var(--mantine-color-orange-5)" />
                       <Text size="xs" fw={600}>
@@ -781,7 +782,7 @@ export default function HomePage() {
 
                           {/* Info Badges */}
                           <SimpleGrid cols={2} spacing="xs">
-                            <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                            <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
                               <Group gap={6} wrap="nowrap">
                                 <Users size={14} weight="bold" color="var(--mantine-color-blue-4)" />
                                 <Box style={{ minWidth: 0 }}>
@@ -795,7 +796,7 @@ export default function HomePage() {
                               </Group>
                             </Paper>
 
-                            <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                            <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
                               <Group gap={6} wrap="nowrap">
                                 <Robot size={14} weight="bold" color="var(--mantine-color-teal-4)" />
                                 <Box style={{ minWidth: 0 }}>

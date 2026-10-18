@@ -2,6 +2,11 @@ name = "ipl-auction-api"
 main = "src/index.ts"
 compatibility_date = "2026-08-13"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+routes = [
+  { pattern = "auction-api.logixsoft.in/*", zone_name = "logixsoft.in" }
+]
 
 [durable_objects]
 bindings = [
@@ -15,7 +20,7 @@ new_sqlite_classes = ["AuctionRoomDO"]
 [[d1_databases]]
 binding = "DB"
 database_name = "ipl_auction_db"
-database_id = "ipl-auction-d1-local"
+database_id = "172c2a33-03d2-41c7-a9e3-c4e494fb2890"
 
 [ai]
 binding = "AI"

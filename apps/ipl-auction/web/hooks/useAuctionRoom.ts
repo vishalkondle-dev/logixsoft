@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuctionStore } from "../stores/auctionStore";
 import { useAuthStore } from "../stores/authStore";
 import { ServerMessage } from "../lib/types";
-import { playHammerSound } from "../lib/auctionSound";
+import { playSoldGavelSound } from "../lib/auctionSound";
 
 export function useAuctionRoom(roomId: string) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -227,7 +227,7 @@ export function useAuctionRoom(roomId: string) {
 
       case "PLAYER_SOLD": {
         const p = message.payload;
-        playHammerSound();
+        playSoldGavelSound();
         applyPlayerSold(p.lotId, p.playerName, p.franchiseCode, p.amount, p.nextLegalBid, p.bidIncrement, p.stateVersion);
         break;
       }

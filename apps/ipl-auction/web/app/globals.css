@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+[data-mantine-color-scheme="light"] {
   --background: 210 20% 98%;
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
@@ -23,8 +24,29 @@
   --input: 214 22% 84%;
   --ring: 224 76% 48%;
   --radius: 0.65rem;
+
+  /* IPL Stadium Daylight Tokens */
+  --ipl-bg-canvas: #f8fafc;
+  --ipl-bg-card: #ffffff;
+  --ipl-bg-card-subtle: #f1f5f9;
+  --ipl-bg-card-hover: #e2e8f0;
+  --ipl-bg-elevated: #ffffff;
+  --ipl-border: #e2e8f0;
+  --ipl-border-subtle: #f1f5f9;
+  --ipl-border-accent: rgba(79, 70, 229, 0.2);
+  --ipl-text-main: #0f172a;
+  --ipl-text-muted: #64748b;
+  --ipl-nav-bg: rgba(255, 255, 255, 0.95);
+  --ipl-stat-bg: #f8fafc;
+  --ipl-banner-bg: linear-gradient(135deg, rgba(234, 88, 12, 0.08) 0%, rgba(241, 245, 249, 0.95) 100%);
+  --ipl-accent-glass: rgba(255, 255, 255, 0.9);
+  --ipl-bid-card-bg: #ffffff;
+  --ipl-modal-bg: #ffffff;
+  --ipl-button-claim-bg: rgba(13, 148, 136, 0.1);
+  --ipl-scroll-track: rgba(0, 0, 0, 0.04);
 }
 
+[data-mantine-color-scheme="dark"],
 .dark {
   --background: 222 47% 11%;
   --foreground: 210 40% 98%;
@@ -45,15 +67,36 @@
   --border: 217 33% 22%;
   --input: 217 33% 22%;
   --ring: 224 76% 48%;
+
+  /* IPL Stadium Midnight Tokens */
+  --ipl-bg-canvas: #070b1a;
+  --ipl-bg-card: #0b1024;
+  --ipl-bg-card-subtle: #0f172a;
+  --ipl-bg-card-hover: #141b3d;
+  --ipl-bg-elevated: #0d132a;
+  --ipl-border: rgba(79, 70, 229, 0.25);
+  --ipl-border-subtle: rgba(79, 70, 229, 0.15);
+  --ipl-border-accent: rgba(79, 70, 229, 0.45);
+  --ipl-text-main: #ffffff;
+  --ipl-text-muted: #94a3b8;
+  --ipl-nav-bg: rgba(10, 14, 34, 0.95);
+  --ipl-stat-bg: #0d132a;
+  --ipl-banner-bg: linear-gradient(135deg, rgba(234, 88, 12, 0.12) 0%, rgba(30, 41, 59, 0.4) 100%);
+  --ipl-accent-glass: rgba(11, 16, 36, 0.75);
+  --ipl-bid-card-bg: #0b1022;
+  --ipl-modal-bg: #0b1024;
+  --ipl-button-claim-bg: rgba(20, 184, 166, 0.15);
+  --ipl-scroll-track: transparent;
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: var(--ipl-bg-canvas);
+  color: var(--ipl-text-main);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 /* Dense compact scrollbars */
@@ -119,8 +162,8 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background-color: var(--mantine-color-dark-8);
-  border-left: 1px solid var(--mantine-color-dark-4);
+  background-color: var(--ipl-bg-card);
+  border-left: 1px solid var(--ipl-border);
 }
 
 @media (max-width: 1023px) {

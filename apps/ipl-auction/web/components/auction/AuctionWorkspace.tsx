@@ -10,7 +10,16 @@ import { ManageRetentionsModal } from "./ManageRetentionsModal";
 import { RTMDecisionPrompt } from "./RTMDecisionPrompt";
 import { CountryFlag } from "../common/CountryFlag";
 import { formatRupees, formatIndianNumber, calculateNextLegalBid, getBidIncrement } from "../../lib/utils";
-import { playHammerSound } from "../../lib/auctionSound";
+import {
+  playHammerSound,
+  playTickSound,
+  playGoingOnceSound,
+  playGoingTwiceSound,
+  playSoldGavelSound,
+  getIsAudioUnlocked,
+  unlockAudio,
+  testAudioOutput,
+} from "../../lib/auctionSound";
 import { useSyncTimer } from "../../hooks/useSyncTimer";
 import {
   Box,
@@ -39,37 +48,10 @@ import {
   Shield,
   Gavel,
   User,
+  SpeakerSimpleHigh,
 } from "@phosphor-icons/react";
 import { GiBilledCap } from "react-icons/gi";
 import { getRoleIcon, getRoleMeta } from "../../lib/roleIcons";
-
-function playTickSound(second: number) {
-  if (typeof window === "undefined") return;
-  try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
-    if (ctx.state === "suspended") {
-      ctx.resume().catch(() => {});
-    }
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    const freq = second === 1 ? 1250 : second === 2 ? 1000 : 800;
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.05);
-  } catch (err) {}
-}
 
 const getShortRole = (role?: string) => {
   if (!role) return "BAT";
@@ -127,9 +109,17 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
   serverOffset = 0,
   className,
 }) => {
-  const { snapshot, myFranchise, isUpcomingDialogOpen, setIsUpcomingDialogOpen } = useAuctionStore();
+  const { snapshot, myFranchise, isUpcomingDialogOpen, setIsUpcomingDialogOpen, voiceEnabled } = useAuctionStore();
   const [isTeamSelectModalOpen, setIsTeamSelectModalOpen] = useState(false);
   const [isRetentionsModalOpen, setIsRetentionsModalOpen] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
+  React.useEffect(() => {
+    setAudioUnlocked(getIsAudioUnlocked());
+    const handleUnlocked = () => setAudioUnlocked(true);
+    window.addEventListener("auction-audio-unlocked", handleUnlocked);
+    return () => window.removeEventListener("auction-audio-unlocked", handleUnlocked);
+  }, []);
 
   const currentLot = snapshot?.currentLot || null;
   const isLive = snapshot?.status === "LIVE";
@@ -141,7 +131,8 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
   React.useEffect(() => {
     if (currentLot?.status === "SOLD" && currentLot.id !== lastSoldLotIdRef.current) {
       lastSoldLotIdRef.current = currentLot.id;
-      playHammerSound();
+      // Always play the authentic sold proclamation and gavel strike sound effect
+      playSoldGavelSound();
     }
   }, [currentLot?.status, currentLot?.id]);
 
@@ -189,11 +180,20 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
       if (lastTickedSecondRef.current !== secondsLeft) {
         lastTickedSecondRef.current = secondsLeft;
         playTickSound(secondsLeft);
+
+        // When a player has an active bid, play the authentic countdown voice warnings
+        if (currentLot && currentLot.currentBid > 0 && voiceEnabled) {
+          if (secondsLeft === 2) {
+            playGoingOnceSound();
+          } else if (secondsLeft === 1) {
+            playGoingTwiceSound();
+          }
+        }
       }
     } else {
       lastTickedSecondRef.current = null;
     }
-  }, [secondsLeft, isPaused, snapshot?.timerDeadline, remainingMs]);
+  }, [secondsLeft, isPaused, snapshot?.timerDeadline, remainingMs, currentLot?.currentBid, voiceEnabled]);
 
   const previousTeam =
     currentLot?.previousFranchise && currentLot.previousFranchise !== "None"
@@ -218,7 +218,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
         flexDirection: "column",
         justifyContent: "space-between",
         gap: 8,
-        backgroundColor: "#070b1a",
+        backgroundColor: "var(--ipl-bg-canvas)",
         overflowY: "auto",
         userSelect: "none",
       }}
@@ -229,9 +229,9 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
           withBorder
           p="4px 10px"
           radius="md"
-          bg="dark.8"
+          bg="var(--ipl-bg-card-subtle)"
           style={{
-            borderColor: "rgba(79, 70, 229, 0.4)",
+            borderColor: "var(--ipl-border)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -240,7 +240,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
           <Text size="9px" fw={800} tt="uppercase" c="dimmed">
             {isLobby ? "STATUS" : "LOT"}
           </Text>
-          <Text size="xs" fw={900} ff="monospace" c="white">
+          <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">
             {isLobby ? "LOBBY" : `#${currentLot?.lotNumber || 1}`}
           </Text>
         </Paper>
@@ -249,15 +249,15 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
           withBorder
           p="6px 14px"
           radius="md"
-          bg="dark.8"
+          bg="var(--ipl-bg-card-subtle)"
           style={{
-            borderColor: "rgba(79, 70, 229, 0.4)",
+            borderColor: "var(--ipl-border)",
             flex: 1,
             textAlign: "center",
             minWidth: 0,
           }}
         >
-          <Text size="xs" fw={700} c="white" truncate>
+          <Text size="xs" fw={700} c="var(--mantine-color-text)" truncate>
             {isLobby ? "Pre-Auction Arena" : currentLot ? currentLot.setName : "IPL 2026 Live Auction"}
           </Text>
         </Paper>
@@ -322,6 +322,43 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
         </Group>
       </Group>
 
+      {/* Browser Autoplay / Audio Activation Banner */}
+      {!audioUnlocked && (
+        <Paper
+          withBorder
+          p="8px 14px"
+          radius="md"
+          style={{
+            backgroundColor: "rgba(255, 146, 43, 0.12)",
+            borderColor: "rgba(255, 146, 43, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            cursor: "pointer",
+            gap: 12,
+          }}
+          onClick={() => {
+            unlockAudio();
+            testAudioOutput();
+          }}
+        >
+          <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+            <SpeakerSimpleHigh size={20} weight="bold" color="#ff922b" style={{ flexShrink: 0 }} />
+            <Box style={{ minWidth: 0 }}>
+              <Text size="xs" fw={700} c="orange" truncate>
+                🔊 Audio is waiting for browser activation. Tap to enable commentary &amp; gavel strikes!
+              </Text>
+              <Text size="10px" c="dimmed">
+                Mobile / iPhone: Turn off physical Silent mode and raise media volume.
+              </Text>
+            </Box>
+          </Group>
+          <Button size="compact-xs" color="orange" variant="filled" style={{ flexShrink: 0 }}>
+            Enable Sound
+          </Button>
+        </Paper>
+      )}
+
       {/* RTM Banner */}
       {snapshot?.rtmState && snapshot.rtmState.active && (
         <RTMDecisionPrompt
@@ -352,8 +389,8 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                   radius="xl"
                   p={{ base: 8, sm: "md" }}
                   style={{
-                    backgroundColor: "#0b1024",
-                    borderColor: "rgba(79, 70, 229, 0.35)",
+                    backgroundColor: "var(--ipl-bg-card)",
+                    borderColor: "var(--ipl-border)",
                     display: "flex",
                     alignItems: "stretch",
                     gap: 10,
@@ -387,7 +424,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                       <Group justify="space-between" align="flex-start" wrap="wrap" gap={6}>
                         <Title
                           order={2}
-                          c="white"
+                          c="var(--mantine-color-text)"
                           fw={900}
                           lineClamp={1}
                           style={{
@@ -473,7 +510,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                             {roleIcon}
                           </ThemeIcon>
                         </Tooltip>
-                        <Text size="xs" fw={700} c="white" truncate>
+                        <Text size="xs" fw={700} c="var(--mantine-color-text)" truncate>
                           {formatBattingStyle(currentLot.battingStyle)}
                           {currentLot.bowlingStyle && currentLot.bowlingStyle !== "None"
                             ? ` • ${currentLot.bowlingStyle}`
@@ -484,33 +521,33 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
 
                     {/* Stats Grid: Exactly 2 lines (3 cols x 2 rows) */}
                     <SimpleGrid cols={3} spacing={6} my={4}>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
                         <Text size="9px" fw={700} c="dimmed" tt="uppercase">MAT</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="white">{currentLot.matches}</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">{currentLot.matches}</Text>
                       </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
                         <Text size="9px" fw={700} c="dimmed" tt="uppercase">RUNS</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="white">{formatIndianNumber(currentLot.runs)}</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">{formatIndianNumber(currentLot.runs)}</Text>
                       </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
                         <Text size="9px" fw={700} c="dimmed" tt="uppercase">AVG</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="white">
+                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">
                           {currentLot.battingAverage > 0 ? currentLot.battingAverage.toFixed(1) : "-"}
                         </Text>
                       </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
                         <Text size="9px" fw={700} c="dimmed" tt="uppercase">SR</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="white">
+                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">
                           {currentLot.strikeRate > 0 ? currentLot.strikeRate.toFixed(1) : "-"}
                         </Text>
                       </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
                         <Text size="9px" fw={700} c="dimmed" tt="uppercase">WKTS</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="white">{currentLot.wickets}</Text>
+                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">{currentLot.wickets}</Text>
                       </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="dark.8" ta="center">
+                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
                         <Text size="9px" fw={700} c="dimmed" tt="uppercase">ECON</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="white">
+                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">
                           {currentLot.economy > 0 ? currentLot.economy.toFixed(1) : "-"}
                         </Text>
                       </Paper>
@@ -523,8 +560,8 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                       p={{ base: "6px 8px", sm: "6px 12px" }}
                       mt={4}
                       style={{
-                        backgroundColor: "rgba(11, 16, 36, 0.75)",
-                        borderColor: "rgba(79, 70, 229, 0.35)",
+                        backgroundColor: "var(--ipl-bg-card-subtle)",
+                        borderColor: "var(--ipl-border)",
                       }}
                     >
                       <Group justify="space-between" align="center" wrap="nowrap" gap={6}>
@@ -533,12 +570,12 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                           <Text size="9px" fw={700} c="dimmed" tt="uppercase">
                             Base Price
                           </Text>
-                          <Text fz={{ base: "xs", sm: "sm" }} fw={900} ff="monospace" c="yellow.4">
+                          <Text fz={{ base: "xs", sm: "sm" }} fw={900} ff="monospace" c="yellow.5">
                             {formatRupees(currentLot.basePrice)}
                           </Text>
                         </Box>
 
-                        <Divider orientation="vertical" h={26} color="dark.4" />
+                        <Divider orientation="vertical" h={26} color="var(--ipl-border)" />
 
                         {/* Current / Highest Bid */}
                         <Group gap={8} justify="flex-end" align="center" wrap="nowrap">
@@ -546,7 +583,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                             <Text size="9px" fw={700} c="dimmed" tt="uppercase">
                               {currentLot.highestBidderFranchise ? "Highest Bid" : "Opening Bid"}
                             </Text>
-                            <Text fz={{ base: "sm", sm: "md" }} fw={900} ff="monospace" c="white">
+                            <Text fz={{ base: "sm", sm: "md" }} fw={900} ff="monospace" c="var(--mantine-color-text)">
                               {currentLot.currentBid > 0
                                 ? formatRupees(currentLot.currentBid)
                                 : formatRupees(currentLot.basePrice)}
@@ -605,7 +642,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
               <Badge color="yellow" variant="light" size="sm" mb={4}>
                 LOBBY • WAITING TO START
               </Badge>
-              <Title order={3} c="white" fw={900}>
+              <Title order={3} c="var(--mantine-color-text)" fw={900}>
                 {snapshot?.name || "IPL 2026 Live Auction Arena"}
               </Title>
               <Text size="xs" c="dimmed" mt={4}>
@@ -616,19 +653,19 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
             </Box>
 
             <SimpleGrid cols={3} spacing="xs" w="100%">
-              <Paper withBorder p="xs" radius="md" bg="dark.8">
+              <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }}>
                 <Text size="10px" fw={700} c="dimmed" tt="uppercase">Format</Text>
-                <Text size="xs" fw={800} c="white">
+                <Text size="xs" fw={800} c="var(--mantine-color-text)">
                   {snapshot?.ruleset === "SPRINT_XI" ? "Sprint XI" : snapshot?.ruleset === "CLASSIC" ? "Classic" : "Mega"}
                 </Text>
               </Paper>
-              <Paper withBorder p="xs" radius="md" bg="dark.8">
+              <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }}>
                 <Text size="10px" fw={700} c="dimmed" tt="uppercase">Squad Size</Text>
-                <Text size="xs" fw={800} c="white">
+                <Text size="xs" fw={800} c="var(--mantine-color-text)">
                   {snapshot?.ruleset === "SPRINT_XI" ? "11" : "18 - 25"}
                 </Text>
               </Paper>
-              <Paper withBorder p="xs" radius="md" bg="dark.8">
+              <Paper withBorder p="xs" radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }}>
                 <Text size="10px" fw={700} c="dimmed" tt="uppercase">Total Purse</Text>
                 <Text size="xs" fw={800} ff="monospace" c="teal.4">
                   {snapshot?.ruleset === "SPRINT_XI" ? "₹50 Cr" : "₹120 Cr"}
@@ -685,7 +722,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
         <Center style={{ flex: 1 }}>
           <Stack gap="xs" align="center" style={{ textAlign: "center" }}>
             <Trophy size={40} weight="bold" color="#748ffc" />
-            <Title order={4} c="white">
+            <Title order={4} c="var(--mantine-color-text)">
               {isCompleted ? "Auction Completed!" : "Auction Arena"}
             </Title>
             <Text size="xs" c="dimmed">

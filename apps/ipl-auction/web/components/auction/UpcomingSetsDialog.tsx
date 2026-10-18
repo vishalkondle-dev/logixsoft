@@ -302,8 +302,8 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                     radius="md"
                     style={{
                       overflow: "hidden",
-                      backgroundColor: s.isCurrent ? "rgba(245, 159, 0, 0.06)" : "rgba(15, 23, 42, 0.6)",
-                      borderColor: s.isCurrent ? "rgba(245, 159, 0, 0.4)" : "rgba(79, 70, 229, 0.2)",
+                      backgroundColor: s.isCurrent ? "rgba(245, 159, 0, 0.06)" : "var(--ipl-bg-card)",
+                      borderColor: s.isCurrent ? "rgba(245, 159, 0, 0.4)" : "var(--ipl-border)",
                     }}
                   >
                     <UnstyledButton
@@ -317,7 +317,7 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                           <Badge size="xs" variant="filled" color="dark">
                             {s.setCode}
                           </Badge>
-                          <Text size="xs" fw={800} c="white" truncate>
+                          <Text size="xs" fw={800} c="var(--mantine-color-text)" truncate>
                             {s.setName}
                           </Text>
                           {s.isCurrent && (
@@ -342,7 +342,7 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                     </UnstyledButton>
 
                     <Collapse expanded={isSetOpen}>
-                      <Box p="xs" style={{ borderTop: "1px solid rgba(79, 70, 229, 0.2)", backgroundColor: "rgba(0,0,0,0.2)" }}>
+                      <Box p="xs" style={{ borderTop: "1px solid var(--ipl-border)", backgroundColor: "var(--ipl-bg-card-subtle)" }}>
                         {s.players.length === 0 ? (
                           <Text size="xs" c="dimmed" fs="italic" ta="center" py="xs">
                             No players match the filter in this set.
@@ -362,13 +362,13 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                                       ? "rgba(245, 159, 0, 0.1)"
                                       : p.status === "SOLD"
                                       ? "rgba(16, 185, 129, 0.08)"
-                                      : "dark.8"
+                                      : "var(--ipl-bg-card)"
                                   }
                                   style={{
                                     borderColor:
                                       p.status === "ACTIVE"
                                         ? "rgba(245, 159, 0, 0.4)"
-                                        : "rgba(255, 255, 255, 0.08)",
+                                        : "var(--ipl-border)",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "space-between",
@@ -388,7 +388,7 @@ export const UpcomingSetsDialog: React.FC<UpcomingSetsDialogProps> = ({
                                     />
                                     <Box style={{ minWidth: 0 }}>
                                       <Group gap={4} wrap="nowrap">
-                                        <Text size="xs" fw={700} c="white" truncate>
+                                        <Text size="xs" fw={700} c="var(--mantine-color-text)" truncate>
                                           {p.name}
                                         </Text>
                                         {p.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}

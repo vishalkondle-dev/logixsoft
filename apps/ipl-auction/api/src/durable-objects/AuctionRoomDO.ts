@@ -26,7 +26,8 @@ import {
 import { calculateTeamAverageRating, calculateTeamOverallRating } from "../services/ratingService";
 import { evaluateRosterBalance } from "../services/rosterBalanceService";
 import { AudioAnnouncementService } from "../services/audioAnnouncements";
-import { ClefFlashService } from "../ai/clefFlash";
+import { ClefFlashService, RTMDecisionContext } from "../ai/clefFlash";
+import { calculatePlayerValuation } from "../ai/valuation";
 
 export interface Env {
   AUCTION_ROOM: DurableObjectNamespace<AuctionRoomDO>;
@@ -1760,12 +1761,16 @@ export class AuctionRoomDO extends DurableObject<Env> {
         }
       }, 10000);
     } else {
-      const shouldMatch = this.evaluateBotRTM(formerTeam, currentLot);
-      const delay = Math.floor(Math.random() * 1000) + 1500;
+      const delay = Math.floor(Math.random() * 800) + 1800;
+      const rtmContext = this.buildRTMContext(formerTeam, currentLot, highestBidderCode);
+      const rtmDecisionPromise = ClefFlashService.decideRTM(this.env, rtmContext);
+
       if (this.rtmTimer) clearTimeout(this.rtmTimer);
       this.rtmTimer = setTimeout(async () => {
         try {
-          await this.resolveRTM(shouldMatch, "AI Bot Evaluation");
+          const decision = await rtmDecisionPromise;
+          console.log(`[RTM AI Decision] ${formerTeam.code} for ${currentLot.playerName}:`, decision);
+          await this.resolveRTM(decision.exercise, decision.reason);
         } catch (err) {
           console.error("[RTM AI Bot Error]", err);
           await this.resolveRTM(false, "AI Bot Fallback");
@@ -1774,40 +1779,96 @@ export class AuctionRoomDO extends DurableObject<Env> {
     }
   }
 
-  private evaluateBotRTM(formerTeam: FranchiseState, currentLot: AuctionLot): boolean {
-    const currentRolePlayers = formerTeam.purchasedPlayers.filter((p) => p.role === currentLot.role).length;
-    let maxRoleTarget = 6;
-    if (currentLot.role === "BATTER" || currentLot.role === "BOWLER") maxRoleTarget = 7;
-    else if (currentLot.role === "ALL_ROUNDER") maxRoleTarget = 5;
-    else if (currentLot.role === "WICKETKEEPER") maxRoleTarget = 3;
+  private buildRTMContext(
+    formerTeam: FranchiseState,
+    currentLot: AuctionLot,
+    highestBidderCode: string
+  ): RTMDecisionContext {
+    const purchased = formerTeam.purchasedPlayers || [];
+    const batters = purchased.filter((p) => p.role === "BATTER").map((p) => p.name);
+    const bowlers = purchased.filter((p) => p.role === "BOWLER").map((p) => p.name);
+    const allRounders = purchased.filter((p) => p.role === "ALL_ROUNDER").map((p) => p.name);
+    const wicketkeepers = purchased.filter((p) => p.role === "WICKETKEEPER").map((p) => p.name);
 
-    const needsRole = currentRolePlayers < maxRoleTarget;
-    const rating = currentLot.hiddenRatingOverall || 75;
+    const roleCounts = {
+      BATTER: batters.length,
+      BOWLER: bowlers.length,
+      ALL_ROUNDER: allRounders.length,
+      WICKETKEEPER: wicketkeepers.length,
+    };
 
-    let baseCeiling = currentLot.basePrice;
-    if (rating >= 88) {
-      baseCeiling = Math.max(baseCeiling, 160000000);
-    } else if (rating >= 82) {
-      baseCeiling = Math.max(baseCeiling, 110000000);
-    } else if (rating >= 75) {
-      baseCeiling = Math.max(baseCeiling, 60000000);
-    } else {
-      baseCeiling = Math.max(baseCeiling, 30000000);
-    }
-
-    if (needsRole) {
-      baseCeiling = Math.round(baseCeiling * 1.2);
-    }
+    const neededRoles: string[] = [];
+    if (roleCounts.WICKETKEEPER < 1) neededRoles.push("WICKETKEEPER");
+    if (roleCounts.BATTER < 4) neededRoles.push("BATTER");
+    if (roleCounts.BOWLER < 5) neededRoles.push("BOWLER");
+    if (roleCounts.ALL_ROUNDER < 2) neededRoles.push("ALL_ROUNDER");
 
     const spotsRemainingAfterPurchase = Math.max(0, formerTeam.minSquad - (formerTeam.squadCount + 1));
-    const minReserveNeeded = spotsRemainingAfterPurchase * 3000000;
-    const purseRemainingAfterMatch = formerTeam.remainingPurse - currentLot.currentBid;
+    const purseAfterMatch = formerTeam.remainingPurse - currentLot.currentBid;
+    const budgetPerRemainingSlotAfterMatch =
+      spotsRemainingAfterPurchase > 0 ? purseAfterMatch / spotsRemainingAfterPurchase : purseAfterMatch;
 
-    if (purseRemainingAfterMatch < minReserveNeeded) {
-      return false;
-    }
+    const allTeamsObj: Record<string, FranchiseState> = {};
+    for (const [k, v] of this.teams.entries()) allTeamsObj[k] = v;
 
-    return currentLot.currentBid <= baseCeiling * 1.1;
+    const fairValuationCeiling = calculatePlayerValuation(
+      currentLot,
+      formerTeam,
+      this.aiDifficulty,
+      Math.max(1, this.lots.length - this.activeLotIndex),
+      this.lots.length,
+      allTeamsObj
+    );
+
+    return {
+      player: {
+        name: currentLot.playerName,
+        role: currentLot.role,
+        country: currentLot.country,
+        isOverseas: currentLot.isOverseas,
+        isCapped: currentLot.isCapped,
+        battingStyle: currentLot.battingStyle,
+        bowlingStyle: currentLot.bowlingStyle,
+        matches: currentLot.matches,
+        runs: currentLot.runs,
+        battingAverage: currentLot.battingAverage,
+        strikeRate: currentLot.strikeRate,
+        wickets: currentLot.wickets,
+        economy: currentLot.economy,
+        rating: currentLot.hiddenRatingOverall || 75,
+        basePrice: currentLot.basePrice,
+      },
+      rtmValue: {
+        finalBid: currentLot.currentBid,
+        highestBidderCode,
+      },
+      formerTeam: {
+        code: formerTeam.code,
+        name: formerTeam.name,
+        totalPurse: formerTeam.totalPurse,
+        remainingPurse: formerTeam.remainingPurse,
+        purseAfterMatch,
+        squadCount: formerTeam.squadCount,
+        minSquad: formerTeam.minSquad,
+        maxSquad: formerTeam.maxSquad,
+        overseasCount: formerTeam.overseasCount,
+        maxOverseas: formerTeam.maxOverseas,
+        rtmCardsRemaining: formerTeam.rtmCardsRemaining,
+        currentSquad: {
+          batters,
+          bowlers,
+          allRounders,
+          wicketkeepers,
+        },
+        roleCounts,
+        neededRoles,
+        fairValuationCeiling,
+        budgetPerRemainingSlotAfterMatch,
+      },
+      difficulty: this.aiDifficulty,
+      lotsRemaining: Math.max(1, this.lots.length - this.activeLotIndex),
+      totalLots: this.lots.length,
+    };
   }
 
   private async resolveRTM(exercise: boolean, source: string = "") {
@@ -1831,10 +1892,11 @@ export class AuctionRoomDO extends DurableObject<Env> {
       this.rtmState.status = "MATCHED";
       formerTeam.rtmCardsRemaining = Math.max(0, formerTeam.rtmCardsRemaining - 1);
 
+      const reasonDetail = source ? ` (${source})` : "";
       this.recordActivityEvent(
         "RTM_MATCHED",
         "RTM Exercised!",
-        `${formerTeam.name} exercised Right to Match (RTM) card and matched ₹${amount.toLocaleString("en-IN")} to retain ${currentLot.playerName}! (${formerTeam.rtmCardsRemaining} RTM card(s) left)`,
+        `${formerTeam.name} exercised Right to Match (RTM) card and matched ₹${amount.toLocaleString("en-IN")} to retain ${currentLot.playerName}! (${formerTeam.rtmCardsRemaining} RTM card(s) left)${reasonDetail}`,
         formerTeam.code,
         amount,
         currentLot.lotNumber
@@ -1867,10 +1929,11 @@ export class AuctionRoomDO extends DurableObject<Env> {
       const formerName = formerTeam?.name || this.rtmState.eligibleFranchise;
       const winnerName = highestTeam?.name || this.rtmState.highestBidderFranchise;
 
+      const reasonDetail = source ? ` (${source})` : "";
       this.recordActivityEvent(
         "RTM_DECLINED",
         "RTM Declined",
-        `${formerName} declined to exercise Right to Match card. ${currentLot.playerName} awarded to ${winnerName} for ₹${amount.toLocaleString("en-IN")}.`,
+        `${formerName} declined to exercise Right to Match card${reasonDetail}. ${currentLot.playerName} awarded to ${winnerName} for ₹${amount.toLocaleString("en-IN")}.`,
         highestTeam?.code,
         amount,
         currentLot.lotNumber

@@ -53,8 +53,8 @@ export const JoinNameModal: React.FC<JoinNameModalProps> = ({ isOpen, onSetName 
       overlayProps={{ backgroundOpacity: 0.8, blur: 8 }}
       styles={{
         content: {
-          backgroundColor: "#0b1024",
-          border: "1px solid rgba(79, 70, 229, 0.4)",
+          backgroundColor: "var(--ipl-modal-bg)",
+          border: "1px solid var(--ipl-border)",
         },
       }}
     >
@@ -72,7 +72,7 @@ export const JoinNameModal: React.FC<JoinNameModalProps> = ({ isOpen, onSetName 
         </Center>
 
         <div>
-          <Title order={3} c="white" fw={900}>
+          <Title order={3} c="var(--mantine-color-text)" fw={900}>
             Join the Auction
           </Title>
           <Text size="xs" c="dimmed" mt={4}>
@@ -98,9 +98,9 @@ export const JoinNameModal: React.FC<JoinNameModalProps> = ({ isOpen, onSetName 
               radius="md"
               styles={{
                 input: {
-                  backgroundColor: "#141a38",
-                  borderColor: "rgba(99, 102, 241, 0.4)",
-                  color: "#ffffff",
+                  backgroundColor: "var(--ipl-bg-card-subtle)",
+                  borderColor: "var(--ipl-border)",
+                  color: "var(--mantine-color-text)",
                 },
               }}
             />
@@ -119,7 +119,7 @@ export const JoinNameModal: React.FC<JoinNameModalProps> = ({ isOpen, onSetName 
           </Stack>
         </form>
 
-        <Divider label="or sign in with your account" labelPosition="center" w="100%" color="dark.5" />
+        <Divider label="or sign in with your account" labelPosition="center" w="100%" color="var(--ipl-border)" />
 
         <Button
           type="button"

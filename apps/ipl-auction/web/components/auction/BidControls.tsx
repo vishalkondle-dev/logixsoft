@@ -122,8 +122,8 @@ export const BidControls: React.FC<BidControlsProps> = ({
       pos="relative"
       className={className}
       style={{
-        backgroundColor: "#0b1022",
-        borderColor: "rgba(79, 70, 229, 0.3)",
+        backgroundColor: "var(--ipl-bid-card-bg)",
+        borderColor: "var(--ipl-border)",
         overflow: "hidden",
         userSelect: "none",
       }}
@@ -156,7 +156,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
                 size="xs"
                 fw={900}
                 ff="monospace"
-                c={isRtmActive ? "grape.3" : isPaused ? "yellow.4" : isUrgent ? "red.4" : "white"}
+                c={isRtmActive ? "grape.3" : isPaused ? "yellow.4" : isUrgent ? "red.4" : "var(--mantine-color-text)"}
                 truncate
               >
                 {isRtmActive ? `${timerSeconds ?? 0}s` : isPaused ? "PAUSED" : `${timerSeconds ?? 0}s`}
@@ -164,7 +164,7 @@ export const BidControls: React.FC<BidControlsProps> = ({
             </Box>
           </Group>
 
-          <Divider orientation="vertical" h={24} color="dark.5" />
+          <Divider orientation="vertical" h={24} color="var(--ipl-border)" />
 
           {/* Next Increment */}
           <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
@@ -173,13 +173,13 @@ export const BidControls: React.FC<BidControlsProps> = ({
               <Text size="9px" c="dimmed" fw={700} tt="uppercase" truncate>
                 Increment
               </Text>
-              <Text size="xs" fw={900} ff="monospace" c="white" truncate>
+              <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)" truncate>
                 +{formatRupees(bidIncrement)}
               </Text>
             </Box>
           </Group>
 
-          <Divider orientation="vertical" h={24} color="dark.5" />
+          <Divider orientation="vertical" h={24} color="var(--ipl-border)" />
 
           {/* Your Purse */}
           <Group gap={6} wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>

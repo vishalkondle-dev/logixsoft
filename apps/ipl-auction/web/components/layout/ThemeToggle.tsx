@@ -15,7 +15,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className }) => {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", computedColorScheme === "dark");
+    }
+  }, [computedColorScheme]);
 
   if (!mounted) {
     return <ActionIcon variant="default" size="md" radius="md" disabled />;
@@ -23,13 +26,21 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className }) => {
 
   const isDark = computedColorScheme === "dark";
 
+  const handleToggle = () => {
+    const nextScheme = isDark ? "light" : "dark";
+    setColorScheme(nextScheme);
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", nextScheme === "dark");
+    }
+  };
+
   return (
     <Tooltip label={isDark ? "Switch to light mode" : "Switch to dark mode"} withArrow position="bottom">
       <ActionIcon
         variant="default"
         size="md"
         radius="md"
-        onClick={() => setColorScheme(isDark ? "light" : "dark")}
+        onClick={handleToggle}
         aria-label="Toggle theme"
         className={className}
       >

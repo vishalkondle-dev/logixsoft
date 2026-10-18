@@ -51,7 +51,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
         <Group gap="xs">
           <Shield size={22} color="#748ffc" />
           <Box>
-            <Title order={4} fw={800} c="white">
+            <Title order={4} fw={800} c="var(--mantine-color-text)">
               Select Franchise to Bid
             </Title>
             <Text size="11px" c="dimmed">
@@ -62,8 +62,8 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
       }
       styles={{
         content: {
-          backgroundColor: "#0b1024",
-          border: "1px solid rgba(79, 70, 229, 0.4)",
+          backgroundColor: "var(--ipl-modal-bg)",
+          border: "1px solid var(--ipl-border)",
         },
       }}
     >
@@ -80,8 +80,8 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                   p="sm"
                   radius="md"
                   style={{
-                    backgroundColor: isAi ? "rgba(15, 23, 42, 0.6)" : "rgba(15, 23, 42, 0.2)",
-                    borderColor: isAi ? "rgba(79, 70, 229, 0.3)" : "rgba(255, 255, 255, 0.05)",
+                    backgroundColor: isAi ? "var(--ipl-bg-card)" : "var(--ipl-bg-card-subtle)",
+                    borderColor: isAi ? "var(--ipl-border)" : "var(--ipl-border)",
                     opacity: isAi ? 1 : 0.6,
                     display: "flex",
                     flexDirection: "column",
@@ -93,7 +93,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                     <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
                       <TeamIdentity code={team.code} size="md" />
                       <Box style={{ minWidth: 0 }}>
-                        <Text size="xs" fw={800} c="white" truncate>
+                        <Text size="xs" fw={800} c="var(--mantine-color-text)" truncate>
                           {team.name}
                         </Text>
                         <Text size="10px" c="dimmed" ff="monospace">
@@ -116,7 +116,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
                     )}
                   </Group>
 
-                  <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid var(--ipl-border)" }}>
                     <Text size="10px" c="dimmed" truncate style={{ maxWidth: 140 }}>
                       {isAi ? "Available to claim" : `Controlled by ${team.humanDisplayName || "Human"}`}
                     </Text>
@@ -145,7 +145,7 @@ export const TeamSelectionModal: React.FC<TeamSelectionModalProps> = ({
           </SimpleGrid>
         </ScrollArea>
 
-        <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <Group justify="space-between" pt="xs" style={{ borderTop: "1px solid var(--ipl-border)" }}>
           <Text size="11px" c="dimmed">
             Only AI-controlled teams can be claimed.
           </Text>

@@ -28,8 +28,8 @@ export const MobileBottomNav: React.FC = () => {
       px="md"
       style={{
         zIndex: 100,
-        backgroundColor: "rgba(7, 11, 26, 0.95)",
-        borderTop: "1px solid rgba(79, 70, 229, 0.25)",
+        backgroundColor: "var(--ipl-nav-bg)",
+        borderTop: "1px solid var(--ipl-border)",
         backdropFilter: "blur(12px)",
         userSelect: "none",
         display: "flex",
@@ -47,8 +47,8 @@ export const MobileBottomNav: React.FC = () => {
             gap: 2,
             padding: "6px 16px",
             borderRadius: 8,
-            color: activeMobileTab === "teams" ? "#91a7ff" : "#868e96",
-            backgroundColor: activeMobileTab === "teams" ? "rgba(76, 110, 245, 0.15)" : "transparent",
+            color: activeMobileTab === "teams" ? "var(--mantine-color-blue-filled)" : "var(--mantine-color-dimmed)",
+            backgroundColor: activeMobileTab === "teams" ? "rgba(76, 110, 245, 0.12)" : "transparent",
             transition: "all 0.15s ease",
           }}
         >
@@ -68,8 +68,8 @@ export const MobileBottomNav: React.FC = () => {
             gap: 2,
             padding: "6px 24px",
             borderRadius: 8,
-            color: activeMobileTab === "auction" ? "#91a7ff" : "#868e96",
-            backgroundColor: activeMobileTab === "auction" ? "rgba(76, 110, 245, 0.2)" : "transparent",
+            color: activeMobileTab === "auction" ? "var(--mantine-color-blue-filled)" : "var(--mantine-color-dimmed)",
+            backgroundColor: activeMobileTab === "auction" ? "rgba(76, 110, 245, 0.16)" : "transparent",
             transition: "all 0.15s ease",
           }}
         >
@@ -89,8 +89,8 @@ export const MobileBottomNav: React.FC = () => {
             gap: 2,
             padding: "6px 16px",
             borderRadius: 8,
-            color: activeMobileTab === "activity" ? "#91a7ff" : "#868e96",
-            backgroundColor: activeMobileTab === "activity" ? "rgba(76, 110, 245, 0.15)" : "transparent",
+            color: activeMobileTab === "activity" ? "var(--mantine-color-blue-filled)" : "var(--mantine-color-dimmed)",
+            backgroundColor: activeMobileTab === "activity" ? "rgba(76, 110, 245, 0.12)" : "transparent",
             transition: "all 0.15s ease",
           }}
         >

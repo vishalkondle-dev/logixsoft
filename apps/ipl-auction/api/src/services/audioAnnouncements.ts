@@ -53,7 +53,7 @@ export class AudioAnnouncementService {
 
   static createSoldAnnouncement(playerName: string, franchiseName: string, amount: number): VoiceAnnouncementPayload {
     const formattedPrice = formatRupeesForSpeech(amount);
-    const text = `Sold! ${playerName} sold to ${franchiseName} for ${formattedPrice}!`;
+    const text = `Going once... Going twice... SOLD! ${playerName} sold to ${franchiseName} for ${formattedPrice}!`;
 
     return {
       sequence: this.getNextSequence(),
@@ -128,7 +128,7 @@ export class AudioAnnouncementService {
       sequence: this.getNextSequence(),
       timestamp: Date.now(),
       eventType: "SOLD",
-      text: `${formerFranchiseName} declined Right to Match. ${playerName} sold to ${winningFranchiseName}!`,
+      text: `${formerFranchiseName} declined Right to Match. Going once... Going twice... SOLD! ${playerName} sold to ${winningFranchiseName}!`,
       playerName,
       franchiseName: winningFranchiseName,
     };

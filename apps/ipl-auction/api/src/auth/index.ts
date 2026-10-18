@@ -46,6 +46,8 @@ export function createBetterAuth(env: AuthContextEnv, requestUrl?: string) {
     trustedOrigins: [
       "https://auction.logixsoft.in",
       "https://auction.logixsoft.in/api",
+      "https://ipl-auction-web.vishalkondle-dev.workers.dev",
+      "https://ipl-auction-api.vishalkondle-dev.workers.dev",
       "http://localhost:3050",
       "http://localhost:8787",
       "http://127.0.0.1:3050",

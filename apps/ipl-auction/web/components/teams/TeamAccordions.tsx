@@ -55,25 +55,37 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
   className,
 }) => {
   const { snapshot, myFranchise, setMyFranchise } = useAuctionStore();
-  const [expandedTeams, setExpandedTeams] = useState<Record<string, boolean>>({
-    CSK: true,
-  });
-
-  const toggleExpand = (code: string) => {
-    setExpandedTeams((prev) => ({
-      ...prev,
-      [code]: !prev[code],
-    }));
-  };
-
   const teamsList = snapshot?.teams ? Object.values(snapshot.teams) : [];
   const currentLeaderCode = snapshot?.currentLot?.highestBidderFranchise;
+
+  // Single-expansion mode: default to user's claimed team (myFranchise), or first team if not claimed
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(() => myFranchise || null);
+  const initialSetRef = React.useRef(Boolean(myFranchise));
+  const prevMyFranchiseRef = React.useRef(myFranchise);
+
+  React.useEffect(() => {
+    // If user's claimed team is updated or resolved, expand the user's team
+    if (myFranchise && myFranchise !== prevMyFranchiseRef.current) {
+      prevMyFranchiseRef.current = myFranchise;
+      setExpandedTeam(myFranchise);
+      initialSetRef.current = true;
+    } else if (!initialSetRef.current && teamsList.length > 0) {
+      setExpandedTeam(myFranchise || teamsList[0].code);
+      initialSetRef.current = true;
+    }
+  }, [myFranchise, teamsList]);
+
+  const toggleExpand = (code: string) => {
+    // Only one can be expanded at a time: clicking another team closes the current one; clicking open team collapses it
+    setExpandedTeam((prev) => (prev === code ? null : code));
+  };
 
   const handleClaim = (e: React.MouseEvent, code: string) => {
     e.stopPropagation();
     if (myFranchise) return;
     onClaimTeam(code);
     setMyFranchise(code);
+    setExpandedTeam(code);
   };
 
   return (
@@ -83,8 +95,8 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        backgroundColor: "rgba(11, 16, 36, 0.4)",
-        borderRight: "1px solid rgba(79, 70, 229, 0.2)",
+        backgroundColor: "var(--ipl-bg-canvas)",
+        borderRight: "1px solid var(--ipl-border)",
       }}
       className={className}
     >
@@ -92,8 +104,8 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
       <Box
         p="xs"
         style={{
-          borderBottom: "1px solid rgba(79, 70, 229, 0.2)",
-          backgroundColor: "#0d132a",
+          borderBottom: "1px solid var(--ipl-border)",
+          backgroundColor: "var(--ipl-bg-card-subtle)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -102,7 +114,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
       >
         <Group gap={6}>
           <Shield size={16} weight="bold" color="#748ffc" />
-          <Text size="xs" fw={800} tt="uppercase" c="white" style={{ letterSpacing: "0.05em" }}>
+          <Text size="xs" fw={800} tt="uppercase" c="var(--mantine-color-text)" style={{ letterSpacing: "0.05em" }}>
             Franchises ({teamsList.length})
           </Text>
         </Group>
@@ -121,7 +133,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
           {teamsList.map((team) => {
             const isMyFranchise = myFranchise === team.code;
             const isLeading = currentLeaderCode === team.code;
-            const isExpanded = Boolean(expandedTeams[team.code]);
+            const isExpanded = expandedTeam === team.code;
 
             const batters = team.purchasedPlayers.filter((p) => p.role === "BATTER");
             const keepers = team.purchasedPlayers.filter((p) => p.role === "WICKETKEEPER");
@@ -139,26 +151,34 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                     ? "rgba(59, 130, 246, 0.08)"
                     : isLeading
                     ? "rgba(245, 159, 0, 0.08)"
-                    : "rgba(15, 23, 42, 0.6)",
+                    : "var(--ipl-bg-card)",
                   borderColor: isMyFranchise
                     ? "rgba(59, 130, 246, 0.5)"
                     : isLeading
                     ? "rgba(245, 159, 0, 0.5)"
-                    : "rgba(79, 70, 229, 0.2)",
+                    : "var(--ipl-border)",
                   transition: "all 0.15s ease",
                 }}
               >
                 {/* Header Row */}
-                <UnstyledButton
+                <Box
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggleExpand(team.code)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleExpand(team.code);
+                    }
+                  }}
                   p="xs"
                   w="100%"
-                  style={{ display: "block", userSelect: "none" }}
+                  style={{ display: "block", userSelect: "none", cursor: "pointer" }}
                 >
                   <Group justify="space-between" wrap="nowrap" mb={4}>
                     <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
                       <TeamIdentity code={team.code} size="sm" />
-                      <Text size="xs" fw={900} c="white" truncate>
+                      <Text size="xs" fw={900} c="var(--mantine-color-text)" truncate>
                         {team.shortName}
                       </Text>
                       {isMyFranchise && (
@@ -239,6 +259,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                               } else {
                                 handleClaim(e, team.code);
                               }
+                              setExpandedTeam(team.code);
                             }}
                           >
                             <Group gap={4} wrap="nowrap">
@@ -281,11 +302,11 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                       )}
                     </Group>
                   </Group>
-                </UnstyledButton>
+                </Box>
 
                 {/* Expanded Squad View */}
                 <Collapse expanded={isExpanded}>
-                  <Box p="xs" style={{ borderTop: "1px solid rgba(79, 70, 229, 0.2)", backgroundColor: "rgba(0,0,0,0.25)" }}>
+                  <Box p="xs" style={{ borderTop: "1px solid var(--ipl-border)", backgroundColor: "var(--ipl-bg-card-subtle)" }}>
                     {team.purchasedPlayers.length === 0 ? (
                       <Text size="xs" c="dimmed" fs="italic" ta="center" py="xs">
                         No players acquired yet.
@@ -322,11 +343,11 @@ function SquadGroup({ title, players }: { title: string; players: PurchasedPlaye
             withBorder
             p="4px 8px"
             radius="sm"
-            bg="dark.8"
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+            bg="var(--ipl-bg-card)"
+            style={{ borderColor: "var(--ipl-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
           >
             <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-              <Text size="xs" fw={600} truncate c="white">
+              <Text size="xs" fw={600} truncate c="var(--mantine-color-text)">
                 {p.name}
               </Text>
               {p.rating && (

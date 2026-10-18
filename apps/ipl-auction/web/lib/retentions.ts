@@ -3753,6 +3753,8 @@ export function calculateRetentionDeduction(retained: { isCapped: boolean; offic
     totalDeduction += (p.officialPrice || (p.isCapped ? 180000000 : 40000000));
   }
 
-  const rtmCards = Math.max(0, Math.min(6, 25 - (cappedCount + uncappedCount)));
+  // Official IPL Mega Auction Rule: Combined max 6 retentions + RTM cards.
+  // If a team has retained x players, exactly max(0, 6 - x) RTM cards are granted.
+  const rtmCards = Math.max(0, 6 - (cappedCount + uncappedCount));
   return { totalDeduction, cappedCount, uncappedCount, rtmCards };
 }

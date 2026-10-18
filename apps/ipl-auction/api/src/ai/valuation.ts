@@ -93,24 +93,30 @@ export function calculateDetailedValuation(
 
   switch (lot.role) {
     case "WICKETKEEPER":
-      if (inRoleCount === 0) roleNeedFactor *= 1.45;
-      else if (inRoleCount === 1) roleNeedFactor *= 0.9;
-      else if (inRoleCount >= 2) roleNeedFactor *= 0.25; // Already have 2+ keepers
+      if (inRoleCount === 0) roleNeedFactor *= 1.65; // Critical necessity
+      else if (inRoleCount === 1) roleNeedFactor *= 0.55; // Backup keeper only
+      else roleNeedFactor *= 0.15; // 2+ keepers -> strong cooldown
       break;
     case "BATTER":
-      if (inRoleCount === 0) roleNeedFactor *= 1.35;
-      else if (inRoleCount < 3) roleNeedFactor *= 1.15;
-      else if (inRoleCount >= 7) roleNeedFactor *= 0.35;
+      if (inRoleCount === 0) roleNeedFactor *= 1.60;
+      else if (inRoleCount < 3) roleNeedFactor *= 1.30;
+      else if (inRoleCount < 5) roleNeedFactor *= 0.95;
+      else if (inRoleCount < 7) roleNeedFactor *= 0.60;
+      else roleNeedFactor *= 0.25;
       break;
     case "BOWLER":
-      if (inRoleCount === 0) roleNeedFactor *= 1.35;
-      else if (inRoleCount < 3) roleNeedFactor *= 1.15;
-      else if (inRoleCount >= 8) roleNeedFactor *= 0.35;
+      if (inRoleCount === 0) roleNeedFactor *= 1.60;
+      else if (inRoleCount < 3) roleNeedFactor *= 1.30;
+      else if (inRoleCount < 5) roleNeedFactor *= 1.00;
+      else if (inRoleCount < 7) roleNeedFactor *= 0.70;
+      else roleNeedFactor *= 0.25;
       break;
     case "ALL_ROUNDER":
-      if (inRoleCount === 0) roleNeedFactor *= 1.4;
-      else if (inRoleCount < 2) roleNeedFactor *= 1.15;
-      else if (inRoleCount >= 6) roleNeedFactor *= 0.35;
+      if (inRoleCount === 0) roleNeedFactor *= 1.60;
+      else if (inRoleCount < 2) roleNeedFactor *= 1.30;
+      else if (inRoleCount < 4) roleNeedFactor *= 0.95;
+      else if (inRoleCount < 6) roleNeedFactor *= 0.60;
+      else roleNeedFactor *= 0.25;
       break;
   }
 
@@ -124,6 +130,9 @@ export function calculateDetailedValuation(
       if ((lot.hiddenRatingOverall || 70) < 82) {
         return { ceiling: 0, squadNeedFactor: 0, roleNeedFactor: 0, isDesirable: false };
       }
+    } else if (franchise.overseasCount >= 5 && (lot.hiddenRatingOverall || 70) < 78) {
+      // 5-6 overseas slots used: conserve remaining overseas quota for high-impact players
+      roleNeedFactor *= 0.65;
     }
   }
 
@@ -161,10 +170,18 @@ export function calculateDetailedValuation(
   const reserveNeeded = Math.max(0, franchise.minSquad - franchise.squadCount - 1) * 3000000;
   const maxAvailable = Math.max(0, franchise.remainingPurse - reserveNeeded);
 
-  const finalCeiling = Math.min(calculatedCeiling, maxSpend, maxAvailable);
+  // Purse affordability safeguard: If purse per remaining spot is tight, cap spend for non-marquee players
+  const spotsToFill = Math.max(1, franchise.minSquad - franchise.squadCount);
+  const avgPursePerSpot = franchise.remainingPurse / spotsToFill;
+  let purseAffordabilityCap = maxAvailable;
+  if (rating < 86 && avgPursePerSpot < 35000000) {
+    purseAffordabilityCap = Math.min(maxAvailable, avgPursePerSpot * 1.6);
+  }
+
+  const finalCeiling = Math.min(calculatedCeiling, maxSpend, maxAvailable, purseAffordabilityCap);
   const roundedCeiling = Math.max(0, Math.floor(finalCeiling / 100000) * 100000);
 
-  const isDesirable = roundedCeiling >= lot.basePrice && squadNeedFactor > 0.15;
+  const isDesirable = roundedCeiling >= lot.basePrice && squadNeedFactor > 0.15 && roleNeedFactor > 0.20;
 
   return {
     ceiling: roundedCeiling,

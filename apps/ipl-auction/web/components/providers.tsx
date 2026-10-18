@@ -7,6 +7,8 @@ import { ModalsProvider } from "@mantine/modals";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { theme, cssResolver } from "../theme";
 
+import { PwaManager } from "./pwa/PwaManager";
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -25,6 +27,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <MantineProvider theme={theme} cssVariablesResolver={cssResolver} defaultColorScheme="dark">
         <ModalsProvider>
           <Notifications position="top-right" zIndex={1000} />
+          <PwaManager />
           {children}
         </ModalsProvider>
       </MantineProvider>

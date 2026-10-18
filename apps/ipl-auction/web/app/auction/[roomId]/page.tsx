@@ -151,7 +151,7 @@ export default function AuctionPage({
               height: "100%",
               overflow: "hidden",
               minHeight: 0,
-              borderRight: "1px solid var(--mantine-color-dark-4)",
+              borderRight: "1px solid var(--ipl-border)",
             }}
           >
             <TeamAccordions
@@ -171,7 +171,7 @@ export default function AuctionPage({
               height: "100%",
               overflow: "hidden",
               minHeight: 0,
-              borderRight: "1px solid var(--mantine-color-dark-4)",
+              borderRight: "1px solid var(--ipl-border)",
             }}
           >
             <AuctionWorkspace
@@ -200,7 +200,7 @@ export default function AuctionPage({
               flexDirection: "column",
               overflow: "hidden",
               minHeight: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.2)",
+              backgroundColor: "transparent",
             }}
           >
             {/* Upper Part: Activity & Live Chat */}
@@ -211,7 +211,7 @@ export default function AuctionPage({
                 flexDirection: "column",
                 overflow: "hidden",
                 minHeight: 0,
-                borderBottom: "1px solid var(--mantine-color-dark-4)",
+                borderBottom: "1px solid var(--ipl-border)",
               }}
             >
               {/* Activity & Chat Tab Header */}
@@ -222,8 +222,8 @@ export default function AuctionPage({
                   borderTop: 0,
                   borderLeft: 0,
                   borderRight: 0,
-                  borderBottom: "1px solid var(--mantine-color-dark-5)",
-                  backgroundColor: "var(--mantine-color-dark-8)",
+                  borderBottom: "1px solid var(--ipl-border)",
+                  backgroundColor: "var(--ipl-bg-card-subtle)",
                 }}
               >
                 <Group gap={4}>
@@ -239,15 +239,15 @@ export default function AuctionPage({
                       fontWeight: 700,
                       backgroundColor:
                         activityTab === "activity"
-                          ? "var(--mantine-color-dark-6)"
+                          ? "var(--ipl-bg-card)"
                           : "transparent",
                       color:
                         activityTab === "activity"
-                          ? "var(--mantine-color-white)"
+                          ? "var(--mantine-color-text)"
                           : "var(--mantine-color-dimmed)",
                       border:
                         activityTab === "activity"
-                          ? "1px solid var(--mantine-color-dark-4)"
+                          ? "1px solid var(--ipl-border)"
                           : "1px solid transparent",
                     }}
                   >
@@ -272,15 +272,15 @@ export default function AuctionPage({
                       fontWeight: 700,
                       backgroundColor:
                         activityTab === "chat"
-                          ? "var(--mantine-color-dark-6)"
+                          ? "var(--ipl-bg-card)"
                           : "transparent",
                       color:
                         activityTab === "chat"
-                          ? "var(--mantine-color-white)"
+                          ? "var(--mantine-color-text)"
                           : "var(--mantine-color-dimmed)",
                       border:
                         activityTab === "chat"
-                          ? "1px solid var(--mantine-color-dark-4)"
+                          ? "1px solid var(--ipl-border)"
                           : "1px solid transparent",
                     }}
                   >
@@ -365,7 +365,7 @@ export default function AuctionPage({
                   flexDirection: "column",
                   overflow: "hidden",
                   minHeight: 0,
-                  borderBottom: "1px solid var(--mantine-color-dark-4)",
+                  borderBottom: "1px solid var(--ipl-border)",
                 }}
               >
                 <Paper
@@ -375,8 +375,8 @@ export default function AuctionPage({
                     borderTop: 0,
                     borderLeft: 0,
                     borderRight: 0,
-                    borderBottom: "1px solid var(--mantine-color-dark-5)",
-                    backgroundColor: "var(--mantine-color-dark-8)",
+                    borderBottom: "1px solid var(--ipl-border)",
+                    backgroundColor: "var(--ipl-bg-card-subtle)",
                   }}
                 >
                   <Group grow gap={4}>
@@ -390,11 +390,11 @@ export default function AuctionPage({
                         fontWeight: 700,
                         backgroundColor:
                           activityTab === "activity"
-                            ? "var(--mantine-color-dark-6)"
+                            ? "var(--ipl-bg-card)"
                             : "transparent",
                         color:
                           activityTab === "activity"
-                            ? "var(--mantine-color-white)"
+                            ? "var(--mantine-color-text)"
                             : "var(--mantine-color-dimmed)",
                       }}
                     >
@@ -410,11 +410,11 @@ export default function AuctionPage({
                         fontWeight: 700,
                         backgroundColor:
                           activityTab === "chat"
-                            ? "var(--mantine-color-dark-6)"
+                            ? "var(--ipl-bg-card)"
                             : "transparent",
                         color:
                           activityTab === "chat"
-                            ? "var(--mantine-color-white)"
+                            ? "var(--mantine-color-text)"
                             : "var(--mantine-color-dimmed)",
                       }}
                     >

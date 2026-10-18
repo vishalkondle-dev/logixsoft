@@ -140,7 +140,7 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        backgroundColor: "rgba(9, 13, 32, 0.9)",
+        backgroundColor: "var(--ipl-bg-canvas)",
         userSelect: "none",
       }}
     >
@@ -149,8 +149,8 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
         px="xs"
         py={8}
         style={{
-          borderBottom: "1px solid rgba(79, 70, 229, 0.2)",
-          backgroundColor: "#0d132a",
+          borderBottom: "1px solid var(--ipl-border)",
+          backgroundColor: "var(--ipl-bg-card-subtle)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -158,7 +158,7 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
       >
         <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
           <Cards size={16} weight="bold" color="#f59f00" />
-          <Text size="xs" fw={800} c="white" truncate title={currentSetName}>
+          <Text size="xs" fw={800} c="var(--mantine-color-text)" truncate title={currentSetName}>
             {currentSetName}
           </Text>
         </Group>
@@ -197,11 +197,11 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
                     isLive
                       ? "rgba(245, 159, 0, 0.12)"
                       : isSold
-                      ? "dark.9"
-                      : "dark.8"
+                      ? "var(--ipl-bg-card-subtle)"
+                      : "var(--ipl-bg-card)"
                   }
                   style={{
-                    borderColor: isLive ? "rgba(245, 159, 0, 0.6)" : "rgba(79, 70, 229, 0.2)",
+                    borderColor: isLive ? "rgba(245, 159, 0, 0.6)" : "var(--ipl-border)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -214,7 +214,7 @@ export const CurrentSetPlayersList: React.FC<CurrentSetPlayersListProps> = ({
                     </Text>
                     <CountryFlag country={player.country} size="xs" showLabel={false} />
                     {player.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}
-                    <Text size="xs" fw={isLive ? 900 : 700} c={isLive ? "yellow.3" : "white"} truncate>
+                    <Text size="xs" fw={isLive ? 900 : 700} c={isLive ? "yellow.5" : "var(--mantine-color-text)"} truncate>
                       {player.playerName}
                     </Text>
                     <Tooltip label={getRoleMeta(player.role).label} withArrow>

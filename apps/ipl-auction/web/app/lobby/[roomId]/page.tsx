@@ -186,8 +186,8 @@ export default function LobbyPage({
         radius={0}
         hiddenFrom="lg"
         style={{
-          borderBottom: "1px solid var(--mantine-color-dark-4)",
-          backgroundColor: "var(--mantine-color-dark-8)",
+          borderBottom: "1px solid var(--ipl-border)",
+          backgroundColor: "var(--ipl-bg-card-subtle)",
         }}
       >
         <SegmentedControl
@@ -251,8 +251,8 @@ export default function LobbyPage({
                 style={{
                   position: "relative",
                   overflow: "hidden",
-                  background:
-                    "linear-gradient(135deg, rgba(234, 88, 12, 0.12) 0%, rgba(30, 41, 59, 0.4) 100%)",
+                  background: "var(--ipl-banner-bg)",
+                  borderColor: "var(--ipl-border)",
                 }}
               >
                 <Group justify="space-between" align="center" wrap="wrap" gap="xs">
@@ -473,11 +473,11 @@ export default function LobbyPage({
                           flexDirection: "column",
                           justifyContent: "space-between",
                           backgroundColor: isClaimedByMe
-                            ? "var(--mantine-color-dark-6)"
-                            : "var(--mantine-color-dark-7)",
+                            ? "rgba(234, 88, 12, 0.1)"
+                            : "var(--ipl-bg-card)",
                           borderColor: isClaimedByMe
                             ? "var(--mantine-color-orange-5)"
-                            : undefined,
+                            : "var(--ipl-border)",
                           boxShadow: isClaimedByMe ? "0 0 0 1px var(--mantine-color-orange-5)" : undefined,
                         }}
                       >
@@ -707,8 +707,8 @@ export default function LobbyPage({
             radius={0}
             style={{
               flexShrink: 0,
-              borderTop: "1px solid var(--mantine-color-dark-4)",
-              backgroundColor: "rgba(10, 14, 34, 0.95)",
+              borderTop: "1px solid var(--ipl-border)",
+              backgroundColor: "var(--ipl-nav-bg)",
               backdropFilter: "blur(12px)",
             }}
           >
@@ -724,7 +724,7 @@ export default function LobbyPage({
                   Start Auction Now
                 </Button>
               ) : (
-                <Paper p={6} radius="md" ta="center" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                <Paper p={6} radius="md" ta="center" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
                   <Group justify="center" gap={6}>
                     <Loader size={12} color="yellow" />
                     <Text size="xs" fw={700} c="yellow">
@@ -750,8 +750,8 @@ export default function LobbyPage({
               borderTop: 0,
               borderLeft: 0,
               borderRight: 0,
-              borderBottom: "1px solid var(--mantine-color-dark-5)",
-              backgroundColor: "var(--mantine-color-dark-9)",
+              borderBottom: "1px solid var(--ipl-border)",
+              backgroundColor: "var(--ipl-bg-card-subtle)",
             }}
           >
             <Group grow gap={4}>
@@ -767,10 +767,11 @@ export default function LobbyPage({
                   fontSize: 12,
                   fontWeight: 700,
                   backgroundColor:
-                    sidebarTab === "chat" ? "var(--mantine-color-dark-6)" : "transparent",
+                    sidebarTab === "chat" ? "var(--ipl-bg-card)" : "transparent",
+                  boxShadow: sidebarTab === "chat" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
                   color:
                     sidebarTab === "chat"
-                      ? "var(--mantine-color-white)"
+                      ? "var(--mantine-color-text)"
                       : "var(--mantine-color-dimmed)",
                 }}
               >
@@ -795,10 +796,11 @@ export default function LobbyPage({
                   fontSize: 12,
                   fontWeight: 700,
                   backgroundColor:
-                    sidebarTab === "activity" ? "var(--mantine-color-dark-6)" : "transparent",
+                    sidebarTab === "activity" ? "var(--ipl-bg-card)" : "transparent",
+                  boxShadow: sidebarTab === "activity" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
                   color:
                     sidebarTab === "activity"
-                      ? "var(--mantine-color-white)"
+                      ? "var(--mantine-color-text)"
                       : "var(--mantine-color-dimmed)",
                 }}
               >
@@ -823,10 +825,11 @@ export default function LobbyPage({
                   fontSize: 12,
                   fontWeight: 700,
                   backgroundColor:
-                    sidebarTab === "rules" ? "var(--mantine-color-dark-6)" : "transparent",
+                    sidebarTab === "rules" ? "var(--ipl-bg-card)" : "transparent",
+                  boxShadow: sidebarTab === "rules" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
                   color:
                     sidebarTab === "rules"
-                      ? "var(--mantine-color-white)"
+                      ? "var(--mantine-color-text)"
                       : "var(--mantine-color-dimmed)",
                 }}
               >

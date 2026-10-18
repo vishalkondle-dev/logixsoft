@@ -8,6 +8,7 @@ import { playTickSound } from "../../lib/auctionSound";
 
 interface TimerDisplayProps {
   timerDeadline: number | null;
+  timerDurationMs?: number;
   serverOffset?: number;
   isPaused?: boolean;
   compact?: boolean;
@@ -16,6 +17,7 @@ interface TimerDisplayProps {
 
 export const TimerDisplay: React.FC<TimerDisplayProps> = ({
   timerDeadline,
+  timerDurationMs = 10000,
   serverOffset = 0,
   isPaused = false,
   compact = false,
@@ -23,7 +25,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
 }) => {
   const { secondsLeft, remainingMs, percentage, isUrgent, isExpired } = useSyncTimer(
     isPaused ? null : timerDeadline,
-    serverOffset
+    serverOffset,
+    timerDurationMs
   );
 
   const lastTickedSecondRef = useRef<number | null>(null);

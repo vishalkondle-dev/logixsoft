@@ -210,18 +210,18 @@ export function useAuctionRoom(roomId: string) {
 
       case "BID_ACCEPTED": {
         const p = message.payload;
-        applyBidAccepted(p.lotId, p.amount, p.franchiseCode, p.timerDeadline, p.nextLegalBid, p.bidIncrement, p.stateVersion);
+        applyBidAccepted(p.lotId, p.amount, p.franchiseCode, p.timerDeadline, p.nextLegalBid, p.bidIncrement, p.stateVersion, p.timerDurationMs);
         break;
       }
 
       case "TIMER_RESET": {
-        applyTimerReset(message.payload.timerDeadline);
+        applyTimerReset(message.payload.timerDeadline, message.payload.timerDurationMs);
         break;
       }
 
       case "PLAYER_STARTED": {
         const p = message.payload;
-        applyPlayerStarted(p.lot, p.timerDeadline, p.nextLegalBid, p.bidIncrement, p.stateVersion);
+        applyPlayerStarted(p.lot, p.timerDeadline, p.nextLegalBid, p.bidIncrement, p.stateVersion, p.timerDurationMs);
         break;
       }
 
@@ -269,7 +269,7 @@ export function useAuctionRoom(roomId: string) {
       }
 
       case "AUCTION_RESUMED": {
-        applyAuctionResumed(message.payload.timerDeadline, message.payload.stateVersion);
+        applyAuctionResumed(message.payload.timerDeadline, message.payload.stateVersion, message.payload.timerDurationMs);
         break;
       }
 

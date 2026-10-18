@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 
-export function useSyncTimer(timerDeadline: number | null, serverOffset = 0) {
+export function useSyncTimer(
+  timerDeadline: number | null,
+  serverOffset = 0,
+  totalDuration = 10000
+) {
   const [remainingMs, setRemainingMs] = useState<number>(() => {
     if (!timerDeadline) return 0;
     const now = Date.now() + serverOffset;
@@ -27,8 +31,8 @@ export function useSyncTimer(timerDeadline: number | null, serverOffset = 0) {
     return () => clearInterval(interval);
   }, [timerDeadline, serverOffset]);
 
-  const totalDuration = 10000;
-  const percentage = Math.max(0, Math.min(100, (remainingMs / totalDuration) * 100));
+  const duration = totalDuration > 0 ? totalDuration : 10000;
+  const percentage = Math.max(0, Math.min(100, (remainingMs / duration) * 100));
   const secondsLeft = Math.ceil(remainingMs / 1000);
 
   return {

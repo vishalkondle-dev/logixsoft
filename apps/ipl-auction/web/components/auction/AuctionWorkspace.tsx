@@ -208,9 +208,11 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
     effectiveIncrement = snapshot?.bidIncrement || 500000;
   }
 
+  const totalTimerDuration = snapshot?.timerDurationMs || (currentLot && currentLot.currentBid > 0 ? 10000 : 18000);
   const { secondsLeft, remainingMs, percentage, isUrgent } = useSyncTimer(
     isPaused ? null : snapshot?.timerDeadline || null,
-    serverOffset
+    serverOffset,
+    totalTimerDuration
   );
 
   const lastTickedSecondRef = React.useRef<number | null>(null);

@@ -24,9 +24,9 @@ interface AuctionStoreState {
   setIsScrolledToBottom: (isBottom: boolean) => void;
   resetUnreadChat: () => void;
   resetUnreadActivity: () => void;
-  applyBidAccepted: (lotId: string, amount: number, franchiseCode: string, timerDeadline: number, nextLegalBid: number, bidIncrement: number | undefined, stateVersion: number) => void;
-  applyTimerReset: (timerDeadline: number) => void;
-  applyPlayerStarted: (lot: AuctionLot, timerDeadline: number, nextLegalBid: number | undefined, bidIncrement: number | undefined, stateVersion: number) => void;
+  applyBidAccepted: (lotId: string, amount: number, franchiseCode: string, timerDeadline: number, nextLegalBid: number, bidIncrement: number | undefined, stateVersion: number, timerDurationMs?: number) => void;
+  applyTimerReset: (timerDeadline: number, timerDurationMs?: number) => void;
+  applyPlayerStarted: (lot: AuctionLot, timerDeadline: number, nextLegalBid: number | undefined, bidIncrement: number | undefined, stateVersion: number, timerDurationMs?: number) => void;
   applyPlayerSold: (lotId: string, playerName: string, franchiseCode: string, amount: number, nextLegalBid: number | undefined, bidIncrement: number | undefined, stateVersion: number) => void;
   applyPlayerUnsold: (lotId: string, playerName: string, nextLegalBid: number | undefined, bidIncrement: number | undefined, stateVersion: number) => void;
   applyTeamUpdated: (franchise: FranchiseState) => void;
@@ -35,7 +35,7 @@ interface AuctionStoreState {
   applyActivityEvent: (event: AuctionEvent) => void;
   applyVoiceAnnouncement: (ann: VoiceAnnouncementPayload) => void;
   applyAuctionPaused: (reason: string, remainingMs: number, stateVersion: number) => void;
-  applyAuctionResumed: (timerDeadline: number, stateVersion: number) => void;
+  applyAuctionResumed: (timerDeadline: number, stateVersion: number, timerDurationMs?: number) => void;
   applyAuctionCompleted: (stateVersion: number) => void;
   applyRtmPrompt: (rtmState: any) => void;
   applyRtmResolved: (lotId: string, exercised: boolean, winningFranchise: string, amount: number, stateVersion: number) => void;
@@ -65,7 +65,7 @@ export const useAuctionStore = create<AuctionStoreState>((set) => ({
   resetUnreadChat: () => set({ unreadChatCount: 0 }),
   resetUnreadActivity: () => set({ unreadActivityCount: 0 }),
 
-  applyBidAccepted: (lotId, amount, franchiseCode, timerDeadline, nextLegalBid, bidIncrement, stateVersion) =>
+  applyBidAccepted: (lotId, amount, franchiseCode, timerDeadline, nextLegalBid, bidIncrement, stateVersion, timerDurationMs) =>
     set((state) => {
       if (!state.snapshot || !state.snapshot.currentLot) return state;
       const updatedLot = {
@@ -78,6 +78,7 @@ export const useAuctionStore = create<AuctionStoreState>((set) => ({
           ...state.snapshot,
           stateVersion,
           timerDeadline,
+          timerDurationMs: timerDurationMs || 10000,
           nextLegalBid,
           bidIncrement: bidIncrement !== undefined ? bidIncrement : state.snapshot.bidIncrement,
           currentLot: updatedLot,
@@ -85,18 +86,19 @@ export const useAuctionStore = create<AuctionStoreState>((set) => ({
       };
     }),
 
-  applyTimerReset: (timerDeadline) =>
+  applyTimerReset: (timerDeadline, timerDurationMs) =>
     set((state) => {
       if (!state.snapshot) return state;
       return {
         snapshot: {
           ...state.snapshot,
           timerDeadline,
+          timerDurationMs: timerDurationMs || 10000,
         },
       };
     }),
 
-  applyPlayerStarted: (lot, timerDeadline, nextLegalBid, bidIncrement, stateVersion) =>
+  applyPlayerStarted: (lot, timerDeadline, nextLegalBid, bidIncrement, stateVersion, timerDurationMs) =>
     set((state) => {
       if (!state.snapshot) return state;
       return {
@@ -105,6 +107,7 @@ export const useAuctionStore = create<AuctionStoreState>((set) => ({
           status: "LIVE",
           stateVersion,
           timerDeadline,
+          timerDurationMs: timerDurationMs || (lot.currentBid > 0 ? 10000 : 18000),
           nextLegalBid: nextLegalBid !== undefined ? nextLegalBid : (lot.basePrice || state.snapshot.nextLegalBid),
           bidIncrement: bidIncrement !== undefined ? bidIncrement : state.snapshot.bidIncrement,
           currentLot: lot,
@@ -245,7 +248,7 @@ export const useAuctionStore = create<AuctionStoreState>((set) => ({
       };
     }),
 
-  applyAuctionResumed: (timerDeadline, stateVersion) =>
+  applyAuctionResumed: (timerDeadline, stateVersion, timerDurationMs) =>
     set((state) => {
       if (!state.snapshot) return state;
       return {
@@ -254,6 +257,7 @@ export const useAuctionStore = create<AuctionStoreState>((set) => ({
           status: "LIVE",
           pauseReason: undefined,
           timerDeadline,
+          timerDurationMs: timerDurationMs || state.snapshot.timerDurationMs || 10000,
           stateVersion,
         },
       };

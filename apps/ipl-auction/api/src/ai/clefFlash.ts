@@ -136,7 +136,7 @@ export class ClefFlashService {
             state: JSON.stringify(compactRTMState),
             questions: {
               exercise_rtm: {
-                type: "noul",
+                type: "bool",
                 instructions: `Should former franchise ${formerTeam.code} match winning bid ₹${rtmValue.finalBid.toLocaleString("en-IN")} to retain ${player.name} (${player.role}, SR: ${player.strikeRate}, Econ: ${player.economy})? Answer 'no' if the price exceeds fair value of ₹${formerTeam.fairValuationCeiling.toLocaleString("en-IN")} or harms squad balance.`,
               },
               strategic_reason: {
@@ -386,7 +386,7 @@ export class ClefFlashService {
             state: JSON.stringify(compactState),
             questions: {
               should_bid: {
-                type: "noul",
+                type: "bool",
                 instructions: `Should an eligible AI franchise place the next legal bid of ₹${nextLegalBid.toLocaleString("en-IN")} for ${lot.playerName} (${lot.role}, SR: ${lot.strikeRate}, Econ: ${lot.economy}, Base: ₹${lot.basePrice.toLocaleString("en-IN")})? Answer 'no' if the player has poor stats, is overpriced, or not needed.`,
               },
               bidder: {

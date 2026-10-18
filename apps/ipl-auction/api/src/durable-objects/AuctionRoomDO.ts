@@ -48,7 +48,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
   private eventSequence: number = 1;
   private pauseReason: string | null = null;
   private timerDeadline: number | null = null;
-  private remainingMsAtPause: number = 10000;
+  private currentTimerDurationMs: number = 18000;
+  private remainingMsAtPause: number = 18000;
   private activeLotIndex: number = -1;
   private aiDifficulty: "easy" | "normal" | "hard" = "normal";
   private voiceEnabled: boolean = true;
@@ -145,7 +146,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
       this.isPublic = stateMap.get("isPublic") !== "false";
       this.creatorTeam = stateMap.get("creatorTeam") || null;
       this.pauseReason = stateMap.get("pauseReason") || null;
-      this.remainingMsAtPause = parseInt(stateMap.get("remainingMsAtPause") || "10000", 10);
+      this.remainingMsAtPause = parseInt(stateMap.get("remainingMsAtPause") || "18000", 10);
+      this.currentTimerDurationMs = parseInt(stateMap.get("currentTimerDurationMs") || "18000", 10);
       const deadlineStr = stateMap.get("timerDeadline");
       this.timerDeadline = deadlineStr ? parseInt(deadlineStr, 10) : null;
       this.enableRetentions = stateMap.get("enableRetentions") !== "false";
@@ -355,6 +357,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
       ["creatorTeam", this.creatorTeam || ""],
       ["pauseReason", this.pauseReason || ""],
       ["remainingMsAtPause", String(this.remainingMsAtPause)],
+      ["currentTimerDurationMs", String(this.currentTimerDurationMs)],
       ["timerDeadline", this.timerDeadline ? String(this.timerDeadline) : ""],
       ["enableRetentions", this.enableRetentions ? "true" : "false"],
       ["ruleset", this.ruleset],
@@ -1398,14 +1401,16 @@ export class AuctionRoomDO extends DurableObject<Env> {
     currentLot.currentBid = 0;
     currentLot.highestBidderFranchise = null;
 
-    // Authoritative 10-Second Timer
-    this.timerDeadline = Date.now() + 10000;
+    // Authoritative Opening Bid Window (18 seconds for opening lot to give ample time for audio announcement, inspection, and human bidding)
+    const openingDurationMs = 18000;
+    this.currentTimerDurationMs = openingDurationMs;
+    this.timerDeadline = Date.now() + openingDurationMs;
     await this.ctx.storage.setAlarm(this.timerDeadline);
 
     if (this.activeTimer) clearTimeout(this.activeTimer);
     this.activeTimer = setTimeout(async () => {
       await this.alarm();
-    }, 10000);
+    }, openingDurationMs);
 
     this.stateVersion++;
     this.persistState();
@@ -1427,6 +1432,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
       payload: {
         lot: this.sanitizeLot(currentLot),
         timerDeadline: this.timerDeadline,
+        timerDurationMs: openingDurationMs,
         nextLegalBid: nextBid,
         bidIncrement: increment,
         stateVersion: this.stateVersion,
@@ -1537,14 +1543,16 @@ export class AuctionRoomDO extends DurableObject<Env> {
     currentLot.highestBidderFranchise = franchiseCode;
     this.stateVersion++;
 
-    // RESET TIMER TO EXACTLY 10 SECONDS
-    this.timerDeadline = Date.now() + 10000;
+    // RESET TIMER TO EXACTLY 10 SECONDS FOR COUNTER-BIDDING
+    const counterBidDurationMs = 10000;
+    this.currentTimerDurationMs = counterBidDurationMs;
+    this.timerDeadline = Date.now() + counterBidDurationMs;
     await this.ctx.storage.setAlarm(this.timerDeadline);
 
     if (this.activeTimer) clearTimeout(this.activeTimer);
     this.activeTimer = setTimeout(async () => {
       await this.alarm();
-    }, 10000);
+    }, counterBidDurationMs);
 
     this.saveLot(currentLot);
     this.persistState();
@@ -1568,6 +1576,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
         amount,
         franchiseCode,
         timerDeadline: this.timerDeadline,
+        timerDurationMs: counterBidDurationMs,
         nextLegalBid: updatedNextBid,
         bidIncrement: updatedIncrement,
         stateVersion: this.stateVersion,
@@ -1578,7 +1587,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
       type: "TIMER_RESET",
       payload: {
         timerDeadline: this.timerDeadline,
-        remainingMs: 10000,
+        timerDurationMs: counterBidDurationMs,
+        remainingMs: counterBidDurationMs,
       },
     });
 
@@ -2488,13 +2498,17 @@ export class AuctionRoomDO extends DurableObject<Env> {
     }
 
     // Active bidding lot: resume countdown
-    this.timerDeadline = Date.now() + this.remainingMsAtPause;
+    // Ensure generous breathing room upon resume so human users aren't immediately timed out!
+    const minResidualMs = (currentLot.currentBid === 0) ? 10000 : 5000;
+    const effectiveRemaining = Math.max(minResidualMs, this.remainingMsAtPause);
+    this.currentTimerDurationMs = Math.max(effectiveRemaining, this.currentTimerDurationMs);
+    this.timerDeadline = Date.now() + effectiveRemaining;
     await this.ctx.storage.setAlarm(this.timerDeadline);
 
     if (this.activeTimer) clearTimeout(this.activeTimer);
     this.activeTimer = setTimeout(async () => {
       await this.alarm();
-    }, this.remainingMsAtPause);
+    }, effectiveRemaining);
 
     this.stateVersion++;
     this.persistState();
@@ -2503,6 +2517,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
       type: "AUCTION_RESUMED",
       payload: {
         timerDeadline: this.timerDeadline,
+        timerDurationMs: this.currentTimerDurationMs,
         stateVersion: this.stateVersion,
       },
     });
@@ -2583,25 +2598,39 @@ export class AuctionRoomDO extends DurableObject<Env> {
     const currentVersion = this.stateVersion;
     const { nextBid } = calculateNextLegalBid(currentLot.currentBid, currentLot.basePrice);
 
-    // Dynamic AI reaction delay distribution:
-    // 1. Snappy instant counter-bid (~25%): 400ms - 1300ms (timer at 8.7s - 9.6s)
-    // 2. Deliberate / thoughtful evaluation (~40%): 2200ms - 4600ms (timer at 5.4s - 7.8s)
-    // 3. Edge / Buzzer-beater bid (~35%): 7800ms - 8800ms (timer at the very edge: 1.2s - 2.2s remaining!)
-    const roll = Math.random();
+    const isOpeningBid = currentLot.currentBid === 0;
     let delay: number;
-    if (roll < 0.25) {
-      delay = Math.floor(Math.random() * 900) + 400; // 0.4s - 1.3s
-    } else if (roll < 0.65) {
-      delay = Math.floor(Math.random() * 2400) + 2200; // 2.2s - 4.6s
+    if (isOpeningBid) {
+      // Opening bid (18s window): Give human users a fair window of 3.5s - 10.0s before AI bot raises opening paddle
+      // This allows humans to inspect the player, hear the start of announcement, and bid first if they want!
+      const roll = Math.random();
+      if (roll < 0.40) {
+        delay = Math.floor(Math.random() * 2000) + 3500; // 3.5s - 5.5s
+      } else if (roll < 0.80) {
+        delay = Math.floor(Math.random() * 2500) + 5500; // 5.5s - 8.0s
+      } else {
+        delay = Math.floor(Math.random() * 3000) + 8500; // 8.5s - 11.5s
+      }
     } else {
-      delay = Math.floor(Math.random() * 1000) + 7800; // 7.8s - 8.8s (buzzer edge: 1.2s - 2.2s left)
+      // Active counter-bidding (10s timer):
+      // 1. Snappy counter-bid (~30%): 400ms - 1300ms
+      // 2. Deliberate evaluation (~45%): 1800ms - 3800ms
+      // 3. Buzzer counter-bid (~25%): 5000ms - 6500ms
+      const roll = Math.random();
+      if (roll < 0.30) {
+        delay = Math.floor(Math.random() * 900) + 400; // 0.4s - 1.3s
+      } else if (roll < 0.75) {
+        delay = Math.floor(Math.random() * 2000) + 1800; // 1.8s - 3.8s
+      } else {
+        delay = Math.floor(Math.random() * 1500) + 5000; // 5.0s - 6.5s
+      }
     }
 
-    // Safety: ensure delay does not exceed remaining timer deadline minus 500ms
+    // Safety: ensure delay leaves at least 2500ms for Clef-Flash evaluation before timer deadline
     if (this.timerDeadline) {
       const remainingTime = this.timerDeadline - Date.now();
-      if (remainingTime > 600) {
-        delay = Math.min(delay, remainingTime - 500);
+      if (remainingTime > 3000) {
+        delay = Math.min(delay, remainingTime - 2500);
       }
     }
 
@@ -2837,7 +2866,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
       pauseReason: this.pauseReason || undefined,
       serverTime: Date.now(),
       timerDeadline: isLobby ? null : this.timerDeadline,
-      timerDurationMs: 10000,
+      timerDurationMs: this.currentTimerDurationMs || (currentLot?.currentBid ? 10000 : 18000),
       currentLot: currentLot ? this.sanitizeLot(currentLot) : null,
       nextLegalBid: isLobby ? 0 : nextBid,
       bidIncrement: isLobby ? 0 : increment,

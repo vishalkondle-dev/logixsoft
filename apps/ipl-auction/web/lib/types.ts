@@ -204,10 +204,10 @@ export type ServerMessage =
   | { type: "ERROR"; payload: { message: string } }
   | { type: "RETENTIONS_SAVED"; payload: any }
   | { type: "ROOM_UPDATED"; payload: { status: AuctionPhase; pauseReason?: string; stateVersion: number } }
-  | { type: "PLAYER_STARTED"; payload: { lot: AuctionLot; timerDeadline: number; nextLegalBid?: number; bidIncrement?: number; stateVersion: number } }
-  | { type: "BID_ACCEPTED"; payload: { lotId: string; amount: number; franchiseCode: string; timerDeadline: number; nextLegalBid: number; bidIncrement?: number; stateVersion: number } }
+  | { type: "PLAYER_STARTED"; payload: { lot: AuctionLot; timerDeadline: number; timerDurationMs?: number; nextLegalBid?: number; bidIncrement?: number; stateVersion: number } }
+  | { type: "BID_ACCEPTED"; payload: { lotId: string; amount: number; franchiseCode: string; timerDeadline: number; timerDurationMs?: number; nextLegalBid: number; bidIncrement?: number; stateVersion: number } }
   | { type: "BID_REJECTED"; payload: { reason: string; stateVersion: number } }
-  | { type: "TIMER_RESET"; payload: { timerDeadline: number; remainingMs: number } }
+  | { type: "TIMER_RESET"; payload: { timerDeadline: number; timerDurationMs?: number; remainingMs: number } }
   | { type: "PLAYER_SOLD"; payload: { lotId: string; playerName: string; franchiseCode: string; amount: number; nextLegalBid?: number; bidIncrement?: number; nextPlayerName?: string; stateVersion: number } }
   | { type: "PLAYER_UNSOLD"; payload: { lotId: string; playerName: string; nextLegalBid?: number; bidIncrement?: number; nextPlayerName?: string; stateVersion: number } }
   | { type: "TEAM_UPDATED"; payload: { franchise: FranchiseState } }
@@ -217,7 +217,7 @@ export type ServerMessage =
   | { type: "USER_CONNECTED"; payload: { userId: string; displayName: string; connectedHumanCount: number } }
   | { type: "USER_DISCONNECTED"; payload: { userId: string; displayName: string; connectedHumanCount: number } }
   | { type: "AUCTION_PAUSED"; payload: { reason: string; remainingMs: number; stateVersion: number } }
-  | { type: "AUCTION_RESUMED"; payload: { timerDeadline: number; stateVersion: number } }
+  | { type: "AUCTION_RESUMED"; payload: { timerDeadline: number; timerDurationMs?: number; stateVersion: number } }
   | { type: "AUCTION_ENDED"; payload: { stateVersion: number } }
   | { type: "AUCTION_COMPLETED"; payload: { summary?: any; stateVersion: number } }
   | { type: "VOICE_ANNOUNCEMENT"; payload: any }

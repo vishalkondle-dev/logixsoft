@@ -19,12 +19,10 @@ import {
   ActionIcon,
   ThemeIcon,
   SegmentedControl,
-  Divider,
   UnstyledButton,
   Tooltip,
 } from "@mantine/core";
 import {
-  Gavel,
   Plus,
   Sparkle,
   Users,
@@ -88,7 +86,7 @@ export default function HomePage() {
   const [roomName, setRoomName] = useState("IPL 2026 Mega Auction");
   const [rulesetType, setRulesetType] = useState<string>("MEGA");
   const [aiDifficulty, setAiDifficulty] = useState<string>("normal");
-  const [selectedTeam, setSelectedTeam] = useState<string>("MI");
+  const [selectedTeam, setSelectedTeam] = useState<string>("CSK");
   const [isPublic, setIsPublic] = useState<boolean>(true);
   const [enableRetentions, setEnableRetentions] = useState<boolean>(true);
 
@@ -234,7 +232,7 @@ export default function HomePage() {
         backgroundColor: "var(--mantine-color-body)",
       }}
     >
-      {/* Top Header */}
+      {/* Top Navigation Bar */}
       <Paper
         component="header"
         radius={0}
@@ -268,7 +266,7 @@ export default function HomePage() {
                 <Text fw={900} size="xs" style={{ letterSpacing: "-0.01em" }}>
                   AUCTION SIMULATOR
                 </Text>
-                <Text size="xs" c="dimmed" ff="monospace">
+                <Text size="10px" c="dimmed" ff="monospace">
                   2026 OFFICIAL RULES
                 </Text>
               </Box>
@@ -288,7 +286,7 @@ export default function HomePage() {
                   >
                     <Group gap={6} wrap="nowrap">
                       <Shield size={14} weight="bold" />
-                      <Box component="span" visibleFrom="lg">Admin</Box>
+                      <Box component="span" visibleFrom="sm">Admin</Box>
                     </Group>
                   </Button>
                 </Tooltip>
@@ -301,93 +299,130 @@ export default function HomePage() {
       </Paper>
 
       {/* Main Content */}
-      <Box component="main" style={{ flex: 1, padding: "16px 12px" }}>
+      <Box component="main" style={{ flex: 1, padding: "24px 12px" }}>
         <Container size="lg">
           <Stack gap="xl">
-            {/* Hero Section */}
-            <Stack align="center" ta="center" gap="xs" style={{ maxWidth: 680, margin: "0 auto" }}>
+            {/* Streamlined Hero Section */}
+            <Stack align="center" ta="center" gap="sm" style={{ maxWidth: 640, margin: "0 auto" }}>
               <Badge
                 color="orange"
                 variant="light"
-                size="md"
-                leftSection={<Sparkle size={14} weight="fill" />}
+                size="sm"
+                leftSection={<Sparkle size={12} weight="fill" />}
               >
-                <Box component="span" hiddenFrom="xs">Workers AI Engine</Box>
-                <Box component="span" visibleFrom="xs">Cloudflare Workers AI + Clef-Flash Decision Engine</Box>
+                IPL 2026 AUCTION SIMULATOR
               </Badge>
 
               <Title
                 order={1}
                 fw={900}
                 style={{
-                  fontSize: "clamp(1.5rem, 4vw, 2.75rem)",
+                  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
                   letterSpacing: "-0.03em",
                   lineHeight: 1.15,
                 }}
               >
-                The Definitive Real-Time Cricket Auction
+                Build Your Championship Squad
               </Title>
 
-              <Text size="sm" c="dimmed" style={{ maxWidth: 540 }}>
-                Authentic IPL 2026 player shortlist & sets. Authoritative 10-second hammer countdowns,
-                multiplayer WebSockets with Durable Object state persistence, and competitive Clef-Flash AI franchisees.
+              <Text size="sm" c="dimmed" style={{ maxWidth: 500 }}>
+                Real-time multiplayer cricket bidding with official 2026 purse limits,
+                authentic retentions, and smart AI franchises.
               </Text>
+
+              {/* Instant Quick Join Bar */}
+              <Paper
+                p={4}
+                radius="xl"
+                withBorder
+                mt="xs"
+                style={{
+                  maxWidth: 420,
+                  width: "100%",
+                  backgroundColor: "var(--ipl-bg-card-subtle)",
+                  boxShadow: "0 6px 20px -4px rgba(0,0,0,0.2)",
+                  borderColor: "var(--ipl-border)",
+                }}
+              >
+                <form onSubmit={handleJoinById}>
+                  <Group gap={4} wrap="nowrap">
+                    <TextInput
+                      placeholder="Enter 6-digit room code..."
+                      value={roomIdInput}
+                      onChange={(e) => setRoomIdInput(e.target.value.toUpperCase())}
+                      maxLength={10}
+                      variant="unstyled"
+                      size="xs"
+                      leftSection={<Lock size={14} weight="bold" color="var(--mantine-color-orange-5)" />}
+                      style={{ flex: 1, paddingLeft: 4 }}
+                      styles={{
+                        input: {
+                          fontFamily: "monospace",
+                          fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "var(--ipl-text-main)",
+                        },
+                      }}
+                    />
+                    <Button
+                      type="submit"
+                      size="xs"
+                      radius="xl"
+                      color="orange"
+                      disabled={!roomIdInput.trim()}
+                      rightSection={<ArrowRight size={13} weight="bold" />}
+                    >
+                      Join
+                    </Button>
+                  </Group>
+                </form>
+              </Paper>
             </Stack>
 
-            {/* Section 1: Create Room & Join by Code */}
-            <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="md">
-              {/* Create Room Form (2 Cols on lg) */}
-              <Box style={{ gridColumn: "span 2" }}>
-                <Paper p="lg" radius="lg" withBorder>
+            {/* Main Action Grid: Host on Left (7 cols), Active Auctions on Right (5 cols) */}
+            <SimpleGrid cols={{ base: 1, md: 12 }} spacing="lg">
+              {/* Left Column: Host an Auction Room (7 cols) */}
+              <Box style={{ gridColumn: "span 7" }}>
+                <Paper p="lg" radius="lg" withBorder style={{ backgroundColor: "var(--ipl-bg-card)", height: "100%" }}>
                   <form onSubmit={handleCreateRoom}>
                     <Stack gap="md">
+                      {/* Card Header */}
                       <Group justify="space-between" pb="xs" style={{ borderBottom: "1px solid var(--ipl-border)" }}>
                         <Group gap="xs">
-                          <ThemeIcon size={34} radius="md" color="orange" variant="light">
-                            <Plus size={18} weight="bold" />
+                          <ThemeIcon size={32} radius="md" color="orange" variant="light">
+                            <Plus size={16} weight="bold" />
                           </ThemeIcon>
                           <Box>
                             <Text fw={700} size="sm">
-                              Host Multiplayer Auction
+                              Host an Auction Room
                             </Text>
                             <Text size="xs" c="dimmed">
-                              Configure your room, pick your franchise, and invite players.
+                              Configure settings and invite other managers
                             </Text>
                           </Box>
                         </Group>
 
-                        <Badge
-                          color={isPublic ? "teal" : "gray"}
-                          variant="light"
-                          size="xs"
-                        >
-                          {isPublic ? "PUBLIC ROOM" : "PRIVATE ROOM"}
+                        <Badge size="xs" color={isPublic ? "teal" : "gray"} variant="light">
+                          {isPublic ? "PUBLIC DIRECTORY" : "PRIVATE (CODE ONLY)"}
                         </Badge>
                       </Group>
 
-                      {/* Creator Name */}
+                      {/* Name Row */}
                       {isAuthenticated && user?.name ? (
-                        <Paper p="xs" radius="md" withBorder style={{ backgroundColor: "rgba(16, 185, 129, 0.08)", borderColor: "rgba(16, 185, 129, 0.3)" }}>
-                          <Group justify="space-between">
-                            <Box>
-                              <Text size="xs" c="dimmed">
-                                Hosting as:
-                              </Text>
-                              <Text size="sm" fw={700} c="teal">
-                                {user.name}
-                              </Text>
-                            </Box>
-                            <Badge size="xs" color="teal" variant="light">
-                              Signed in via Google
-                            </Badge>
-                          </Group>
-                        </Paper>
+                        <Group justify="space-between" py={4} px="xs" style={{ borderRadius: 6, backgroundColor: "var(--ipl-bg-card-subtle)" }}>
+                          <Text size="xs" c="dimmed">
+                            Hosting as: <Text span fw={700} c="orange">{user.name}</Text>
+                          </Text>
+                          <Badge size="xs" color="teal" variant="light">Signed In</Badge>
+                        </Group>
                       ) : (
                         <TextInput
                           label="Your Name *"
-                          placeholder="Enter your name (mandatory to host or join)"
+                          placeholder="Enter your name (e.g. Vishal)"
                           value={creatorName}
                           required
+                          size="xs"
                           onChange={(e) => {
                             setCreatorName(e.target.value);
                             try {
@@ -399,200 +434,181 @@ export default function HomePage() {
 
                       {/* Room Name */}
                       <TextInput
-                        label="Auction Room Name"
+                        label="Auction Name"
                         placeholder="e.g. IPL 2026 Mega Auction"
                         value={roomName}
                         required
+                        size="xs"
                         onChange={(e) => setRoomName(e.target.value)}
                       />
 
-                      {/* Creator Team Choice */}
+                      {/* Compact Franchise Selector */}
                       <Box>
                         <Group justify="space-between" mb={6}>
-                          <Text size="xs" fw={700} c="dimmed">
-                            Choose Your Franchise{" "}
-                            <Text span c="orange" fw={400}>
-                              (Creator plays as this team)
-                            </Text>
-                          </Text>
-                          <Text size="xs" ff="monospace" c="dimmed">
-                            Selected:{" "}
+                          <Text size="xs" fw={600} c="dimmed">
+                            Pick Your Franchise:{" "}
                             <Text span fw={700} c="bright">
-                              {selectedTeam}
+                              {FRANCHISES.find((f) => f.code === selectedTeam)?.name}
                             </Text>
                           </Text>
+                          <Badge size="xs" color="orange" variant="outline">
+                            {selectedTeam}
+                          </Badge>
                         </Group>
 
-                        <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="xs">
+                        {/* 5x2 Compact Grid of Team Chips */}
+                        <SimpleGrid cols={{ base: 5, xs: 5 }} spacing={6}>
                           {FRANCHISES.map((team) => {
                             const isSelected = selectedTeam === team.code;
-                            const styling = FRANCHISE_COLORS[team.code];
+                            const colors = FRANCHISE_COLORS[team.code];
                             return (
-                              <Paper
+                              <UnstyledButton
                                 key={team.code}
-                                component="button"
-                                type="button"
-                                p="xs"
-                                radius="md"
-                                withBorder
                                 onClick={() => setSelectedTeam(team.code)}
                                 style={{
-                                  cursor: "pointer",
+                                  borderRadius: 8,
+                                  padding: "6px 2px",
                                   display: "flex",
+                                  flexDirection: "column",
                                   alignItems: "center",
-                                  gap: 8,
+                                  justifyContent: "center",
+                                  gap: 4,
                                   backgroundColor: isSelected
-                                    ? "rgba(234, 88, 12, 0.12)"
+                                    ? "rgba(234, 88, 12, 0.14)"
                                     : "var(--ipl-bg-card-subtle)",
-                                  borderColor: isSelected
-                                    ? "var(--mantine-color-orange-5)"
-                                    : "var(--ipl-border)",
-                                  boxShadow: isSelected
-                                    ? "0 0 0 1px var(--mantine-color-orange-5)"
-                                    : undefined,
-                                  textAlign: "left",
+                                  border: isSelected
+                                    ? "1.5px solid var(--mantine-color-orange-6)"
+                                    : "1px solid var(--ipl-border)",
+                                  transition: "all 0.15s ease",
+                                  cursor: "pointer",
                                 }}
                               >
                                 <Box
                                   style={{
-                                    width: 28,
-                                    height: 28,
+                                    width: 24,
+                                    height: 24,
                                     borderRadius: 6,
+                                    backgroundColor: colors?.hex || "#334155",
+                                    color: "#fff",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    fontWeight: 900,
-                                    fontSize: 11,
-                                    flexShrink: 0,
-                                    color: "#fff",
-                                    backgroundColor: styling?.hex || "#334155",
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    boxShadow: isSelected ? "0 2px 4px rgba(0,0,0,0.25)" : undefined,
                                   }}
                                 >
                                   {team.code}
                                 </Box>
-                                <Box style={{ minWidth: 0, flex: 1 }}>
-                                  <Text size="xs" fw={700} truncate>
-                                    {team.code}
-                                  </Text>
-                                  <Text size="xs" c="dimmed" truncate>
-                                    {team.name.split(" ")[0]}
-                                  </Text>
-                                </Box>
-                                {isSelected && (
-                                  <Check size={14} weight="bold" color="var(--mantine-color-orange-5)" />
-                                )}
-                              </Paper>
+                                <Text
+                                  size="10px"
+                                  fw={isSelected ? 700 : 500}
+                                  c={isSelected ? "orange" : "dimmed"}
+                                  truncate
+                                  style={{ maxWidth: "100%", lineHeight: 1 }}
+                                >
+                                  {team.code}
+                                </Text>
+                              </UnstyledButton>
                             );
                           })}
                         </SimpleGrid>
                       </Box>
 
-                      {/* Ruleset, AI Difficulty & Visibility */}
-                      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-                        <Select
-                          label="Auction Type"
+                      {/* Format Selector */}
+                      <Box>
+                        <Text size="xs" fw={600} c="dimmed" mb={4}>
+                          Auction Format
+                        </Text>
+                        <SegmentedControl
+                          fullWidth
+                          size="xs"
                           value={rulesetType}
                           onChange={(val) => {
-                            const nextVal = val || "MEGA";
-                            setRulesetType(nextVal);
-                            if (nextVal === "SPRINT_XI") {
+                            setRulesetType(val);
+                            if (val === "SPRINT_XI") {
                               setEnableRetentions(false);
                             } else {
                               setEnableRetentions(true);
                             }
                           }}
                           data={[
-                            { value: "MEGA", label: "Mega (₹120 Cr, Max 6 Retentions)" },
-                            { value: "CLASSIC", label: "Classic (₹120 Cr, Max 11 Retentions)" },
-                            {
-                              value: "SPRINT_XI",
-                              label: "Sprint XI (₹50 Cr, 11 Players, 0 Retentions)",
-                            },
+                            { label: "🏆 Mega (₹120 Cr)", value: "MEGA" },
+                            { label: "⚡ Mini", value: "MINI" },
+                            { label: "🏏 Sprint XI (₹50 Cr)", value: "SPRINT_XI" },
                           ]}
                         />
+                      </Box>
 
+                      {/* Compact Controls Row: AI Difficulty & Visibility */}
+                      <SimpleGrid cols={2} spacing="xs">
                         <Select
-                          label="AI Franchise Difficulty"
+                          label="AI Bot Difficulty"
+                          size="xs"
                           value={aiDifficulty}
                           onChange={(val) => setAiDifficulty(val || "normal")}
                           data={[
-                            { value: "easy", label: "Easy (Conservative)" },
+                            { value: "easy", label: "Easy (Cautious)" },
                             { value: "normal", label: "Normal (Realistic)" },
                             { value: "hard", label: "Hard (Aggressive)" },
                           ]}
                         />
 
-                        <Box>
-                          <Text size="xs" fw={500} mb={4}>
-                            Visibility
-                          </Text>
-                          <Button
-                            variant="default"
-                            fullWidth
-                            size="sm"
-                            leftSection={
-                              isPublic ? (
-                                <Globe size={14} weight="bold" color="var(--mantine-color-teal-4)" />
-                              ) : (
-                                <Lock size={14} weight="bold" />
-                              )
-                            }
-                            onClick={() => setIsPublic(!isPublic)}
-                          >
-                            {isPublic ? "Public Directory" : "Private (Code Only)"}
-                          </Button>
-                        </Box>
+                        <Select
+                          label="Room Visibility"
+                          size="xs"
+                          value={isPublic ? "public" : "private"}
+                          onChange={(val) => setIsPublic(val === "public")}
+                          data={[
+                            { value: "public", label: "Public (Listed)" },
+                            { value: "private", label: "Private (Code Only)" },
+                          ]}
+                        />
                       </SimpleGrid>
 
-                      {/* Retentions & RTM Switch */}
-                      <Paper p="sm" radius="md" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
-                        <Group justify="space-between" wrap="nowrap">
-                          <Group gap="xs" style={{ minWidth: 0 }}>
-                            <ThemeIcon size={32} radius="md" color="yellow" variant="light">
-                              <Text fw={900} size="xs">
-                                RTM
+                      {/* Clean Retentions Toggle (if format allows) */}
+                      {rulesetType !== "SPRINT_XI" && (
+                        <Group
+                          justify="space-between"
+                          px="xs"
+                          py={6}
+                          style={{
+                            borderRadius: 6,
+                            backgroundColor: "var(--ipl-bg-card-subtle)",
+                            border: "1px solid var(--ipl-border)",
+                          }}
+                        >
+                          <Group gap={6}>
+                            <Text size="xs" fw={600}>
+                              Official Retentions & RTM Cards
+                            </Text>
+                            <Tooltip
+                              label="Allows teams to retain up to 6 players before bidding begins. Unused slots convert to Right to Match cards."
+                              withArrow
+                            >
+                              <Text size="xs" c="dimmed" style={{ cursor: "help" }}>
+                                ⓘ
                               </Text>
-                            </ThemeIcon>
-                            <Box style={{ minWidth: 0 }}>
-                              <Group gap="xs" wrap="wrap">
-                                <Text fw={700} size="xs">
-                                  Enable Official Retentions & Right to Match (RTM)
-                                </Text>
-                                <Badge size="xs" color="yellow" variant="light">
-                                  {rulesetType === "SPRINT_XI"
-                                    ? "Disabled in Sprint XI"
-                                    : rulesetType === "MEGA"
-                                      ? "Max 6 Retentions"
-                                      : "Max 11 Retentions"}
-                                </Badge>
-                              </Group>
-                              <Text size="xs" c="dimmed">
-                                {rulesetType === "SPRINT_XI"
-                                  ? "Sprint XI mode forbids retentions and RTM cards."
-                                  : rulesetType === "MEGA"
-                                    ? "Teams retain up to 6 players with slabs. Unused cards become RTM."
-                                    : "Teams retain up to 11 players. Unused slots become RTM cards."}
-                              </Text>
-                            </Box>
+                            </Tooltip>
                           </Group>
-
                           <Switch
-                            checked={enableRetentions && rulesetType !== "SPRINT_XI"}
-                            disabled={rulesetType === "SPRINT_XI"}
+                            checked={enableRetentions}
                             onChange={(e) => setEnableRetentions(e.currentTarget.checked)}
+                            size="xs"
                             color="orange"
                           />
                         </Group>
-                      </Paper>
+                      )}
 
                       {/* Submit Button */}
                       <Button
                         type="submit"
                         color="orange"
-                        size="md"
+                        size="sm"
                         fullWidth
                         loading={isCreating}
                         leftSection={<Plus size={16} weight="bold" />}
+                        mt={4}
                       >
                         Create & Enter Auction Room
                       </Button>
@@ -601,276 +617,204 @@ export default function HomePage() {
                 </Paper>
               </Box>
 
-              {/* Join with Room Code Card */}
-              <Box>
+              {/* Right Column: Active Auctions Directory (5 cols) */}
+              <Box style={{ gridColumn: "span 5" }}>
                 <Paper
                   p="lg"
                   radius="lg"
                   withBorder
                   style={{
+                    backgroundColor: "var(--ipl-bg-card)",
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
-                    justifyContent: "space-between",
                   }}
                 >
-                  <Stack gap="md">
-                    <Group gap="xs" pb="xs" style={{ borderBottom: "1px solid var(--ipl-border)" }}>
-                      <ThemeIcon size={34} radius="md" color="blue" variant="light">
-                        <Lock size={18} weight="bold" />
-                      </ThemeIcon>
-                      <Box>
-                        <Text fw={700} size="sm">
-                          Join with Room Code
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          Got an invite code? Enter it below.
-                        </Text>
-                      </Box>
-                    </Group>
+                  <Stack gap="sm" style={{ flex: 1 }}>
+                    {/* Directory Header */}
+                    <Group justify="space-between" pb="xs" style={{ borderBottom: "1px solid var(--ipl-border)" }}>
+                      <Group gap="xs">
+                        <ThemeIcon size={32} radius="md" color="teal" variant="light">
+                          <Globe size={16} weight="bold" />
+                        </ThemeIcon>
+                        <Box>
+                          <Group gap={6}>
+                            <Text fw={700} size="sm">
+                              Active Auctions
+                            </Text>
+                            <Badge size="xs" color="teal" variant="light">
+                              {publicRooms.length}
+                            </Badge>
+                          </Group>
+                          <Text size="11px" c="dimmed">
+                            Join an open lobby or spectate
+                          </Text>
+                        </Box>
+                      </Group>
 
-                    <Text size="xs" c="dimmed">
-                      Connect directly to an existing private or custom room hosted by your friend or community organizer.
-                    </Text>
-
-                    <form onSubmit={handleJoinById}>
-                      <Stack gap="sm">
-                        <TextInput
-                          label="Room Code"
-                          placeholder="e.g. A1C2E3 or K4K9S1"
-                          maxLength={10}
-                          value={roomIdInput}
-                          onChange={(e) => setRoomIdInput(e.target.value.toUpperCase())}
-                          styles={{ input: { textTransform: "uppercase", fontFamily: "monospace" } }}
+                      <Group gap={4}>
+                        <SegmentedControl
+                          value={roomFilter}
+                          onChange={setRoomFilter}
+                          size="xs"
+                          data={[
+                            { label: "All", value: "ALL" },
+                            { label: "Lobby", value: "LOBBY" },
+                            { label: "Live", value: "LIVE" },
+                          ]}
                         />
-
-                        <Button
-                          type="submit"
-                          variant="default"
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
                           size="sm"
-                          fullWidth
-                          disabled={!roomIdInput.trim()}
-                          rightSection={<ArrowRight size={14} weight="bold" />}
+                          loading={isLoadingRooms}
+                          onClick={loadPublicRooms}
+                          title="Refresh"
                         >
-                          Join Room
-                        </Button>
-                      </Stack>
-                    </form>
-                  </Stack>
-
-                  <Paper p="xs" radius="md" withBorder mt="md" style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
-                    <Group gap="xs">
-                      <Globe size={14} weight="bold" color="var(--mantine-color-orange-5)" />
-                      <Text size="xs" fw={600}>
-                        Want to browse games?
-                      </Text>
+                          <ArrowsClockwise size={14} weight="bold" />
+                        </ActionIcon>
+                      </Group>
                     </Group>
-                    <Text size="xs" c="dimmed" mt={2}>
-                      Check the Public Directory below to find games waiting for participants!
-                    </Text>
-                  </Paper>
+
+                    {/* Rooms List */}
+                    {filteredRooms.length === 0 ? (
+                      <Paper
+                        p="xl"
+                        radius="md"
+                        withBorder
+                        ta="center"
+                        style={{
+                          backgroundColor: "var(--ipl-bg-card-subtle)",
+                          borderColor: "var(--ipl-border)",
+                          margin: "auto 0",
+                        }}
+                      >
+                        <Stack align="center" gap={6}>
+                          <ThemeIcon size={36} radius="xl" color="gray" variant="light">
+                            <Globe size={18} weight="bold" />
+                          </ThemeIcon>
+                          <Text fw={600} size="xs">
+                            No public rooms found
+                          </Text>
+                          <Text size="11px" c="dimmed">
+                            Create your own room to get started!
+                          </Text>
+                        </Stack>
+                      </Paper>
+                    ) : (
+                      <Stack gap="xs" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
+                        {filteredRooms.map((room) => {
+                          const isLobby = room.status === "LOBBY";
+                          const isLive = room.status === "LIVE" || room.status === "PAUSED";
+                          const isEnded = room.status === "ENDED" || room.status === "COMPLETED";
+
+                          return (
+                            <Paper
+                              key={room.id}
+                              p="xs"
+                              radius="md"
+                              withBorder
+                              style={{
+                                backgroundColor: "var(--ipl-bg-card-subtle)",
+                                borderColor: "var(--ipl-border)",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 6,
+                              }}
+                            >
+                              <Group justify="space-between" wrap="nowrap" align="center">
+                                <Box style={{ minWidth: 0, flex: 1 }}>
+                                  <Group gap={6} wrap="nowrap">
+                                    <Badge
+                                      size="xs"
+                                      color={isLobby ? "teal" : isLive ? "red" : "gray"}
+                                      variant={isLive ? "filled" : "light"}
+                                      leftSection={isLive ? <Broadcast size={10} weight="bold" /> : undefined}
+                                    >
+                                      {room.status}
+                                    </Badge>
+                                    <Text fw={700} size="xs" truncate>
+                                      {room.name}
+                                    </Text>
+                                  </Group>
+
+                                  <Group gap={6} mt={3}>
+                                    <Text size="11px" c="dimmed" ff="monospace">
+                                      {room.id}
+                                    </Text>
+                                    <Text size="11px" c="dimmed">•</Text>
+                                    <Text size="11px" c="dimmed">
+                                      {room.ruleset}
+                                    </Text>
+                                    {room.creatorTeam && (
+                                      <>
+                                        <Text size="11px" c="dimmed">•</Text>
+                                        <Badge size="xs" variant="outline" color="gray">
+                                          {room.creatorTeam}
+                                        </Badge>
+                                      </>
+                                    )}
+                                    <Text size="11px" c="dimmed">•</Text>
+                                    <Text size="11px" c="dimmed">
+                                      {room.connectedCount || 1} online
+                                    </Text>
+                                  </Group>
+                                </Box>
+
+                                <Button
+                                  size="xs"
+                                  color={isLobby ? "teal" : isLive ? "orange" : "gray"}
+                                  variant={isLobby ? "light" : "subtle"}
+                                  onClick={() => {
+                                    if (isLobby) router.push(`/lobby/${room.id}`);
+                                    else if (isEnded) router.push(`/summary/${room.id}`);
+                                    else router.push(`/auction/${room.id}`);
+                                  }}
+                                >
+                                  {isLobby ? "Join" : isEnded ? "Summary" : "Spectate"}
+                                </Button>
+                              </Group>
+                            </Paper>
+                          );
+                        })}
+                      </Stack>
+                    )}
+
+                    {/* Quick Guide Card at bottom of right column */}
+                    <Paper
+                      p="xs"
+                      radius="md"
+                      withBorder
+                      mt="auto"
+                      style={{
+                        backgroundColor: "var(--ipl-bg-card-subtle)",
+                        borderColor: "var(--ipl-border)",
+                      }}
+                    >
+                      <Text size="xs" fw={700} c="orange" mb={3}>
+                        How It Works
+                      </Text>
+                      <Stack gap={2}>
+                        <Text size="11px" c="dimmed">
+                          1. Host a room or join instantly using a 6-digit code.
+                        </Text>
+                        <Text size="11px" c="dimmed">
+                          2. Configure retentions in the lobby before bidding starts.
+                        </Text>
+                        <Text size="11px" c="dimmed">
+                          3. Real-time paddle bidding against friends & AI franchises.
+                        </Text>
+                      </Stack>
+                    </Paper>
+                  </Stack>
                 </Paper>
               </Box>
             </SimpleGrid>
-
-            {/* Section 2: Public Auctions Directory */}
-            <Stack gap="md">
-              <Group justify="space-between" align="flex-end" wrap="wrap">
-                <Box>
-                  <Group gap="xs">
-                    <Globe size={20} weight="bold" color="var(--mantine-color-orange-5)" />
-                    <Title order={3} fw={900}>
-                      Public Auctions Directory
-                    </Title>
-                    <Badge color="orange" variant="light" size="sm">
-                      {publicRooms.length} {publicRooms.length === 1 ? "Room" : "Rooms"} Available
-                    </Badge>
-                  </Group>
-                  <Text size="xs" c="dimmed" mt={2}>
-                    Join rooms in the lobby before the auction starts, or watch and spectate live auctions.
-                  </Text>
-                </Box>
-
-                <Group gap="xs">
-                  <SegmentedControl
-                    value={roomFilter}
-                    onChange={setRoomFilter}
-                    size="xs"
-                    data={[
-                      { label: `All (${publicRooms.length})`, value: "ALL" },
-                      {
-                        label: `Lobby (${publicRooms.filter((r) => r.status === "LOBBY").length})`,
-                        value: "LOBBY",
-                      },
-                      {
-                        label: `Live (${publicRooms.filter((r) => r.status !== "LOBBY").length})`,
-                        value: "LIVE",
-                      },
-                    ]}
-                  />
-
-                  <ActionIcon
-                    variant="default"
-                    size="md"
-                    loading={isLoadingRooms}
-                    onClick={loadPublicRooms}
-                    title="Refresh Room Directory"
-                  >
-                    <ArrowsClockwise size={16} weight="bold" />
-                  </ActionIcon>
-                </Group>
-              </Group>
-
-              {/* Rooms Grid */}
-              {filteredRooms.length === 0 ? (
-                <Paper p="xl" radius="lg" withBorder ta="center">
-                  <Stack align="center" gap="xs">
-                    <Globe size={32} weight="bold" color="var(--mantine-color-dimmed)" />
-                    <Text fw={700} size="sm">
-                      No public rooms found in this category
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Be the first to create an open room using the form above!
-                    </Text>
-                  </Stack>
-                </Paper>
-              ) : (
-                <SimpleGrid cols={{ base: 1, md: 2, lg: 3 }} spacing="md">
-                  {filteredRooms.map((room) => {
-                    const isLobby = room.status === "LOBBY";
-                    const isLive = room.status === "LIVE" || room.status === "PAUSED";
-                    const isEnded = room.status === "ENDED" || room.status === "COMPLETED";
-
-                    return (
-                      <Paper
-                        key={room.id}
-                        p="md"
-                        radius="lg"
-                        withBorder
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "space-between",
-                          gap: 16,
-                        }}
-                      >
-                        <Stack gap="xs">
-                          {/* Status & Ruleset */}
-                          <Group justify="space-between">
-                            <Badge
-                              size="xs"
-                              color={isLobby ? "teal" : isLive ? "yellow" : "gray"}
-                              variant="light"
-                              leftSection={isLive ? <Broadcast size={10} weight="bold" /> : undefined}
-                            >
-                              {room.status}
-                            </Badge>
-
-                            <Text size="xs" c="dimmed" ff="monospace">
-                              {room.ruleset} AUCTION
-                            </Text>
-                          </Group>
-
-                          <Box>
-                            <Text fw={700} size="sm" lineClamp={1}>
-                              {room.name}
-                            </Text>
-                            <Text size="xs" c="dimmed" ff="monospace">
-                              ID: {room.id}
-                            </Text>
-                          </Box>
-
-                          {/* Info Badges */}
-                          <SimpleGrid cols={2} spacing="xs">
-                            <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
-                              <Group gap={6} wrap="nowrap">
-                                <Users size={14} weight="bold" color="var(--mantine-color-blue-4)" />
-                                <Box style={{ minWidth: 0 }}>
-                                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                                    Online
-                                  </Text>
-                                  <Text size="xs" fw={700} truncate>
-                                    {room.connectedCount || 1} Human(s)
-                                  </Text>
-                                </Box>
-                              </Group>
-                            </Paper>
-
-                            <Paper p={6} radius="sm" withBorder style={{ backgroundColor: "var(--ipl-bg-card-subtle)", borderColor: "var(--ipl-border)" }}>
-                              <Group gap={6} wrap="nowrap">
-                                <Robot size={14} weight="bold" color="var(--mantine-color-teal-4)" />
-                                <Box style={{ minWidth: 0 }}>
-                                  <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-                                    Bot Teams
-                                  </Text>
-                                  <Text size="xs" fw={700} truncate>
-                                    {room.botTeamsCount !== undefined
-                                      ? `${room.botTeamsCount} Available`
-                                      : "AI Driven"}
-                                  </Text>
-                                </Box>
-                              </Group>
-                            </Paper>
-                          </SimpleGrid>
-
-                          {/* Host Info */}
-                          {room.creatorTeam && (
-                            <Group justify="space-between" px={2}>
-                              <Text size="xs" c="dimmed">
-                                Host Playing As:
-                              </Text>
-                              <Badge size="xs" color="gray" variant="filled">
-                                {room.creatorTeam}
-                              </Badge>
-                            </Group>
-                          )}
-                        </Stack>
-
-                        {/* Action Button */}
-                        <Box>
-                          {isLobby ? (
-                            <Button
-                              color="teal"
-                              size="xs"
-                              fullWidth
-                              leftSection={<Plus size={14} weight="bold" />}
-                              onClick={() => router.push(`/lobby/${room.id}`)}
-                            >
-                              Join Lobby
-                            </Button>
-                          ) : isEnded ? (
-                            <Button
-                              variant="default"
-                              size="xs"
-                              fullWidth
-                              leftSection={<Eye size={14} weight="bold" color="var(--mantine-color-yellow-4)" />}
-                              onClick={() => router.push(`/summary/${room.id}`)}
-                            >
-                              View Summary
-                            </Button>
-                          ) : (
-                            <Button
-                              color="orange"
-                              size="xs"
-                              fullWidth
-                              leftSection={<Eye size={14} weight="bold" />}
-                              onClick={() => router.push(`/auction/${room.id}`)}
-                            >
-                              Enter Auction Arena
-                            </Button>
-                          )}
-                        </Box>
-                      </Paper>
-                    );
-                  })}
-                </SimpleGrid>
-              )}
-            </Stack>
           </Stack>
         </Container>
       </Box>
 
-      {/* Footer */}
+      {/* Clean Footer */}
       <Paper
         component="footer"
         radius={0}
@@ -880,16 +824,17 @@ export default function HomePage() {
           borderBottom: 0,
           borderLeft: 0,
           borderRight: 0,
-          backgroundColor: "var(--mantine-color-dark-8)",
+          backgroundColor: "var(--ipl-nav-bg)",
+          borderColor: "var(--ipl-border)",
         }}
       >
         <Container size="lg">
           <Group justify="space-between">
             <Text size="xs" c="dimmed">
-              Cloudflare Durable Objects • Workers AI • Next.js 16
+              IPL Auction Simulator 2026 • Official Rules & Purse Limits
             </Text>
             <Text size="xs" c="dimmed">
-              IPL Auction Simulator V2 (Mantine UI)
+              Logixsoft
             </Text>
           </Group>
         </Container>

@@ -5,6 +5,7 @@ import { useAuctionStore } from "../../stores/auctionStore";
 import { TeamIdentity } from "./TeamIdentity";
 import { TeamAverageRating } from "./TeamAverageRating";
 import { formatRupees } from "../../lib/utils";
+import { PlayerJerseyThumbnail } from "../auction/PlayerJerseyShowcase";
 import {
   Box,
   Stack,
@@ -314,10 +315,10 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
                       </Text>
                     ) : (
                       <Stack gap="xs">
-                        {batters.length > 0 && <SquadGroup title="Batters" players={batters} />}
-                        {keepers.length > 0 && <SquadGroup title="Wicketkeepers" players={keepers} />}
-                        {allRounders.length > 0 && <SquadGroup title="All-rounders" players={allRounders} />}
-                        {bowlers.length > 0 && <SquadGroup title="Bowlers" players={bowlers} />}
+                        {batters.length > 0 && <SquadGroup title="Batters" players={batters} teamCode={team.code} />}
+                        {keepers.length > 0 && <SquadGroup title="Wicketkeepers" players={keepers} teamCode={team.code} />}
+                        {allRounders.length > 0 && <SquadGroup title="All-rounders" players={allRounders} teamCode={team.code} />}
+                        {bowlers.length > 0 && <SquadGroup title="Bowlers" players={bowlers} teamCode={team.code} />}
                       </Stack>
                     )}
                   </Box>
@@ -331,7 +332,7 @@ export const TeamAccordions: React.FC<TeamAccordionsProps> = ({
   );
 };
 
-function SquadGroup({ title, players }: { title: string; players: PurchasedPlayerRecord[] }) {
+function SquadGroup({ title, players, teamCode }: { title: string; players: PurchasedPlayerRecord[]; teamCode: string }) {
   return (
     <Box>
       <Text size="10px" fw={800} tt="uppercase" c="dimmed" mb={4}>
@@ -348,6 +349,13 @@ function SquadGroup({ title, players }: { title: string; players: PurchasedPlaye
             style={{ borderColor: "var(--ipl-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
           >
             <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+              <PlayerJerseyThumbnail
+                teamCode={teamCode}
+                lotNumber={p.lotNumber}
+                playerName={p.name}
+                side="back"
+                size={22}
+              />
               <Text size="xs" fw={600} truncate c="var(--mantine-color-text)">
                 {p.name}
               </Text>

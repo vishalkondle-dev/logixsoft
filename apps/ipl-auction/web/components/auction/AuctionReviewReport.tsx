@@ -39,6 +39,7 @@ import { RoomSnapshot, FranchiseState, PurchasedPlayerRecord, PlayerRole } from 
 import { TeamIdentity } from "../teams/TeamIdentity";
 import { CountryFlag } from "../common/CountryFlag";
 import { formatRupees } from "../../lib/utils";
+import { PlayerJerseyThumbnail } from "./PlayerJerseyShowcase";
 
 interface AuctionReviewReportProps {
   snapshot: RoomSnapshot;
@@ -270,24 +271,37 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                   <Fire size={14} weight="fill" />
                 </ThemeIcon>
               </Group>
-              <Text fw={900} size="sm" c="orange" truncate>
-                {mostExpensivePlayer ? mostExpensivePlayer.name : "None"}
-              </Text>
-              <Text size="xs" c="dimmed" ff="monospace" mt={2}>
-                {mostExpensivePlayer ? (
-                  <>
-                    <Text span fw={700} c="bright">
-                      {formatRupees(mostExpensivePlayer.purchasePrice)}
-                    </Text>{" "}
-                    •{" "}
-                    <Text span fw={700} c="orange">
-                      {mostExpensivePlayer.franchiseCode}
-                    </Text>
-                  </>
-                ) : (
-                  "No bids completed"
+              <Group gap="xs" wrap="nowrap" align="center">
+                {mostExpensivePlayer && (
+                  <PlayerJerseyThumbnail
+                    teamCode={mostExpensivePlayer.franchiseCode}
+                    lotNumber={mostExpensivePlayer.lotNumber}
+                    playerName={mostExpensivePlayer.name}
+                    side="back"
+                    size={32}
+                  />
                 )}
-              </Text>
+                <Box style={{ minWidth: 0 }}>
+                  <Text fw={900} size="sm" c="orange" truncate>
+                    {mostExpensivePlayer ? mostExpensivePlayer.name : "None"}
+                  </Text>
+                  <Text size="xs" c="dimmed" ff="monospace" mt={2}>
+                    {mostExpensivePlayer ? (
+                      <>
+                        <Text span fw={700} c="bright">
+                          {formatRupees(mostExpensivePlayer.purchasePrice)}
+                        </Text>{" "}
+                        •{" "}
+                        <Text span fw={700} c="orange">
+                          {mostExpensivePlayer.franchiseCode}
+                        </Text>
+                      </>
+                    ) : (
+                      "No bids completed"
+                    )}
+                  </Text>
+                </Box>
+              </Group>
             </Paper>
 
             {/* 4. Top Rated Franchise */}
@@ -525,22 +539,38 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                                         >
                                           <Group justify="space-between" wrap="nowrap">
                                             <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
-                                              <Text size="xs" c="dimmed" ff="monospace">
-                                                #{String(player.lotNumber).padStart(3, "0")}
-                                              </Text>
-                                              <Text size="xs" fw={700} truncate>
-                                                {player.name}
-                                              </Text>
-                                              {player.rating && (
-                                                <Badge size="xs" color="grape" variant="light" rightSection={<Star size={8} weight="fill" />}>
-                                                  {player.rating}
-                                                </Badge>
-                                              )}
-                                              {player.isOverseas && (
-                                                <Tooltip label={`Overseas (${player.country})`}>
-                                                  <Airplane size={12} weight="fill" color="var(--mantine-color-yellow-5)" />
-                                                </Tooltip>
-                                              )}
+                                              <PlayerJerseyThumbnail
+                                                teamCode={team.code}
+                                                lotNumber={player.lotNumber}
+                                                playerName={player.name}
+                                                side="back"
+                                                size={30}
+                                              />
+                                              <Box style={{ minWidth: 0 }}>
+                                                <Group gap={6} wrap="nowrap">
+                                                  <Text size="xs" fw={700} truncate>
+                                                    {player.name}
+                                                  </Text>
+                                                  {player.rating && (
+                                                    <Badge size="xs" color="grape" variant="light" rightSection={<Star size={8} weight="fill" />}>
+                                                      {player.rating}
+                                                    </Badge>
+                                                  )}
+                                                  {player.isOverseas && (
+                                                    <Tooltip label={`Overseas (${player.country})`}>
+                                                      <Airplane size={12} weight="fill" color="var(--mantine-color-yellow-5)" />
+                                                    </Tooltip>
+                                                  )}
+                                                  {player.isRetained && (
+                                                    <Badge size="xs" color="violet" variant="filled">
+                                                      Retained
+                                                    </Badge>
+                                                  )}
+                                                </Group>
+                                                <Text size="10px" c="dimmed" ff="monospace">
+                                                  Lot #{player.lotNumber} • {player.country}
+                                                </Text>
+                                              </Box>
                                             </Group>
                                             <Text fw={700} size="xs" ff="monospace" c="teal">
                                               {formatRupees(player.purchasePrice)}
@@ -608,6 +638,13 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                             >
                               #{idx + 1}
                             </Badge>
+                            <PlayerJerseyThumbnail
+                              teamCode={player.franchiseCode}
+                              lotNumber={player.lotNumber}
+                              playerName={player.name}
+                              side="back"
+                              size={34}
+                            />
                             <Box style={{ minWidth: 0 }}>
                               <Group gap="xs" wrap="nowrap">
                                 <Text fw={700} size="sm" truncate>

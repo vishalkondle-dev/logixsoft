@@ -14,14 +14,14 @@ export interface PlayerJerseyShowcaseProps {
   size?: "sm" | "md" | "lg";
 }
 
-const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; accentText: string; pillStyle: string; label: string; numColor: string }> = {
+export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; accentText: string; pillStyle: string; label: string; numColor: string }> = {
   MI: {
     bgGlow: "from-blue-600/20 via-blue-900/10 to-transparent",
     borderGlow: "border-blue-500/50 shadow-blue-500/15 dark:border-blue-500/40",
     accentText: "text-blue-600 dark:text-blue-400",
     pillStyle: "bg-blue-600/15 text-blue-700 dark:text-blue-300 border-blue-500/40 shadow-blue-500/10",
     label: "Mumbai Indians",
-    numColor: "#f3af10",
+    numColor: "#ffd700",
   },
   CSK: {
     bgGlow: "from-amber-400/25 via-yellow-600/10 to-transparent",
@@ -29,7 +29,7 @@ const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; acc
     accentText: "text-amber-600 dark:text-amber-300",
     pillStyle: "bg-amber-500/20 text-amber-800 dark:text-yellow-300 border-amber-400/50 shadow-amber-500/10",
     label: "Chennai Super Kings",
-    numColor: "#004ba0",
+    numColor: "#003b8e",
   },
   RCB: {
     bgGlow: "from-red-600/20 via-rose-950/15 to-transparent",
@@ -37,7 +37,7 @@ const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; acc
     accentText: "text-red-600 dark:text-red-400",
     pillStyle: "bg-red-600/15 text-red-700 dark:text-red-300 border-red-500/40 shadow-red-500/10",
     label: "Royal Challengers Bengaluru",
-    numColor: "#ffffff",
+    numColor: "#ffd700",
   },
   KKR: {
     bgGlow: "from-purple-600/20 via-fuchsia-950/15 to-transparent",
@@ -45,7 +45,7 @@ const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; acc
     accentText: "text-purple-600 dark:text-purple-400",
     pillStyle: "bg-purple-600/15 text-purple-700 dark:text-purple-300 border-purple-500/40 shadow-purple-500/10",
     label: "Kolkata Knight Riders",
-    numColor: "#e5b94c",
+    numColor: "#ffd700",
   },
   SRH: {
     bgGlow: "from-orange-500/25 via-amber-950/15 to-transparent",
@@ -53,7 +53,7 @@ const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; acc
     accentText: "text-orange-600 dark:text-orange-400",
     pillStyle: "bg-orange-600/15 text-orange-700 dark:text-orange-300 border-orange-500/40 shadow-orange-500/10",
     label: "Sunrisers Hyderabad",
-    numColor: "#000000",
+    numColor: "#ffffff",
   },
   DC: {
     bgGlow: "from-blue-600/20 via-red-900/15 to-transparent",
@@ -77,7 +77,7 @@ const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; acc
     accentText: "text-cyan-600 dark:text-cyan-400",
     pillStyle: "bg-cyan-600/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/40 shadow-cyan-500/10",
     label: "Gujarat Titans",
-    numColor: "#cfb058",
+    numColor: "#e5c07b",
   },
   LSG: {
     bgGlow: "from-sky-500/25 via-blue-950/15 to-transparent",
@@ -93,7 +93,7 @@ const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; acc
     accentText: "text-red-600 dark:text-red-400",
     pillStyle: "bg-rose-600/15 text-rose-700 dark:text-rose-300 border-rose-500/40 shadow-rose-500/10",
     label: "Punjab Kings",
-    numColor: "#ffffff",
+    numColor: "#ffd700",
   },
 };
 
@@ -117,7 +117,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
   const [pulseKey, setPulseKey] = useState(0);
-  const [viewSide, setViewSide] = useState<"front" | "back">("front");
+  const [viewSide, setViewSide] = useState<"front" | "back">("back");
 
   // Active franchise is either the sold winner or current highest bidder
   const activeCode = (status === "SOLD" ? soldToTeam || teamCode : teamCode)?.toUpperCase() || null;
@@ -137,7 +137,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
   }, [playerName]);
 
   // Squad / Lot number for back view
-  const displayNum = lotNumber || 18;
+  const displayNum = lotNumber !== undefined && lotNumber !== null ? lotNumber : 1;
 
   const jerseyUrl = useMemo(() => {
     const code = activeCode ? activeCode.toLowerCase() : "neutral";
@@ -199,18 +199,20 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
           loading="eager"
         />
 
-        {/* Back View: Player Name and Squad Number Athletic Overlay */}
+        {/* Back View: Player Name and Lot # Athletic Overlay */}
         {viewSide === "back" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-start pointer-events-none select-none">
             {/* Player Surname arched on upper back */}
             <div
-              className="text-[11px] xs:text-[13px] sm:text-[15px] font-black uppercase tracking-widest text-center"
+              className="text-[10px] xs:text-[12px] sm:text-[14px] font-black uppercase tracking-widest text-center px-1"
               style={{
-                marginTop: "24%",
+                marginTop: "23%",
                 color: teamTheme.numColor,
-                textShadow: "0 2px 4px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)",
+                textShadow: "0 2px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.9)",
                 fontFamily: "system-ui, -apple-system, sans-serif",
-                letterSpacing: "0.15em",
+                letterSpacing: "0.14em",
+                maxWidth: "80%",
+                lineHeight: 1.1,
               }}
             >
               {surname}
@@ -218,14 +220,29 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
 
             {/* Squad / Lot Number in athletic stencil */}
             <div
-              className="text-2xl xs:text-3xl sm:text-4xl font-black font-mono tracking-tight text-center leading-none"
-              style={{
-                marginTop: "4%",
-                color: teamTheme.numColor,
-                textShadow: "0 3px 6px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.95)",
-              }}
+              className="flex flex-col items-center justify-center"
+              style={{ marginTop: "4%" }}
             >
-              {displayNum}
+              <div
+                className="text-[8px] xs:text-[9px] font-black uppercase tracking-widest text-center"
+                style={{
+                  color: teamTheme.numColor,
+                  opacity: 0.85,
+                  letterSpacing: "0.18em",
+                  textShadow: "0 1px 3px rgba(0,0,0,0.95)",
+                }}
+              >
+                LOT
+              </div>
+              <div
+                className="text-2xl xs:text-3xl sm:text-4xl font-black font-mono tracking-tight text-center leading-none"
+                style={{
+                  color: teamTheme.numColor,
+                  textShadow: "0 3px 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.95), 1px 2px 0 rgba(0,0,0,0.85)",
+                }}
+              >
+                #{displayNum}
+              </div>
             </div>
           </div>
         )}
@@ -236,3 +253,76 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
     </div>
   );
 };
+
+export interface PlayerJerseyThumbnailProps {
+  teamCode: string;
+  lotNumber?: number;
+  playerName?: string;
+  side?: "front" | "back";
+  size?: number;
+  className?: string;
+}
+
+export const PlayerJerseyThumbnail: React.FC<PlayerJerseyThumbnailProps> = ({
+  teamCode,
+  lotNumber,
+  playerName,
+  side = "back",
+  size = 32,
+  className,
+}) => {
+  const code = (teamCode || "neutral").toUpperCase();
+  const theme = TEAM_GLOW_STYLES[code] || DEFAULT_GLOW;
+  const numColor = theme.numColor || "#ffffff";
+  const suffix = side === "front" ? "_miniature.png" : "_back.png";
+  const imgUrl = `/jerseys/${code.toLowerCase()}${suffix}`;
+
+  const surname = useMemo(() => {
+    if (!playerName) return "";
+    const parts = playerName.trim().split(" ");
+    return parts[parts.length - 1].toUpperCase();
+  }, [playerName]);
+
+  return (
+    <div
+      className={cn("relative shrink-0 flex items-center justify-center select-none", className)}
+      style={{ width: size, height: Math.round(size * 1.08) }}
+    >
+      <img
+        src={imgUrl}
+        alt={`${code} kit`}
+        className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none"
+        loading="lazy"
+      />
+      {side === "back" && lotNumber !== undefined && lotNumber !== null && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          {size >= 48 && surname && (
+            <span
+              className="text-[7px] font-black uppercase tracking-wider text-center px-0.5 truncate"
+              style={{
+                marginTop: "22%",
+                color: numColor,
+                textShadow: "0 1px 2px rgba(0,0,0,0.95)",
+                maxWidth: "85%",
+              }}
+            >
+              {surname}
+            </span>
+          )}
+          <span
+            className="font-black font-mono leading-none"
+            style={{
+              fontSize: size >= 48 ? "13px" : size >= 36 ? "10px" : "8px",
+              marginTop: size >= 48 && surname ? "3%" : "28%",
+              color: numColor,
+              textShadow: "0 1px 2px rgba(0,0,0,0.95), 0 0 1px rgba(0,0,0,0.95)",
+            }}
+          >
+            {lotNumber}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+

@@ -66,7 +66,7 @@ export const PlayerSoldCelebration: React.FC<PlayerSoldCelebrationProps> = ({
   const code = (franchiseCode || "IPL").toUpperCase();
   const colors = FRANCHISE_CONFETTI_COLORS[code] || ["#FFD700", "#4F46E5", "#10B981", "#EF4444", "#FFFFFF"];
   const displayTeamName = franchiseName || FRANCHISE_NAMES[code] || code;
-  const logoUrl = `/jerseys/${code.toLowerCase()}_logo.png`;
+  const jerseyUrl = `/jerseys/${code.toLowerCase()}_miniature.png`;
 
   useEffect(() => {
     if (!opened) return;
@@ -217,35 +217,46 @@ export const PlayerSoldCelebration: React.FC<PlayerSoldCelebrationProps> = ({
                 HAMMER DOWN • SOLD!
               </Badge>
 
-              {/* Franchise Logo */}
+              {/* 2026 Team Kit Showcase */}
               <Box
                 style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: "50%",
-                  padding: 8,
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  boxShadow: `0 8px 24px rgba(0, 0, 0, 0.35), 0 0 20px ${colors[0]}60`,
+                  position: "relative",
+                  width: 140,
+                  height: 140,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  margin: "4px 0",
+                  margin: "8px 0",
                 }}
               >
                 <img
-                  src={logoUrl}
-                  alt={displayTeamName}
+                  src={jerseyUrl}
+                  alt={`${displayTeamName} 2026 Kit`}
                   style={{
-                    maxWidth: "80%",
-                    maxHeight: "80%",
+                    maxWidth: "100%",
+                    maxHeight: "100%",
                     objectFit: "contain",
-                  }}
-                  onError={(e) => {
-                    // Fallback to text initials if image fails
-                    (e.target as HTMLElement).style.display = "none";
+                    filter: `drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 16px ${colors[0]}70)`,
                   }}
                 />
               </Box>
+
+              {/* Franchise Badge Pill */}
+              <Badge
+                size="md"
+                variant="filled"
+                style={{
+                  backgroundColor: colors[0],
+                  color: code === "CSK" || code === "GT" || code === "KKR" ? "#000000" : "#ffffff",
+                  fontWeight: 900,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  padding: "4px 14px",
+                  boxShadow: `0 2px 10px ${colors[0]}40`,
+                }}
+              >
+                {displayTeamName}
+              </Badge>
 
               {/* Player Name and Role */}
               <Box>

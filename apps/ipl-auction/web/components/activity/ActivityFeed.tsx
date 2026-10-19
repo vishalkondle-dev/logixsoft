@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useAuctionStore } from "../../stores/auctionStore";
-import { formatRupees } from "../../lib/utils";
+import { formatRupees, FRANCHISE_COLORS } from "../../lib/utils";
 import {
   Box,
   Stack,
@@ -196,14 +196,15 @@ export const ActivityFeed: React.FC<{ className?: string }> = ({ className }) =>
                   <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
                     {item.icon}
                     {evt.franchiseCode && (
-                      <img
-                        src={`/jerseys/${evt.franchiseCode.toLowerCase()}_logo.png`}
-                        alt={evt.franchiseCode}
-                        style={{ width: 16, height: 16, objectFit: "contain", flexShrink: 0 }}
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = "none";
+                      <span
+                        className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider select-none shrink-0"
+                        style={{
+                          backgroundColor: FRANCHISE_COLORS[evt.franchiseCode]?.hex || "#334155",
+                          color: evt.franchiseCode === "CSK" || evt.franchiseCode === "GT" || evt.franchiseCode === "KKR" ? "#000000" : "#ffffff",
                         }}
-                      />
+                      >
+                        {evt.franchiseCode}
+                      </span>
                     )}
                     <Text size="xs" fw={700} c="var(--mantine-color-text)" truncate>
                       {item.label}

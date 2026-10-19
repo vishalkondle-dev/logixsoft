@@ -18,57 +18,44 @@ export const TeamIdentity: React.FC<TeamIdentityProps> = ({
   showLogo = true,
   className,
 }) => {
-  const [imgError, setImgError] = useState(false);
-
   const styling = FRANCHISE_COLORS[code] || {
     bg: "bg-slate-700",
     text: "text-white",
     border: "border-slate-500",
+    hex: "#475569",
   };
 
-  const sizeClasses = {
-    sm: "w-6 h-6 text-[10px] font-bold rounded",
-    md: "w-8 h-8 text-xs font-black tracking-tight rounded-md",
-    lg: "w-11 h-11 text-sm font-black tracking-tight rounded-lg shadow-sm",
-    xl: "w-14 h-14 text-base font-black tracking-tight rounded-xl shadow-md",
+  const badgeSizes = {
+    sm: "w-6 h-6 text-[10px] font-black tracking-wider rounded-md",
+    md: "w-8 h-8 text-xs font-black tracking-wider rounded-lg shadow-xs",
+    lg: "w-11 h-11 text-sm font-black tracking-wider rounded-xl shadow-md",
+    xl: "w-14 h-14 text-base font-black tracking-wider rounded-2xl shadow-lg",
   }[size];
-
-  const imgSizeClasses = {
-    sm: "w-6 h-6",
-    md: "w-8 h-8",
-    lg: "w-11 h-11",
-    xl: "w-14 h-14",
-  }[size];
-
-  const logoUrl = code ? `/jerseys/${code.toLowerCase()}_logo.png` : null;
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      {showLogo && logoUrl && !imgError ? (
-        <div className={cn("relative flex items-center justify-center flex-shrink-0 select-none", imgSizeClasses)}>
-          <img
-            src={logoUrl}
-            alt={code}
-            onError={() => setImgError(true)}
-            className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] pointer-events-none transition-transform hover:scale-105"
-            loading="lazy"
-          />
-        </div>
-      ) : (
+    <div className={cn("inline-flex items-center gap-2", className)}>
+      {showLogo && (
         <div
           className={cn(
-            "inline-flex items-center justify-center select-none uppercase transition-transform flex-shrink-0 shadow-inner border",
+            "relative flex items-center justify-center select-none uppercase font-black transition-all duration-200 border flex-shrink-0 group hover:scale-105",
             styling.bg,
             styling.text,
             styling.border,
-            sizeClasses
+            badgeSizes
           )}
+          style={{
+            boxShadow: `0 2px 8px ${styling.hex}40, inset 0 1px 1px rgba(255, 255, 255, 0.35)`,
+          }}
         >
-          {code}
+          {/* Subtle top gloss highlight */}
+          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent rounded-t-inherit pointer-events-none" />
+          <span className="relative z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+            {code}
+          </span>
         </div>
       )}
       {name && (
-        <span className="font-semibold text-xs tracking-tight truncate select-none text-foreground">
+        <span className="font-bold text-xs tracking-tight truncate select-none text-foreground">
           {name}
         </span>
       )}

@@ -72,6 +72,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
   private rtmTimer: any = null;
   private socketIps: Map<WebSocket, { clientIp: string; ipUserId: string }> = new Map();
   private socketSessionIds: Map<WebSocket, string> = new Map();
+  private socketFranchises: Map<WebSocket, string> = new Map();
   private recentJoinTimes: Map<string, number> = new Map();
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -646,6 +647,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
   async webSocketClose(ws: WebSocket, code: number, reason: string): Promise<void> {
     this.socketIps.delete(ws);
+    this.socketFranchises.delete(ws);
     const sessId = this.socketSessionIds.get(ws);
     if (sessId && this.members.has(sessId)) {
       this.members.delete(sessId);
@@ -721,6 +723,10 @@ export class AuctionRoomDO extends DurableObject<Env> {
           }
         }
 
+        if (claimedFranchise) {
+          this.socketFranchises.set(ws, claimedFranchise);
+        }
+
         const presence: MemberPresence = {
           sessionId: command.sessionId,
           userId,
@@ -734,8 +740,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
         await this.ensureActiveLotProgression();
 
-        // Send Authoritative Snapshot
-        ws.send(JSON.stringify({ type: "ROOM_SNAPSHOT", payload: this.buildSnapshot() }));
+        // Send Authoritative Snapshot targeted to this participant's claimed franchise
+        ws.send(JSON.stringify({ type: "ROOM_SNAPSHOT", payload: this.buildSnapshot(claimedFranchise || undefined) }));
 
         // Identify user with deterministic IP userId
         ws.send(
@@ -899,10 +905,13 @@ export class AuctionRoomDO extends DurableObject<Env> {
         team.controller = "HUMAN";
         team.humanUserId = userId;
         team.humanDisplayName = "Player";
-        team.lastActiveAt = Date.now();
+        const sessId = this.socketSessionIds.get(ws);
+        if (ws) {
+          this.socketFranchises.set(ws, team.code);
+        }
 
         for (const m of this.members.values()) {
-          if (m.userId === userId) {
+          if (m.userId === userId || (sessId && m.sessionId === sessId)) {
             m.claimedFranchise = team.code;
             team.humanDisplayName = m.displayName || team.humanDisplayName;
           }
@@ -1243,6 +1252,12 @@ export class AuctionRoomDO extends DurableObject<Env> {
             );
             this.broadcast({ type: "TEAM_UPDATED", payload: { franchise: team } });
           }
+        }
+        if (ws) {
+          this.socketFranchises.delete(ws);
+        }
+        if (member) {
+          member.claimedFranchise = null;
         }
         this.stateVersion++;
         this.persistState();
@@ -2228,6 +2243,13 @@ export class AuctionRoomDO extends DurableObject<Env> {
     const memberUserId = member ? member.userId : null;
     const effectiveUserId = userId || memberUserId || (sIp ? sIp.ipUserId : null);
 
+    if (ws) {
+      this.socketFranchises.set(ws, franchiseCode);
+    }
+    if (member) {
+      member.claimedFranchise = franchiseCode;
+    }
+
     const isOwner = Boolean(
       (member && member.claimedFranchise === franchiseCode) ||
       (team.humanUserId && (
@@ -2377,15 +2399,10 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
     this.broadcast({ type: "TEAM_UPDATED", payload: { franchise: team } });
     this.broadcast({ type: "ROOM_SNAPSHOT", payload: this.buildSnapshot() });
-    if (this.status !== "LOBBY") {
-      this.recordActivityEvent(
-        "RETENTIONS_UPDATED",
-        "Retentions Configured",
-        `${team.name} configured retentions: ${selectedCandidates.length} retained (₹${(totalDeduction / 10000000).toFixed(1)} Cr), ${rtmCards} RTM card(s) available.`,
-        team.code
-      );
-    }
 
+    // Explicitly send unmasked snapshot & team to the configuring user's WebSocket
+    ws?.send(JSON.stringify({ type: "TEAM_UPDATED", payload: { franchise: team } }));
+    ws?.send(JSON.stringify({ type: "ROOM_SNAPSHOT", payload: this.buildSnapshot(team.code) }));
     ws?.send(
       JSON.stringify({
         type: "RETENTIONS_SAVED",
@@ -2394,9 +2411,18 @@ export class AuctionRoomDO extends DurableObject<Env> {
           retainedCount: selectedCandidates.length,
           totalDeduction,
           rtmCards,
+          franchise: team,
         },
       })
     );
+    if (this.status !== "LOBBY") {
+      this.recordActivityEvent(
+        "RETENTIONS_UPDATED",
+        "Retentions Configured",
+        `${team.name} configured retentions: ${selectedCandidates.length} retained (₹${(totalDeduction / 10000000).toFixed(1)} Cr), ${rtmCards} RTM card(s) available.`,
+        team.code
+      );
+    }
   }
 
   private async handleRtmDecision(exercise: boolean, userId?: string, ws?: WebSocket) {
@@ -2946,7 +2972,22 @@ export class AuctionRoomDO extends DurableObject<Env> {
         try {
           const sessId = this.socketSessionIds.get(ws);
           const member = sessId ? this.members.get(sessId) : null;
-          const myFranchise = member?.claimedFranchise || undefined;
+          let myFranchise = this.socketFranchises.get(ws) || member?.claimedFranchise || undefined;
+
+          if (!myFranchise) {
+            const sIp = this.socketIps.get(ws);
+            const uId = member?.userId || sIp?.ipUserId;
+            if (uId) {
+              for (const t of this.teams.values()) {
+                if (t.humanUserId === uId) {
+                  myFranchise = t.code;
+                  this.socketFranchises.set(ws, t.code);
+                  if (member) member.claimedFranchise = t.code;
+                  break;
+                }
+              }
+            }
+          }
 
           if (message.type === "ROOM_SNAPSHOT") {
             const sanitizedSnapshot = this.buildSnapshot(myFranchise);

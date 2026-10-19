@@ -22,7 +22,9 @@ export function useRoomRouteGuard(roomId: string, expectedPage: ExpectedRouteTyp
 
     async function probeRoom() {
       try {
-        const res = await fetch(`/api/rooms/${roomId}`);
+        const savedFranchise = typeof window !== "undefined" ? localStorage.getItem(`ipl_claimed_team_${roomId}`) : null;
+        const url = savedFranchise ? `/api/rooms/${roomId}?franchiseCode=${encodeURIComponent(savedFranchise)}` : `/api/rooms/${roomId}`;
+        const res = await fetch(url);
         if (isCancelled) return;
 
         if (res.status === 404) {

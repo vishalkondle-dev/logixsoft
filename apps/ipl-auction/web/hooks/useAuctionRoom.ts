@@ -205,6 +205,9 @@ export function useAuctionRoom(roomId: string) {
 
       case "RETENTIONS_SAVED": {
         console.log("[AuctionRoom] Retentions successfully saved on server:", message.payload);
+        if (message.payload?.franchise) {
+          applyTeamUpdated(message.payload.franchise);
+        }
         break;
       }
 
@@ -429,10 +432,12 @@ export function useAuctionRoom(roomId: string) {
   const setRetentions = useCallback((franchiseCode: string, playerIds: string[]) => {
     const userId = currentUserId || getPersistentUserId();
     const isCreator = typeof window !== "undefined" && localStorage.getItem(`ipl_room_creator_${roomId}`) === "true";
+    setClaimedFranchiseForRoom(roomId, franchiseCode);
+    setMyFranchise(franchiseCode);
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "SET_RETENTIONS", franchiseCode, playerIds, userId, isCreator }));
     }
-  }, [currentUserId, getPersistentUserId, roomId]);
+  }, [currentUserId, getPersistentUserId, roomId, setMyFranchise, setClaimedFranchiseForRoom]);
 
   const decideRtm = useCallback((exercise: boolean) => {
     const userId = currentUserId || getPersistentUserId();

@@ -600,7 +600,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
       sequence: ++this.eventSequence,
       timestamp: Date.now(),
       userId: "admin_super",
-      displayName: "🚨 IPL COMMISSIONER (ADMIN)",
+      displayName: "IPL COMMISSIONER (ADMIN)",
       text: text.trim().slice(0, 400),
     };
     this.chatMessages.push(chatMsg);

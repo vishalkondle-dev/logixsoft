@@ -38,6 +38,7 @@ import {
   Coins,
   CaretRight,
   SignOut,
+  Lock,
 } from "@phosphor-icons/react";
 import { useRoomRouteGuard } from "../../../hooks/useRoomRouteGuard";
 import { useAuctionRoom } from "../../../hooks/useAuctionRoom";
@@ -340,9 +341,16 @@ export default function LobbyPage({
                       Participants ({joinedMembers.length || snapshot.connectedHumanCount || 1})
                     </Text>
                   </Group>
-                  <Text size="xs" c="dimmed" ff="monospace" visibleFrom="sm">
-                    {isCreator ? "👑 Manage participants below" : "Lobby Presence"}
-                  </Text>
+                  <Box visibleFrom="sm">
+                    {isCreator ? (
+                      <Group gap={4} wrap="nowrap">
+                        <Crown size={12} weight="bold" color="var(--mantine-color-yellow-5)" />
+                        <Text size="xs" c="dimmed" ff="monospace">Manage participants below</Text>
+                      </Group>
+                    ) : (
+                      <Text size="xs" c="dimmed" ff="monospace">Lobby Presence</Text>
+                    )}
+                  </Box>
                 </Group>
 
                 <SimpleGrid cols={{ base: 2, sm: 2, md: 3 }} spacing="xs">
@@ -560,8 +568,14 @@ export default function LobbyPage({
                                     {team.retainedPlayers?.length || 0} ({team.rtmCardsRemaining ?? 0} RTM)
                                   </Text>
                                 ) : (
-                                  <Badge size="xs" variant="outline" color="gray" styles={{ root: { textTransform: "none", fontSize: 9, padding: "0 4px", height: 16 } }}>
-                                    🔒 Confidential
+                                  <Badge
+                                    size="xs"
+                                    variant="outline"
+                                    color="gray"
+                                    leftSection={<Lock size={9} weight="bold" />}
+                                    styles={{ root: { textTransform: "none", fontSize: 9, padding: "0 6px", height: 16 } }}
+                                  >
+                                    Confidential
                                   </Badge>
                                 )}
                               </Group>

@@ -33,6 +33,7 @@ import {
   Broadcast,
   ArrowRight,
   Shield,
+  Info,
 } from "@phosphor-icons/react";
 import { fetchApi } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
@@ -402,9 +403,22 @@ export default function HomePage() {
                 value={mobileTab}
                 onChange={setMobileTab}
                 data={[
-                  { label: "⚡ Host Auction", value: "host" },
                   {
-                    label: `🌐 Active Auctions (${publicRooms.length})`,
+                    label: (
+                      <Group gap={6} justify="center" wrap="nowrap">
+                        <Plus size={14} weight="bold" />
+                        <Text size="xs" fw={600}>Host Auction</Text>
+                      </Group>
+                    ),
+                    value: "host",
+                  },
+                  {
+                    label: (
+                      <Group gap={6} justify="center" wrap="nowrap">
+                        <Globe size={14} weight="bold" />
+                        <Text size="xs" fw={600}>Active Auctions ({publicRooms.length})</Text>
+                      </Group>
+                    ),
                     value: "active",
                   },
                 ]}
@@ -572,9 +586,33 @@ export default function HomePage() {
                             }
                           }}
                           data={[
-                            { label: "🏆 Mega (₹120 Cr)", value: "MEGA" },
-                            { label: "⚡ Mini", value: "MINI" },
-                            { label: "🏏 Sprint XI (₹50 Cr)", value: "SPRINT_XI" },
+                            {
+                              label: (
+                                <Group gap={6} justify="center" wrap="nowrap">
+                                  <Shield size={13} weight="bold" />
+                                  <Text size="xs">Mega (₹120 Cr)</Text>
+                                </Group>
+                              ),
+                              value: "MEGA",
+                            },
+                            {
+                              label: (
+                                <Group gap={6} justify="center" wrap="nowrap">
+                                  <Broadcast size={13} weight="bold" />
+                                  <Text size="xs">Mini</Text>
+                                </Group>
+                              ),
+                              value: "MINI",
+                            },
+                            {
+                              label: (
+                                <Group gap={6} justify="center" wrap="nowrap">
+                                  <Users size={13} weight="bold" />
+                                  <Text size="xs">Sprint XI (₹50 Cr)</Text>
+                                </Group>
+                              ),
+                              value: "SPRINT_XI",
+                            },
                           ]}
                         />
                       </Box>
@@ -625,9 +663,9 @@ export default function HomePage() {
                               label="Allows teams to retain up to 6 players before bidding begins. Unused slots convert to Right to Match cards."
                               withArrow
                             >
-                              <Text size="xs" c="dimmed" style={{ cursor: "help" }}>
-                                ⓘ
-                              </Text>
+                              <Box style={{ display: "inline-flex", alignItems: "center", cursor: "help" }}>
+                                <Info size={13} weight="bold" color="var(--mantine-color-dimmed)" />
+                              </Box>
                             </Tooltip>
                           </Group>
                           <Switch

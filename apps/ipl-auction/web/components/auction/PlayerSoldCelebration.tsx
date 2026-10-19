@@ -14,7 +14,7 @@ import {
   Transition,
   ActionIcon,
 } from "@mantine/core";
-import { X, CheckCircle, Gavel } from "@phosphor-icons/react";
+import { X, CheckCircle, Gavel, Airplane } from "@phosphor-icons/react";
 
 interface PlayerSoldCelebrationProps {
   opened: boolean;
@@ -259,8 +259,8 @@ export const PlayerSoldCelebration: React.FC<PlayerSoldCelebrationProps> = ({
                     </Badge>
                   )}
                   {isOverseas && (
-                    <Badge size="sm" color="blue" variant="light">
-                      ✈️ Overseas
+                    <Badge size="sm" color="blue" variant="light" leftSection={<Airplane size={12} weight="bold" />}>
+                      Overseas
                     </Badge>
                   )}
                 </Group>

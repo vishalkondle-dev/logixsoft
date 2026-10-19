@@ -34,8 +34,8 @@ export const TeamAverageRating: React.FC<TeamAverageRatingProps> = ({
 
   const tooltip =
     playersRating !== undefined && playersRating !== null
-      ? `Overall Team Score: ${rating.toFixed(1)} ★ [Player Stats: ${playersRating.toFixed(1)} | Squad Balance: ${squadBalanceRating ?? 100}% | Purse Health: ${purseBalanceRating ?? 100}%]`
-      : `Overall Team Score: ${rating.toFixed(1)} ★ (${playerCount} players)`;
+      ? `Overall Team Score: ${rating.toFixed(1)} / 100 [Player Stats: ${playersRating.toFixed(1)} | Squad Balance: ${squadBalanceRating ?? 100}% | Purse Health: ${purseBalanceRating ?? 100}%]`
+      : `Overall Team Score: ${rating.toFixed(1)} / 100 (${playerCount} players)`;
 
   return (
     <Tooltip label={tooltip} withArrow position="top">

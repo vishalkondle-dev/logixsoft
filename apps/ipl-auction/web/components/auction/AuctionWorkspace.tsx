@@ -393,7 +393,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
             <SpeakerSimpleHigh size={20} weight="bold" color="#ff922b" style={{ flexShrink: 0 }} />
             <Box style={{ minWidth: 0 }}>
               <Text size="xs" fw={700} c="orange" truncate>
-                🔊 Audio is waiting for browser activation. Tap to enable commentary &amp; gavel strikes!
+                Audio is waiting for browser activation. Tap to enable commentary &amp; gavel strikes!
               </Text>
               <Text size="10px" c="dimmed">
                 Mobile / iPhone: Turn off physical Silent mode and raise media volume.

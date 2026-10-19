@@ -32,6 +32,7 @@ import {
   UserCircleMinus,
   Lightning,
   UserCheck,
+  Star,
 } from "@phosphor-icons/react";
 import { PurchasedPlayerRecord } from "../../lib/types";
 
@@ -351,8 +352,8 @@ function SquadGroup({ title, players }: { title: string; players: PurchasedPlaye
                 {p.name}
               </Text>
               {p.rating && (
-                <Badge size="xs" color="grape" variant="light">
-                  {p.rating}★
+                <Badge size="xs" color="grape" variant="light" rightSection={<Star size={8} weight="fill" />}>
+                  {p.rating}
                 </Badge>
               )}
               {p.isOverseas && <Airplane size={12} weight="fill" color="#f59f00" />}

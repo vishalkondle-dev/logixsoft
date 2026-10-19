@@ -33,6 +33,7 @@ import {
   CaretDown,
   CaretUp,
   ClockCounterClockwise,
+  Star,
 } from "@phosphor-icons/react";
 import { RoomSnapshot, FranchiseState, PurchasedPlayerRecord, PlayerRole } from "../../lib/types";
 import { TeamIdentity } from "../teams/TeamIdentity";
@@ -305,9 +306,12 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
               <Text size="xs" c="dimmed" ff="monospace" mt={2}>
                 {topRatedTeam?.averageRating ? (
                   <>
-                    <Text span fw={700} c="bright">
-                      {topRatedTeam.averageRating.toFixed(1)} ★
-                    </Text>{" "}
+                    <Group gap={3} wrap="nowrap" component="span">
+                      <Text span fw={700} c="bright">
+                        {topRatedTeam.averageRating.toFixed(1)}
+                      </Text>
+                      <Star size={10} weight="fill" color="var(--mantine-color-yellow-4)" />
+                    </Group>{" "}
                     • {topRatedTeam.purchasedPlayers.length} Players
                   </>
                 ) : (
@@ -408,8 +412,8 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
 
                             {team.averageRating !== null && (
                               <Box style={{ textAlign: "right" }}>
-                                <Badge size="md" color="grape" variant="light">
-                                  {team.averageRating.toFixed(1)} ★
+                                <Badge size="md" color="grape" variant="light" rightSection={<Star size={10} weight="fill" />}>
+                                  {team.averageRating.toFixed(1)}
                                 </Badge>
                                 {team.playersRating !== undefined && team.playersRating !== null && (
                                   <Text size="xs" c="dimmed" ff="monospace" mt={2}>
@@ -444,8 +448,8 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
 
                             <Group gap={6} wrap="nowrap" style={{ flexShrink: 0 }}>
                               {team.averageRating !== null && (
-                                <Badge size="sm" color="grape" variant="light">
-                                  {team.averageRating.toFixed(1)} ★
+                                <Badge size="sm" color="grape" variant="light" rightSection={<Star size={9} weight="fill" />}>
+                                  {team.averageRating.toFixed(1)}
                                 </Badge>
                               )}
                               <ActionIcon variant="subtle" size="sm" color="gray">
@@ -528,8 +532,8 @@ export const AuctionReviewReport: React.FC<AuctionReviewReportProps> = ({
                                                 {player.name}
                                               </Text>
                                               {player.rating && (
-                                                <Badge size="xs" color="grape" variant="light">
-                                                  {player.rating}★
+                                                <Badge size="xs" color="grape" variant="light" rightSection={<Star size={8} weight="fill" />}>
+                                                  {player.rating}
                                                 </Badge>
                                               )}
                                               {player.isOverseas && (

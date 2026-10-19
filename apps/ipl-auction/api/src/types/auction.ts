@@ -190,8 +190,8 @@ export type ClientCommand =
   | { type: "CLAIM_TEAM"; franchiseCode: string; userId?: string }
   | { type: "TAKE_OVER_TEAM"; franchiseCode: string; userId?: string }
   | { type: "REASSIGN_TO_BOT"; franchiseCode: string; userId?: string; isCreator?: boolean }
-  | { type: "BAN_USER"; targetUserId: string; franchiseCode?: string; reason?: string; userId?: string }
-  | { type: "KICK_USER"; targetUserId: string; reason?: string; userId?: string }
+  | { type: "BAN_USER"; targetUserId: string; franchiseCode?: string; reason?: string; userId?: string; isCreator?: boolean }
+  | { type: "KICK_USER"; targetUserId: string; reason?: string; userId?: string; isCreator?: boolean }
   | { type: "RELEASE_TEAM"; franchiseCode?: string; userId?: string }
   | { type: "UPDATE_DISPLAY_NAME"; displayName: string; sessionId?: string; userId?: string }
   | { type: "START_AUCTION" }

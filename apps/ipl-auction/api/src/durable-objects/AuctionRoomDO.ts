@@ -678,9 +678,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
         }
 
         const clientIp = attachmentInfo?.clientIp || "127.0.0.1";
-        // User identity distinct by client IP address
         const ipUserId = attachmentInfo?.ipUserId || `ip_${clientIp.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-        const userId = command.userId && command.userId.startsWith("ip_") ? command.userId : ipUserId;
+        const userId = command.userId || ipUserId;
 
         // Requirement 4: Banned users cannot join
         if (this.bannedUserIds.has(userId)) {
@@ -871,12 +870,27 @@ export class AuctionRoomDO extends DurableObject<Env> {
         const team = this.teams.get(command.franchiseCode);
         if (!team) return;
 
+        const sessId = this.socketSessionIds.get(ws);
+        const member = sessId ? this.members.get(sessId) : null;
+        const currentClaimed = this.socketFranchises.get(ws) || member?.claimedFranchise;
+        if (currentClaimed && currentClaimed !== command.franchiseCode) {
+          const existingTeam = this.teams.get(currentClaimed);
+          ws.send(JSON.stringify({
+            type: "BID_REJECTED",
+            payload: {
+              reason: `You have already claimed ${existingTeam?.name || currentClaimed} (${currentClaimed}). You cannot claim a different franchise in this room.`,
+              stateVersion: this.stateVersion,
+            },
+          }));
+          return;
+        }
+
         // RULE: Once I claim the team, I should not be able to claim a different team inside that room!
         for (const existingTeam of this.teams.values()) {
           if (
             existingTeam.code !== command.franchiseCode &&
             existingTeam.controller === "HUMAN" &&
-            existingTeam.humanUserId === userId
+            (existingTeam.humanUserId === userId || (member && existingTeam.humanUserId === member.userId))
           ) {
             ws.send(JSON.stringify({
               type: "BID_REJECTED",
@@ -905,7 +919,6 @@ export class AuctionRoomDO extends DurableObject<Env> {
         team.controller = "HUMAN";
         team.humanUserId = userId;
         team.humanDisplayName = "Player";
-        const sessId = this.socketSessionIds.get(ws);
         if (ws) {
           this.socketFranchises.set(ws, team.code);
         }
@@ -1130,6 +1143,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
       // Host can kick / remove participant from the room
       case "KICK_USER": {
+        const sIp = this.socketIps.get(ws);
         let senderId = command.userId;
         if (!senderId) {
           for (const m of this.members.values()) {
@@ -1143,6 +1157,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
         const isAuthorizedHost =
           senderId === this.creatorId ||
           command.userId === this.creatorId ||
+          (sIp && sIp.ipUserId === this.creatorId) ||
+          command.isCreator === true ||
           this.creatorId === "official_host" ||
           this.creatorId === "guest_creator" ||
           this.creatorId === "host";
@@ -1187,27 +1203,37 @@ export class AuctionRoomDO extends DurableObject<Env> {
         }
 
         let targetName = "Participant";
+        const socketsToKick: WebSocket[] = [];
+        const sockets = this.ctx.getWebSockets();
+        for (const s of sockets) {
+          const sIp = this.socketIps.get(s);
+          const sessId = this.socketSessionIds.get(s);
+          const m = sessId ? this.members.get(sessId) : null;
+          if (
+            (m && m.userId === targetUserId) ||
+            (sIp && sIp.ipUserId === targetUserId) ||
+            (sessId && sessId === targetUserId)
+          ) {
+            socketsToKick.push(s);
+          }
+        }
+
         for (const [sessId, m] of this.members.entries()) {
-          if (m.userId === targetUserId) {
+          if (m.userId === targetUserId || sessId === targetUserId) {
             targetName = m.displayName;
             this.members.delete(sessId);
           }
         }
 
         // Disconnect sockets belonging to kicked user
-        const sockets = this.ctx.getWebSockets();
-        for (const s of sockets) {
-          const sIp = this.socketIps.get(s);
-          const sessId = this.socketSessionIds.get(s);
-          if ((sIp && sIp.ipUserId === targetUserId) || (sessId && this.members.get(sessId)?.userId === targetUserId)) {
-            try {
-              s.send(JSON.stringify({
-                type: "KICKED_FROM_ROOM",
-                payload: { reason: command.reason || "You were removed from the lobby by the host." }
-              }));
-              s.close(4004, "Kicked by host");
-            } catch (e) {}
-          }
+        for (const s of socketsToKick) {
+          try {
+            s.send(JSON.stringify({
+              type: "KICKED_FROM_ROOM",
+              payload: { reason: command.reason || "You were removed from the lobby by the host." }
+            }));
+            s.close(4004, "Kicked by host");
+          } catch (e) {}
         }
 
         this.recordActivityEvent(
@@ -2975,8 +3001,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
           let myFranchise = this.socketFranchises.get(ws) || member?.claimedFranchise || undefined;
 
           if (!myFranchise) {
-            const sIp = this.socketIps.get(ws);
-            const uId = member?.userId || sIp?.ipUserId;
+            const uId = member?.userId;
             if (uId) {
               for (const t of this.teams.values()) {
                 if (t.humanUserId === uId) {

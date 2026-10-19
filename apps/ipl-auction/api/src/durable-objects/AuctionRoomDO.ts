@@ -1352,7 +1352,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
             }
           }
         }
-        await this.handleSetRetentions(command.franchiseCode, command.playerIds, senderId, ws, command.isCreator);
+        const incomingIds = command.playerIds || (command as any).retainedPlayerIds || [];
+        await this.handleSetRetentions(command.franchiseCode, incomingIds, senderId, ws, command.isCreator);
         break;
       }
 
@@ -2236,7 +2237,7 @@ export class AuctionRoomDO extends DurableObject<Env> {
 
   private async handleSetRetentions(
     franchiseCode: string,
-    playerIds: string[],
+    playerIds: string[] = [],
     userId?: string,
     ws?: WebSocket,
     isCreatorFlag?: boolean
@@ -2312,7 +2313,8 @@ export class AuctionRoomDO extends DurableObject<Env> {
       return;
     }
 
-    const selectedCandidates = officialInfo.candidates.filter((c) => playerIds.includes(c.id));
+    const safeIds = Array.isArray(playerIds) ? playerIds : [];
+    const selectedCandidates = officialInfo.candidates.filter((c) => safeIds.includes(c.id));
     const cappedCount = selectedCandidates.filter((c) => c.isCapped).length;
     const uncappedCount = selectedCandidates.filter((c) => !c.isCapped).length;
     const overseasCount = selectedCandidates.filter((c) => c.isOverseas).length;

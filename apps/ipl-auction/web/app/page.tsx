@@ -9,6 +9,7 @@ import {
   Stack,
   Group,
   SimpleGrid,
+  Grid,
   Title,
   Text,
   Badge,
@@ -28,13 +29,10 @@ import {
   Users,
   Globe,
   Lock,
-  Eye,
   ArrowsClockwise,
   Broadcast,
   ArrowRight,
   Shield,
-  Robot,
-  Check,
 } from "@phosphor-icons/react";
 import { fetchApi } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
@@ -89,6 +87,7 @@ export default function HomePage() {
   const [selectedTeam, setSelectedTeam] = useState<string>("CSK");
   const [isPublic, setIsPublic] = useState<boolean>(true);
   const [enableRetentions, setEnableRetentions] = useState<boolean>(true);
+  const [mobileTab, setMobileTab] = useState<string>("host");
 
   // Public Rooms State
   const [publicRooms, setPublicRooms] = useState<PublicRoomItem[]>([]);
@@ -299,11 +298,11 @@ export default function HomePage() {
       </Paper>
 
       {/* Main Content */}
-      <Box component="main" style={{ flex: 1, padding: "24px 12px" }}>
+      <Box component="main" style={{ flex: 1, padding: "20px 12px" }}>
         <Container size="lg">
-          <Stack gap="xl">
+          <Stack gap="lg">
             {/* Streamlined Hero Section */}
-            <Stack align="center" ta="center" gap="sm" style={{ maxWidth: 640, margin: "0 auto" }}>
+            <Stack align="center" ta="center" gap="xs" style={{ maxWidth: 640, margin: "0 auto" }}>
               <Badge
                 color="orange"
                 variant="light"
@@ -335,12 +334,12 @@ export default function HomePage() {
                 p={4}
                 radius="xl"
                 withBorder
-                mt="xs"
+                mt={4}
                 style={{
                   maxWidth: 420,
                   width: "100%",
                   backgroundColor: "var(--ipl-bg-card-subtle)",
-                  boxShadow: "0 6px 20px -4px rgba(0,0,0,0.2)",
+                  boxShadow: "0 6px 20px -4px rgba(0,0,0,0.18)",
                   borderColor: "var(--ipl-border)",
                 }}
               >
@@ -378,13 +377,53 @@ export default function HomePage() {
                   </Group>
                 </form>
               </Paper>
+
+              {publicRooms.length > 0 && (
+                <Group gap={4} justify="center" mt={2} hiddenFrom="lg">
+                  <Text size="11px" c="dimmed">
+                    {publicRooms.length} public {publicRooms.length === 1 ? "auction" : "auctions"} available •
+                  </Text>
+                  <UnstyledButton
+                    onClick={() => setMobileTab("active")}
+                    style={{ fontSize: 11, fontWeight: 700, color: "var(--mantine-color-orange-5)" }}
+                  >
+                    View Active Rooms →
+                  </UnstyledButton>
+                </Group>
+              )}
             </Stack>
 
-            {/* Main Action Grid: Host on Left (7 cols), Active Auctions on Right (5 cols) */}
-            <SimpleGrid cols={{ base: 1, md: 12 }} spacing="lg">
-              {/* Left Column: Host an Auction Room (7 cols) */}
-              <Box style={{ gridColumn: "span 7" }}>
-                <Paper p="lg" radius="lg" withBorder style={{ backgroundColor: "var(--ipl-bg-card)", height: "100%" }}>
+            {/* Mobile Tab Switcher (< lg) */}
+            <Box hiddenFrom="lg">
+              <SegmentedControl
+                fullWidth
+                size="sm"
+                radius="md"
+                value={mobileTab}
+                onChange={setMobileTab}
+                data={[
+                  { label: "⚡ Host Auction", value: "host" },
+                  {
+                    label: `🌐 Active Auctions (${publicRooms.length})`,
+                    value: "active",
+                  },
+                ]}
+              />
+            </Box>
+
+            {/* Main Action Grid */}
+            <Grid gap="lg">
+              {/* Left Column: Host an Auction Room */}
+              <Grid.Col
+                span={{ base: 12, lg: 7 }}
+                className={mobileTab !== "host" ? "hidden lg:block" : ""}
+              >
+                <Paper
+                  p={{ base: "md", sm: "lg" }}
+                  radius="lg"
+                  withBorder
+                  style={{ backgroundColor: "var(--ipl-bg-card)", height: "100%" }}
+                >
                   <form onSubmit={handleCreateRoom}>
                     <Stack gap="md">
                       {/* Card Header */}
@@ -615,12 +654,15 @@ export default function HomePage() {
                     </Stack>
                   </form>
                 </Paper>
-              </Box>
+              </Grid.Col>
 
-              {/* Right Column: Active Auctions Directory (5 cols) */}
-              <Box style={{ gridColumn: "span 5" }}>
+              {/* Right Column: Active Auctions Directory */}
+              <Grid.Col
+                span={{ base: 12, lg: 5 }}
+                className={mobileTab !== "active" ? "hidden lg:block" : ""}
+              >
                 <Paper
-                  p="lg"
+                  p={{ base: "md", sm: "lg" }}
                   radius="lg"
                   withBorder
                   style={{
@@ -702,7 +744,7 @@ export default function HomePage() {
                         </Stack>
                       </Paper>
                     ) : (
-                      <Stack gap="xs" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
+                      <Stack gap="xs" style={{ maxHeight: 460, overflowY: "auto", paddingRight: 2 }}>
                         {filteredRooms.map((room) => {
                           const isLobby = room.status === "LOBBY";
                           const isLive = room.status === "LIVE" || room.status === "PAUSED";
@@ -711,7 +753,7 @@ export default function HomePage() {
                           return (
                             <Paper
                               key={room.id}
-                              p="xs"
+                              p="sm"
                               radius="md"
                               withBorder
                               style={{
@@ -719,59 +761,65 @@ export default function HomePage() {
                                 borderColor: "var(--ipl-border)",
                                 display: "flex",
                                 flexDirection: "column",
-                                gap: 6,
+                                gap: 8,
                               }}
                             >
-                              <Group justify="space-between" wrap="nowrap" align="center">
-                                <Box style={{ minWidth: 0, flex: 1 }}>
-                                  <Group gap={6} wrap="nowrap">
-                                    <Badge
-                                      size="xs"
-                                      color={isLobby ? "teal" : isLive ? "red" : "gray"}
-                                      variant={isLive ? "filled" : "light"}
-                                      leftSection={isLive ? <Broadcast size={10} weight="bold" /> : undefined}
-                                    >
-                                      {room.status}
-                                    </Badge>
-                                    <Text fw={700} size="xs" truncate>
-                                      {room.name}
-                                    </Text>
-                                  </Group>
+                              {/* Row 1: Badges & Room Code */}
+                              <Group justify="space-between" align="center" wrap="nowrap">
+                                <Group gap={6} wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                                  <Badge
+                                    size="xs"
+                                    color={isLobby ? "teal" : isLive ? "red" : "gray"}
+                                    variant={isLive ? "filled" : "light"}
+                                    leftSection={isLive ? <Broadcast size={10} weight="bold" /> : undefined}
+                                    style={{ flexShrink: 0 }}
+                                  >
+                                    {room.status}
+                                  </Badge>
+                                  <Badge size="xs" variant="outline" color="gray" style={{ flexShrink: 0 }}>
+                                    {room.ruleset}
+                                  </Badge>
+                                  <Text fw={700} size="xs" truncate style={{ minWidth: 0 }}>
+                                    {room.name}
+                                  </Text>
+                                </Group>
 
-                                  <Group gap={6} mt={3}>
-                                    <Text size="11px" c="dimmed" ff="monospace">
-                                      {room.id}
-                                    </Text>
-                                    <Text size="11px" c="dimmed">•</Text>
-                                    <Text size="11px" c="dimmed">
-                                      {room.ruleset}
-                                    </Text>
-                                    {room.creatorTeam && (
-                                      <>
-                                        <Text size="11px" c="dimmed">•</Text>
-                                        <Badge size="xs" variant="outline" color="gray">
-                                          {room.creatorTeam}
-                                        </Badge>
-                                      </>
-                                    )}
-                                    <Text size="11px" c="dimmed">•</Text>
+                                <Text size="11px" ff="monospace" c="dimmed" fw={700} style={{ flexShrink: 0 }}>
+                                  #{room.id}
+                                </Text>
+                              </Group>
+
+                              {/* Row 2: Details & Action Button */}
+                              <Group justify="space-between" align="center">
+                                <Group gap="xs">
+                                  {room.creatorTeam && (
+                                    <Group gap={4}>
+                                      <Text size="11px" c="dimmed">Host:</Text>
+                                      <Badge size="xs" color="gray" variant="filled">
+                                        {room.creatorTeam}
+                                      </Badge>
+                                    </Group>
+                                  )}
+                                  <Group gap={4}>
+                                    <Users size={12} weight="bold" color="var(--mantine-color-blue-4)" />
                                     <Text size="11px" c="dimmed">
                                       {room.connectedCount || 1} online
                                     </Text>
                                   </Group>
-                                </Box>
+                                </Group>
 
                                 <Button
                                   size="xs"
+                                  radius="md"
                                   color={isLobby ? "teal" : isLive ? "orange" : "gray"}
-                                  variant={isLobby ? "light" : "subtle"}
+                                  variant={isLobby ? "filled" : "light"}
                                   onClick={() => {
                                     if (isLobby) router.push(`/lobby/${room.id}`);
                                     else if (isEnded) router.push(`/summary/${room.id}`);
                                     else router.push(`/auction/${room.id}`);
                                   }}
                                 >
-                                  {isLobby ? "Join" : isEnded ? "Summary" : "Spectate"}
+                                  {isLobby ? "Join Lobby" : isEnded ? "Summary" : "Spectate"}
                                 </Button>
                               </Group>
                             </Paper>
@@ -779,37 +827,10 @@ export default function HomePage() {
                         })}
                       </Stack>
                     )}
-
-                    {/* Quick Guide Card at bottom of right column */}
-                    <Paper
-                      p="xs"
-                      radius="md"
-                      withBorder
-                      mt="auto"
-                      style={{
-                        backgroundColor: "var(--ipl-bg-card-subtle)",
-                        borderColor: "var(--ipl-border)",
-                      }}
-                    >
-                      <Text size="xs" fw={700} c="orange" mb={3}>
-                        How It Works
-                      </Text>
-                      <Stack gap={2}>
-                        <Text size="11px" c="dimmed">
-                          1. Host a room or join instantly using a 6-digit code.
-                        </Text>
-                        <Text size="11px" c="dimmed">
-                          2. Configure retentions in the lobby before bidding starts.
-                        </Text>
-                        <Text size="11px" c="dimmed">
-                          3. Real-time paddle bidding against friends & AI franchises.
-                        </Text>
-                      </Stack>
-                    </Paper>
                   </Stack>
                 </Paper>
-              </Box>
-            </SimpleGrid>
+              </Grid.Col>
+            </Grid>
           </Stack>
         </Container>
       </Box>

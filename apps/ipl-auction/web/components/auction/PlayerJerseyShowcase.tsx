@@ -204,9 +204,9 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
           <div className="absolute inset-0 flex flex-col items-center justify-start pointer-events-none select-none">
             {/* Player Surname arched on upper back */}
             <div
-              className="text-[10px] xs:text-[12px] sm:text-[14px] font-black uppercase tracking-widest text-center px-1"
+              className="text-[12px] sm:text-[14px] font-black uppercase tracking-widest text-center px-1"
               style={{
-                marginTop: "23%",
+                marginTop: "22%",
                 color: teamTheme.numColor,
                 textShadow: "0 2px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.9)",
                 fontFamily: "system-ui, -apple-system, sans-serif",
@@ -221,10 +221,10 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
             {/* Squad / Lot Number in athletic stencil */}
             <div
               className="flex flex-col items-center justify-center"
-              style={{ marginTop: "4%" }}
+              style={{ marginTop: "3%" }}
             >
               <div
-                className="text-[8px] xs:text-[9px] font-black uppercase tracking-widest text-center"
+                className="text-[9px] font-black uppercase tracking-widest text-center"
                 style={{
                   color: teamTheme.numColor,
                   opacity: 0.85,
@@ -235,7 +235,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
                 LOT
               </div>
               <div
-                className="text-2xl xs:text-3xl sm:text-4xl font-black font-mono tracking-tight text-center leading-none"
+                className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-center leading-none"
                 style={{
                   color: teamTheme.numColor,
                   textShadow: "0 3px 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.95), 1px 2px 0 rgba(0,0,0,0.85)",

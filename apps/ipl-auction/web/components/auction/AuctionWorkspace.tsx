@@ -431,41 +431,49 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
 
               return (
                 <Paper
-                  className="auction-player-card"
+                  className="auction-player-card flex flex-col sm:flex-row items-center sm:items-stretch gap-3 sm:gap-4 relative"
                   withBorder
                   radius="xl"
-                  p={{ base: 8, sm: "md" }}
+                  p={{ base: 10, sm: "md" }}
                   style={{
                     backgroundColor: "var(--ipl-bg-card)",
                     borderColor: "var(--ipl-border)",
-                    display: "flex",
-                    alignItems: "stretch",
-                    gap: 10,
-                    position: "relative",
                   }}
                 >
-                  {/* Left Column: Clean 3D Jersey Showcase (Name removed) */}
+                  {/* Jersey Showcase: Centered on small screens, column on tablet/desktop */}
                   <Box
-                    w={{ base: 70, xs: 80, sm: 96, md: 118 }}
+                    w={{ base: "100%", sm: 112, md: 128 }}
                     style={{
                       flexShrink: 0,
                       display: "flex",
                       flexDirection: "column",
+                      alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <PlayerJerseyShowcase
-                      playerName={currentLot.playerName}
-                      teamCode={currentLot.highestBidderFranchise}
-                      soldToTeam={currentLot.soldToFranchise}
-                      status={currentLot.status}
-                      lotNumber={currentLot.lotNumber}
-                      size="sm"
-                    />
+                    <Box w={{ base: 140, xs: 160, sm: "100%" }} mx="auto">
+                      <PlayerJerseyShowcase
+                        playerName={currentLot.playerName}
+                        teamCode={currentLot.highestBidderFranchise}
+                        soldToTeam={currentLot.soldToFranchise}
+                        status={currentLot.status}
+                        lotNumber={currentLot.lotNumber}
+                        size="md"
+                      />
+                    </Box>
                   </Box>
 
-                  {/* Right Column: Player Info, Tags on Right, 2-line Stats, and Pricing Bar */}
-                  <Box style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  {/* Player Info, Tags on Right, 2-line Stats, and Pricing Bar */}
+                  <Box
+                    w={{ base: "100%", sm: "auto" }}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     {/* Header: Player Name + Right-side Badges & Flag */}
                     <Box>
                       <Group justify="space-between" align="flex-start" wrap="wrap" gap={6}>

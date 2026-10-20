@@ -11,7 +11,7 @@ import { RTMDecisionPrompt } from "./RTMDecisionPrompt";
 import { PlayerSoldCelebration } from "./PlayerSoldCelebration";
 import { CountryFlag } from "../common/CountryFlag";
 import { preloadAllJerseys } from "../common/JerseyPreloader";
-import { formatRupees, formatIndianNumber, calculateNextLegalBid, getBidIncrement } from "../../lib/utils";
+import { formatRupees, formatIndianNumber, calculateNextLegalBid, getBidIncrement, cn } from "../../lib/utils";
 import {
   playHammerSound,
   playTickSound,
@@ -52,8 +52,9 @@ import {
   User,
   SpeakerSimpleHigh,
 } from "@phosphor-icons/react";
-import { GiBilledCap } from "react-icons/gi";
+import { GiBilledCap, GiCricketBat } from "react-icons/gi";
 import { getRoleIcon, getRoleMeta } from "../../lib/roleIcons";
+import { getPlayerAge } from "../../lib/playerAge";
 
 const getShortRole = (role?: string) => {
   if (!role) return "BAT";
@@ -432,23 +433,15 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
           <Box className="auction-landscape-left" style={{ display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", minHeight: 0 }}>
             {/* Unified Redesigned Player Showcase & Auction Valuation Card */}
             {(() => {
-              const roleMeta = getRoleMeta(currentLot.role);
-              const roleIcon = getRoleIcon(currentLot.role, 12);
+              const playerAge = getPlayerAge(currentLot.playerName, currentLot.matches, currentLot.isCapped);
 
               return (
-                <Paper
-                  className="auction-player-card flex flex-col sm:flex-row items-center sm:items-stretch gap-3 sm:gap-4 relative"
-                  withBorder
-                  radius="xl"
-                  p={{ base: 10, sm: "md" }}
-                  style={{
-                    backgroundColor: "var(--ipl-bg-card)",
-                    borderColor: "var(--ipl-border)",
-                  }}
+                <div
+                  className="auction-player-card relative flex flex-col sm:flex-row items-center sm:items-stretch gap-4 sm:gap-6 p-4 sm:p-5 rounded-3xl border border-[#172038] bg-[#080c1d] shadow-2xl select-none"
                 >
-                  {/* Jersey Showcase: Centered on small screens, column on tablet/desktop */}
+                  {/* Left Column: 3D Jersey Showcase with Illuminated Stadium Podium */}
                   <Box
-                    w={{ base: "100%", sm: 112, md: 128 }}
+                    w={{ base: "100%", sm: 190, md: 220, lg: 240 }}
                     style={{
                       flexShrink: 0,
                       display: "flex",
@@ -457,7 +450,7 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                       justifyContent: "center",
                     }}
                   >
-                    <Box w={{ base: 140, xs: 160, sm: "100%" }} mx="auto">
+                    <Box w={{ base: 180, xs: 200, sm: "100%" }} mx="auto">
                       <PlayerJerseyShowcase
                         playerName={currentLot.playerName}
                         teamCode={currentLot.highestBidderFranchise}
@@ -469,203 +462,159 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
                     </Box>
                   </Box>
 
-                  {/* Player Info, Tags on Right, 2-line Stats, and Pricing Bar */}
-                  <Box
-                    w={{ base: "100%", sm: "auto" }}
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    {/* Header: Player Name + Right-side Badges & Flag */}
-                    <Box>
-                      <Group justify="space-between" align="flex-start" wrap="wrap" gap={6}>
-                        <Title
-                          order={2}
-                          c="var(--mantine-color-text)"
-                          fw={900}
-                          lineClamp={1}
-                          style={{
-                            fontSize: "clamp(1.05rem, 2.2vw, 1.45rem)",
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {currentLot.playerName}
-                        </Title>
+                  {/* Right Column: Player Details, Badges, 3x2 Stats Grid & Valuation Bar */}
+                  <div className="flex-1 w-full min-w-0 flex flex-col justify-between gap-3 sm:gap-4">
+                    {/* Header: Name, Role & Badges */}
+                    <div>
+                      {/* Player Full Name */}
+                      <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight truncate">
+                        {currentLot.playerName}
+                      </h1>
 
-                        {/* Right-aligned tags and flag: Icons only, no redundant text */}
-                        <Group gap={6} align="center" wrap="nowrap">
-                          {/* Capped / Uncapped Icon */}
-                          <Tooltip
-                            label={
-                              currentLot.isCapped
-                                ? "Capped Player (International Experience)"
-                                : "Uncapped Player (Domestic/Emerging)"
-                            }
-                            withArrow
-                          >
-                            <ThemeIcon
-                              size="sm"
-                              radius="md"
-                              variant={currentLot.isCapped ? "light" : "subtle"}
-                              color={currentLot.isCapped ? "teal" : "gray"}
-                            >
-                              {currentLot.isCapped ? (
-                                <GiBilledCap size={15} />
-                              ) : (
-                                <User size={13} weight="bold" />
-                              )}
-                            </ThemeIcon>
-                          </Tooltip>
-
-                          {/* Overseas Airplane Icon */}
-                          {currentLot.isOverseas && (
-                            <Tooltip label="Overseas Player (Foreign Slot)" withArrow>
-                              <ThemeIcon size="sm" radius="md" variant="light" color="yellow">
-                                <Airplane size={14} weight="fill" />
-                              </ThemeIcon>
-                            </Tooltip>
-                          )}
-
-                          {/* RTM Tag: Cards icon + Franchise Code */}
-                          {hasRtm && (
-                            <Tooltip
-                              label={`Right to Match (RTM) available for ${currentLot.previousFranchise}`}
-                              withArrow
-                            >
-                              <Badge
-                                size="xs"
-                                radius="md"
-                                color="blue"
-                                variant="light"
-                                px={6}
-                                style={{ whiteSpace: "nowrap" }}
-                              >
-                                <Group gap={3} wrap="nowrap" align="center">
-                                  <Cards size={12} weight="bold" />
-                                  <span style={{ fontWeight: 800 }}>
-                                    {currentLot.previousFranchise}
-                                  </span>
-                                </Group>
-                              </Badge>
-                            </Tooltip>
-                          )}
-
-                          <CountryFlag country={currentLot.country} size="xs" />
-                        </Group>
-                      </Group>
-
-                      {/* Sub-header: Role Icon (Bat/Bowl/Gloves) + Batting/Bowling style */}
-                      <Group gap="xs" mt={4} mb={6} align="center" wrap="nowrap">
-                        <Tooltip label={roleMeta.label} withArrow>
-                          <ThemeIcon
-                            size="sm"
-                            radius="md"
-                            variant="filled"
-                            color={roleMeta.color}
-                            aria-label={roleMeta.label}
-                          >
-                            {roleIcon}
-                          </ThemeIcon>
-                        </Tooltip>
-                        <Text size="xs" fw={700} c="var(--mantine-color-text)" truncate>
+                      {/* Role & Styles Row */}
+                      <div className="flex items-center gap-2.5 mt-2">
+                        <div className="w-8 h-8 rounded-xl bg-blue-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-blue-500/25">
+                          <GiCricketBat size={16} />
+                        </div>
+                        <span className="text-sm font-semibold text-slate-400 truncate">
                           {formatBattingStyle(currentLot.battingStyle)}
-                          {currentLot.bowlingStyle && currentLot.bowlingStyle !== "None"
+                          {currentLot.bowlingStyle && currentLot.bowlingStyle !== "None" && currentLot.bowlingStyle !== "-"
                             ? ` • ${currentLot.bowlingStyle}`
                             : ""}
-                        </Text>
-                      </Group>
-                    </Box>
+                        </span>
+                      </div>
 
-                    {/* Stats Grid: Exactly 2 lines (3 cols x 2 rows) */}
-                    <SimpleGrid cols={3} spacing={6} my={4}>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
-                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">MAT</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">{currentLot.matches}</Text>
-                      </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
-                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">RUNS</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">{formatIndianNumber(currentLot.runs)}</Text>
-                      </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
-                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">AVG</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">
-                          {currentLot.battingAverage > 0 ? currentLot.battingAverage.toFixed(1) : "-"}
-                        </Text>
-                      </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
-                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">SR</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">
-                          {currentLot.strikeRate > 0 ? currentLot.strikeRate.toFixed(1) : "-"}
-                        </Text>
-                      </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
-                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">WKTS</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">{currentLot.wickets}</Text>
-                      </Paper>
-                      <Paper withBorder p={{ base: "3px 4px", sm: "4px 8px" }} radius="md" bg="var(--ipl-bg-card-subtle)" style={{ borderColor: "var(--ipl-border)" }} ta="center">
-                        <Text size="9px" fw={700} c="dimmed" tt="uppercase">ECON</Text>
-                        <Text size="xs" fw={900} ff="monospace" c="var(--mantine-color-text)">
-                          {currentLot.economy > 0 ? currentLot.economy.toFixed(1) : "-"}
-                        </Text>
-                      </Paper>
-                    </SimpleGrid>
+                      {/* Badges Row: Capped / Overseas / Flag / Age / RTM */}
+                      <div className="flex items-center gap-2.5 mt-3 flex-wrap">
+                        {/* Capped / Uncapped Badge */}
+                        <Tooltip
+                          label={
+                            currentLot.isCapped
+                              ? "Capped Player (International Experience)"
+                              : "Uncapped Player (Domestic/Emerging)"
+                          }
+                          withArrow
+                        >
+                          <div
+                            className={cn(
+                              "w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0 shadow-xs",
+                              currentLot.isCapped
+                                ? "bg-[#064e3b] border border-[#10b981]/40"
+                                : "bg-slate-800 border border-slate-700/60"
+                            )}
+                          >
+                            {currentLot.isCapped ? (
+                              <GiBilledCap size={15} />
+                            ) : (
+                              <User size={13} weight="bold" />
+                            )}
+                          </div>
+                        </Tooltip>
 
-                    {/* Integrated Valuation Bar: Base Price & Current Highest Bid */}
-                    <Paper
-                      withBorder
-                      radius="lg"
-                      p={{ base: "6px 8px", sm: "6px 12px" }}
-                      mt={4}
-                      style={{
-                        backgroundColor: "var(--ipl-bg-card-subtle)",
-                        borderColor: "var(--ipl-border)",
-                      }}
-                    >
-                      <Group justify="space-between" align="center" wrap="nowrap" gap={6}>
-                        {/* Base Price */}
-                        <Box style={{ flexShrink: 0 }}>
-                          <Text size="9px" fw={700} c="dimmed" tt="uppercase">
-                            Base Price
-                          </Text>
-                          <Text fz={{ base: "xs", sm: "sm" }} fw={900} ff="monospace" c="yellow.5">
-                            {formatRupees(currentLot.basePrice)}
-                          </Text>
-                        </Box>
+                        {/* Overseas Airplane Badge */}
+                        {currentLot.isOverseas && (
+                          <Tooltip label="Overseas Player (Foreign Slot)" withArrow>
+                            <div className="w-7 h-7 rounded-full bg-[#7c2d12] border border-[#f59e0b]/40 flex items-center justify-center text-white shrink-0 shadow-xs">
+                              <Airplane size={14} weight="fill" />
+                            </div>
+                          </Tooltip>
+                        )}
 
-                        <Divider orientation="vertical" h={26} color="var(--ipl-border)" />
+                        {/* Country Flag Badge */}
+                        <Tooltip label={currentLot.country || "Country"} withArrow>
+                          <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-slate-800 border border-white/15 shrink-0 shadow-xs">
+                            <CountryFlag country={currentLot.country} size="xs" imgClassName="w-full h-full object-cover" />
+                          </div>
+                        </Tooltip>
 
-                        {/* Current / Highest Bid */}
-                        <Group gap={8} justify="flex-end" align="center" wrap="nowrap">
-                          <Box style={{ textAlign: "right" }}>
-                            <Text size="9px" fw={700} c="dimmed" tt="uppercase">
-                              {currentLot.highestBidderFranchise ? "Highest Bid" : "Opening Bid"}
-                            </Text>
-                            <Text fz={{ base: "sm", sm: "md" }} fw={900} ff="monospace" c="var(--mantine-color-text)">
-                              {currentLot.currentBid > 0
-                                ? formatRupees(currentLot.currentBid)
-                                : formatRupees(currentLot.basePrice)}
-                            </Text>
-                          </Box>
+                        {/* Age Pill Badge */}
+                        <div className="px-3.5 py-0.5 rounded-full bg-[#131b2e] border border-slate-700/60 text-slate-200 text-xs font-semibold shrink-0">
+                          Age {playerAge}
+                        </div>
 
+                        {/* RTM Badge if Available */}
+                        {hasRtm && (
+                          <Tooltip
+                            label={`Right to Match (RTM) available for ${currentLot.previousFranchise}`}
+                            withArrow
+                          >
+                            <div className="px-2.5 py-0.5 rounded-full bg-blue-950/80 border border-blue-500/50 text-blue-300 text-xs font-bold shrink-0 flex items-center gap-1 shadow-xs">
+                              <Cards size={12} weight="bold" />
+                              <span>RTM {currentLot.previousFranchise}</span>
+                            </div>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 3x2 Stats Grid in Outer Container */}
+                    <div className="bg-[#090e1f] border border-slate-800/80 rounded-2xl p-2 sm:p-2.5">
+                      <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+                        <div className="flex flex-col items-center justify-center py-2.5 sm:py-3 px-1 rounded-xl bg-[#12192d] border border-white/5 text-center">
+                          <span className="text-xs font-medium text-slate-400">Matches</span>
+                          <span className="text-lg sm:text-xl font-black text-white mt-0.5">{currentLot.matches}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center py-2.5 sm:py-3 px-1 rounded-xl bg-[#12192d] border border-white/5 text-center">
+                          <span className="text-xs font-medium text-slate-400">Runs</span>
+                          <span className="text-lg sm:text-xl font-black text-white mt-0.5">{formatIndianNumber(currentLot.runs)}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center py-2.5 sm:py-3 px-1 rounded-xl bg-[#12192d] border border-white/5 text-center">
+                          <span className="text-xs font-medium text-slate-400">Average</span>
+                          <span className="text-lg sm:text-xl font-black text-white mt-0.5">
+                            {currentLot.battingAverage > 0 ? currentLot.battingAverage.toFixed(1) : "-"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center py-2.5 sm:py-3 px-1 rounded-xl bg-[#12192d] border border-white/5 text-center">
+                          <span className="text-xs font-medium text-slate-400">Strike Rate</span>
+                          <span className="text-lg sm:text-xl font-black text-white mt-0.5">
+                            {currentLot.strikeRate > 0 ? currentLot.strikeRate.toFixed(1) : "-"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center py-2.5 sm:py-3 px-1 rounded-xl bg-[#12192d] border border-white/5 text-center">
+                          <span className="text-xs font-medium text-slate-400">Wickets</span>
+                          <span className="text-lg sm:text-xl font-black text-white mt-0.5">{currentLot.wickets}</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center py-2.5 sm:py-3 px-1 rounded-xl bg-[#12192d] border border-white/5 text-center">
+                          <span className="text-xs font-medium text-slate-400">Economy</span>
+                          <span className="text-lg sm:text-xl font-black text-white mt-0.5">
+                            {currentLot.economy > 0 ? currentLot.economy.toFixed(1) : "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Valuation / Bidding Bar */}
+                    <div className="bg-[#090e1f] border border-slate-800/80 rounded-2xl p-3 px-4 sm:px-5 flex items-center justify-between">
+                      {/* Base Price */}
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium text-slate-400">Base Price</span>
+                        <span className="text-xl sm:text-2xl font-black text-yellow-400 mt-0.5">
+                          {formatRupees(currentLot.basePrice)}
+                        </span>
+                      </div>
+
+                      {/* Highest Bid / Current Bid */}
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs font-medium text-slate-400">
+                          {currentLot.highestBidderFranchise ? "Highest Bid" : "Opening Bid"}
+                        </span>
+                        <div className="flex items-center gap-2.5 mt-0.5">
+                          <span className="text-xl sm:text-2xl font-black text-white">
+                            {currentLot.currentBid > 0
+                              ? formatRupees(currentLot.currentBid)
+                              : formatRupees(currentLot.basePrice)}
+                          </span>
                           {currentLot.highestBidderFranchise && (
-                            <Badge
-                              size="md"
-                              color="yellow"
-                              variant="filled"
-                              leftSection={<Fire size={12} weight="fill" />}
-                            >
-                              {currentLot.highestBidderFranchise}
-                            </Badge>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 text-xs font-black shadow-xs">
+                              <Fire size={13} weight="fill" />
+                              <span>{currentLot.highestBidderFranchise}</span>
+                            </div>
                           )}
-                        </Group>
-                      </Group>
-                    </Paper>
-                  </Box>
-                </Paper>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               );
             })()}
           </Box>

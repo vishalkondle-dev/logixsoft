@@ -14,14 +14,15 @@ export interface PlayerJerseyShowcaseProps {
   size?: "sm" | "md" | "lg";
 }
 
-export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; accentText: string; pillStyle: string; label: string; numColor: string }> = {
+export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: string; accentText: string; pillStyle: string; label: string; numColor: string; podiumNeon: string }> = {
   MI: {
     bgGlow: "from-blue-600/20 via-blue-900/10 to-transparent",
     borderGlow: "border-blue-500/50 shadow-blue-500/15 dark:border-blue-500/40",
     accentText: "text-blue-600 dark:text-blue-400",
     pillStyle: "bg-blue-600/15 text-blue-700 dark:text-blue-300 border-blue-500/40 shadow-blue-500/10",
     label: "Mumbai Indians",
-    numColor: "#ffd700",
+    numColor: "#ffffff",
+    podiumNeon: "#3b82f6",
   },
   CSK: {
     bgGlow: "from-amber-400/25 via-yellow-600/10 to-transparent",
@@ -29,7 +30,8 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     accentText: "text-amber-600 dark:text-amber-300",
     pillStyle: "bg-amber-500/20 text-amber-800 dark:text-yellow-300 border-amber-400/50 shadow-amber-500/10",
     label: "Chennai Super Kings",
-    numColor: "#003b8e",
+    numColor: "#ffffff",
+    podiumNeon: "#eab308",
   },
   RCB: {
     bgGlow: "from-red-600/20 via-rose-950/15 to-transparent",
@@ -37,7 +39,8 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     accentText: "text-red-600 dark:text-red-400",
     pillStyle: "bg-red-600/15 text-red-700 dark:text-red-300 border-red-500/40 shadow-red-500/10",
     label: "Royal Challengers Bengaluru",
-    numColor: "#ffd700",
+    numColor: "#ffffff",
+    podiumNeon: "#ef4444",
   },
   KKR: {
     bgGlow: "from-purple-600/20 via-fuchsia-950/15 to-transparent",
@@ -45,7 +48,8 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     accentText: "text-purple-600 dark:text-purple-400",
     pillStyle: "bg-purple-600/15 text-purple-700 dark:text-purple-300 border-purple-500/40 shadow-purple-500/10",
     label: "Kolkata Knight Riders",
-    numColor: "#ffd700",
+    numColor: "#ffffff",
+    podiumNeon: "#a855f7",
   },
   SRH: {
     bgGlow: "from-orange-500/25 via-amber-950/15 to-transparent",
@@ -54,6 +58,7 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     pillStyle: "bg-orange-600/15 text-orange-700 dark:text-orange-300 border-orange-500/40 shadow-orange-500/10",
     label: "Sunrisers Hyderabad",
     numColor: "#ffffff",
+    podiumNeon: "#f97316",
   },
   DC: {
     bgGlow: "from-blue-600/20 via-red-900/15 to-transparent",
@@ -62,6 +67,7 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     pillStyle: "bg-blue-600/15 text-blue-700 dark:text-sky-300 border-blue-500/40 shadow-blue-500/10",
     label: "Delhi Capitals",
     numColor: "#ffffff",
+    podiumNeon: "#0ea5e9",
   },
   RR: {
     bgGlow: "from-pink-500/25 via-rose-950/15 to-transparent",
@@ -70,6 +76,7 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     pillStyle: "bg-pink-600/15 text-pink-700 dark:text-pink-300 border-pink-400/40 shadow-pink-500/10",
     label: "Rajasthan Royals",
     numColor: "#ffffff",
+    podiumNeon: "#f43f5e",
   },
   GT: {
     bgGlow: "from-cyan-500/25 via-slate-900/20 to-transparent",
@@ -77,7 +84,8 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     accentText: "text-cyan-600 dark:text-cyan-400",
     pillStyle: "bg-cyan-600/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/40 shadow-cyan-500/10",
     label: "Gujarat Titans",
-    numColor: "#e5c07b",
+    numColor: "#ffffff",
+    podiumNeon: "#14b8a6",
   },
   LSG: {
     bgGlow: "from-sky-500/25 via-blue-950/15 to-transparent",
@@ -86,6 +94,7 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     pillStyle: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-400/40 shadow-sky-500/10",
     label: "Lucknow Super Giants",
     numColor: "#ffffff",
+    podiumNeon: "#38bdf8",
   },
   PBKS: {
     bgGlow: "from-red-600/25 via-amber-950/15 to-transparent",
@@ -93,7 +102,8 @@ export const TEAM_GLOW_STYLES: Record<string, { bgGlow: string; borderGlow: stri
     accentText: "text-red-600 dark:text-red-400",
     pillStyle: "bg-rose-600/15 text-rose-700 dark:text-rose-300 border-rose-500/40 shadow-rose-500/10",
     label: "Punjab Kings",
-    numColor: "#ffd700",
+    numColor: "#ffffff",
+    podiumNeon: "#e11d48",
   },
 };
 
@@ -104,6 +114,7 @@ const DEFAULT_GLOW = {
   pillStyle: "bg-slate-100 dark:bg-secondary/80 text-slate-600 dark:text-muted-foreground border-slate-200 dark:border-border/80",
   label: "Auction Pool",
   numColor: "#ffffff",
+  podiumNeon: "#38bdf8",
 };
 
 export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
@@ -260,26 +271,32 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-gradient-to-b from-slate-100 via-slate-50 to-slate-200 dark:from-[#181a32] dark:via-[#0d1228] dark:to-[#080d1e] border border-orange-500/30 dark:border-orange-500/50 backdrop-blur-xs select-none transition-all duration-300 shadow-md dark:shadow-xl overflow-hidden group aspect-[3/4]",
+        "relative flex flex-col items-center justify-between p-2.5 rounded-2xl bg-gradient-to-b from-[#0e152e] via-[#090e1f] to-[#050814] border border-[#1e284a] select-none transition-all duration-300 shadow-xl overflow-hidden group aspect-[4/5.2]",
         className
       )}
     >
-      {/* Top glowing orange rim light */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-500 via-amber-400/60 to-transparent pointer-events-none z-10" />
+      {/* Stadium Overhead Spotlight & Atmospheric Floodlight Glow */}
+      <div
+        className="absolute inset-0 pointer-events-none z-1"
+        style={{
+          background:
+            "radial-gradient(ellipse 130% 70% at 50% -10%, rgba(255, 255, 255, 0.22) 0%, rgba(147, 51, 234, 0.12) 35%, transparent 70%), radial-gradient(circle at 10% 30%, rgba(59, 130, 246, 0.12) 0%, transparent 40%), radial-gradient(circle at 90% 30%, rgba(236, 72, 153, 0.12) 0%, transparent 40%)",
+        }}
+      />
 
       {/* Dynamic Ambient Stadium Spotlight Glow */}
       <div
         className={cn(
-          "absolute -inset-10 bg-radial transition-all duration-700 pointer-events-none opacity-60 dark:opacity-75 blur-2xl",
+          "absolute -inset-10 bg-radial transition-all duration-700 pointer-events-none opacity-60 dark:opacity-75 blur-2xl z-2",
           teamTheme.bgGlow
         )}
       />
 
       {/* Top Floating Status Pill */}
       {status === "SOLD" && (
-        <div className="absolute top-2 left-2 z-20 pointer-events-none">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 shadow-xs backdrop-blur-xs">
-            <CheckCircle size={10} weight="fill" />
+        <div className="absolute top-2.5 left-2.5 z-25 pointer-events-none">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 shadow-xs backdrop-blur-xs">
+            <CheckCircle size={11} weight="fill" />
             <span>SOLD {activeCode}</span>
           </span>
         </div>
@@ -289,18 +306,18 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
       <button
         type="button"
         onClick={() => setViewSide((prev) => (prev === "front" ? "back" : "front"))}
-        className="absolute top-2 right-2 z-20 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/60 hover:bg-black/80 text-white/90 border border-white/20 backdrop-blur-md shadow-xs transition-transform active:scale-95 cursor-pointer"
+        className="absolute top-2.5 right-2.5 z-25 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-black/55 hover:bg-black/75 text-white/95 border border-white/20 backdrop-blur-md shadow-xs transition-transform active:scale-95 cursor-pointer"
         title="Toggle Front/Back View"
       >
-        <ArrowsClockwise size={10} weight="bold" />
-        <span>{viewSide === "front" ? "BACK" : "FRONT"}</span>
+        <ArrowsClockwise size={12} weight="bold" />
+        <span>{viewSide === "front" ? "Back" : "Front"}</span>
       </button>
 
       {/* 3D Miniature Jersey Graphic Stage */}
       <div
         key={`${pulseKey}-${viewSide}`}
         onClick={() => setViewSide((prev) => (prev === "front" ? "back" : "front"))}
-        className="relative flex-1 w-full flex items-center justify-center my-auto transition-transform duration-300 hover:scale-[1.03] cursor-pointer"
+        className="relative flex-1 w-[92%] flex items-center justify-center my-auto transition-transform duration-300 hover:scale-[1.03] cursor-pointer z-10 -mb-3"
       >
         {/* 1:1 Aspect Box perfectly synced with the 1024x1024 Jersey */}
         <div className="relative aspect-square w-full max-h-full flex items-center justify-center [container-type:inline-size]">
@@ -311,7 +328,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
               src={displayedUrl.endsWith(".webp") ? displayedUrl.replace(".webp", ".png") : displayedUrl}
               alt={`${playerName} 2026 Kit (${viewSide})`}
               onError={() => setImgError(true)}
-              className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] pointer-events-none transition-opacity duration-150"
+              className="w-full h-full object-contain filter drop-shadow-[0_16px_28px_rgba(0,0,0,0.8)] pointer-events-none transition-opacity duration-150"
               loading="eager"
               decoding="async"
             />
@@ -330,8 +347,9 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
                   style={{
                     fontSize: nameTypography.fontSize,
                     letterSpacing: nameTypography.letterSpacing,
-                    color: teamTheme.numColor,
-                    textShadow: "0 2px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.9)",
+                    color: "#ffffff",
+                    textShadow:
+                      "0 2px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.9), -1px -1px 0 rgba(0,0,0,0.9)",
                     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                     lineHeight: 1.1,
                     maxWidth: "100%",
@@ -349,9 +367,10 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
                 <span
                   className="font-black font-mono tracking-tight text-center leading-none"
                   style={{
-                    fontSize: "clamp(24px, 20cqw, 40px)",
-                    color: teamTheme.numColor,
-                    textShadow: "0 3px 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.95), 1px 2px 0 rgba(0,0,0,0.85)",
+                    fontSize: "clamp(26px, 22cqw, 44px)",
+                    color: "#ffffff",
+                    textShadow:
+                      "0 3px 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.95), 1px 2px 0 rgba(0,0,0,0.9), -1px -1px 0 rgba(0,0,0,0.9)",
                   }}
                 >
                   {displayNum}
@@ -360,9 +379,40 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
             </div>
           )}
         </div>
+      </div>
 
-        {/* Subtle Bottom Reflection / Shadow under Jersey */}
-        <div className="absolute -bottom-2 w-3/4 h-3 rounded-[50%] bg-black/40 blur-md pointer-events-none" />
+      {/* 3D Realistic Illuminated Stadium Podium Base */}
+      <div className="relative w-[86%] h-12 shrink-0 mb-0.5 z-5 pointer-events-none">
+        {/* Top Disc with Neon Glowing Rim */}
+        <div
+          className="absolute top-0 left-0 right-0 h-7 rounded-[50%] z-20"
+          style={{
+            background: "radial-gradient(ellipse at 50% 50%, #26274a 0%, #15162e 70%, #0d0e1f 100%)",
+            border: "2px solid rgba(255, 255, 255, 0.85)",
+            boxShadow: `0 0 18px ${teamTheme.podiumNeon}, 0 0 36px ${teamTheme.podiumNeon}90, inset 0 0 10px rgba(255, 255, 255, 0.55)`,
+          }}
+        />
+        {/* Front Center Lens Flare Glint on Rim */}
+        <div
+          className="absolute top-3.5 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-2 rounded-[50%] z-30 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 50%, #ffffff 0%, rgba(255, 255, 255, 0.8) 40%, transparent 100%)",
+            filter: "blur(1px)",
+            boxShadow: `0 0 8px #ffffff, 0 0 16px ${teamTheme.podiumNeon}`,
+          }}
+        />
+        {/* 3D Solid Cylinder Body */}
+        <div
+          className="absolute top-3 left-0 right-0 h-8 rounded-b-[50%] z-10"
+          style={{
+            background: "linear-gradient(180deg, #1c1d36 0%, #0e1022 55%, #05060f 100%)",
+            borderBottom: "1.5px solid rgba(255, 255, 255, 0.08)",
+            boxShadow: "0 12px 24px rgba(0, 0, 0, 0.9)",
+          }}
+        />
+        {/* Soft Shadow on Stadium Floor */}
+        <div className="absolute -bottom-2 left-[2%] w-[96%] h-5 rounded-[50%] bg-black/85 blur-md z-0" />
       </div>
     </div>
   );

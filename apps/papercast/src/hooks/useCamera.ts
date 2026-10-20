@@ -39,12 +39,40 @@ export function useCamera() {
             }
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        console.warn('Initial camera constraints failed, attempting basic environment fallback:', err);
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: 'environment' }
+        });
+      }
+
       streamRef.current = stream;
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        const video = videoRef.current;
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        video.muted = true;
+        video.defaultMuted = true;
+
+        const playVideo = async () => {
+          try {
+            await video.play();
+          } catch (playErr) {
+            console.warn('Video play delayed/blocked by policy:', playErr);
+          }
+        };
+
+        if (video.readyState >= 2) {
+          playVideo();
+        } else {
+          video.onloadedmetadata = playVideo;
+        }
       }
 
       setHasPermission(true);
@@ -59,16 +87,20 @@ export function useCamera() {
       }
 
       // Enumerate devices
-      const allDevices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-      setDevices(videoDevices);
+      try {
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+        setDevices(videoDevices);
 
-      const currentTrack = stream.getVideoTracks()[0];
-      if (currentTrack) {
-        const settings = currentTrack.getSettings();
-        if (settings.deviceId) {
-          setActiveDeviceId(settings.deviceId);
+        const currentTrack = stream.getVideoTracks()[0];
+        if (currentTrack) {
+          const settings = currentTrack.getSettings();
+          if (settings.deviceId) {
+            setActiveDeviceId(settings.deviceId);
+          }
         }
+      } catch (e) {
+        console.warn('Enumerate devices failed:', e);
       }
     } catch (err: any) {
       console.error('Camera access error:', err);
@@ -129,10 +161,10 @@ export function useCamera() {
 
     try {
       const options: MediaRecorderOptions = {
-        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-          ? 'video/webm;codecs=vp9'
-          : MediaRecorder.isTypeSupported('video/mp4')
+        mimeType: MediaRecorder.isTypeSupported('video/mp4')
           ? 'video/mp4'
+          : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
           : 'video/webm'
       };
 
@@ -153,7 +185,7 @@ export function useCamera() {
         }
       };
 
-      recorder.start(1000); // 1-second chunks
+      recorder.start(1000);
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
 
@@ -168,6 +200,13 @@ export function useCamera() {
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
+    }
+  }, []);
+
+  // Resume video playback on user touch/click if stalled
+  const resumePlayback = useCallback(() => {
+    if (videoRef.current && videoRef.current.paused) {
+      videoRef.current.play().catch(e => console.warn('Resume play failed:', e));
     }
   }, []);
 
@@ -194,6 +233,7 @@ export function useCamera() {
     devices,
     activeDeviceId,
     switchCamera: startCamera,
+    resumePlayback,
     hasTorch,
     isTorchOn,
     toggleTorch,

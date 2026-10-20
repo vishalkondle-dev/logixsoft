@@ -7,7 +7,7 @@ interface CanvasViewportProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   sourceImageUrl: string;
   opacity: number;
-  peekOpacity: number | null; // When holding peek button
+  peekOpacity: number | null;
   transform: ImageTransform;
   onUpdateTransform: (updater: (prev: ImageTransform) => ImageTransform) => void;
   filterMode: FilterMode;
@@ -18,6 +18,7 @@ interface CanvasViewportProps {
   onUpdateCorner: (index: number, pt: CornerPoint) => void;
   isEyedropperActive: boolean;
   onColorSampled: (sample: ColorSample | null) => void;
+  onResumePlayback?: () => void;
 }
 
 export const CanvasViewport: React.FC<CanvasViewportProps> = ({
@@ -35,6 +36,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   onUpdateCorner,
   isEyedropperActive,
   onColorSampled,
+  onResumePlayback,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -63,7 +65,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     img.src = sourceImageUrl;
     img.onload = () => {
       rawImageRef.current = img;
-      // Re-apply filter
       const processed = applyArtistFilter(img, filterMode, posterizeLevels);
       filteredCanvasRef.current = processed;
       renderOverlay();
@@ -100,7 +101,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     ctx.clearRect(0, 0, width, height);
     if (gridMode === 'none') return;
 
-    ctx.strokeStyle = '#06b6d4'; // High-visibility Cyan
+    ctx.strokeStyle = '#06b6d4';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
 
@@ -147,7 +148,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         ctx.stroke();
       }
     } else if (gridMode === 'golden') {
-      // Golden ratio lines (approx 0.618 and 0.382)
       const gx1 = width * 0.382;
       const gx2 = width * 0.618;
       const gy1 = height * 0.382;
@@ -169,8 +169,15 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     }
   }, [gridMode]);
 
-  // Handle Eyedropper click/touch
+  // Handle pointer down (drag / sample / wake video)
   const handlePointerDown = (e: React.PointerEvent) => {
+    // If video is stalled/paused by iOS WebKit, resume immediately on tap
+    if (onResumePlayback) {
+      onResumePlayback();
+    } else if (videoRef.current && videoRef.current.paused) {
+      videoRef.current.play().catch(() => {});
+    }
+
     if (isCalibrating && activeCornerIdx !== null) return;
 
     if (isEyedropperActive && filteredCanvasRef.current && overlayCanvasRef.current) {
@@ -193,14 +200,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       return;
     }
 
-    // Otherwise standard pan drag
     isDraggingRef.current = true;
     startDragRef.current = { x: e.clientX, y: e.clientY };
     startTransformRef.current = { ...transform };
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    // Corner calibration drag
     if (isCalibrating && activeCornerIdx !== null && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
@@ -226,7 +231,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     setActiveCornerIdx(null);
   };
 
-  // Wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
@@ -236,7 +240,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     }));
   };
 
-  // Touch gestures (Pinch-to-zoom & two-finger rotate)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const t1 = e.touches[0];
@@ -273,7 +276,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
     initialTouchAngleRef.current = null;
   };
 
-  // Dynamic CSS transform matrix
   const containerW = containerRef.current?.clientWidth || 800;
   const containerH = containerRef.current?.clientHeight || 600;
 
@@ -308,6 +310,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       <video
         ref={videoRef}
         playsInline
+        webkit-playsinline="true"
         muted
         autoPlay
         className="absolute inset-0 w-full h-full object-cover pointer-events-none"
@@ -326,7 +329,7 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         >
           <canvas
             ref={overlayCanvasRef}
-            className="max-w-[85vw] max-h-[80vh] object-contain shadow-2xl rounded-sm"
+            className="max-w-[90vw] max-h-[85vh] object-contain drop-shadow-[0_0_15px_rgba(245,158,11,0.5)] rounded-sm"
           />
         </div>
       </div>
@@ -337,10 +340,9 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
-      {/* 4. 4-Corner Calibration Handles (Only when Align Paper is active) */}
+      {/* 4. 4-Corner Calibration Handles */}
       {isCalibrating && (
         <div className="absolute inset-0 pointer-events-none z-30">
-          {/* Connecting Box Outline */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
             <polygon
               points={`${corners[0].x},${corners[0].y} ${corners[1].x},${corners[1].y} ${corners[2].x},${corners[2].y} ${corners[3].x},${corners[3].y}`}
@@ -351,7 +353,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             />
           </svg>
 
-          {/* Draggable Corner Points */}
           {corners.map((corner, index) => {
             const labels = ['Top-Left', 'Top-Right', 'Bottom-Right', 'Bottom-Left'];
             return (

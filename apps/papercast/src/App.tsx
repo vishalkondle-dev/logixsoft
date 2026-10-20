@@ -20,6 +20,7 @@ export const App: React.FC = () => {
     devices,
     activeDeviceId,
     switchCamera,
+    resumePlayback,
     hasTorch,
     isTorchOn,
     toggleTorch,
@@ -37,13 +38,13 @@ export const App: React.FC = () => {
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(TRACING_PRESETS[0].id);
   const [sourceImageUrl, setSourceImageUrl] = useState<string>(TRACING_PRESETS[0].sourceUrl);
 
-  // Projection / Opacity State
+  // Projection / Opacity State (Default to 50% opacity)
   const [opacity, setOpacity] = useState<number>(50);
   const [peekOpacity, setPeekOpacity] = useState<number | null>(null);
   const [isPeeking, setIsPeeking] = useState<boolean>(false);
 
   // Auto-Strobe / Blink State
-  const [strobeSpeed, setStrobeSpeed] = useState<number>(0); // 0 = off, 0.5, 1, 2
+  const [strobeSpeed, setStrobeSpeed] = useState<number>(0);
   const strobeTimerRef = useRef<any>(null);
 
   // Transform State
@@ -65,8 +66,8 @@ export const App: React.FC = () => {
     { x: 100, y: 450 },
   ]);
 
-  // Filters & Grid State
-  const [filterMode, setFilterMode] = useState<FilterMode>('edges');
+  // Filters & Grid State (Default to normal/outline)
+  const [filterMode, setFilterMode] = useState<FilterMode>('normal');
   const [posterizeLevels, setPosterizeLevels] = useState<number>(4);
   const [gridMode, setGridMode] = useState<GridMode>('none');
 
@@ -84,7 +85,7 @@ export const App: React.FC = () => {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const padX = Math.round(w * 0.15);
-    const padY = Math.round(h * 0.18);
+    const padY = Math.round(h * 0.22);
     setCorners([
       { x: padX, y: padY },
       { x: w - padX, y: padY },
@@ -155,10 +156,6 @@ export const App: React.FC = () => {
     setTransform(prev => ({ ...prev, flipH: !prev.flipH }));
   }, []);
 
-  const handleFlipV = useCallback(() => {
-    setTransform(prev => ({ ...prev, flipV: !prev.flipV }));
-  }, []);
-
   const handleResetTransform = useCallback(() => {
     setTransform({
       x: 0,
@@ -203,7 +200,7 @@ export const App: React.FC = () => {
             <div className="flex flex-col gap-1.5">
               <h2 className="text-lg font-bold text-white">Camera Access Needed</h2>
               <p className="text-xs text-paper-300 leading-relaxed">
-                {errorMsg || 'Papercast projects images onto your physical paper using your camera. Please allow camera permissions in your browser.'}
+                {errorMsg || 'Papercast projects images onto your physical paper using your camera. Please allow camera permissions in your browser or Settings.'}
               </p>
             </div>
             <button
@@ -216,7 +213,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Top Header HUD */}
+      {/* Top Header HUD (Safely spaced below Dynamic Island / Notch) */}
       <HeaderHUD
         hasTorch={hasTorch}
         isTorchOn={isTorchOn}
@@ -231,13 +228,6 @@ export const App: React.FC = () => {
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
         onOpenGuide={() => setIsGuideOpen(true)}
-        isCalibrating={isCalibrating}
-        onToggleCalibrate={() => setIsCalibrating(prev => !prev)}
-        isEyedropperActive={isEyedropperActive}
-        onToggleEyedropper={() => {
-          setIsEyedropperActive(prev => !prev);
-          if (isEyedropperActive) setColorSample(null);
-        }}
       />
 
       {/* Main Interactive Canvas Lucida Viewport */}
@@ -256,6 +246,7 @@ export const App: React.FC = () => {
         onUpdateCorner={handleUpdateCorner}
         isEyedropperActive={isEyedropperActive}
         onColorSampled={setColorSample}
+        onResumePlayback={resumePlayback}
       />
 
       {/* Eyedropper Card */}
@@ -267,7 +258,7 @@ export const App: React.FC = () => {
         }}
       />
 
-      {/* Floating Bottom Controls Dock */}
+      {/* Floating Bottom Controls Dock (Safely elevated above iOS Home Bar) */}
       <ControlsDock
         opacity={opacity}
         onChangeOpacity={setOpacity}
@@ -278,13 +269,19 @@ export const App: React.FC = () => {
         onCycleStrobe={handleCycleStrobe}
         onRotate90={handleRotate90}
         onFlipH={handleFlipH}
-        onFlipV={handleFlipV}
         onResetTransform={handleResetTransform}
         currentFilter={filterMode}
         onOpenFilterDrawer={() => setIsFilterDrawerOpen(true)}
         currentGrid={gridMode}
         onCycleGrid={handleCycleGrid}
         onOpenPresetsDrawer={() => setIsPresetsOpen(true)}
+        isCalibrating={isCalibrating}
+        onToggleCalibrate={() => setIsCalibrating(prev => !prev)}
+        isEyedropperActive={isEyedropperActive}
+        onToggleEyedropper={() => {
+          setIsEyedropperActive(prev => !prev);
+          if (isEyedropperActive) setColorSample(null);
+        }}
       />
 
       {/* Modals & Drawers */}

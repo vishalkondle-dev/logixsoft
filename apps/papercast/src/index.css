@@ -7,6 +7,23 @@
   color-scheme: dark;
 }
 
+/* iOS Safe Area Utilities for Dynamic Island, Notch, & Home Indicator */
+.safe-top-pad {
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 8px), 16px);
+}
+
+.safe-bottom-pad {
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), 20px);
+}
+
+.safe-left-pad {
+  padding-left: max(env(safe-area-inset-left, 0px), 16px);
+}
+
+.safe-right-pad {
+  padding-right: max(env(safe-area-inset-right, 0px), 16px);
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -34,15 +51,15 @@ input[type="range"] {
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #f59e0b;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
-  border: 2px solid #ffffff;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.7);
+  border: 2.5px solid #ffffff;
   transition: transform 0.1s ease;
 }
 input[type="range"]::-webkit-slider-thumb:active {
-  transform: scale(1.2);
+  transform: scale(1.25);
 }

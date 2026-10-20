@@ -50,10 +50,12 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
   return (
     <header className="fixed top-0 left-0 right-0 z-40 safe-top-pad px-3.5 sm:px-6 flex items-center justify-between pointer-events-none transition-all">
       {/* Brand Badge */}
-      <div className="flex items-center gap-2 pointer-events-auto bg-paper-900/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20 shadow-2xl">
-        <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center shadow-md shadow-amber-500/30">
-          <Eye className="w-3.5 h-3.5 text-paper-950 stroke-[2.5]" />
-        </div>
+      <div className="flex items-center gap-2 pointer-events-auto bg-paper-900/95 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-white/20 shadow-2xl">
+        <img 
+          src="/favicon-64.png" 
+          alt="Papercast Logo" 
+          className="w-6 h-6 rounded-lg object-cover shadow-md shadow-amber-500/30 border border-white/10" 
+        />
         <div className="flex items-center gap-1.5">
           <span className="font-extrabold text-xs sm:text-sm tracking-tight text-white antialiased">
             Papercast

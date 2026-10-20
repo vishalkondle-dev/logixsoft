@@ -132,9 +132,61 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
   // Player surname for back print
   const surname = useMemo(() => {
     if (!playerName) return "PLAYER";
-    const parts = playerName.trim().split(" ");
+    const parts = playerName.trim().split(/\s+/);
     return parts[parts.length - 1].toUpperCase();
   }, [playerName]);
+
+  // Dynamic font scaling according to length of the name and container queries (screen/card size)
+  const nameTypography = useMemo(() => {
+    const len = surname.length;
+    let cqw = 4.8;
+    let minPx = 6.5;
+    let maxPx = 9.2;
+    let letterSpacing = "0.08em";
+
+    if (len <= 4) {
+      // Very short: GILL, PANT, HEAD, IYER
+      cqw = 4.8;
+      minPx = 6.5;
+      maxPx = 9.2;
+      letterSpacing = "0.08em";
+    } else if (len <= 6) {
+      // Short: KOHLI, ROHIT, BUMRAH, PANDYA
+      cqw = 4.2;
+      minPx = 6.0;
+      maxPx = 8.4;
+      letterSpacing = "0.06em";
+    } else if (len <= 8) {
+      // Medium: KLAASEN, MAXWELL, SAMSON, HETMYER
+      cqw = 3.7;
+      minPx = 5.4;
+      maxPx = 7.5;
+      letterSpacing = "0.04em";
+    } else if (len <= 10) {
+      // Long: WILLIAMSON, RUTHERFORD, CHOUDHARY
+      cqw = 3.2;
+      minPx = 4.8;
+      maxPx = 6.6;
+      letterSpacing = "0.02em";
+    } else if (len <= 12) {
+      // Very long: CHAKRAVARTHY, LIVINGSTONE
+      cqw = 2.8;
+      minPx = 4.2;
+      maxPx = 5.8;
+      letterSpacing = "0.01em";
+    } else {
+      // Extra long (13+):
+      cqw = 2.4;
+      minPx = 3.8;
+      maxPx = 5.2;
+      letterSpacing = "0em";
+    }
+
+    return {
+      fontSize: `clamp(${minPx}px, ${cqw}cqw, ${maxPx}px)`,
+      letterSpacing,
+    };
+  }, [surname]);
 
   // Squad / Lot number for back view
   const displayNum = lotNumber !== undefined && lotNumber !== null ? lotNumber : 1;
@@ -270,18 +322,18 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
             <div className="absolute inset-0 pointer-events-none select-none">
               {/* Player Surname arched on upper back fabric */}
               <div
-                className="absolute left-1/2 -translate-x-1/2 w-[52%] flex items-center justify-center text-center overflow-hidden"
-                style={{ top: "21.5%" }}
+                className="absolute left-1/2 -translate-x-1/2 w-[58%] flex items-center justify-center text-center overflow-hidden"
+                style={{ top: "22.5%" }}
               >
                 <span
-                  className="font-black uppercase tracking-wider truncate text-center"
+                  className="font-black uppercase truncate text-center"
                   style={{
-                    fontSize: "clamp(10px, 8cqw, 14px)",
+                    fontSize: nameTypography.fontSize,
+                    letterSpacing: nameTypography.letterSpacing,
                     color: teamTheme.numColor,
                     textShadow: "0 2px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.9)",
-                    fontFamily: "system-ui, -apple-system, sans-serif",
-                    letterSpacing: "0.12em",
-                    lineHeight: 1,
+                    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    lineHeight: 1.1,
                     maxWidth: "100%",
                   }}
                 >
@@ -297,7 +349,7 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
                 <span
                   className="font-black font-mono tracking-tight text-center leading-none"
                   style={{
-                    fontSize: "clamp(26px, 22cqw, 44px)",
+                    fontSize: "clamp(24px, 20cqw, 40px)",
                     color: teamTheme.numColor,
                     textShadow: "0 3px 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.95), 1px 2px 0 rgba(0,0,0,0.85)",
                   }}
@@ -366,9 +418,10 @@ export const PlayerJerseyThumbnail: React.FC<PlayerJerseyThumbnailProps> = ({
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {size >= 48 && surname && (
             <span
-              className="text-[7px] font-black uppercase tracking-wider text-center px-0.5 truncate"
+              className="font-black uppercase tracking-wider text-center px-0.5 truncate"
               style={{
-                marginTop: "22%",
+                fontSize: surname.length > 8 ? "5.5px" : "6.5px",
+                marginTop: "22.5%",
                 color: numColor,
                 textShadow: "0 1px 2px rgba(0,0,0,0.95)",
                 maxWidth: "85%",

@@ -14,7 +14,7 @@ export const ColorEyedropperCard: React.FC<ColorEyedropperCardProps> = ({
   if (!sample) return null;
 
   return (
-    <div className="fixed top-20 right-4 z-40 w-72 bg-paper-900/95 backdrop-blur-xl border border-white/15 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-150">
+    <div className="fixed top-28 sm:top-24 right-4 z-40 w-72 bg-paper-900/95 backdrop-blur-xl border border-white/15 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-4 duration-150">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Palette className="w-4 h-4 text-sky-400" />

@@ -44,16 +44,59 @@ export async function printTicket(payload: TicketPayload): Promise<PrintResult> 
     }
   }
 
-  // Under NO circumstances do we trigger window.print() or "Save as PDF" browser modal!
+  // 3. Fallback to hidden iframe printing for standard USB / OS default thermal printers
+  if (typeof window !== "undefined") {
+    try {
+      printHtml(payload);
+      return "browser";
+    } catch (err) {
+      console.error("[print] Browser fallback print failed:", err);
+    }
+  }
+
   return "error";
 }
 
 /**
- * Print ticket silently to thermal printer.
+ * Print ticket silently to thermal printer (Electron or Web Bluetooth).
  * Never triggers browser print modal.
  */
 export async function printTicketSilent(payload: TicketPayload): Promise<PrintResult> {
-  return printTicket(payload);
+  const html = generateTicketHtml(payload);
+
+  // 1. Desktop PC / Electron silent thermal printing
+  if (typeof window !== "undefined" && (window as any).logixDinePC?.printReceipt) {
+    try {
+      const res = await (window as any).logixDinePC.printReceipt({
+        silent: true,
+        html,
+        type: payload.type,
+        orderNo: payload.orderNo,
+        restaurantName: payload.restaurantName,
+        items: payload.items,
+        time: payload.time,
+        date: payload.date,
+        subtotalPaise: payload.subtotalPaise,
+        delivery: payload.delivery,
+      });
+      if (res?.success !== false) return "ble";
+    } catch (err) {
+      console.error("[print] Desktop PC print failed:", err);
+    }
+  }
+
+  // 2. Bluetooth thermal printer (Web Bluetooth)
+  if (isPaired()) {
+    try {
+      const bytes = encodeTicket(payload);
+      await blePrint(bytes);
+      return "ble";
+    } catch (err) {
+      console.error("[print] BLE thermal print failed:", err);
+    }
+  }
+
+  return "error";
 }
 
 function esc(s: string): string {

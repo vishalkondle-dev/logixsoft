@@ -86,7 +86,6 @@ function getSectionConfig(sectionName: string) {
     s.includes("family") ||
     s.includes("hall") ||
     s.includes("private") ||
-    s.includes("vip") ||
     s.includes("cabin")
   ) {
     return {

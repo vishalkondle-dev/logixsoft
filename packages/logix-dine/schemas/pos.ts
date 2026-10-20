@@ -844,7 +844,6 @@ export const SetCashRegisterSchema = z.object({
 
 export const CUSTOMER_SEGMENTS = [
   'ALL',
-  'VIP',
   'REGULAR',
   'NEW',
   'AT_RISK',

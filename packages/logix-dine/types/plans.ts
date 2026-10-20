@@ -168,7 +168,7 @@ export const MODULE_INFO_CATALOG: Record<PlanModuleId, PlanModuleInfo> = {
     minPlanLabel: 'Starter Plan',
     minPlanPrice: 999,
     description: 'Guest phone database, lifetime spend metrics, visit frequencies, and saved delivery addresses.',
-    highlights: ['Guest purchase history', 'VIP guest notes', 'Food allergies & tags', 'Saved delivery addresses'],
+    highlights: ['Guest purchase history', 'Guest preferences & notes', 'Food allergies & tags', 'Saved delivery addresses'],
   },
   feedback: {
     id: 'feedback',
@@ -342,7 +342,7 @@ export const MODULE_INFO_CATALOG: Record<PlanModuleId, PlanModuleInfo> = {
     description: 'Guest table reservation book, party sizes, date/time slots, special dietary notes, and guest seating.',
     highlights: [
       'Digital reservation calendar & time slots',
-      'Track party sizes, VIP guests & special requests',
+      'Track party sizes & special requests',
       'Quick seating of arriving reservation parties',
       'Automated table status transitions',
     ],

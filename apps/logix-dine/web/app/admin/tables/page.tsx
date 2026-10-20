@@ -406,7 +406,7 @@ function TablesContent() {
           />
           <TextInput
             label="Table Name / Number"
-            placeholder="e.g. Table 12 / VIP-1"
+            placeholder="e.g. Table 12 / Private-1"
             required
             value={createForm.name}
             onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}

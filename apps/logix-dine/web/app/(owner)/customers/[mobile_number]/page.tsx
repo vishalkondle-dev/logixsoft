@@ -382,8 +382,7 @@ export default function CustomerProfilePage() {
   const { customer, metrics, overallChainMetrics, favoriteItems } = profile;
   const rawCleanPhone = customer.rawPhone || mobileNumber;
 
-  // Determine loyalty badge info
-  const isVip = customer.tags.includes("VIP Customer");
+  // Determine guest badge info
   const isRegular = customer.tags.includes("Regular Customer");
   const isNew = customer.tags.includes("New Customer");
 
@@ -431,11 +430,10 @@ export default function CustomerProfilePage() {
                   <Badge
                     size="sm"
                     variant="light"
-                    color={isVip ? "yellow" : isRegular ? "blue" : "teal"}
-                    leftSection={isVip ? <IconStar size={12} /> : undefined}
+                    color={isRegular ? "blue" : isNew ? "teal" : "gray"}
                     visibleFrom="sm"
                   >
-                    {isVip ? "VIP Customer" : isRegular ? "Regular Guest" : isNew ? "New Guest" : "Customer"}
+                    {isRegular ? "Regular Guest" : isNew ? "New Guest" : "Guest"}
                   </Badge>
                 </Group>
                 <Text size="xs" c="dimmed" lineClamp={1} visibleFrom="sm">
@@ -555,10 +553,9 @@ export default function CustomerProfilePage() {
             <Badge
               size="sm"
               variant="light"
-              color={isVip ? "yellow" : isRegular ? "blue" : "teal"}
-              leftSection={isVip ? <IconStar size={12} /> : undefined}
+              color={isRegular ? "blue" : isNew ? "teal" : "gray"}
             >
-              {isVip ? "VIP Customer" : isRegular ? "Regular Guest" : isNew ? "New Guest" : "Customer"}
+              {isRegular ? "Regular Guest" : isNew ? "New Guest" : "Guest"}
             </Badge>
           </Group>
         </Box>
@@ -574,12 +571,12 @@ export default function CustomerProfilePage() {
                   <Box
                     style={{
                       borderRadius: 16,
-                      backgroundColor: isVip ? "#fff8e1" : "#e8f5e9",
-                      border: `2px solid ${isVip ? "#ffd54f" : "#a5d6a7"}`,
+                      backgroundColor: "#e8f5e9",
+                      border: "2px solid #a5d6a7",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: isVip ? "#f57f17" : "#2e7d32",
+                      color: "#2e7d32",
                       fontWeight: 700,
                       flexShrink: 0,
                     }}
@@ -834,7 +831,7 @@ export default function CustomerProfilePage() {
                   <Group gap={6} wrap="nowrap">
                     <input
                       type="text"
-                      placeholder="Add tag (e.g. VIP, Corporate)..."
+                      placeholder="Add tag (e.g. Corporate, Regular)..."
                       value={newTagInput}
                       onChange={(e) => setNewTagInput(e.target.value)}
                       onKeyDown={(e) => {

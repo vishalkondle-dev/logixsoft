@@ -126,7 +126,7 @@ async function handleCreateTable(c: any) {
 
     const [created] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, id));
     await invalidateTables(kv(c), restaurantId);
-    broadcastToOutlet(c.env, parsed.data.outletId, {
+    await broadcastToOutlet(c.env, parsed.data.outletId, {
       topic: 'TABLES',
       type: 'TABLE_CREATED',
       data: { tableId: id },
@@ -184,7 +184,7 @@ async function handleUpdateTable(c: any, tableId: string) {
 
     const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
     await invalidateTables(kv(c), restaurantId);
-    broadcastToOutlet(c.env, existing.outletId, {
+    await broadcastToOutlet(c.env, existing.outletId, {
       topic: 'TABLES',
       type: 'TABLE_UPDATED',
       data: { tableId },
@@ -239,7 +239,7 @@ async function handleToggleTable(c: any, tableId: string) {
 
     const [updated] = await db.select().from(appSchema.posTable).where(eq(appSchema.posTable.id, tableId));
     await invalidateTables(kv(c), restaurantId);
-    broadcastToOutlet(c.env, existing.outletId, {
+    await broadcastToOutlet(c.env, existing.outletId, {
       topic: 'TABLES',
       type: 'TABLE_TOGGLED',
       data: { tableId, active: !existing.active },
@@ -292,7 +292,7 @@ async function handleDeleteTable(c: any, tableId: string) {
       .where(eq(appSchema.posTable.id, tableId));
 
     await invalidateTables(kv(c), restaurantId);
-    broadcastToOutlet(c.env, existing.outletId, {
+    await broadcastToOutlet(c.env, existing.outletId, {
       topic: 'TABLES',
       type: 'TABLE_DELETED',
       data: { tableId },
@@ -369,7 +369,7 @@ app.post(
         .set({ tableNo: toTableNo, updatedAt: new Date() })
         .where(eq(appSchema.saleOrder.id, activeOrder.id));
 
-      broadcastToOutlet(c.env, outletId, {
+      await broadcastToOutlet(c.env, outletId, {
         topic: 'TABLES',
         type: 'TABLE_TRANSFERRED',
         data: { orderId: activeOrder.id, fromTableNo, toTableNo },

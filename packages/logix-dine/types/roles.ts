@@ -459,9 +459,9 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     id: 'customers',
     label: 'Customer Directory & CRM',
     icon: 'IconUserCheck',
-    description: 'Guest database, visit history, customer profiles, and loyalty metrics',
+    description: 'Guest database, visit history, customer profiles, and dining metrics',
     permissions: [
-      { key: 'customers:view', label: 'View Customer Directory', description: 'Browse guest database, dining history, visits, and loyalty stats', badge: 'Read Only' },
+      { key: 'customers:view', label: 'View Customer Directory', description: 'Browse guest database, dining history, visits, and dining stats', badge: 'Read Only' },
       { key: 'customers:manage', label: 'Manage Customer Profiles', description: 'Edit contact details, guest tags, allergies, and delivery addresses', badge: 'Operational' },
     ],
   },

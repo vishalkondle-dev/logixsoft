@@ -85,7 +85,9 @@ export function WaitlistPanel({
 
   // 2. Identify Free Tables for smart auto-matching
   const freeTables = useMemo(() => {
-    return tables.filter((t: any) => t.active && t.status !== "OCCUPIED" && !t.isOccupied);
+    return tables.filter(
+      (t: any) => t.active && t.status !== "OCCUPIED" && !t.isOccupied && !t.isReserved && t.status !== "RESERVED"
+    );
   }, [tables]);
 
   // Find next party that matches any free table

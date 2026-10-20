@@ -21,7 +21,7 @@ import { sendWhatsAppText } from '@logixsoft/wa';
 import type { AuthEnv } from '../lib/auth';
 import { broadcastToOutlet } from '../lib/sync';
 import { apiDoc, ErrorResponseSchema } from '../lib/openapi';
-import { deductOrderInventory } from '../lib/inventory-helpers';
+import { deductOrderInventory, restoreOrderItemInventory } from '../lib/inventory-helpers';
 import {
   getDb,
   generateOrderId,
@@ -1125,6 +1125,17 @@ app.post(
       }
 
       const now = new Date();
+      // Fetch active items before marking cancelled to restore inventory
+      const itemsToRestore = await db
+        .select({ id: appSchema.saleOrderItem.id })
+        .from(appSchema.saleOrderItem)
+        .where(
+          and(
+            eq(appSchema.saleOrderItem.orderId, orderId),
+            ne(appSchema.saleOrderItem.status, 'CANCELLED')
+          )
+        );
+
       await db.transaction(async (tx: any) => {
         await tx
           .update(appSchema.saleOrderItem)
@@ -1164,6 +1175,13 @@ app.post(
       });
 
       invalidateReports(kv(c), restaurantId);
+
+      // Restore inventory balances for all items in this voided order
+      for (const itm of itemsToRestore) {
+        await restoreOrderItemInventory(db, itm.id, actorPhone).catch((err: any) => {
+          console.error('[voidOrder] Inventory restore error for item', itm.id, err);
+        });
+      }
 
       const result = await getOrderWithItems(db, orderId, restaurantId);
       await broadcastToOutlet(

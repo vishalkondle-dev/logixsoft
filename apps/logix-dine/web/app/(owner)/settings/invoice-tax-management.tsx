@@ -1024,7 +1024,7 @@ export function InvoiceTaxManagement() {
         <Stack gap="sm">
           <TextInput
             label="Rule Name"
-            placeholder="e.g. Service Charge, Takeaway Parcel, VIP Discount"
+            placeholder="e.g. Service Charge, Takeaway Parcel, Special Discount"
             required
             value={newRule.name}
             onChange={(e) => setNewRule((p) => ({ ...p, name: e.target.value }))}

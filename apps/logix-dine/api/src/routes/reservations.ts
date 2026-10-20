@@ -146,11 +146,11 @@ app.post(
         .from(appSchema.tableReservation)
         .where(eq(appSchema.tableReservation.id, id));
 
-      broadcastToOutlet(c.env, outletId, {
+      await broadcastToOutlet(c.env, outletId, {
         topic: 'TABLES',
         type: 'RESERVATION_CREATED',
         data: { reservationId: id },
-      });
+      }).catch(() => {});
 
       return c.json(toReservation(created), 201);
     } finally {
@@ -364,11 +364,11 @@ app.patch(
         .from(appSchema.tableReservation)
         .where(eq(appSchema.tableReservation.id, id));
 
-      broadcastToOutlet(c.env, existing.outletId, {
+      await broadcastToOutlet(c.env, existing.outletId, {
         topic: 'TABLES',
         type: 'RESERVATION_UPDATED',
         data: { reservationId: id, status: updated?.status },
-      });
+      }).catch(() => {});
 
       return c.json(toReservation(updated));
     } finally {
@@ -409,11 +409,11 @@ app.delete(
 
       await db.delete(appSchema.tableReservation).where(eq(appSchema.tableReservation.id, id));
 
-      broadcastToOutlet(c.env, existing.outletId, {
+      await broadcastToOutlet(c.env, existing.outletId, {
         topic: 'TABLES',
         type: 'RESERVATION_DELETED',
         data: { reservationId: id },
-      });
+      }).catch(() => {});
 
       return c.json({ success: true, message: 'Reservation removed' });
     } finally {

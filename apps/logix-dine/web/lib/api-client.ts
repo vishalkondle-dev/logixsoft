@@ -801,7 +801,6 @@ export interface CrmCustomerItem {
   isBlacklisted: boolean;
   createdAt: string | null;
   segments: string[];
-  isVip: boolean;
   isRegular: boolean;
   isNew: boolean;
   isAtRisk: boolean;
@@ -817,7 +816,6 @@ export interface CrmDirectoryResponse {
   totalCount: number;
   metrics: {
     totalGuests: number;
-    vipGuests: number;
     regularGuests: number;
     newGuests: number;
     atRiskGuests: number;
@@ -1059,7 +1057,6 @@ export interface CustomerPortalData {
     phone: string;
     rawPhone: string;
     email?: string | null;
-    loyaltyTier?: string;
     dietaryPreference?: string;
   };
   activeOrders: CustomerPortalOrder[];

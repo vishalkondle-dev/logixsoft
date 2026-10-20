@@ -157,8 +157,7 @@ app.get(
         const avgOrderPaise = row.avgOrderPaise || (totalOrders > 0 ? Math.round(totalSpendPaise / totalOrders) : 0);
 
         // Dynamic Segments
-        const isVip = totalSpendPaise >= 500000 || totalOrders >= 8;
-        const isRegular = totalOrders >= 3 && !isVip;
+        const isRegular = totalOrders >= 3;
         const isNew = totalOrders === 1 && daysSinceLastVisit <= 30;
         const isAtRisk = totalOrders >= 2 && daysSinceLastVisit >= 30 && daysSinceLastVisit <= 60;
         const isInactive = daysSinceLastVisit > 60;
@@ -168,8 +167,7 @@ app.get(
         const isDelivery = row.preferredChannel === 'DELIVERY' || row.preferredChannel === 'TAKEAWAY';
 
         const computedSegments: string[] = [];
-        if (isVip) computedSegments.push('VIP');
-        else if (isRegular) computedSegments.push('REGULAR');
+        if (isRegular) computedSegments.push('REGULAR');
         else if (isNew) computedSegments.push('NEW');
 
         if (isAtRisk) computedSegments.push('AT_RISK');
@@ -207,7 +205,6 @@ app.get(
           isBlacklisted: Boolean(row.isBlacklisted),
           createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
           segments: computedSegments,
-          isVip,
           isRegular,
           isNew,
           isAtRisk,
@@ -221,7 +218,6 @@ app.get(
 
       // Overall Directory Metrics across ALL guests
       const totalGuests = allCustomers.length;
-      let vipGuests = 0;
       let regularGuests = 0;
       let newGuests = 0;
       let atRiskGuests = 0;
@@ -233,7 +229,6 @@ app.get(
       let totalLifetimeSpendPaise = 0;
 
       for (const cust of allCustomers) {
-        if (cust.isVip) vipGuests++;
         if (cust.isRegular) regularGuests++;
         if (cust.isNew) newGuests++;
         if (cust.isAtRisk) atRiskGuests++;
@@ -245,12 +240,11 @@ app.get(
         totalLifetimeSpendPaise += cust.totalSpendPaise;
       }
 
-      const repeatRate = totalGuests > 0 ? Number(((vipGuests + regularGuests) / totalGuests * 100).toFixed(1)) : 0;
+      const repeatRate = totalGuests > 0 ? Number(((regularGuests) / totalGuests * 100).toFixed(1)) : 0;
       const avgGuestSpendPaise = totalGuests > 0 ? Math.round(totalLifetimeSpendPaise / totalGuests) : 0;
 
       const segmentCounts = {
         ALL: totalGuests,
-        VIP: vipGuests,
         REGULAR: regularGuests,
         NEW: newGuests,
         AT_RISK: atRiskGuests,
@@ -263,7 +257,6 @@ app.get(
 
       const metrics = {
         totalGuests,
-        vipGuests,
         regularGuests,
         newGuests,
         atRiskGuests,
@@ -277,8 +270,7 @@ app.get(
       // Apply Segment Filter
       let filtered = allCustomers;
       if (segment && segment !== 'ALL') {
-        if (segment === 'VIP') filtered = filtered.filter((c) => c.isVip);
-        else if (segment === 'REGULAR') filtered = filtered.filter((c) => c.isRegular);
+        if (segment === 'REGULAR') filtered = filtered.filter((c) => c.isRegular);
         else if (segment === 'NEW') filtered = filtered.filter((c) => c.isNew);
         else if (segment === 'AT_RISK') filtered = filtered.filter((c) => c.isAtRisk);
         else if (segment === 'INACTIVE') filtered = filtered.filter((c) => c.isInactive);
@@ -472,8 +464,7 @@ app.post(
             const totalSpendPaise = row.totalSpendPaise || 0;
             const avgOrderPaise = row.avgOrderPaise || (totalOrders > 0 ? Math.round(totalSpendPaise / totalOrders) : 0);
 
-            if (segment === 'VIP') return totalSpendPaise >= 500000 || totalOrders >= 8;
-            if (segment === 'REGULAR') return totalOrders >= 3 && totalOrders < 8;
+            if (segment === 'REGULAR') return totalOrders >= 3;
             if (segment === 'NEW') return totalOrders === 1 && daysSinceLastVisit <= 30;
             if (segment === 'AT_RISK') return totalOrders >= 2 && daysSinceLastVisit >= 30 && daysSinceLastVisit <= 60;
             if (segment === 'INACTIVE') return daysSinceLastVisit > 60;
@@ -926,9 +917,7 @@ app.get(
 
       // Compute dynamic tags
       const computedTags = new Set<string>(savedTags);
-      if (lifetimeSpendPaise >= 500000 || totalOrdersCount >= 8) {
-        computedTags.add('VIP Customer');
-      } else if (totalOrdersCount >= 3) {
+      if (totalOrdersCount >= 3) {
         computedTags.add('Regular Customer');
       } else if (totalOrdersCount === 1) {
         computedTags.add('New Customer');

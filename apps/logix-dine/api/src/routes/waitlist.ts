@@ -193,20 +193,6 @@ app.post(
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
 
-      // Count today's total entries for daily sequential token
-      const [todayCountResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(appSchema.outletWaitlist)
-        .where(
-          and(
-            eq(appSchema.outletWaitlist.outletId, outletId),
-            gte(appSchema.outletWaitlist.createdAt, todayStart),
-          ),
-        );
-
-      const seqNumber = Number(todayCountResult?.count || 0) + 1;
-      const tokenNumber = `Q-${String(seqNumber).padStart(2, '0')}`;
-
       // Count active parties currently waiting ahead
       const [waitingAheadResult] = await db
         .select({ count: sql<number>`count(*)` })
@@ -228,27 +214,50 @@ app.post(
       const cleanPhone = guestPhone.replace(/\D/g, '');
       const actorPhone = c.get('actorPhone') || 'Customer';
 
-      const [newEntry] = await db
-        .insert(appSchema.outletWaitlist)
-        .values({
-          id: newId,
-          restaurantId: outlet.restaurantId,
-          outletId,
-          tokenNumber,
-          guestName: guestName.trim(),
-          guestPhone: cleanPhone,
-          partySize: partySize || 2,
-          seatingPreference: seatingPreference || 'ANY',
-          status: 'WAITING',
-          estimatedWaitMinutes,
-          preOrderItems: preOrderItems || [],
-          notes: notes ? notes.trim() : null,
-          createdAt: now,
-          updatedAt: now,
-          createdBy: actorPhone,
-          updatedBy: actorPhone,
-        })
-        .returning();
+      let tokenNumber = 'Q-01';
+      let newEntry: any = null;
+
+      // Concurrency lock: serialize daily token sequence using row-level lock on outlet
+      await db.transaction(async (tx: any) => {
+        await tx.execute(sql`SELECT id FROM "restaurantOutlet" WHERE id = ${outletId} FOR UPDATE`);
+
+        const [todayCountResult] = await tx
+          .select({ count: sql<number>`count(*)` })
+          .from(appSchema.outletWaitlist)
+          .where(
+            and(
+              eq(appSchema.outletWaitlist.outletId, outletId),
+              gte(appSchema.outletWaitlist.createdAt, todayStart),
+            ),
+          );
+
+        const seqNumber = Number(todayCountResult?.count || 0) + 1;
+        tokenNumber = `Q-${String(seqNumber).padStart(2, '0')}`;
+
+        const [created] = await tx
+          .insert(appSchema.outletWaitlist)
+          .values({
+            id: newId,
+            restaurantId: outlet.restaurantId,
+            outletId,
+            tokenNumber,
+            guestName: guestName.trim(),
+            guestPhone: cleanPhone,
+            partySize: partySize || 2,
+            seatingPreference: seatingPreference || 'ANY',
+            status: 'WAITING',
+            estimatedWaitMinutes,
+            preOrderItems: preOrderItems || [],
+            notes: notes ? notes.trim() : null,
+            createdAt: now,
+            updatedAt: now,
+            createdBy: actorPhone,
+            updatedBy: actorPhone,
+          })
+          .returning();
+
+        newEntry = created;
+      });
 
       // Tracker link
       const frontendUrl = c.env?.FRONTEND_URL || 'https://dine.logixsoft.in';
@@ -256,12 +265,15 @@ app.post(
 
       // Broadcast real-time waitlist update via Durable Object
       await broadcastToOutlet(c.env, outletId, {
+        topic: 'CUSTOMER',
         type: 'WAITLIST_UPDATED',
-        action: 'JOIN',
-        waitlistId: newId,
-        tokenNumber,
-        guestName,
-        partySize,
+        data: {
+          action: 'JOIN',
+          waitlistId: newId,
+          tokenNumber,
+          guestName,
+          partySize,
+        },
       }).catch(() => {});
 
       // WhatsApp Automated Confirmation
@@ -368,10 +380,13 @@ app.post(
 
       // Real-time broadcast
       await broadcastToOutlet(c.env, entry.outletId, {
+        topic: 'CUSTOMER',
         type: 'WAITLIST_UPDATED',
-        action: 'CALLED',
-        waitlistId,
-        tokenNumber: entry.tokenNumber,
+        data: {
+          action: 'CALLED',
+          waitlistId,
+          tokenNumber: entry.tokenNumber,
+        },
       }).catch(() => {});
 
       // WhatsApp Table Ready ping
@@ -474,6 +489,35 @@ app.post(
         resolvedTableName = targetTable?.name || 'Assigned Table';
       }
 
+      // Verify table does not have an active confirmed reservation
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const [conflictingRes] = await db
+        .select({
+          id: appSchema.tableReservation.id,
+          guestName: appSchema.tableReservation.guestName,
+          startTime: appSchema.tableReservation.startTime,
+        })
+        .from(appSchema.tableReservation)
+        .where(
+          and(
+            eq(appSchema.tableReservation.tableId, tableId),
+            eq(appSchema.tableReservation.status, 'CONFIRMED'),
+            gte(appSchema.tableReservation.createdAt, todayStart)
+          )
+        )
+        .limit(1);
+
+      if (conflictingRes) {
+        return c.json(
+          {
+            error: 'Conflict',
+            message: `Table "${resolvedTableName}" is reserved for ${conflictingRes.guestName} (${conflictingRes.startTime || 'Scheduled'}). Please select a free table.`,
+          },
+          409
+        );
+      }
+
       // 1. Mark waitlist entry SEATED
       await db
         .update(appSchema.outletWaitlist)
@@ -495,17 +539,23 @@ app.post(
       // Broadcast real-time updates
       await Promise.all([
         broadcastToOutlet(c.env, entry.outletId, {
+          topic: 'CUSTOMER',
           type: 'WAITLIST_UPDATED',
-          action: 'SEATED',
-          waitlistId,
-          tableId,
-          tableName: resolvedTableName,
+          data: {
+            action: 'SEATED',
+            waitlistId,
+            tableId,
+            tableName: resolvedTableName,
+          },
         }),
         broadcastToOutlet(c.env, entry.outletId, {
+          topic: 'TABLES',
           type: 'TABLES_UPDATED',
-          tableId,
-          tableName: resolvedTableName,
-          status: 'OCCUPIED',
+          data: {
+            tableId,
+            tableName: resolvedTableName,
+            status: 'OCCUPIED',
+          },
         }),
       ]).catch(() => {});
 
@@ -580,15 +630,21 @@ app.post(
 
       await Promise.all([
         broadcastToOutlet(c.env, entry.outletId, {
+          topic: 'CUSTOMER',
           type: 'WAITLIST_UPDATED',
-          action: status || 'CANCELLED',
-          waitlistId,
+          data: {
+            action: status || 'CANCELLED',
+            waitlistId,
+          },
         }),
         entry.assignedTableId
           ? broadcastToOutlet(c.env, entry.outletId, {
+              topic: 'TABLES',
               type: 'TABLES_UPDATED',
-              tableId: entry.assignedTableId,
-              status: 'FREE',
+              data: {
+                tableId: entry.assignedTableId,
+                status: 'FREE',
+              },
             })
           : Promise.resolve(),
       ]).catch(() => {});
@@ -829,10 +885,13 @@ app.post(
         .where(eq(appSchema.outletWaitlist.id, waitlistId));
 
       await broadcastToOutlet(c.env, outletId, {
+        topic: 'CUSTOMER',
         type: 'WAITLIST_UPDATED',
-        action: 'PREORDER',
-        waitlistId,
-        itemsCount: items.length,
+        data: {
+          action: 'PREORDER',
+          waitlistId,
+          itemsCount: items.length,
+        },
       }).catch(() => {});
 
       return c.json({ success: true, message: 'Pre-order saved successfully!' });

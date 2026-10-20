@@ -1,0 +1,17 @@
+name = "papercast"
+main = "src/worker.ts"
+compatibility_date = "2026-08-13"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "papercast.logixsoft.in", custom_domain = true }
+]
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[vars]
+APP_NAME = "Papercast"
+APP_ENV = "production"

@@ -1,0 +1,16 @@
+{
+  "name": "Papercast — AR Drawing Projector",
+  "short_name": "Papercast",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0e",
+  "theme_color": "#0c0c0e",
+  "description": "Cast any image onto real paper. AR Art Projector & Camera Lucida.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

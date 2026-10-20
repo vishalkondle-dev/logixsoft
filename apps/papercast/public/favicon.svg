@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <rect width="100" height="100" rx="24" fill="#0C0C0E"/>
+  <rect x="2" y="2" width="96" height="96" rx="22" stroke="#232326" stroke-width="2"/>
+  <!-- Paper Sheet -->
+  <rect x="22" y="24" width="46" height="56" rx="6" fill="#1C1C20" stroke="#F59E0B" stroke-width="3"/>
+  <!-- Projected Beam -->
+  <path d="M78 20L48 54L34 50L78 20Z" fill="url(#beamGrad)" opacity="0.4"/>
+  <!-- Focus Ring / Eye -->
+  <circle cx="78" cy="20" r="10" stroke="#F59E0B" stroke-width="3" fill="#0C0C0E"/>
+  <circle cx="78" cy="20" r="4" fill="#F59E0B"/>
+  <!-- Pencil trace line on paper -->
+  <path d="M30 42C36 40 42 46 48 42C54 38 58 44 60 48" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+  <path d="M32 58C38 54 46 62 56 56" stroke="#A855F7" stroke-width="3" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="beamGrad" x1="78" y1="20" x2="38" y2="52" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F59E0B" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#F59E0B" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+</svg>

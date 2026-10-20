@@ -188,7 +188,7 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-paper-950 font-sans">
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-paper-950 font-sans">
       
       {/* Camera Error / Permission Fallback banner */}
       {hasPermission === false && (

@@ -304,16 +304,31 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className="relative w-full h-full overflow-hidden bg-black select-none cursor-grab active:cursor-grabbing"
+      style={{
+        width: '100vw',
+        height: '100dvh',
+      }}
+      className="relative overflow-hidden bg-black select-none cursor-grab active:cursor-grabbing"
     >
-      {/* 1. Live Camera Stream Background */}
+      {/* 1. Live Camera Stream Background (Full-bleed edge-to-edge covering all black bars) */}
       <video
         ref={videoRef}
         playsInline
         webkit-playsinline="true"
         muted
         autoPlay
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          minWidth: '100%',
+          minHeight: '100%',
+          width: 'auto',
+          height: 'auto',
+          objectFit: 'cover',
+        }}
+        className="camera-feed-video pointer-events-none select-none"
       />
 
       {/* 2. Reference Image Overlay Layer */}

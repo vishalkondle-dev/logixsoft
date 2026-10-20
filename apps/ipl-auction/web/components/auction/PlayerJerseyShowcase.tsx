@@ -141,9 +141,69 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
 
   const jerseyUrl = useMemo(() => {
     const code = activeCode ? activeCode.toLowerCase() : "neutral";
+    const suffix = viewSide === "back" ? "_back.webp" : "_miniature.webp";
+    return `/jerseys/${code}${suffix}`;
+  }, [activeCode, viewSide]);
+
+  const jerseyPngUrl = useMemo(() => {
+    const code = activeCode ? activeCode.toLowerCase() : "neutral";
     const suffix = viewSide === "back" ? "_back.png" : "_miniature.png";
     return `/jerseys/${code}${suffix}`;
   }, [activeCode, viewSide]);
+
+  // Double-buffering state: ensures previous jersey stays fully visible until the next is 100% loaded
+  const [displayedUrl, setDisplayedUrl] = useState(jerseyUrl);
+
+  useEffect(() => {
+    if (jerseyUrl === displayedUrl) return;
+
+    let isSubscribed = true;
+    const img = new Image();
+    img.src = jerseyUrl;
+
+    if (img.complete && img.naturalWidth > 0) {
+      setDisplayedUrl(jerseyUrl);
+      setImgError(false);
+      return;
+    }
+
+    if (typeof img.decode === "function") {
+      img
+        .decode()
+        .then(() => {
+          if (isSubscribed) {
+            setDisplayedUrl(jerseyUrl);
+            setImgError(false);
+          }
+        })
+        .catch(() => {
+          const fallback = new Image();
+          fallback.src = jerseyPngUrl;
+          fallback.onload = () => {
+            if (isSubscribed) {
+              setDisplayedUrl(jerseyPngUrl);
+              setImgError(false);
+            }
+          };
+        });
+    } else {
+      (img as HTMLImageElement).onload = () => {
+        if (isSubscribed) {
+          setDisplayedUrl(jerseyUrl);
+          setImgError(false);
+        }
+      };
+      (img as HTMLImageElement).onerror = () => {
+        if (isSubscribed) {
+          setDisplayedUrl(jerseyPngUrl);
+        }
+      };
+    }
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [jerseyUrl, jerseyPngUrl, displayedUrl]);
 
   return (
     <div
@@ -192,14 +252,18 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
       >
         {/* 1:1 Aspect Box perfectly synced with the 1024x1024 Jersey */}
         <div className="relative aspect-square w-full max-h-full flex items-center justify-center [container-type:inline-size]">
-          {/* Base 3D Miniature Jersey Model */}
-          <img
-            src={jerseyUrl}
-            alt={`${playerName} 2026 Kit (${viewSide})`}
-            onError={() => setImgError(true)}
-            className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] pointer-events-none"
-            loading="eager"
-          />
+          {/* Base 3D Miniature Jersey Model with WebP primary and PNG fallback */}
+          <picture className="w-full h-full flex items-center justify-center pointer-events-none">
+            <source srcSet={displayedUrl} type="image/webp" />
+            <img
+              src={displayedUrl.endsWith(".webp") ? displayedUrl.replace(".webp", ".png") : displayedUrl}
+              alt={`${playerName} 2026 Kit (${viewSide})`}
+              onError={() => setImgError(true)}
+              className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] pointer-events-none transition-opacity duration-150"
+              loading="eager"
+              decoding="async"
+            />
+          </picture>
 
           {/* Back View: Player Name and Number Athletic Overlay */}
           {viewSide === "back" && (
@@ -272,8 +336,10 @@ export const PlayerJerseyThumbnail: React.FC<PlayerJerseyThumbnailProps> = ({
   const code = (teamCode || "neutral").toUpperCase();
   const theme = TEAM_GLOW_STYLES[code] || DEFAULT_GLOW;
   const numColor = theme.numColor || "#ffffff";
-  const suffix = side === "front" ? "_miniature.png" : "_back.png";
-  const imgUrl = `/jerseys/${code.toLowerCase()}${suffix}`;
+  const suffixWebp = side === "front" ? "_miniature.webp" : "_back.webp";
+  const suffixPng = side === "front" ? "_miniature.png" : "_back.png";
+  const imgUrlWebp = `/jerseys/${code.toLowerCase()}${suffixWebp}`;
+  const imgUrlPng = `/jerseys/${code.toLowerCase()}${suffixPng}`;
 
   const surname = useMemo(() => {
     if (!playerName) return "";
@@ -286,12 +352,16 @@ export const PlayerJerseyThumbnail: React.FC<PlayerJerseyThumbnailProps> = ({
       className={cn("relative shrink-0 flex items-center justify-center select-none", className)}
       style={{ width: size, height: Math.round(size * 1.08) }}
     >
-      <img
-        src={imgUrl}
-        alt={`${code} kit`}
-        className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none"
-        loading="lazy"
-      />
+      <picture className="w-full h-full flex items-center justify-center pointer-events-none">
+        <source srcSet={imgUrlWebp} type="image/webp" />
+        <img
+          src={imgUrlPng}
+          alt={`${code} kit`}
+          className="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none"
+          loading="lazy"
+          decoding="async"
+        />
+      </picture>
       {side === "back" && lotNumber !== undefined && lotNumber !== null && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           {size >= 48 && surname && (

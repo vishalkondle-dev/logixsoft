@@ -10,6 +10,7 @@ import { ManageRetentionsModal } from "./ManageRetentionsModal";
 import { RTMDecisionPrompt } from "./RTMDecisionPrompt";
 import { PlayerSoldCelebration } from "./PlayerSoldCelebration";
 import { CountryFlag } from "../common/CountryFlag";
+import { preloadAllJerseys } from "../common/JerseyPreloader";
 import { formatRupees, formatIndianNumber, calculateNextLegalBid, getBidIncrement } from "../../lib/utils";
 import {
   playHammerSound,
@@ -216,6 +217,11 @@ export const AuctionWorkspace: React.FC<AuctionWorkspaceProps> = ({
   );
 
   const lastTickedSecondRef = React.useRef<number | null>(null);
+
+  // Preload and decode all franchise jerseys immediately so bidding transitions are instantaneous and zero-lag
+  React.useEffect(() => {
+    preloadAllJerseys();
+  }, []);
 
   React.useEffect(() => {
     if (isPaused || !snapshot?.timerDeadline || remainingMs <= 0) {

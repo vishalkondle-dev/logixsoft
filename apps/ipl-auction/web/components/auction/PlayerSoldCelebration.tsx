@@ -66,7 +66,8 @@ export const PlayerSoldCelebration: React.FC<PlayerSoldCelebrationProps> = ({
   const code = (franchiseCode || "IPL").toUpperCase();
   const colors = FRANCHISE_CONFETTI_COLORS[code] || ["#FFD700", "#4F46E5", "#10B981", "#EF4444", "#FFFFFF"];
   const displayTeamName = franchiseName || FRANCHISE_NAMES[code] || code;
-  const jerseyUrl = `/jerseys/${code.toLowerCase()}_miniature.png`;
+  const jerseyUrl = `/jerseys/${code.toLowerCase()}_miniature.webp`;
+  const jerseyPngUrl = `/jerseys/${code.toLowerCase()}_miniature.png`;
 
   useEffect(() => {
     if (!opened) return;
@@ -229,16 +230,19 @@ export const PlayerSoldCelebration: React.FC<PlayerSoldCelebrationProps> = ({
                   margin: "8px 0",
                 }}
               >
-                <img
-                  src={jerseyUrl}
-                  alt={`${displayTeamName} 2026 Kit`}
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                    objectFit: "contain",
-                    filter: `drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 16px ${colors[0]}70)`,
-                  }}
-                />
+                <picture>
+                  <source srcSet={jerseyUrl} type="image/webp" />
+                  <img
+                    src={jerseyPngUrl}
+                    alt={`${displayTeamName} 2026 Kit`}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      objectFit: "contain",
+                      filter: `drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 16px ${colors[0]}70)`,
+                    }}
+                  />
+                </picture>
               </Box>
 
               {/* Franchise Badge Pill */}

@@ -5,6 +5,7 @@ import React from "react";
 import type { Metadata, Viewport } from "next";
 import { ColorSchemeScript } from "@mantine/core";
 import { Providers } from "../components/providers";
+import { JerseyPreloader } from "../components/common/JerseyPreloader";
 
 export const metadata: Metadata = {
   title: "IPL Auction Simulator — Production Edition",
@@ -49,8 +50,20 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {/* Preload critical franchise back jerseys for instant zero-lag switching during bidding */}
+        <link rel="preload" as="image" href="/jerseys/csk_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/mi_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/rcb_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/kkr_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/srh_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/dc_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/rr_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/gt_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/lsg_back.webp" type="image/webp" />
+        <link rel="preload" as="image" href="/jerseys/pbks_back.webp" type="image/webp" />
       </head>
       <body>
+        <JerseyPreloader />
         <Providers>{children}</Providers>
       </body>
     </html>

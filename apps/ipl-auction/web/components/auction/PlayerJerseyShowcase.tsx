@@ -190,62 +190,60 @@ export const PlayerJerseyShowcase: React.FC<PlayerJerseyShowcaseProps> = ({
         onClick={() => setViewSide((prev) => (prev === "front" ? "back" : "front"))}
         className="relative flex-1 w-full flex items-center justify-center my-auto transition-transform duration-300 hover:scale-[1.03] cursor-pointer"
       >
-        {/* Base 3D Miniature Jersey Model */}
-        <img
-          src={jerseyUrl}
-          alt={`${playerName} 2026 Kit (${viewSide})`}
-          onError={() => setImgError(true)}
-          className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] pointer-events-none"
-          loading="eager"
-        />
+        {/* 1:1 Aspect Box perfectly synced with the 1024x1024 Jersey */}
+        <div className="relative aspect-square w-full max-h-full flex items-center justify-center [container-type:inline-size]">
+          {/* Base 3D Miniature Jersey Model */}
+          <img
+            src={jerseyUrl}
+            alt={`${playerName} 2026 Kit (${viewSide})`}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] pointer-events-none"
+            loading="eager"
+          />
 
-        {/* Back View: Player Name and Lot # Athletic Overlay */}
-        {viewSide === "back" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-start pointer-events-none select-none">
-            {/* Player Surname arched on upper back */}
-            <div
-              className="text-[12px] sm:text-[14px] font-black uppercase tracking-widest text-center px-1"
-              style={{
-                marginTop: "22%",
-                color: teamTheme.numColor,
-                textShadow: "0 2px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.9)",
-                fontFamily: "system-ui, -apple-system, sans-serif",
-                letterSpacing: "0.14em",
-                maxWidth: "80%",
-                lineHeight: 1.1,
-              }}
-            >
-              {surname}
-            </div>
-
-            {/* Squad / Lot Number in athletic stencil */}
-            <div
-              className="flex flex-col items-center justify-center"
-              style={{ marginTop: "3%" }}
-            >
+          {/* Back View: Player Name and Number Athletic Overlay */}
+          {viewSide === "back" && (
+            <div className="absolute inset-0 pointer-events-none select-none">
+              {/* Player Surname arched on upper back fabric */}
               <div
-                className="text-[9px] font-black uppercase tracking-widest text-center"
-                style={{
-                  color: teamTheme.numColor,
-                  opacity: 0.85,
-                  letterSpacing: "0.18em",
-                  textShadow: "0 1px 3px rgba(0,0,0,0.95)",
-                }}
+                className="absolute left-1/2 -translate-x-1/2 w-[52%] flex items-center justify-center text-center overflow-hidden"
+                style={{ top: "21.5%" }}
               >
-                LOT
+                <span
+                  className="font-black uppercase tracking-wider truncate text-center"
+                  style={{
+                    fontSize: "clamp(10px, 8cqw, 14px)",
+                    color: teamTheme.numColor,
+                    textShadow: "0 2px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95), 1px 1px 0 rgba(0,0,0,0.9)",
+                    fontFamily: "system-ui, -apple-system, sans-serif",
+                    letterSpacing: "0.12em",
+                    lineHeight: 1,
+                    maxWidth: "100%",
+                  }}
+                >
+                  {surname}
+                </span>
               </div>
+
+              {/* Number only - NO KEYWORD LOT, NO HASH */}
               <div
-                className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-center leading-none"
-                style={{
-                  color: teamTheme.numColor,
-                  textShadow: "0 3px 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.95), 1px 2px 0 rgba(0,0,0,0.85)",
-                }}
+                className="absolute left-1/2 -translate-x-1/2 w-[45%] flex items-center justify-center text-center"
+                style={{ top: "34%" }}
               >
-                #{displayNum}
+                <span
+                  className="font-black font-mono tracking-tight text-center leading-none"
+                  style={{
+                    fontSize: "clamp(26px, 22cqw, 44px)",
+                    color: teamTheme.numColor,
+                    textShadow: "0 3px 6px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.95), 1px 2px 0 rgba(0,0,0,0.85)",
+                  }}
+                >
+                  {displayNum}
+                </span>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Subtle Bottom Reflection / Shadow under Jersey */}
         <div className="absolute -bottom-2 w-3/4 h-3 rounded-[50%] bg-black/40 blur-md pointer-events-none" />

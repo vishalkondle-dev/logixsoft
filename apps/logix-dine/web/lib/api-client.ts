@@ -905,7 +905,7 @@ export interface CustomerOrderItem {
   name: string;
   pricePaise: number;
   qty: number;
-  variant?: any;
+  variant?: { id?: string; name?: string; pricePaise?: number } | any;
   addons?: any;
   status?: string;
   round?: number;

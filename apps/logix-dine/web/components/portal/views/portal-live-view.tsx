@@ -366,6 +366,12 @@ export function PortalLiveView({
               {items.map((item, idx) => {
                 const meta = getItemStatusMeta(item.status);
                 const StatusIcon = meta.icon;
+                const variantName =
+                  typeof item.variant === "object" && item.variant !== null
+                    ? (item.variant as any).name
+                    : typeof item.variant === "string"
+                    ? item.variant
+                    : null;
 
                 return (
                   <Paper
@@ -396,9 +402,14 @@ export function PortalLiveView({
                               </Badge>
                             )}
                           </Group>
-                          {item.variant && (
+                          {variantName && !item.name.toLowerCase().includes(variantName.toLowerCase()) && (
                             <Text size="10px" c="dimmed">
-                              Variant: {item.variant}
+                              Variant: {variantName}
+                            </Text>
+                          )}
+                          {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
+                            <Text size="10px" c="dimmed">
+                              +{item.addons.map((a: any) => (typeof a === "object" && a !== null ? a.name : String(a))).join(", ")}
                             </Text>
                           )}
                           {item.note && (

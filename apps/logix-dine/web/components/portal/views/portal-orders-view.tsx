@@ -139,18 +139,19 @@ export function PortalOrdersView({
 
       {/* ─── Top Segmented Filter ─── */}
       <SegmentedControl
+        fullWidth
         value={subTab}
         onChange={(val) => setSubTab(val as "active" | "past")}
         radius="xl"
-        size="sm"
+        size="xs"
         color="dinePrimary"
         data={[
           {
             value: "active",
             label: (
               <Group gap={6} justify="center" wrap="nowrap">
-                <IconFlame size={15} color={subTab === "active" ? "#fff" : "#e67700"} />
-                <span>Active Orders</span>
+                <IconFlame size={14} color={subTab === "active" ? "#fff" : "#e67700"} />
+                <span>Active</span>
                 {activeOrders.length > 0 && (
                   <Badge size="xs" circle color="orange">
                     {activeOrders.length}
@@ -163,8 +164,8 @@ export function PortalOrdersView({
             value: "past",
             label: (
               <Group gap={6} justify="center" wrap="nowrap">
-                <IconHistory size={15} />
-                <span>Past Visits ({pastOrders.length})</span>
+                <IconHistory size={14} />
+                <span>Past ({pastOrders.length})</span>
               </Group>
             ),
           },

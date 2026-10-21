@@ -318,7 +318,8 @@ export function LoginModal() {
                   onChange={setOtp}
                   disabled={isLoading}
                   autoFocus={userExists}
-                  size="md"
+                  size="sm"
+                  gap={6}
                 />
               </Group>
             </div>

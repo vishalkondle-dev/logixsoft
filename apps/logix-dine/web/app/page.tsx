@@ -427,13 +427,17 @@ export default function HomePage() {
                   borderColor: "rgba(121, 80, 242, 0.5)",
                   background: "rgba(121, 80, 242, 0.12)",
                   color: "#d0bfff",
-                  padding: "8px 16px",
+                  padding: "6px 14px",
                   textTransform: "none",
                   fontWeight: 600,
                   fontSize: 12.5,
                   maxWidth: "100%",
+                  height: "auto",
+                  whiteSpace: "normal",
+                  lineHeight: 1.4,
+                  textAlign: "center",
                 }}
-                leftSection={<IconSparkles size={15} color="#d0bfff" />}
+                leftSection={<IconSparkles size={15} color="#d0bfff" style={{ flexShrink: 0 }} />}
               >
                 Direct UPI • Silent Thermal KOT • QR Dine-In • Swiggy & Zomato Relay
               </Badge>
@@ -631,7 +635,7 @@ export default function HomePage() {
               color="grape"
               radius="xl"
               styles={{
-                root: { width: "100%" },
+                root: { width: "100%", maxWidth: "100%", overflow: "hidden" },
                 list: {
                   justifyContent: "flex-start",
                   gap: 8,
@@ -641,6 +645,7 @@ export default function HomePage() {
                   paddingBottom: 8,
                   scrollbarWidth: "none",
                   WebkitOverflowScrolling: "touch",
+                  maxWidth: "100%",
                 },
                 tab: {
                   color: "#ced4da",

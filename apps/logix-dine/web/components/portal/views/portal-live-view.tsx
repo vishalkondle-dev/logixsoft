@@ -466,6 +466,7 @@ export function PortalLiveView({
                   variant="filled"
                   radius="md"
                   size="sm"
+                  w={{ base: "100%", sm: "auto" }}
                   leftSection={<IconPlus size={16} />}
                   onClick={() => onOpenOrderMore(order)}
                 >
@@ -609,7 +610,7 @@ export function PortalLiveView({
                       </Text>
                     </div>
 
-                    <Box style={{ textAlign: "right" }}>
+                    <Box style={{ textAlign: "right" }} w={{ base: "100%", xs: "auto" }}>
                       <Text fw={800} size="lg" style={{ color: "#af73d7" }}>
                         {formatINR(estimatedGrandTotalPaise)}
                       </Text>
@@ -670,16 +671,16 @@ export function PortalLiveView({
                   {/* Wi-Fi Details if present */}
                   {wifiSsid && (
                     <Paper p="sm" radius="md" withBorder style={{ background: "#f8f9fa" }}>
-                      <Group justify="space-between" align="center">
-                        <Group gap="xs">
-                          <ThemeIcon size="md" radius="md" color="indigo" variant="light">
+                      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                          <ThemeIcon size="md" radius="md" color="indigo" variant="light" style={{ flexShrink: 0 }}>
                             <IconWifi size={18} />
                           </ThemeIcon>
-                          <div>
-                            <Text fw={700} size="xs">
+                          <div style={{ minWidth: 0 }}>
+                            <Text fw={700} size="xs" lineClamp={1}>
                               Guest Wi-Fi: {wifiSsid}
                             </Text>
-                            <Text size="11px" c="dimmed">
+                            <Text size="11px" c="dimmed" lineClamp={1}>
                               Pass: {wifiPassword || "None"}
                             </Text>
                           </div>
@@ -693,6 +694,7 @@ export function PortalLiveView({
                                 color={copied ? "teal" : "gray"}
                                 leftSection={copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
                                 onClick={copy}
+                                style={{ flexShrink: 0 }}
                               >
                                 {copied ? "Copied" : "Copy"}
                               </Button>
@@ -711,16 +713,16 @@ export function PortalLiveView({
                       withBorder
                       style={{ background: "#fdf8f0", borderColor: "#fde2b4" }}
                     >
-                      <Group justify="space-between" align="center">
-                        <Group gap="xs">
-                          <ThemeIcon size="md" radius="md" color="yellow" variant="light">
+                      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                        <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                          <ThemeIcon size="md" radius="md" color="yellow" variant="light" style={{ flexShrink: 0 }}>
                             <IconStar size={18} />
                           </ThemeIcon>
-                          <div>
-                            <Text fw={700} size="xs">
+                          <div style={{ minWidth: 0 }}>
+                            <Text fw={700} size="xs" lineClamp={1}>
                               {order.feedback ? "Thank You for Feedback!" : "How is your meal?"}
                             </Text>
-                            <Text size="11px" c="dimmed">
+                            <Text size="11px" c="dimmed" lineClamp={1}>
                               {order.feedback
                                 ? `You rated this meal ${order.feedback.rating || 5} ★`
                                 : "Rate dishes and service anytime"}
@@ -734,6 +736,7 @@ export function PortalLiveView({
                           variant="light"
                           radius="md"
                           onClick={() => onOpenRateModal(order)}
+                          style={{ flexShrink: 0 }}
                         >
                           {order.feedback ? "Edit Rating" : "Rate Meal"}
                         </Button>

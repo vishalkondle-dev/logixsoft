@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Container, Paper, Title, Text, Stack, TextInput, NumberInput,
-  Select, Button, Group, Badge, ThemeIcon, Center, Loader, Alert
+  Select, Button, Group, Badge, ThemeIcon, Center, Loader, Alert, SimpleGrid
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -218,7 +218,7 @@ export default function JoinWaitlistPage() {
                   size="md"
                 />
 
-                <Group grow>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
                   <NumberInput
                     label="Number of Guests"
                     description="Party size (including kids)"
@@ -244,7 +244,7 @@ export default function JoinWaitlistPage() {
                     size="md"
                     leftSection={<IconArmchair size={18} />}
                   />
-                </Group>
+                </SimpleGrid>
 
                 <TextInput
                   label="Special Requests (Optional)"

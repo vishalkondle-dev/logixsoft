@@ -13,6 +13,7 @@ import {
   Text,
   Badge,
   SegmentedControl,
+  SimpleGrid,
 } from "@mantine/core";
 import {
   IconCalendar,
@@ -123,7 +124,7 @@ export function ReservationModal({
     >
       <form onSubmit={handleSubmit}>
         <Stack gap="sm">
-          <Group grow>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <NumberInput
               label="Party Size"
               description="Number of guests"
@@ -143,7 +144,7 @@ export function ReservationModal({
               leftSection={<IconClock size={16} />}
               required
             />
-          </Group>
+          </SimpleGrid>
 
           <TextInput
             label="Reservation Date"
@@ -164,7 +165,12 @@ export function ReservationModal({
               size="xs"
               radius="md"
               fullWidth
-              data={["Indoor AC", "Outdoor Patio", "Quiet Corner", "Window View"]}
+              data={[
+                { label: "Indoor AC", value: "Indoor AC" },
+                { label: "Outdoor", value: "Outdoor Patio" },
+                { label: "Quiet", value: "Quiet Corner" },
+                { label: "Window", value: "Window View" },
+              ]}
             />
           </div>
 

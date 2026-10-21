@@ -129,6 +129,7 @@ export function PortalProfileView({
             radius="md"
             leftSection={<IconEdit size={14} />}
             onClick={onOpenEditModal}
+            w={{ base: "100%", xs: "auto" }}
           >
             Edit Profile
           </Button>

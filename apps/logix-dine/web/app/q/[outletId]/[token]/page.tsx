@@ -245,7 +245,7 @@ export default function QueueTrackerPage() {
                 </Text>
 
                 <Paper p="sm" radius="md" bg="#f8fafc" withBorder mt="xs">
-                  <Group justify="space-around">
+                  <Group justify="space-around" wrap="wrap" gap="xs">
                     <div>
                       <Text size="xs" c="dimmed">Party Size</Text>
                       <Text fw={700} size="sm">{entry.partySize} Guests</Text>
@@ -271,7 +271,7 @@ export default function QueueTrackerPage() {
           {/* Pre-Order Menu Section */}
           {items.length > 0 && isWaiting && (
             <Paper p="md" radius="lg" withBorder shadow="sm">
-              <Group justify="space-between" mb="xs">
+              <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs" mb="xs">
                 <div>
                   <Group gap={6}>
                     <IconChefHat size={18} color="#4f46e5" />

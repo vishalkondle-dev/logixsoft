@@ -645,23 +645,42 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
             <Group gap="xs" wrap="nowrap" align="center">
               {isPortal && isStaffOrOwner && (
-                <Button
-                  component={Link}
-                  href={staffHomeHref}
-                  size="xs"
-                  variant="filled"
-                  color="dinePrimary"
-                  radius="xl"
-                  leftSection={
-                    effectiveRole === "WAITER" || effectiveRole === "CAPTAIN" ? <IconBellRinging size={14} /> :
-                    effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={14} /> :
-                    effectiveRole === "RIDER" ? <IconMotorbike size={14} /> :
-                    <IconShoppingCart size={14} />
-                  }
-                  style={{ fontWeight: 600, boxShadow: "0 2px 6px rgba(175, 115, 215, 0.25)" }}
-                >
-                  Go to {staffRoleLabel}
-                </Button>
+                <>
+                  <Button
+                    component={Link}
+                    href={staffHomeHref}
+                    size="xs"
+                    variant="filled"
+                    color="dinePrimary"
+                    radius="xl"
+                    visibleFrom="sm"
+                    leftSection={
+                      effectiveRole === "WAITER" || effectiveRole === "CAPTAIN" ? <IconBellRinging size={14} /> :
+                      effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={14} /> :
+                      effectiveRole === "RIDER" ? <IconMotorbike size={14} /> :
+                      <IconShoppingCart size={14} />
+                    }
+                    style={{ fontWeight: 600, boxShadow: "0 2px 6px rgba(175, 115, 215, 0.25)" }}
+                  >
+                    Go to {staffRoleLabel}
+                  </Button>
+                  <ActionIcon
+                    component={Link}
+                    href={staffHomeHref}
+                    size="md"
+                    variant="filled"
+                    color="dinePrimary"
+                    radius="xl"
+                    hiddenFrom="sm"
+                    title={`Go to ${staffRoleLabel}`}
+                    style={{ boxShadow: "0 2px 6px rgba(175, 115, 215, 0.25)", flexShrink: 0 }}
+                  >
+                    {effectiveRole === "WAITER" || effectiveRole === "CAPTAIN" ? <IconBellRinging size={14} /> :
+                     effectiveRole === "KITCHEN" ? <IconToolsKitchen2 size={14} /> :
+                     effectiveRole === "RIDER" ? <IconMotorbike size={14} /> :
+                     <IconShoppingCart size={14} />}
+                  </ActionIcon>
+                </>
               )}
 
               {(user as any)?.role === "ADMIN" && (
@@ -750,6 +769,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
                         size="xs"
                         fw={600}
                         lineClamp={1}
+                        visibleFrom="xs"
                         style={{ maxWidth: 80, lineHeight: 1.2 }}
                       >
                         {activeOutlet?.name || outlets[0]?.name || "Select Outlet"}

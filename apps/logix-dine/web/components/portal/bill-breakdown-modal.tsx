@@ -359,11 +359,12 @@ Thank you for dining with us!`;
             size="xs"
             leftSection={<IconBrandWhatsapp size={14} />}
             onClick={shareReceiptWhatsApp}
+            w={{ base: "100%", xs: "auto" }}
           >
             Share Bill
           </Button>
 
-          <Group gap="xs">
+          <Group gap="xs" wrap="wrap" w={{ base: "100%", xs: "auto" }} justify="flex-end">
             {!isDelivery && !isTakeaway && (
               <Button
                 variant="filled"
@@ -372,11 +373,18 @@ Thank you for dining with us!`;
                 leftSection={<IconReceipt size={14} />}
                 loading={isRequestingBill}
                 onClick={handleDirectRequestBill}
+                w={{ base: "100%", xs: "auto" }}
               >
                 Request Bill at Table
               </Button>
             )}
-            <Button variant="default" size="xs" onClick={onClose} disabled={isRequestingBill}>
+            <Button
+              variant="default"
+              size="xs"
+              onClick={onClose}
+              disabled={isRequestingBill}
+              w={{ base: "100%", xs: "auto" }}
+            >
               Close
             </Button>
           </Group>

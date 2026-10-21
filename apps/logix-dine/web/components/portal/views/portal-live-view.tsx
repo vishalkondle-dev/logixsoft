@@ -803,6 +803,7 @@ export function PortalLiveView({
               variant="light"
               size="xs"
               radius="md"
+              w={{ base: "100%", sm: "auto" }}
               rightSection={<IconChevronRight size={14} />}
             >
               Open Live Queue Tracker

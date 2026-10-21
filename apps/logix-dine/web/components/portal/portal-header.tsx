@@ -132,7 +132,7 @@ export function PortalHeader({
       >
         <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
           {/* Restaurant & Outlet Indicator */}
-          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+          <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
             <Box
               style={{
                 width: 38,
@@ -156,7 +156,7 @@ export function PortalHeader({
               <Group gap={4} wrap="nowrap" align="center">
                 {hasActiveRestaurant ? (
                   <>
-                    <IconMapPin size={11} color="#868e96" />
+                    <IconMapPin size={11} color="#868e96" style={{ flexShrink: 0 }} />
                     <Text size="11px" c="dimmed" lineClamp={1}>
                       {activeOutletName}
                     </Text>
@@ -171,7 +171,7 @@ export function PortalHeader({
           </Group>
 
           {/* Right Section: Live Order Pill + Refresh + Avatar */}
-          <Group gap={8} wrap="nowrap" align="center">
+          <Group gap={6} wrap="nowrap" align="center" style={{ flexShrink: 0 }}>
             {primaryActiveOrder && (
               <UnstyledButton
                 onClick={onSelectActiveOrder}

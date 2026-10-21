@@ -481,7 +481,7 @@ export default function HomePage() {
               {/* Hero CTAs */}
               <Group
                 justify="center"
-                gap="md"
+                gap="sm"
                 mt="xs"
                 style={{ width: "100%", maxWidth: 640 }}
               >
@@ -494,11 +494,11 @@ export default function HomePage() {
                     color="grape"
                     variant="gradient"
                     gradient={{ from: "#7950F2", to: "#4C6EF5", deg: 135 }}
-                    rightSection={<IconArrowRight size={22} />}
+                    rightSection={<IconArrowRight size={20} />}
                     style={{
                       boxShadow: "0 8px 30px rgba(121, 80, 242, 0.5)",
-                      padding: "0 28px",
-                      flex: "1 1 auto",
+                      padding: "0 24px",
+                      flex: "1 1 200px",
                     }}
                   >
                     {user?.role === "ADMIN" ? "Platform Admin Portal" : "Launch POS Terminal"}
@@ -511,11 +511,11 @@ export default function HomePage() {
                     color="grape"
                     variant="gradient"
                     gradient={{ from: "#7950F2", to: "#9775fa", deg: 135 }}
-                    leftSection={<IconBrandWhatsapp size={22} />}
+                    leftSection={<IconBrandWhatsapp size={20} />}
                     style={{
                       boxShadow: "0 8px 30px rgba(121, 80, 242, 0.5)",
-                      padding: "0 28px",
-                      flex: "1 1 auto",
+                      padding: "0 24px",
+                      flex: "1 1 200px",
                     }}
                   >
                     Start Free with WhatsApp
@@ -532,8 +532,8 @@ export default function HomePage() {
                       backgroundColor: "rgba(147, 51, 234, 0.15)",
                       borderColor: "rgba(192, 132, 252, 0.45)",
                       color: "#ffffff",
-                      padding: "0 24px",
-                      flex: "1 1 auto",
+                      padding: "0 22px",
+                      flex: "1 1 160px",
                       transition: "all 0.2s ease",
                     },
                     label: {
@@ -557,8 +557,8 @@ export default function HomePage() {
                       backgroundColor: "rgba(255, 255, 255, 0.08)",
                       borderColor: "rgba(255, 255, 255, 0.25)",
                       color: "#ffffff",
-                      padding: "0 24px",
-                      flex: "1 1 auto",
+                      padding: "0 20px",
+                      flex: "1 1 160px",
                     },
                     label: {
                       color: "#ffffff",

@@ -209,23 +209,23 @@ export function OutletMenuDrawer({
       opened={opened}
       onClose={onClose}
       position="bottom"
-      size="92%"
+      size="95%"
       radius="xl"
       withCloseButton={false}
       styles={{
         content: {
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
           background: "#fdfdfd",
         },
         body: { padding: 0, height: "100%", display: "flex", flexDirection: "column" },
       }}
     >
       {/* ─── Drawer Header ─── */}
-      <Box p="md" style={{ borderBottom: "1px solid #eee", background: "#fff" }}>
-        <Group justify="space-between" align="flex-start" wrap="nowrap">
+      <Box p={{ base: "sm", sm: "md" }} style={{ borderBottom: "1px solid #eee", background: "#fff" }}>
+        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
           <Box style={{ flex: 1, minWidth: 0 }}>
-            <Group gap="xs" align="center" mb={2}>
+            <Group gap="xs" align="center" mb={2} wrap="wrap">
               <Title order={3} size="h4" lineClamp={1}>
                 {outlet?.restaurantName || restaurantName || "Restaurant"}
               </Title>
@@ -233,14 +233,14 @@ export function OutletMenuDrawer({
                 Direct Kitchen
               </Badge>
             </Group>
-            <Group gap={6} align="center">
-              <IconMapPin size={13} color="#868e96" />
+            <Group gap={6} align="center" wrap="nowrap">
+              <IconMapPin size={13} color="#868e96" style={{ flexShrink: 0 }} />
               <Text size="xs" c="dimmed" lineClamp={1}>
                 {outlet?.address || "Hyderabad"}
               </Text>
             </Group>
           </Box>
-          <ActionIcon variant="subtle" color="gray" size="lg" radius="xl" onClick={onClose}>
+          <ActionIcon variant="subtle" color="gray" size="lg" radius="xl" onClick={onClose} style={{ flexShrink: 0 }}>
             <IconX size={18} />
           </ActionIcon>
         </Group>
@@ -412,14 +412,21 @@ export function OutletMenuDrawer({
           /* ─── Menu Browser ─── */
           <>
             {/* Category Filter Pills */}
-            <Box px="md" py="xs" style={{ borderBottom: "1px solid #f1f3f5", background: "#fafafa" }}>
-              <ScrollArea type="never">
+            <Box px={{ base: "xs", sm: "md" }} py="xs" style={{ borderBottom: "1px solid #f1f3f5", background: "#fafafa" }}>
+              <ScrollArea
+                type="never"
+                styles={{
+                  viewport: {
+                    WebkitOverflowScrolling: "touch",
+                  },
+                }}
+              >
                 <Group gap="xs" wrap="nowrap">
                   <Badge
                     size="md"
                     variant={selectedCategory === "ALL" ? "filled" : "light"}
                     color="dinePrimary"
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: "pointer", flexShrink: 0 }}
                     onClick={() => setSelectedCategory("ALL")}
                   >
                     All Items
@@ -430,7 +437,7 @@ export function OutletMenuDrawer({
                       size="md"
                       variant={selectedCategory === sec.id ? "filled" : "light"}
                       color={selectedCategory === sec.id ? "dinePrimary" : "gray"}
-                      style={{ cursor: "pointer", whiteSpace: "nowrap" }}
+                      style={{ cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
                       onClick={() => setSelectedCategory(sec.id)}
                     >
                       {sec.name} ({sec.items.length})
@@ -441,7 +448,7 @@ export function OutletMenuDrawer({
             </Box>
 
             {/* Menu Sections & Items */}
-            <Box p="md" style={{ overflowY: "auto", flex: 1, paddingBottom: 90 }}>
+            <Box p={{ base: "xs", sm: "md" }} style={{ overflowY: "auto", flex: 1, paddingBottom: 110 }}>
               <Stack gap="lg">
                 {filteredSections.map((sec) => (
                   <Box key={sec.id}>
@@ -453,14 +460,14 @@ export function OutletMenuDrawer({
                         const inCart = cart.get(item.id);
                         return (
                           <Card key={item.id} p="sm" radius="md" withBorder style={{ background: "#fff" }}>
-                            <Group justify="space-between" align="flex-start" wrap="nowrap">
+                            <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
                               <Box style={{ flex: 1, minWidth: 0 }}>
-                                <Group gap={6} align="center" mb={4}>
+                                <Group gap={6} align="center" mb={4} wrap="wrap">
                                   <VegNonVegIcon
                                     isNonVeg={item.dietaryPreference === "NON_VEG"}
                                     size={14}
                                   />
-                                  <Text fw={700} size="sm" lineClamp={1}>
+                                  <Text fw={700} size="sm" lineClamp={2}>
                                     {item.name}
                                   </Text>
                                 </Group>
@@ -475,7 +482,7 @@ export function OutletMenuDrawer({
                               </Box>
 
                               {/* Add / Quantity Counter */}
-                              <Box>
+                              <Box style={{ flexShrink: 0 }}>
                                 {inCart ? (
                                   <Group gap={4} align="center" style={{ background: "#f8f9fa", padding: "3px 6px", borderRadius: 8, border: "1px solid #dee2e6" }}>
                                     <ActionIcon
@@ -526,30 +533,32 @@ export function OutletMenuDrawer({
       {/* ─── Floating Cart Bottom Bar ─── */}
       {!isCheckingOut && cartCount > 0 && (
         <Box
-          p="sm"
           style={{
             borderTop: "1px solid #dee2e6",
             background: "#fff",
-            boxShadow: "0 -4px 16px rgba(0,0,0,0.06)",
+            boxShadow: "0 -6px 20px rgba(0,0,0,0.08)",
+            padding: "10px 16px",
+            paddingBottom: "max(14px, env(safe-area-inset-bottom, 14px))",
           }}
         >
-          <Group justify="space-between" align="center">
-            <div>
-              <Text size="xs" fw={700} c="dimmed">
-                {cartCount} {cartCount === 1 ? "ITEM" : "ITEMS"} IN DIRECT CART
+          <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+            <div style={{ minWidth: 0 }}>
+              <Text size="11px" fw={700} c="dimmed" lineClamp={1}>
+                {cartCount} {cartCount === 1 ? "ITEM" : "ITEMS"} • DIRECT CART
               </Text>
-              <Text size="lg" fw={800} c="dinePrimary">
+              <Text size="md" fw={800} c="dinePrimary">
                 {formatINR(cartTotalPaise)}
               </Text>
             </div>
             <Button
-              size="md"
+              size="sm"
               color="dinePrimary"
               radius="md"
+              style={{ flexShrink: 0 }}
               onClick={() => setIsCheckingOut(true)}
-              leftSection={<IconShoppingBag size={18} />}
+              leftSection={<IconShoppingBag size={16} />}
             >
-              Proceed to Order
+              Order Now
             </Button>
           </Group>
         </Box>

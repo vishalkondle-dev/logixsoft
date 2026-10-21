@@ -72,7 +72,7 @@ function CustomerLayoutInner({ children }: { children: ReactNode }) {
       />
 
       {/* ─── Page View Content ─── */}
-      <Container size="md" py={{ base: "xs", sm: "md" }} pb={110}>
+      <Container size="md" px={{ base: 12, sm: "md" }} py={{ base: "xs", sm: "md" }} pb={100}>
         {children}
       </Container>
 

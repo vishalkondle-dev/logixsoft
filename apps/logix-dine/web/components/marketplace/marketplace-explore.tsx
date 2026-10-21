@@ -121,13 +121,13 @@ export function MarketplaceExplore() {
             borderColor: "rgba(121, 80, 242, 0.2)",
           }}
         >
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-              <ThemeIcon size="sm" radius="xl" color="dinePrimary" variant="light">
+          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+            <Group gap={6} wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+              <ThemeIcon size="sm" radius="xl" color="dinePrimary" variant="light" style={{ flexShrink: 0 }}>
                 <IconMapPin size={13} />
               </ThemeIcon>
-              <div>
-                <Text size="11px" c="dimmed" fw={600} lh={1.1}>
+              <div style={{ minWidth: 0 }}>
+                <Text size="10px" c="dimmed" fw={700} lh={1.1} style={{ letterSpacing: "0.5px" }}>
                   DINING IN
                 </Text>
                 <Text size="xs" fw={700} lineClamp={1}>
@@ -135,7 +135,7 @@ export function MarketplaceExplore() {
                 </Text>
               </div>
             </Group>
-            <Badge size="xs" color="teal" variant="light" leftSection={<IconShieldCheck size={11} />}>
+            <Badge size="xs" color="teal" variant="light" style={{ flexShrink: 0 }} leftSection={<IconShieldCheck size={11} />}>
               Direct Kitchen Rates
             </Badge>
           </Group>
@@ -171,10 +171,10 @@ export function MarketplaceExplore() {
             value={diningMode}
             onChange={(v) => setDiningMode(v as any)}
             data={[
-              { label: "All Dining", value: "ALL" },
-              { label: "🍽️ Dine-In", value: "DINE_IN" },
-              { label: "🥡 Takeaway", value: "TAKEAWAY" },
-              { label: "🛵 Delivery", value: "DELIVERY" },
+              { label: "All", value: "ALL" },
+              { label: "Dine-In", value: "DINE_IN" },
+              { label: "Takeaway", value: "TAKEAWAY" },
+              { label: "Delivery", value: "DELIVERY" },
             ]}
             color="dinePrimary"
             radius="md"
@@ -182,12 +182,22 @@ export function MarketplaceExplore() {
           />
 
           {/* Quick Filter Badges */}
-          <Group gap={6} wrap="nowrap" style={{ overflowX: "auto", paddingBottom: 2 }}>
+          <Group
+            gap={6}
+            wrap="nowrap"
+            style={{
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              WebkitOverflowScrolling: "touch",
+              paddingBottom: 4,
+            }}
+          >
             <Badge
               size="sm"
               variant={vegOnly ? "filled" : "outline"}
               color="green"
-              style={{ cursor: "pointer", userSelect: "none" }}
+              style={{ cursor: "pointer", userSelect: "none", flexShrink: 0 }}
               onClick={() => setVegOnly(!vegOnly)}
             >
               🌱 Pure Veg Only
@@ -196,7 +206,7 @@ export function MarketplaceExplore() {
               size="sm"
               variant={freeTablesOnly ? "filled" : "outline"}
               color="teal"
-              style={{ cursor: "pointer", userSelect: "none" }}
+              style={{ cursor: "pointer", userSelect: "none", flexShrink: 0 }}
               onClick={() => setFreeTablesOnly(!freeTablesOnly)}
             >
               ⚡ Tables Free Now
@@ -207,7 +217,7 @@ export function MarketplaceExplore() {
                 size="sm"
                 variant={selectedCuisine === c ? "filled" : "light"}
                 color={selectedCuisine === c ? "dinePrimary" : "gray"}
-                style={{ cursor: "pointer", whiteSpace: "nowrap", userSelect: "none" }}
+                style={{ cursor: "pointer", whiteSpace: "nowrap", userSelect: "none", flexShrink: 0 }}
                 onClick={() => setSelectedCuisine(selectedCuisine === c ? "ALL" : c)}
               >
                 {c}
@@ -219,7 +229,7 @@ export function MarketplaceExplore() {
         {/* ─── 3. Hero Promo Banner ─── */}
         {!searchQuery && (
           <Paper
-            p="md"
+            p={{ base: "sm", sm: "md" }}
             radius="lg"
             withBorder
             style={{
@@ -228,25 +238,33 @@ export function MarketplaceExplore() {
               boxShadow: "0 8px 24px rgba(43, 138, 62, 0.2)",
             }}
           >
-            <Group justify="space-between" align="center" wrap="nowrap">
-              <div>
-                <Group gap={6} align="center" mb={2}>
+            <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+              <div style={{ minWidth: 0 }}>
+                <Group gap={6} align="center" mb={4} wrap="wrap">
                   <Badge size="xs" color="yellow" variant="filled">
-                    0% Platform Commission
+                    0% Commission
                   </Badge>
                   <Text size="11px" fw={600} style={{ opacity: 0.9 }}>
                     Real Kitchen Prices
                   </Text>
                 </Group>
-                <Title order={3} size="h4" fw={800} style={{ color: "#fff" }}>
+                <Title order={3} fw={800} style={{ color: "#fff", fontSize: "clamp(1.05rem, 4vw, 1.35rem)", lineHeight: 1.25 }}>
                   Dine Direct & Save 20–30%
                 </Title>
-                <Text size="xs" mt={2} style={{ opacity: 0.9, maxWidth: 360 }}>
-                  Skip aggregator markups, join live walk-in queues from your car, and pre-order table-ready food.
+                <Text size="xs" mt={4} style={{ opacity: 0.9, maxWidth: 360, lineHeight: 1.4 }}>
+                  Skip aggregator markups, join live walk-in queues, and enjoy direct dining prices.
                 </Text>
               </div>
-              <ThemeIcon size={48} radius="xl" color="white" variant="white" c="green.8">
-                <IconSparkles size={26} />
+              <ThemeIcon
+                size={42}
+                radius="xl"
+                color="white"
+                variant="white"
+                c="green.8"
+                style={{ flexShrink: 0 }}
+                visibleFrom="xs"
+              >
+                <IconSparkles size={24} />
               </ThemeIcon>
             </Group>
           </Paper>
@@ -308,7 +326,7 @@ export function MarketplaceExplore() {
                 return (
                   <Card
                     key={outlet.id}
-                    p="md"
+                    p={{ base: "sm", sm: "md" }}
                     radius="lg"
                     withBorder
                     style={{
@@ -318,9 +336,9 @@ export function MarketplaceExplore() {
                     }}
                   >
                     {/* Top Row: Names, Rating, and Live Badge */}
-                    <Group justify="space-between" align="flex-start" wrap="nowrap" mb={6}>
+                    <Group justify="space-between" align="flex-start" wrap="nowrap" mb={6} gap="xs">
                       <Box style={{ flex: 1, minWidth: 0 }}>
-                        <Group gap={6} align="center" wrap="nowrap">
+                        <Group gap={6} align="center" wrap="wrap">
                           <Title order={4} size="h5" lineClamp={1}>
                             {outlet.restaurantName}
                           </Title>
@@ -328,8 +346,8 @@ export function MarketplaceExplore() {
                             {outlet.name}
                           </Badge>
                         </Group>
-                        <Group gap={6} align="center" mt={2}>
-                          <IconMapPin size={12} color="#868e96" />
+                        <Group gap={6} align="center" mt={2} wrap="nowrap">
+                          <IconMapPin size={12} color="#868e96" style={{ flexShrink: 0 }} />
                           <Text size="xs" c="dimmed" lineClamp={1}>
                             {outlet.address}
                           </Text>
@@ -337,7 +355,7 @@ export function MarketplaceExplore() {
                       </Box>
 
                       {/* Rating Badge */}
-                      <Badge size="sm" variant="filled" color="teal" leftSection={<IconStar size={11} />}>
+                      <Badge size="sm" variant="filled" color="teal" style={{ flexShrink: 0 }} leftSection={<IconStar size={11} />}>
                         {outlet.rating} ({outlet.reviewsCount})
                       </Badge>
                     </Group>
@@ -387,13 +405,13 @@ export function MarketplaceExplore() {
                                 border: "1px solid #edf2f7",
                               }}
                             >
-                              <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+                              <Group gap={6} wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
                                 <VegNonVegIcon isNonVeg={dish.dietaryPreference === "NON_VEG"} size={12} />
                                 <Text size="xs" fw={600} lineClamp={1}>
                                   {dish.name}
                                 </Text>
                               </Group>
-                              <Text size="xs" fw={700} c="dark.9">
+                              <Text size="xs" fw={700} c="dark.9" style={{ flexShrink: 0 }}>
                                 {formatINR(dish.pricePaise)}
                               </Text>
                             </Group>
@@ -403,12 +421,13 @@ export function MarketplaceExplore() {
                     )}
 
                     {/* Action Buttons */}
-                    <Group gap="xs" justify="flex-end" wrap="wrap">
+                    <Group gap="xs" justify="stretch" align="center" wrap="wrap" mt="xs">
                       {outlet.modes.reservation && (
                         <Button
                           size="xs"
                           variant="light"
                           color="blue"
+                          style={{ flex: "1 1 calc(33.333% - 8px)", minWidth: 90 }}
                           leftSection={<IconCalendar size={13} />}
                           onClick={() =>
                             setActiveReservationOutlet({
@@ -425,6 +444,7 @@ export function MarketplaceExplore() {
                         size="xs"
                         variant="light"
                         color="orange"
+                        style={{ flex: "1 1 calc(33.333% - 8px)", minWidth: 95 }}
                         leftSection={<IconFlame size={13} />}
                         onClick={() =>
                           setActiveWaitlistOutlet({
@@ -443,6 +463,7 @@ export function MarketplaceExplore() {
                       <Button
                         size="xs"
                         color="dinePrimary"
+                        style={{ flex: "1 1 calc(33.333% - 8px)", minWidth: 105 }}
                         leftSection={<IconShoppingBag size={13} />}
                         onClick={() =>
                           setActiveOutletMenu({
@@ -452,7 +473,7 @@ export function MarketplaceExplore() {
                           })
                         }
                       >
-                        View Menu & Order
+                        View Menu
                       </Button>
                     </Group>
                   </Card>

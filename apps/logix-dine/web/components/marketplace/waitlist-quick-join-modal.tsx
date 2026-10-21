@@ -101,12 +101,14 @@ export function WaitlistQuickJoinModal({
     <Modal
       opened={opened}
       onClose={onClose}
+      size="sm"
+      padding="md"
       title={
-        <Group gap="xs" align="center">
-          <Badge color="orange" variant="light" size="sm">
+        <Group gap="xs" align="center" wrap="nowrap">
+          <Badge color="orange" variant="light" size="sm" style={{ flexShrink: 0 }}>
             Live Waitlist
           </Badge>
-          <Text fw={700} size="sm">
+          <Text fw={700} size="sm" lineClamp={1}>
             {restaurantName || outletName || "Restaurant"}
           </Text>
         </Group>
@@ -118,11 +120,11 @@ export function WaitlistQuickJoinModal({
         <Stack gap="md">
           {/* Estimated Wait Indicator */}
           <Paper p="xs" radius="md" withBorder style={{ background: "#fff9db", borderColor: "#ffe066" }}>
-            <Group justify="space-between" align="center">
-              <Group gap="xs">
-                <IconClock size={18} color="#f08c00" />
-                <div>
-                  <Text size="xs" fw={700} c="yellow.9">
+            <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+              <Group gap="xs" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                <IconClock size={18} color="#f08c00" style={{ flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <Text size="xs" fw={700} c="yellow.9" lineClamp={1}>
                     Estimated Wait: ~{avgWaitMinutes} mins
                   </Text>
                   <Text size="11px" c="dimmed">
@@ -130,7 +132,7 @@ export function WaitlistQuickJoinModal({
                   </Text>
                 </div>
               </Group>
-              <Badge color="orange" size="sm">
+              <Badge color="orange" size="sm" style={{ flexShrink: 0 }}>
                 Fast Seating
               </Badge>
             </Group>
@@ -161,6 +163,7 @@ export function WaitlistQuickJoinModal({
             </Text>
             <SegmentedControl
               fullWidth
+              size="xs"
               value={partySize}
               onChange={setPartySize}
               data={["1", "2", "3", "4", "5", "6+"]}
@@ -175,10 +178,11 @@ export function WaitlistQuickJoinModal({
             </Text>
             <SegmentedControl
               fullWidth
+              size="xs"
               value={seatingPref}
               onChange={setSeatingPref}
               data={[
-                { label: "Any Available", value: "ANY" },
+                { label: "Any Table", value: "ANY" },
                 { label: "Indoor AC", value: "INDOOR" },
                 { label: "Outdoor", value: "OUTDOOR" },
               ]}

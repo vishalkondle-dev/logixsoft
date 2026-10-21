@@ -278,6 +278,22 @@ export default function HomePage() {
 
               {/* Middle Nav Links */}
               <Group gap={28} visibleFrom="md">
+                <Link
+                  href="/home"
+                  style={{
+                    color: "#c084fc",
+                    textDecoration: "none",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    transition: "color 0.2s",
+                  }}
+                >
+                  <IconBuildingStore size={17} />
+                  Explore Dining
+                </Link>
                 <a
                   href="#devices"
                   style={{
@@ -467,7 +483,7 @@ export default function HomePage() {
                 justify="center"
                 gap="md"
                 mt="xs"
-                style={{ width: "100%", maxWidth: 480 }}
+                style={{ width: "100%", maxWidth: 640 }}
               >
                 {isAuthenticated ? (
                   <Button
@@ -505,6 +521,30 @@ export default function HomePage() {
                     Start Free with WhatsApp
                   </Button>
                 )}
+                <Button
+                  component={Link}
+                  href="/home"
+                  size="lg"
+                  radius="xl"
+                  variant="outline"
+                  styles={{
+                    root: {
+                      backgroundColor: "rgba(147, 51, 234, 0.15)",
+                      borderColor: "rgba(192, 132, 252, 0.45)",
+                      color: "#ffffff",
+                      padding: "0 24px",
+                      flex: "1 1 auto",
+                      transition: "all 0.2s ease",
+                    },
+                    label: {
+                      color: "#ffffff",
+                      fontWeight: 600,
+                    },
+                  }}
+                  leftSection={<IconBuildingStore size={20} color="#c084fc" />}
+                >
+                  Explore Dining
+                </Button>
                 <Button
                   component="a"
                   href="#devices"
@@ -1477,6 +1517,12 @@ export default function HomePage() {
               </Group>
 
               <Group gap="lg">
+                <Link
+                  href="/home"
+                  style={{ color: "#c084fc", fontSize: 13, textDecoration: "none", fontWeight: 600 }}
+                >
+                  Explore Dining
+                </Link>
                 <Link
                   href="/download"
                   style={{ color: "#adb5bd", fontSize: 13, textDecoration: "none" }}

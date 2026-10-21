@@ -38,6 +38,7 @@ import {
   IconHistory,
 } from "@tabler/icons-react";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
+import { MarketplaceExplore } from "@/components/marketplace/marketplace-explore";
 import type { CustomerPortalData, CustomerPortalOrder } from "@/lib/api-client";
 import type { PortalTab } from "../portal-bottom-nav";
 
@@ -192,204 +193,113 @@ export function PortalHomeView({
         </Paper>
       ) : null}
 
-      {/* ─── 3. Quick Action Hub ─── */}
-      <div>
-        <Text fw={700} size="xs" c="dimmed" mb="xs" style={{ textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {primaryActiveOrder ? "Table Services & Actions" : "Quick Services"}
-        </Text>
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-          {primaryActiveOrder ? (
-            <>
-              {/* Live Dining */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={() => onNavigateTab("live")}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                  borderColor: "rgba(255, 107, 107, 0.4)",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="red" variant="filled" mb="xs">
-                  <IconFlame size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Live Dining
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Table {primaryActiveOrder.tableNo || "TG3"} • Kitchen prep live
-                </Text>
-              </Paper>
+      {/* ─── 3. Quick Action Hub (when active order) ─── */}
+      {primaryActiveOrder ? (
+        <div>
+          <Text fw={700} size="xs" c="dimmed" mb="xs" style={{ textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            Table Services & Actions
+          </Text>
+          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+            {/* Live Dining */}
+            <Paper
+              p="md"
+              radius="lg"
+              withBorder
+              onClick={() => onNavigateTab("live")}
+              style={{
+                background: "#fff",
+                cursor: "pointer",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                borderColor: "rgba(255, 107, 107, 0.4)",
+              }}
+            >
+              <ThemeIcon size={42} radius="md" color="red" variant="filled" mb="xs">
+                <IconFlame size={22} />
+              </ThemeIcon>
+              <Text fw={700} size="sm">
+                Live Dining
+              </Text>
+              <Text size="11px" c="dimmed">
+                Table {primaryActiveOrder.tableNo || "TG3"} • Kitchen prep live
+              </Text>
+            </Paper>
 
-              {/* Running Bill */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={() => onOpenBillBreakdown(primaryActiveOrder)}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="teal" variant="light" mb="xs">
-                  <IconReceipt2 size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Running Bill
-                </Text>
-                <Text size="11px" c="dimmed">
-                  {formatINR(primaryActiveOrder.subtotalPaise)} • Pay or split
-                </Text>
-              </Paper>
+            {/* Running Bill */}
+            <Paper
+              p="md"
+              radius="lg"
+              withBorder
+              onClick={() => onOpenBillBreakdown(primaryActiveOrder)}
+              style={{
+                background: "#fff",
+                cursor: "pointer",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
+              }}
+            >
+              <ThemeIcon size={42} radius="md" color="teal" variant="light" mb="xs">
+                <IconReceipt2 size={22} />
+              </ThemeIcon>
+              <Text fw={700} size="sm">
+                Running Bill
+              </Text>
+              <Text size="11px" c="dimmed">
+                {formatINR(primaryActiveOrder.subtotalPaise)} • Pay or split
+              </Text>
+            </Paper>
 
-              {/* Call Waiter */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={() => onOpenCallWaiter(primaryActiveOrder)}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="orange" variant="light" mb="xs">
-                  <IconBellRinging size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Call Waiter
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Water, cutlery, or service assistance
-                </Text>
-              </Paper>
+            {/* Call Waiter */}
+            <Paper
+              p="md"
+              radius="lg"
+              withBorder
+              onClick={() => onOpenCallWaiter(primaryActiveOrder)}
+              style={{
+                background: "#fff",
+                cursor: "pointer",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
+              }}
+            >
+              <ThemeIcon size={42} radius="md" color="orange" variant="light" mb="xs">
+                <IconBellRinging size={22} />
+              </ThemeIcon>
+              <Text fw={700} size="sm">
+                Call Waiter
+              </Text>
+              <Text size="11px" c="dimmed">
+                Water, cutlery, or service assistance
+              </Text>
+            </Paper>
 
-              {/* Book Table */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={onOpenReservationModal}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="blue" variant="light" mb="xs">
-                  <IconCalendar size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Book Table
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Reserve upcoming dining
-                </Text>
-              </Paper>
-            </>
-          ) : (
-            <>
-              {/* Live Status */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={() => onNavigateTab("live")}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="red" variant="light" mb="xs">
-                  <IconFlame size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Live Dining
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Seated table & active queue
-                </Text>
-              </Paper>
+            {/* Book Table */}
+            <Paper
+              p="md"
+              radius="lg"
+              withBorder
+              onClick={onOpenReservationModal}
+              style={{
+                background: "#fff",
+                cursor: "pointer",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
+              }}
+            >
+              <ThemeIcon size={42} radius="md" color="blue" variant="light" mb="xs">
+                <IconCalendar size={22} />
+              </ThemeIcon>
+              <Text fw={700} size="sm">
+                Book Table
+              </Text>
+              <Text size="11px" c="dimmed">
+                Reserve upcoming dining
+              </Text>
+            </Paper>
+          </SimpleGrid>
+        </div>
+      ) : null}
 
-              {/* Past Bills & Ratings */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={() => onNavigateTab("orders")}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="teal" variant="light" mb="xs">
-                  <IconReceipt2 size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Bills & Receipts
-                </Text>
-                <Text size="11px" c="dimmed">
-                  {stats?.totalOrdersCount || 0} visits • Invoices & reviews
-                </Text>
-              </Paper>
-
-              {/* Book Table */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={onOpenReservationModal}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="blue" variant="light" mb="xs">
-                  <IconCalendar size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  Book Table
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Reserve a table in advance
-                </Text>
-              </Paper>
-
-              {/* Profile & Addresses */}
-              <Paper
-                p="md"
-                radius="lg"
-                withBorder
-                onClick={() => onNavigateTab("profile")}
-                style={{
-                  background: "#fff",
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-              >
-                <ThemeIcon size={42} radius="md" color="indigo" variant="light" mb="xs">
-                  <IconUser size={22} />
-                </ThemeIcon>
-                <Text fw={700} size="sm">
-                  My Profile
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Addresses & preferences
-                </Text>
-              </Paper>
-            </>
-          )}
-        </SimpleGrid>
-      </div>
+        {/* ─── 4. Direct Dine Marketplace Hub ─── */}
+        <Box mt="xs">
+          <MarketplaceExplore />
+        </Box>
 
       {/* ─── 4. Re-order Your Favorites Carousel ─── */}
       {stats?.favoriteDishes && stats.favoriteDishes.length > 0 && (

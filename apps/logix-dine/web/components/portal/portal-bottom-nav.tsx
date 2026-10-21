@@ -3,7 +3,7 @@
 import React from "react";
 import { Box, Group, Text, UnstyledButton, Badge } from "@mantine/core";
 import {
-  IconSmartHome,
+  IconBuildingStore,
   IconReceipt2,
   IconFlame,
   IconUser,
@@ -29,8 +29,8 @@ export function PortalBottomNav({
   const tabs = [
     {
       id: "home" as const,
-      label: "Home",
-      icon: IconSmartHome,
+      label: "Explore",
+      icon: IconBuildingStore,
     },
     {
       id: "live" as const,

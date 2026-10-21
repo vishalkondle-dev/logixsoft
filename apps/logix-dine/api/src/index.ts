@@ -50,6 +50,7 @@ import { webhookRoutes } from './routes/webhooks';
 import { expenseRoutes } from './routes/expenses';
 import { campaignRoutes } from './routes/campaigns';
 import waitlistRoutes from './routes/waitlist';
+import { marketplaceRoutes } from './routes/marketplace';
 import { storeSessionPayload, resolveSessionPayload, getSecret } from './lib/tenancy';
 import { signSessionJwt } from './lib/jwt';
 import { extractSessionToken } from './lib/cache';
@@ -612,6 +613,9 @@ app.route('/api/campaigns', campaignRoutes);
 
 app.route('/waitlist', waitlistRoutes);
 app.route('/api/waitlist', waitlistRoutes);
+
+app.route('/marketplace', marketplaceRoutes);
+app.route('/api/marketplace', marketplaceRoutes);
 
 
 

@@ -1081,6 +1081,163 @@ export interface CustomerPortalData {
   };
 }
 
+// ─── Marketplace API ──────────────────────────────────────────────────────────
+
+export interface MarketplaceFeaturedDish {
+  id: string;
+  name: string;
+  description?: string | null;
+  pricePaise: number;
+  imageUrl?: string | null;
+  dietaryPreference: "VEG" | "NON_VEG";
+  estimatedPrepMinutes?: number;
+}
+
+export interface MarketplaceOutletItem {
+  id: string;
+  restaurantId: string;
+  name: string;
+  restaurantName: string;
+  address: string;
+  phone: string;
+  rating: number;
+  reviewsCount: number;
+  isOpen: boolean;
+  modes: {
+    dineIn: boolean;
+    takeaway: boolean;
+    delivery: boolean;
+    reservation: boolean;
+  };
+  tables: {
+    total: number;
+    free: number;
+    occupied: number;
+    availableNow: boolean;
+  };
+  waitlist: {
+    waitingCount: number;
+    avgWaitMinutes: number;
+    isQueueOpen: boolean;
+  };
+  cuisines: string[];
+  featuredDishes: MarketplaceFeaturedDish[];
+  estimatedSavingsPaise: number;
+}
+
+export interface MarketplaceHeroBanner {
+  id: string;
+  title: string;
+  subtitle: string;
+  tag: string;
+  color: string;
+  badge: string;
+}
+
+export interface MarketplaceExploreResponse {
+  heroBanners: MarketplaceHeroBanner[];
+  cuisines: string[];
+  outlets: MarketplaceOutletItem[];
+  totalCount: number;
+}
+
+export interface MarketplaceOutletDetail {
+  outlet: {
+    id: string;
+    name: string;
+    restaurantId: string;
+    restaurantName: string;
+    address: string;
+    phone: string;
+    upiId?: string | null;
+    tables: {
+      total: number;
+      free: number;
+      availableNow: boolean;
+    };
+    waitlist: {
+      waitingCount: number;
+      avgWaitMinutes: number;
+    };
+  };
+  sections: Array<{
+    id: string;
+    name: string;
+    description?: string | null;
+    items: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      pricePaise: number;
+      imageUrl?: string | null;
+      dietaryPreference: "VEG" | "NON_VEG";
+      variants?: any[];
+      addons?: any[];
+      ratingAvg?: number;
+      ratingCount?: number;
+    }>;
+  }>;
+}
+
+export const getMarketplaceExplore = async (params?: {
+  q?: string;
+  cuisine?: string;
+  mode?: "ALL" | "DINE_IN" | "TAKEAWAY" | "DELIVERY";
+  vegOnly?: boolean;
+  openOnly?: boolean;
+}): Promise<MarketplaceExploreResponse> => {
+  const query = new URLSearchParams();
+  if (params?.q) query.set("q", params.q);
+  if (params?.cuisine) query.set("cuisine", params.cuisine);
+  if (params?.mode && params.mode !== "ALL") query.set("mode", params.mode);
+  if (params?.vegOnly) query.set("vegOnly", "true");
+  if (params?.openOnly) query.set("openOnly", "true");
+
+  const res = await fetch(`${API_BASE}/marketplace/explore?${query.toString()}`, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+export const getMarketplaceOutlet = async (outletId: string): Promise<MarketplaceOutletDetail> => {
+  const res = await fetch(`${API_BASE}/marketplace/outlet/${encodeURIComponent(outletId)}`, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+export const createMarketplaceReservation = async (body: {
+  outletId: string;
+  guestName: string;
+  guestPhone: string;
+  partySize: number;
+  reservationDate: string;
+  startTime: string;
+  notes?: string;
+}): Promise<{ success: boolean; message: string; reservation: any }> => {
+  const res = await fetch(`${API_BASE}/marketplace/reservation`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
 export const getCustomerPortal = async (): Promise<CustomerPortalData> => {
   const res = await fetch(`${API_BASE}/portal/session`, {
     credentials: "include",

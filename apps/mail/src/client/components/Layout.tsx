@@ -139,9 +139,9 @@ export const Layout: React.FC<LayoutProps> = ({
                     >
                       <Indicator
                         inline
-                        size={10}
-                        offset={3}
-                        position="bottom-end"
+                        size={9}
+                        offset={2}
+                        position="top-end"
                         color={realtimeStatus === "connected" ? "teal" : "red"}
                         withBorder
                         processing={realtimeStatus === "connected"}

@@ -14,6 +14,7 @@ import {
   Box,
   Burger,
   Select,
+  Indicator,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import {
@@ -125,69 +126,31 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           </Group>
 
-          {/* Center: Sleek Realtime Indicator Dot + View Switcher */}
-          <Group gap="xs" style={{ flexShrink: 1, overflow: "hidden" }}>
-            {/* Realtime Status Indicator (Green glowing dot, no loud text badge) */}
-            <Tooltip
-              label={realtimeStatus === "connected" ? "Realtime sync active" : "Reconnecting to edge..."}
-              withArrow
-              position="bottom"
-            >
-              <Group gap={6} align="center" style={{ cursor: "default", padding: "4px 6px" }}>
-                <Box
-                  style={{
-                    width: 9,
-                    height: 9,
-                    borderRadius: "50%",
-                    backgroundColor: realtimeStatus === "connected" ? "#0ca678" : "#fa5252",
-                    boxShadow: realtimeStatus === "connected" ? "0 0 8px rgba(12, 166, 120, 0.9)" : "none",
-                    transition: "all 0.3s ease",
-                  }}
-                />
-              </Group>
-            </Tooltip>
-
-            {isAdmin && (
-              <Group gap={2} p={2} bg="gray.1" style={{ borderRadius: 6 }}>
-                <Button
-                  size="compact-xs"
-                  variant={currentView === "mailbox" ? "white" : "subtle"}
-                  color="teal"
-                  onClick={() => {
-                    onToggleView("mailbox");
-                    close();
-                  }}
-                  leftSection={!isSmallPhone ? <IconInbox size={12} /> : undefined}
-                  style={{ fontSize: 11, padding: "0 8px" }}
-                >
-                  Mail
-                </Button>
-                <Button
-                  size="compact-xs"
-                  variant={currentView === "admin" ? "white" : "subtle"}
-                  color="teal"
-                  onClick={() => {
-                    onToggleView("admin");
-                    close();
-                  }}
-                  leftSection={!isSmallPhone ? <IconShieldLock size={12} /> : undefined}
-                  style={{ fontSize: 11, padding: "0 8px" }}
-                >
-                  Admin
-                </Button>
-              </Group>
-            )}
-          </Group>
-
-          {/* Right: User Profile & Actions */}
+          {/* Right: User Profile & Actions with Realtime Indicator on Avatar */}
           <Group gap="xs" style={{ flexShrink: 0 }}>
             {user && (
               <Menu shadow="md" width={220} position="bottom-end">
                 <Menu.Target>
                   <Group gap={6} style={{ cursor: "pointer" }}>
-                    <Avatar color="teal" radius="xl" size="sm">
-                      {user.name.charAt(0).toUpperCase()}
-                    </Avatar>
+                    <Tooltip
+                      label={realtimeStatus === "connected" ? "Realtime sync active" : "Reconnecting to edge..."}
+                      withArrow
+                      position="bottom-end"
+                    >
+                      <Indicator
+                        inline
+                        size={10}
+                        offset={3}
+                        position="bottom-end"
+                        color={realtimeStatus === "connected" ? "teal" : "red"}
+                        withBorder
+                        processing={realtimeStatus === "connected"}
+                      >
+                        <Avatar color="teal" radius="xl" size="sm">
+                          {user.name.charAt(0).toUpperCase()}
+                        </Avatar>
+                      </Indicator>
+                    </Tooltip>
                     {!isMobile && (
                       <div style={{ textAlign: "right" }}>
                         <Text size="xs" fw={700} lineClamp={1}>
@@ -209,6 +172,14 @@ export const Layout: React.FC<LayoutProps> = ({
                   <Menu.Item leftSection={<IconShieldLock size={14} />}>
                     Role: {user.role.toUpperCase()}
                   </Menu.Item>
+                  {isAdmin && (
+                    <Menu.Item
+                      leftSection={<IconShieldLock size={14} />}
+                      onClick={() => onToggleView(currentView === "admin" ? "mailbox" : "admin")}
+                    >
+                      {currentView === "admin" ? "Switch to Mailbox" : "Admin Console"}
+                    </Menu.Item>
+                  )}
                   <Divider />
                   <Menu.Item color="red" leftSection={<IconLogout size={14} />} onClick={onLogout}>
                     Sign Out

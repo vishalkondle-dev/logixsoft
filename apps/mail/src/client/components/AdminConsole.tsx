@@ -18,6 +18,8 @@ import {
   Card,
   Loader,
   Center,
+  Box,
+  ScrollArea,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import {
@@ -160,17 +162,20 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
   }
 
   return (
-    <Stack gap="lg" p="lg" style={{ height: "100%", overflowY: "auto" }}>
+    <Stack gap="md" p={{ base: "xs", sm: "md", md: "lg" }} style={{ height: "100%", overflowY: "auto" }}>
       {/* Top Header */}
-      <Group justify="space-between">
+      <Group justify="space-between" align="center" wrap="wrap" gap="xs">
         <div>
-          <Group gap="xs">
-            <IconShieldLock size={26} color="#0ca678" />
-            <Text fw={800} size="xl" c="teal.9">
-              Admin Console — admin@logixsoft.in
+          <Group gap="xs" wrap="wrap">
+            <IconShieldLock size={isMobile ? 22 : 26} color="#0ca678" />
+            <Text fw={800} size={isMobile ? "md" : "xl"} c="teal.9">
+              Admin Console
             </Text>
+            <Badge size="xs" color="teal" variant="light">
+              admin@logixsoft.in
+            </Badge>
           </Group>
-          <Text size="xs" c="dimmed">
+          <Text size="11px" c="dimmed">
             Manage users, unlimited custom email addresses, and domain routing for logixsoft.in
           </Text>
         </div>
@@ -178,8 +183,8 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
         <Button
           variant="light"
           color="teal"
-          size="sm"
-          leftSection={<IconRefresh size={16} />}
+          size="xs"
+          leftSection={<IconRefresh size={14} />}
           onClick={loadData}
         >
           Refresh Data
@@ -187,15 +192,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
       </Group>
 
       {/* KPI Stats Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-        <Card shadow="xs" padding="md" radius="md" withBorder>
+      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+        <Card shadow="xs" padding="sm" radius="md" withBorder>
           <Group justify="space-between">
             <Text size="xs" fw={700} c="dimmed">
               TOTAL MESSAGES (D1)
             </Text>
-            <IconMailFast size={20} color="#0ca678" />
+            <IconMailFast size={18} color="#0ca678" />
           </Group>
-          <Text fw={800} size="2rem" mt="xs">
+          <Text fw={800} size={isMobile ? "1.5rem" : "1.8rem"} mt="xs">
             {stats?.totalMessages || 0}
           </Text>
           <Badge size="xs" color="teal" variant="light" mt={4}>
@@ -203,14 +208,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
           </Badge>
         </Card>
 
-        <Card shadow="xs" padding="md" radius="md" withBorder>
+        <Card shadow="xs" padding="sm" radius="md" withBorder>
           <Group justify="space-between">
             <Text size="xs" fw={700} c="dimmed">
               REGISTERED USERS
             </Text>
-            <IconUsers size={20} color="#20c997" />
+            <IconUsers size={18} color="#20c997" />
           </Group>
-          <Text fw={800} size="2rem" mt="xs">
+          <Text fw={800} size={isMobile ? "1.5rem" : "1.8rem"} mt="xs">
             {stats?.totalUsers || 0}
           </Text>
           <Badge size="xs" color="teal" variant="light" mt={4}>
@@ -218,14 +223,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
           </Badge>
         </Card>
 
-        <Card shadow="xs" padding="md" radius="md" withBorder>
+        <Card shadow="xs" padding="sm" radius="md" withBorder>
           <Group justify="space-between">
             <Text size="xs" fw={700} c="dimmed">
               CUSTOM ALIASES & MAILBOXES
             </Text>
-            <IconAt size={20} color="#099268" />
+            <IconAt size={18} color="#099268" />
           </Group>
-          <Text fw={800} size="2rem" mt="xs">
+          <Text fw={800} size={isMobile ? "1.5rem" : "1.8rem"} mt="xs">
             {stats?.totalAliases || 0}
           </Text>
           <Badge size="xs" color="teal" variant="light" mt={4}>
@@ -234,19 +239,74 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
         </Card>
       </SimpleGrid>
 
-      {/* Tabs Section */}
-      <Tabs value={activeTab} onChange={(val) => onTabChange?.(val || "users")} color="teal">
-        <Tabs.List>
-          <Tabs.Tab value="users" leftSection={<IconUsers size={16} />}>
-            Users Management ({users.length})
-          </Tabs.Tab>
-          <Tabs.Tab value="aliases" leftSection={<IconAt size={16} />}>
-            Custom Aliases & Mailboxes
-          </Tabs.Tab>
-          <Tabs.Tab value="system" leftSection={<IconServer size={16} />}>
-            Domain & System Status
-          </Tabs.Tab>
-        </Tabs.List>
+      {/* Tabs Section - Fully Responsive Pills with Horizontal Touch Scroll */}
+      <Tabs
+        value={activeTab}
+        onChange={(val) => onTabChange?.(val || "users")}
+        color="teal"
+        variant="pills"
+        radius="md"
+      >
+        <Box
+          style={{
+            width: "100%",
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
+            paddingBottom: 4,
+            borderBottom: "1px solid #e9ecef",
+          }}
+        >
+          <Tabs.List
+            style={{
+              flexWrap: "nowrap",
+              whiteSpace: "nowrap",
+              display: "inline-flex",
+              gap: 6,
+              minWidth: isMobile ? "max-content" : "auto",
+            }}
+          >
+            <Tabs.Tab
+              value="users"
+              leftSection={<IconUsers size={isMobile ? 15 : 16} />}
+              style={{
+                flexShrink: 0,
+                fontSize: isMobile ? 12 : 13,
+                padding: isMobile ? "6px 12px" : "8px 16px",
+                fontWeight: 600,
+              }}
+            >
+              {isMobile ? `Users (${users.length})` : `Users Management (${users.length})`}
+            </Tabs.Tab>
+
+            <Tabs.Tab
+              value="aliases"
+              leftSection={<IconAt size={isMobile ? 15 : 16} />}
+              style={{
+                flexShrink: 0,
+                fontSize: isMobile ? 12 : 13,
+                padding: isMobile ? "6px 12px" : "8px 16px",
+                fontWeight: 600,
+              }}
+            >
+              {isMobile
+                ? `Aliases (${aliasesData?.mailboxes?.length || stats?.totalAliases || 0})`
+                : "Custom Aliases & Mailboxes"}
+            </Tabs.Tab>
+
+            <Tabs.Tab
+              value="system"
+              leftSection={<IconServer size={isMobile ? 15 : 16} />}
+              style={{
+                flexShrink: 0,
+                fontSize: isMobile ? 12 : 13,
+                padding: isMobile ? "6px 12px" : "8px 16px",
+                fontWeight: 600,
+              }}
+            >
+              {isMobile ? "System Status" : "Domain & System Status"}
+            </Tabs.Tab>
+          </Tabs.List>
+        </Box>
 
         {/* USERS TAB */}
         <Tabs.Panel value="users" pt="md">

@@ -10,6 +10,7 @@ import {
   Paper,
   Divider,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconMail, IconLock, IconShieldLock } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { api } from "../api";
@@ -24,6 +25,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ opened, onSuccess }) => 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 480px)");
 
   const handleSubmit = async (targetEmail = email, targetPass = password) => {
     if (!targetEmail.trim() || !targetPass.trim()) {
@@ -63,6 +65,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ opened, onSuccess }) => 
       withCloseButton={false}
       closeOnClickOutside={false}
       closeOnEscape={false}
+      fullScreen={isMobile}
       title={
         <Group gap="xs">
           <IconShieldLock size={22} color="#0ca678" />

@@ -14,7 +14,9 @@ import {
   ScrollArea,
   NavLink,
   Box,
+  Burger,
 } from "@mantine/core";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import {
   IconMail,
   IconInbox,
@@ -60,91 +62,126 @@ export const Layout: React.FC<LayoutProps> = ({
   realtimeStatus,
   children,
 }) => {
+  const [opened, { toggle, close }] = useDisclosure(false);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isSmallPhone = useMediaQuery("(max-width: 480px)");
   const isAdmin = user?.role === "admin" || user?.email === "admin@logixsoft.in";
+
+  const handleSelectFolder = (folder: string) => {
+    onSelectFolder(folder);
+    close();
+  };
+
+  const handleSelectAlias = (alias: string) => {
+    onSelectAlias(alias);
+    close();
+  };
+
+  const handleCompose = () => {
+    onOpenCompose();
+    close();
+  };
 
   return (
     <AppShell
       header={{ height: 60 }}
-      navbar={{ width: 260, breakpoint: "sm" }}
+      navbar={{
+        width: 260,
+        breakpoint: "sm",
+        collapsed: { mobile: !opened },
+      }}
       padding={0}
       style={{ height: "100vh", overflow: "hidden" }}
     >
       {/* APP HEADER */}
-      <AppShell.Header p="xs" px="md" style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e9ecef" }}>
-        <Group justify="space-between" style={{ height: "100%" }}>
-          {/* Logo & Brand */}
-          <Group gap="xs">
-            <ActionIcon variant="light" color="teal" size="lg" radius="md">
-              <IconMail size={22} color="#0ca678" />
+      <AppShell.Header p="xs" px={{ base: "xs", sm: "md" }} style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e9ecef" }}>
+        <Group justify="space-between" style={{ height: "100%", flexWrap: "nowrap" }}>
+          {/* Left: Burger (on mobile) + Logo & Brand */}
+          <Group gap="xs" style={{ flexShrink: 0 }}>
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Toggle navigation" />
+            <ActionIcon variant="light" color="teal" size="md" radius="md">
+              <IconMail size={20} color="#0ca678" />
             </ActionIcon>
             <div>
-              <Text fw={800} size="md" c="teal.9" style={{ letterSpacing: "-0.5px" }}>
+              <Text fw={800} size="sm" c="teal.9" style={{ letterSpacing: "-0.5px", lineHeight: 1.1 }}>
                 LogixMail
               </Text>
-              <Text size="10px" c="dimmed" style={{ marginTop: -4 }}>
-                Cloudflare Edge Email
-              </Text>
+              {!isSmallPhone && (
+                <Text size="10px" c="dimmed" style={{ marginTop: 0 }}>
+                  Cloudflare Edge Email
+                </Text>
+              )}
             </div>
           </Group>
 
           {/* Center: Realtime Status & View Switcher */}
-          <Group gap="sm">
+          <Group gap={6} style={{ flexShrink: 1, overflow: "hidden" }}>
             <Badge
-              size="sm"
+              size="xs"
               variant="light"
               color={realtimeStatus === "connected" ? "teal" : "red"}
               leftSection={
                 realtimeStatus === "connected" ? (
-                  <IconWifi size={13} color="#0ca678" />
+                  <IconWifi size={11} color="#0ca678" />
                 ) : (
-                  <IconWifiOff size={13} color="red" />
+                  <IconWifiOff size={11} color="red" />
                 )
               }
             >
-              {realtimeStatus === "connected" ? "Live Realtime" : "Reconnecting"}
+              {isSmallPhone ? "Live" : realtimeStatus === "connected" ? "Live Realtime" : "Reconnecting"}
             </Badge>
 
             {isAdmin && (
-              <Group gap={4} p={3} bg="gray.1" style={{ borderRadius: 8 }}>
+              <Group gap={2} p={2} bg="gray.1" style={{ borderRadius: 6 }}>
                 <Button
                   size="compact-xs"
                   variant={currentView === "mailbox" ? "white" : "subtle"}
                   color="teal"
-                  onClick={() => onToggleView("mailbox")}
-                  leftSection={<IconInbox size={14} />}
+                  onClick={() => {
+                    onToggleView("mailbox");
+                    close();
+                  }}
+                  leftSection={!isSmallPhone ? <IconInbox size={12} /> : undefined}
+                  style={{ fontSize: 11, padding: "0 6px" }}
                 >
-                  Mailbox
+                  Mail
                 </Button>
                 <Button
                   size="compact-xs"
                   variant={currentView === "admin" ? "white" : "subtle"}
                   color="teal"
-                  onClick={() => onToggleView("admin")}
-                  leftSection={<IconShieldLock size={14} />}
+                  onClick={() => {
+                    onToggleView("admin");
+                    close();
+                  }}
+                  leftSection={!isSmallPhone ? <IconShieldLock size={12} /> : undefined}
+                  style={{ fontSize: 11, padding: "0 6px" }}
                 >
-                  Admin Console
+                  Admin
                 </Button>
               </Group>
             )}
           </Group>
 
-          {/* User Profile & Actions */}
-          <Group gap="xs">
+          {/* Right: User Profile & Actions */}
+          <Group gap="xs" style={{ flexShrink: 0 }}>
             {user && (
               <Menu shadow="md" width={220} position="bottom-end">
                 <Menu.Target>
-                  <Group gap="xs" style={{ cursor: "pointer" }}>
+                  <Group gap={6} style={{ cursor: "pointer" }}>
                     <Avatar color="teal" radius="xl" size="sm">
                       {user.name.charAt(0).toUpperCase()}
                     </Avatar>
-                    <div style={{ textAlign: "right" }}>
-                      <Text size="xs" fw={700}>
-                        {user.name}
-                      </Text>
-                      <Text size="10px" c="dimmed">
-                        {user.email}
-                      </Text>
-                    </div>
+                    {!isMobile && (
+                      <div style={{ textAlign: "right" }}>
+                        <Text size="xs" fw={700} lineClamp={1}>
+                          {user.name}
+                        </Text>
+                        <Text size="10px" c="dimmed" lineClamp={1}>
+                          {user.email}
+                        </Text>
+                      </div>
+                    )}
                   </Group>
                 </Menu.Target>
 
@@ -177,7 +214,7 @@ export const Layout: React.FC<LayoutProps> = ({
             fullWidth
             radius="md"
             leftSection={<IconPlus size={18} />}
-            onClick={onOpenCompose}
+            onClick={handleCompose}
             style={{ boxShadow: "0 2px 8px rgba(12, 166, 120, 0.25)" }}
           >
             Compose
@@ -195,7 +232,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label="Inbox"
               leftSection={<IconInbox size={18} />}
               active={activeFolder === "inbox"}
-              onClick={() => onSelectFolder("inbox")}
+              onClick={() => handleSelectFolder("inbox")}
               color="teal"
               style={{ borderRadius: 8, fontWeight: activeFolder === "inbox" ? 700 : 500 }}
             />
@@ -203,7 +240,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label="Sent"
               leftSection={<IconSend size={18} />}
               active={activeFolder === "sent"}
-              onClick={() => onSelectFolder("sent")}
+              onClick={() => handleSelectFolder("sent")}
               color="teal"
               style={{ borderRadius: 8, fontWeight: activeFolder === "sent" ? 700 : 500 }}
             />
@@ -211,7 +248,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label="Starred"
               leftSection={<IconStar size={18} />}
               active={activeFolder === "starred"}
-              onClick={() => onSelectFolder("starred")}
+              onClick={() => handleSelectFolder("starred")}
               color="teal"
               style={{ borderRadius: 8, fontWeight: activeFolder === "starred" ? 700 : 500 }}
             />
@@ -219,7 +256,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label="Trash"
               leftSection={<IconTrash size={18} />}
               active={activeFolder === "trash"}
-              onClick={() => onSelectFolder("trash")}
+              onClick={() => handleSelectFolder("trash")}
               color="teal"
               style={{ borderRadius: 8, fontWeight: activeFolder === "trash" ? 700 : 500 }}
             />
@@ -242,7 +279,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <NavLink
                 label="All Inboxes"
                 active={activeAlias === "all"}
-                onClick={() => onSelectAlias("all")}
+                onClick={() => handleSelectAlias("all")}
                 color="teal"
                 style={{ borderRadius: 8, fontWeight: activeAlias === "all" ? 700 : 500 }}
               />
@@ -252,7 +289,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   label={alias.address}
                   description={alias.displayName}
                   active={activeAlias === alias.address}
-                  onClick={() => onSelectAlias(alias.address)}
+                  onClick={() => handleSelectAlias(alias.address)}
                   color="teal"
                   style={{ borderRadius: 8, fontSize: 13 }}
                 />

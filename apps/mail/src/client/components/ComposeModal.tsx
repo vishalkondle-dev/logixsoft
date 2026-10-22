@@ -13,7 +13,7 @@ import {
   Box,
   Collapse,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { RichTextEditor, Link } from "@mantine/tiptap";
 import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -59,6 +59,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   const [showCc, setShowCc] = useState(false);
   const [subject, setSubject] = useState(defaultSubject);
   const [sending, setSending] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 700px)");
 
   // AI Draft generator state
   const [aiOpened, { toggle: toggleAi }] = useDisclosure(false);
@@ -73,6 +74,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: "<p></p>",
+    immediatelyRender: false,
   });
 
   useEffect(() => {
@@ -178,6 +180,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     <Modal
       opened={opened}
       onClose={onClose}
+      fullScreen={isMobile}
       title={
         <Group gap="xs">
           <IconAt size={20} color="#0ca678" />
@@ -191,7 +194,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     >
       <Stack gap="sm">
         {/* FROM ADDRESS SELECTOR */}
-        <Group align="flex-end" gap="xs">
+        <Group align="flex-end" gap="xs" wrap="wrap">
           {!isCustomFrom ? (
             <Select
               label="From"
@@ -199,7 +202,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
               data={aliasOptions}
               value={fromAddress}
               onChange={(val) => setFromAddress(val || "")}
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 220 }}
               size="sm"
             />
           ) : (
@@ -211,7 +214,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
               rightSectionWidth={110}
               value={customLocalPart}
               onChange={(e) => setCustomLocalPart(e.currentTarget.value)}
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 220 }}
               size="sm"
             />
           )}
@@ -221,6 +224,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             color="teal"
             size="sm"
             onClick={() => setIsCustomFrom(!isCustomFrom)}
+            style={{ marginBottom: 2 }}
           >
             {isCustomFrom ? "Pick Saved Alias" : "Type New Custom"}
           </Button>

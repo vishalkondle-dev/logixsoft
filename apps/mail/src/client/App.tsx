@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Box, Group } from "@mantine/core";
+import { Box } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconMailFilled, IconSend } from "@tabler/icons-react";
+import { IconMailFilled } from "@tabler/icons-react";
 import { Layout } from "./components/Layout";
 import { EmailList } from "./components/EmailList";
 import { EmailDetail } from "./components/EmailDetail";
@@ -15,6 +16,8 @@ export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(getStoredUser());
   const [aliases, setAliases] = useState<Alias[]>([]);
   const [domain, setDomain] = useState("logixsoft.in");
+
+  const isMobile = useMediaQuery("(max-width: 850px)");
 
   // Mail navigation
   const [activeFolder, setActiveFolder] = useState<string>("inbox");
@@ -93,7 +96,8 @@ export const App: React.FC = () => {
     api.getMessages(activeFolder, activeAlias, search)
       .then((res) => {
         setMessages(res.messages);
-        if (res.messages.length > 0 && !selectedId) {
+        // On desktop, auto-select first message if none selected
+        if (!isMobile && res.messages.length > 0 && !selectedId) {
           setSelectedId(res.messages[0].id);
         } else if (res.messages.length === 0) {
           setSelectedId(null);
@@ -181,11 +185,13 @@ export const App: React.FC = () => {
           onSelectFolder={(folder) => {
             setActiveFolder(folder);
             setCurrentView("mailbox");
+            if (isMobile) setSelectedId(null);
           }}
           activeAlias={activeAlias}
           onSelectAlias={(alias) => {
             setActiveAlias(alias);
             setCurrentView("mailbox");
+            if (isMobile) setSelectedId(null);
           }}
           onOpenCompose={() => {
             setReplyToMessage(null);
@@ -198,12 +204,42 @@ export const App: React.FC = () => {
         >
           {currentView === "admin" ? (
             <AdminConsole />
+          ) : isMobile ? (
+            /* MOBILE SINGLE PANE VIEW */
+            <Box style={{ height: "100%", width: "100%" }}>
+              {!selectedId ? (
+                <EmailList
+                  messages={messages}
+                  selectedId={selectedId}
+                  onSelect={(id) => setSelectedId(id)}
+                  onToggleStar={handleToggleStar}
+                  search={search}
+                  onSearchChange={setSearch}
+                  loading={loadingMessages}
+                  activeFolder={activeFolder}
+                />
+              ) : (
+                <EmailDetail
+                  message={selectedMessage}
+                  attachments={selectedAttachments}
+                  loading={loadingDetail}
+                  onToggleStar={(id) => handleToggleStar(id)}
+                  onTrash={handleTrashMessage}
+                  onReply={handleReply}
+                  aliases={aliases}
+                  onBack={() => setSelectedId(null)}
+                />
+              )}
+            </Box>
           ) : (
-            <Box style={{ height: "100%", display: "flex" }}>
-              {/* Split Pane: Left (Messages List) */}
+            /* DESKTOP SPLIT PANE VIEW */
+            <Box style={{ height: "100%", display: "flex", width: "100%" }}>
+              {/* Left Pane (List) */}
               <Box
                 style={{
-                  width: 380,
+                  width: 360,
+                  minWidth: 320,
+                  maxWidth: 420,
                   height: "100%",
                   borderRight: "1px solid #e9ecef",
                   backgroundColor: "#ffffff",
@@ -221,8 +257,8 @@ export const App: React.FC = () => {
                 />
               </Box>
 
-              {/* Split Pane: Right (Email Reading Pane) */}
-              <Box style={{ flex: 1, height: "100%" }}>
+              {/* Right Pane (Detail) */}
+              <Box style={{ flex: 1, height: "100%", overflow: "hidden" }}>
                 <EmailDetail
                   message={selectedMessage}
                   attachments={selectedAttachments}

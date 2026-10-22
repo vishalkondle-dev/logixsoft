@@ -27,6 +27,7 @@ import {
   IconPaperclip,
   IconSend,
   IconMailCheck,
+  IconArrowLeft,
 } from "@tabler/icons-react";
 import DOMPurify from "dompurify";
 import dayjs from "dayjs";
@@ -42,6 +43,7 @@ interface EmailDetailProps {
   onTrash: (id: string) => void;
   onReply: (message: EmailMessage) => void;
   aliases: Alias[];
+  onBack?: () => void;
 }
 
 export const EmailDetail: React.FC<EmailDetailProps> = ({
@@ -52,6 +54,7 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   onTrash,
   onReply,
   aliases,
+  onBack,
 }) => {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -160,66 +163,79 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   return (
     <Box style={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
       {/* Top Header Actions */}
-      <Box p="md" style={{ borderBottom: "1px solid #e9ecef" }}>
-        <Group justify="space-between">
-          <Group gap="xs">
-            <Text fw={700} size="lg" style={{ lineHeight: 1.2 }}>
+      <Box p={{ base: "xs", sm: "md" }} style={{ borderBottom: "1px solid #e9ecef" }}>
+        {onBack && (
+          <Button
+            variant="subtle"
+            size="xs"
+            color="teal"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={onBack}
+            mb="xs"
+            p={0}
+          >
+            Back to inbox
+          </Button>
+        )}
+        <Group justify="space-between" align="flex-start" wrap="wrap" gap="xs">
+          <Group gap="xs" style={{ flex: 1, minWidth: 200 }}>
+            <Text fw={700} size="md" style={{ lineHeight: 1.3, wordBreak: "break-word" }}>
               {message.subject || "(no subject)"}
             </Text>
-            <Badge size="sm" color="teal" variant="light">
+            <Badge size="xs" color="teal" variant="light">
               {message.direction === "inbound" ? "Received" : "Sent"}
             </Badge>
           </Group>
 
-          <Group gap="xs">
+          <Group gap={6}>
             <Tooltip label={message.starred ? "Unstar" : "Star message"}>
               <ActionIcon
                 variant="light"
                 color={message.starred ? "yellow" : "gray"}
-                size="lg"
+                size="md"
                 onClick={() => onToggleStar(message.id)}
               >
-                {message.starred ? <IconStarFilled size={18} /> : <IconStar size={18} />}
+                {message.starred ? <IconStarFilled size={16} /> : <IconStar size={16} />}
               </ActionIcon>
             </Tooltip>
 
             <Tooltip label="Reply">
-              <ActionIcon variant="light" color="teal" size="lg" onClick={() => onReply(message)}>
-                <IconArrowBackUp size={18} />
+              <ActionIcon variant="light" color="teal" size="md" onClick={() => onReply(message)}>
+                <IconArrowBackUp size={16} />
               </ActionIcon>
             </Tooltip>
 
             <Tooltip label="Move to Trash">
-              <ActionIcon variant="light" color="red" size="lg" onClick={() => onTrash(message.id)}>
-                <IconTrash size={18} />
+              <ActionIcon variant="light" color="red" size="md" onClick={() => onTrash(message.id)}>
+                <IconTrash size={16} />
               </ActionIcon>
             </Tooltip>
           </Group>
         </Group>
 
         {/* Sender & Recipient Bar */}
-        <Group justify="space-between" mt="md" align="flex-start">
-          <Group gap="sm">
-            <Avatar color="teal" radius="xl" size="md">
+        <Group justify="space-between" mt="sm" align="flex-start" wrap="wrap" gap="xs">
+          <Group gap="xs" style={{ flex: 1, minWidth: 220 }}>
+            <Avatar color="teal" radius="xl" size="sm">
               {message.from_addr.charAt(0).toUpperCase()}
             </Avatar>
-            <div>
-              <Group gap="xs">
-                <Text size="sm" fw={700}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Group gap={6} wrap="wrap">
+                <Text size="xs" fw={700} style={{ wordBreak: "break-word" }}>
                   {message.from_addr}
                 </Text>
-                <Badge size="xs" color="green" leftSection={<IconShieldCheck size={12} />}>
-                  SPF & DKIM Verified
+                <Badge size="xs" color="green" leftSection={<IconShieldCheck size={10} />}>
+                  Verified
                 </Badge>
               </Group>
-              <Text size="xs" c="dimmed">
+              <Text size="11px" c="dimmed" style={{ wordBreak: "break-word" }}>
                 To: <span style={{ color: "#0ca678", fontWeight: 600 }}>{message.to_addr}</span>
                 {message.cc_addr && ` | Cc: ${message.cc_addr}`}
               </Text>
             </div>
           </Group>
 
-          <Text size="xs" c="dimmed">
+          <Text size="11px" c="dimmed">
             {dateStr}
           </Text>
         </Group>

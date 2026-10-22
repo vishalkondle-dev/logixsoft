@@ -19,7 +19,7 @@ import {
   Loader,
   Center,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import {
   IconUsers,
   IconAt,
@@ -54,6 +54,7 @@ export const AdminConsole: React.FC = () => {
   const [newAliasDisplayName, setNewAliasDisplayName] = useState("");
   const [newAliasUserId, setNewAliasUserId] = useState("");
   const [creatingAlias, setCreatingAlias] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 600px)");
 
   const loadData = async () => {
     setLoading(true);
@@ -259,47 +260,49 @@ export const AdminConsole: React.FC = () => {
               </Button>
             </Group>
 
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Email Address</Table.Th>
-                  <Table.Th>Role</Table.Th>
-                  <Table.Th>Status</Table.Th>
-                  <Table.Th style={{ textAlign: "right" }}>Actions</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {users.map((u) => (
-                  <Table.Tr key={u.id}>
-                    <Table.Td fw={600}>{u.name}</Table.Td>
-                    <Table.Td>{u.email}</Table.Td>
-                    <Table.Td>
-                      <Badge color={u.role === "admin" ? "teal" : "gray"}>
-                        {u.role.toUpperCase()}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge color={u.disabled ? "red" : "green"} variant="light">
-                        {u.disabled ? "Disabled" : "Active"}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td style={{ textAlign: "right" }}>
-                      {u.email !== "admin@logixsoft.in" && (
-                        <Button
-                          variant="subtle"
-                          size="xs"
-                          color={u.disabled ? "teal" : "red"}
-                          onClick={() => handleToggleUserDisabled(u)}
-                        >
-                          {u.disabled ? "Enable" : "Disable"}
-                        </Button>
-                      )}
-                    </Table.Td>
+            <Table.ScrollContainer minWidth={550}>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Name</Table.Th>
+                    <Table.Th>Email Address</Table.Th>
+                    <Table.Th>Role</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th style={{ textAlign: "right" }}>Actions</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {users.map((u) => (
+                    <Table.Tr key={u.id}>
+                      <Table.Td fw={600}>{u.name}</Table.Td>
+                      <Table.Td>{u.email}</Table.Td>
+                      <Table.Td>
+                        <Badge color={u.role === "admin" ? "teal" : "gray"}>
+                          {u.role.toUpperCase()}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge color={u.disabled ? "red" : "green"} variant="light">
+                          {u.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: "right" }}>
+                        {u.email !== "admin@logixsoft.in" && (
+                          <Button
+                            variant="subtle"
+                            size="xs"
+                            color={u.disabled ? "teal" : "red"}
+                            onClick={() => handleToggleUserDisabled(u)}
+                          >
+                            {u.disabled ? "Enable" : "Disable"}
+                          </Button>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
           </Paper>
         </Tabs.Panel>
 
@@ -326,32 +329,34 @@ export const AdminConsole: React.FC = () => {
               </Button>
             </Group>
 
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Address</Table.Th>
-                  <Table.Th>Display Label</Table.Th>
-                  <Table.Th>Assigned User</Table.Th>
-                  <Table.Th>Type</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {(aliasesData?.mailboxes || []).map((m: any) => (
-                  <Table.Tr key={m.id}>
-                    <Table.Td fw={700} c="teal.9">
-                      {m.address}
-                    </Table.Td>
-                    <Table.Td>{m.displayName}</Table.Td>
-                    <Table.Td>{m.userEmail}</Table.Td>
-                    <Table.Td>
-                      <Badge color="teal" size="sm">
-                        Primary Mailbox
-                      </Badge>
-                    </Table.Td>
+            <Table.ScrollContainer minWidth={550}>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Address</Table.Th>
+                    <Table.Th>Display Label</Table.Th>
+                    <Table.Th>Assigned User</Table.Th>
+                    <Table.Th>Type</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {(aliasesData?.mailboxes || []).map((m: any) => (
+                    <Table.Tr key={m.id}>
+                      <Table.Td fw={700} c="teal.9">
+                        {m.address}
+                      </Table.Td>
+                      <Table.Td>{m.displayName}</Table.Td>
+                      <Table.Td>{m.userEmail}</Table.Td>
+                      <Table.Td>
+                        <Badge color="teal" size="sm">
+                          Primary Mailbox
+                        </Badge>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
           </Paper>
         </Tabs.Panel>
 
@@ -363,8 +368,8 @@ export const AdminConsole: React.FC = () => {
                 Cloudflare Infrastructure Status
               </Text>
 
-              <Group gap="md">
-                <Paper p="sm" withBorder style={{ flex: 1 }}>
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
+                <Paper p="sm" withBorder>
                   <Text size="xs" c="dimmed" fw={700}>
                     DOMAIN
                   </Text>
@@ -376,7 +381,7 @@ export const AdminConsole: React.FC = () => {
                   </Badge>
                 </Paper>
 
-                <Paper p="sm" withBorder style={{ flex: 1 }}>
+                <Paper p="sm" withBorder>
                   <Text size="xs" c="dimmed" fw={700}>
                     EMAIL ROUTING
                   </Text>
@@ -388,7 +393,7 @@ export const AdminConsole: React.FC = () => {
                   </Badge>
                 </Paper>
 
-                <Paper p="sm" withBorder style={{ flex: 1 }}>
+                <Paper p="sm" withBorder>
                   <Text size="xs" c="dimmed" fw={700}>
                     EMAIL SENDING
                   </Text>
@@ -400,7 +405,7 @@ export const AdminConsole: React.FC = () => {
                   </Badge>
                 </Paper>
 
-                <Paper p="sm" withBorder style={{ flex: 1 }}>
+                <Paper p="sm" withBorder>
                   <Text size="xs" c="dimmed" fw={700}>
                     CLOUDFLARE TUNNEL
                   </Text>
@@ -411,7 +416,7 @@ export const AdminConsole: React.FC = () => {
                     Live on Port 3080
                   </Badge>
                 </Paper>
-              </Group>
+              </SimpleGrid>
             </Stack>
           </Paper>
         </Tabs.Panel>
@@ -421,6 +426,7 @@ export const AdminConsole: React.FC = () => {
       <Modal
         opened={userModalOpened}
         onClose={closeUserModal}
+        fullScreen={isMobile}
         title={
           <Group gap="xs">
             <IconUsers size={20} color="#0ca678" />
@@ -472,6 +478,7 @@ export const AdminConsole: React.FC = () => {
       <Modal
         opened={aliasModalOpened}
         onClose={closeAliasModal}
+        fullScreen={isMobile}
         title={
           <Group gap="xs">
             <IconAt size={20} color="#0ca678" />

@@ -29,12 +29,20 @@ import {
   IconMailCheck,
   IconArrowLeft,
   IconDownload,
+  IconEye,
 } from "@tabler/icons-react";
 import DOMPurify from "dompurify";
 import dayjs from "dayjs";
 import { notifications } from "@mantine/notifications";
 import { EmailMessage, Attachment, Alias } from "../types";
 import { api } from "../api";
+import {
+  AttachmentPreviewModal,
+  AttachmentPreviewTarget,
+  getFileIcon,
+  getFileCategory,
+  formatBytes,
+} from "./AttachmentPreviewModal";
 
 interface EmailDetailProps {
   message: EmailMessage | null;
@@ -45,6 +53,7 @@ interface EmailDetailProps {
   onReply: (message: EmailMessage) => void;
   aliases: Alias[];
   onBack?: () => void;
+  onAttachmentRemoved?: (attachmentId: string) => void;
 }
 
 export const EmailDetail: React.FC<EmailDetailProps> = ({
@@ -56,6 +65,7 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   onReply,
   aliases,
   onBack,
+  onAttachmentRemoved,
 }) => {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -66,6 +76,48 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   const [quickReplyText, setQuickReplyText] = useState("");
   const [sendingQuickReply, setSendingQuickReply] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<AttachmentPreviewTarget | null>(null);
+  const [previewOpened, setPreviewOpened] = useState(false);
+
+  const handleOpenPreview = (att: Attachment) => {
+    const size = (att as any).size || att.size_bytes || 0;
+    setPreviewTarget({
+      id: att.id,
+      name: att.filename,
+      size,
+      type: att.mime_type || att.content_type,
+      attachmentId: att.id,
+    });
+    setPreviewOpened(true);
+  };
+
+  const handleRemoveAttachment = async (id: string) => {
+    setDeletingAttachmentId(id);
+    try {
+      await api.deleteAttachment(id);
+      notifications.show({
+        title: "Attachment Removed",
+        message: "The attachment has been permanently removed from this message",
+        color: "teal",
+      });
+      if (previewTarget?.id === id) {
+        setPreviewOpened(false);
+        setPreviewTarget(null);
+      }
+      if (onAttachmentRemoved) {
+        onAttachmentRemoved(id);
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: "Removal Failed",
+        message: err.message || "Failed to remove attachment",
+        color: "red",
+      });
+    } finally {
+      setDeletingAttachmentId(null);
+    }
+  };
 
   const handleDownload = async (att: Attachment) => {
     setDownloadingId(att.id);
@@ -315,24 +367,102 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
           {/* ATTACHMENTS (IF ANY) */}
           {attachments.length > 0 && (
             <Paper p="sm" withBorder radius="md" bg="gray.0">
-              <Text size="xs" fw={700} c="dimmed" mb={8}>
-                ATTACHMENTS ({attachments.length})
-              </Text>
+              <Group justify="space-between" mb={8}>
+                <Group gap={6}>
+                  <IconPaperclip size={16} color="#0ca678" />
+                  <Text size="xs" fw={700} c="teal.9">
+                    ATTACHMENTS ({attachments.length})
+                  </Text>
+                </Group>
+                <Text size="11px" c="dimmed">
+                  Total: {formatBytes(attachments.reduce((sum, a) => sum + ((a as any).size || a.size_bytes || 0), 0))}
+                </Text>
+              </Group>
+
               <Group gap="xs" wrap="wrap">
-                {attachments.map((att) => (
-                  <Button
-                    key={att.id}
-                    size="xs"
-                    variant="white"
-                    color="teal"
-                    loading={downloadingId === att.id}
-                    leftSection={<IconDownload size={14} />}
-                    onClick={() => handleDownload(att)}
-                    style={{ border: "1px solid #ced4da", textTransform: "none" }}
-                  >
-                    {att.filename} ({Math.round(((att as any).size || att.size_bytes || 0) / 1024)} KB)
-                  </Button>
-                ))}
+                {attachments.map((att) => {
+                  const fileSize = (att as any).size || att.size_bytes || 0;
+                  const category = getFileCategory(att.filename, att.mime_type || att.content_type);
+                  const isDeleting = deletingAttachmentId === att.id;
+
+                  return (
+                    <Paper
+                      key={att.id}
+                      withBorder
+                      radius="md"
+                      p="xs"
+                      bg="white"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        border: "1px solid #ced4da",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      <Box style={{ display: "flex", alignItems: "center" }}>
+                        {getFileIcon(category, 20)}
+                      </Box>
+
+                      <Box
+                        style={{ cursor: "pointer", maxWidth: 190 }}
+                        onClick={() => handleOpenPreview(att)}
+                        title={`Click to preview "${att.filename}"`}
+                      >
+                        <Text size="xs" fw={600} truncate>
+                          {att.filename}
+                        </Text>
+                        <Text size="11px" c="dimmed">
+                          {formatBytes(fileSize)}
+                        </Text>
+                      </Box>
+
+                      <Group gap={4} ml="xs">
+                        <Tooltip label="Preview attachment">
+                          <ActionIcon
+                            size="sm"
+                            variant="light"
+                            color="teal"
+                            aria-label="Preview attachment"
+                            onClick={() => handleOpenPreview(att)}
+                          >
+                            <IconEye size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+
+                        <Tooltip label="Download file">
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="gray"
+                            aria-label="Download file"
+                            loading={downloadingId === att.id}
+                            onClick={() => handleDownload(att)}
+                          >
+                            <IconDownload size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+
+                        <Tooltip label="Remove attachment from message">
+                          <ActionIcon
+                            size="sm"
+                            variant="subtle"
+                            color="red"
+                            aria-label="Remove attachment from message"
+                            loading={isDeleting}
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to remove "${att.filename}" from this email?`)) {
+                                handleRemoveAttachment(att.id);
+                              }
+                            }}
+                          >
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Paper>
+                  );
+                })}
               </Group>
             </Paper>
           )}
@@ -399,6 +529,15 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
           </Box>
         </Stack>
       </ScrollArea>
+
+      {/* ATTACHMENT PREVIEW MODAL */}
+      <AttachmentPreviewModal
+        opened={previewOpened}
+        onClose={() => setPreviewOpened(false)}
+        target={previewTarget}
+        onRemove={handleRemoveAttachment}
+        canRemove={true}
+      />
     </Box>
   );
 };

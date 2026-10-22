@@ -8,7 +8,7 @@ import { CONFIG } from "./config";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { queryD1, executeD1 } from "./d1";
-import { getFromR2 } from "./r2";
+import { getFromR2, deleteFromR2 } from "./r2";
 import {
   requireAuth,
   requireAdmin,
@@ -348,8 +348,46 @@ app.post("/api/inbound/webhook", async (req: Request, res: Response) => {
 });
 
 // ----------------------------------------------------
-// ATTACHMENT DOWNLOAD ENDPOINT
+// ATTACHMENT ENDPOINTS (DOWNLOAD, PREVIEW, REMOVE)
 // ----------------------------------------------------
+function inferMimeType(filename: string, fallback?: string): string {
+  if (fallback && fallback !== "application/octet-stream" && fallback.includes("/")) {
+    return fallback;
+  }
+  const ext = path.extname(filename).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".bmp": "image/bmp",
+    ".ico": "image/x-icon",
+    ".pdf": "application/pdf",
+    ".txt": "text/plain; charset=utf-8",
+    ".csv": "text/csv; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".ts": "text/plain; charset=utf-8",
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".xml": "application/xml; charset=utf-8",
+    ".md": "text/markdown; charset=utf-8",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".zip": "application/zip",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  };
+  return mimeMap[ext] || fallback || "application/octet-stream";
+}
+
 app.get("/api/attachments/:id/download", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -380,7 +418,7 @@ app.get("/api/attachments/:id/download", requireAuth, async (req: AuthenticatedR
     }
 
     const filename = att.filename || "attachment";
-    const mimeType = att.mime_type || att.content_type || fileData.contentType || "application/octet-stream";
+    const mimeType = inferMimeType(filename, att.mime_type || att.content_type || fileData.contentType);
 
     res.setHeader("Content-Type", mimeType);
     res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
@@ -388,6 +426,84 @@ app.get("/api/attachments/:id/download", requireAuth, async (req: AuthenticatedR
   } catch (err: any) {
     console.error("Download attachment error:", err);
     res.status(500).json({ error: err.message || "Failed to download attachment" });
+  }
+});
+
+app.get("/api/attachments/:id/preview", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const rows = await queryD1<{
+      id: string;
+      message_id: string;
+      filename: string;
+      content_type: string;
+      mime_type: string;
+      r2_key: string;
+    }>(`SELECT * FROM message_attachments WHERE id = ? LIMIT 1`, [id]);
+
+    const att = rows[0];
+    if (!att) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    if (!att.r2_key) {
+      res.status(404).json({ error: "Attachment file key missing in database" });
+      return;
+    }
+
+    const fileData = await getFromR2(att.r2_key);
+    if (!fileData) {
+      res.status(404).json({ error: "File not found in R2 storage" });
+      return;
+    }
+
+    const filename = att.filename || "attachment";
+    const mimeType = inferMimeType(filename, att.mime_type || att.content_type || fileData.contentType);
+
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.send(fileData.buffer);
+  } catch (err: any) {
+    console.error("Preview attachment error:", err);
+    res.status(500).json({ error: err.message || "Failed to preview attachment" });
+  }
+});
+
+app.delete("/api/attachments/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const rows = await queryD1<{
+      id: string;
+      message_id: string;
+      filename: string;
+      r2_key: string;
+    }>(`SELECT * FROM message_attachments WHERE id = ? LIMIT 1`, [id]);
+
+    const att = rows[0];
+    if (!att) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    // Delete object from R2 bucket if r2_key exists
+    if (att.r2_key) {
+      await deleteFromR2(att.r2_key);
+    }
+
+    // Delete record from database
+    await executeD1(`DELETE FROM message_attachments WHERE id = ?`, [id]);
+
+    res.json({
+      success: true,
+      id,
+      messageId: att.message_id,
+      filename: att.filename,
+    });
+  } catch (err: any) {
+    console.error("Delete attachment error:", err);
+    res.status(500).json({ error: err.message || "Failed to delete attachment" });
   }
 });
 
@@ -420,12 +536,20 @@ app.post("/api/ai/quick-replies", requireAuth, async (req: AuthenticatedRequest,
 
 app.post("/api/ai/draft", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { prompt, tone, recipient, subject } = req.body;
+    const { prompt, tone, recipient, subject, from, senderName } = req.body;
     if (!prompt && !subject) {
       res.status(400).json({ error: "Either prompt or subject is required" });
       return;
     }
-    const draft = await draftEmailWithAI(prompt || "", tone || "professional", recipient, subject || "");
+    const draft = await draftEmailWithAI(
+      prompt || "",
+      tone || "professional",
+      recipient || "",
+      subject || "",
+      from || req.user?.email || "",
+      senderName || "",
+      req.user?.name || ""
+    );
     res.json(draft);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -597,10 +721,22 @@ app.get("/api/admin/stats", requireAdmin, async (req: AuthenticatedRequest, res:
 });
 
 // ----------------------------------------------------
-// STATIC FRONTEND ASSETS
+// STATIC FRONTEND ASSETS & PWA SUPPORT
 // ----------------------------------------------------
 const clientDistPath = path.resolve(__dirname, "../../dist/client");
-app.use(express.static(clientDistPath));
+
+app.get("/manifest.webmanifest", (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+  res.sendFile(path.join(clientDistPath, "manifest.webmanifest"), { dotfiles: "allow" });
+});
+
+app.get("/sw.js", (req: Request, res: Response) => {
+  res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+  res.setHeader("Service-Worker-Allowed", "/");
+  res.sendFile(path.join(clientDistPath, "sw.js"), { dotfiles: "allow" });
+});
+
+app.use(express.static(clientDistPath, { dotfiles: "allow" }));
 
 app.use((req: Request, res: Response) => {
   // If API route not found, 404
@@ -609,7 +745,7 @@ app.use((req: Request, res: Response) => {
     return;
   }
   // Otherwise serve React SPA index.html
-  res.sendFile(path.join(clientDistPath, "index.html"), (err) => {
+  res.sendFile(path.join(clientDistPath, "index.html"), { dotfiles: "allow" }, (err) => {
     if (err) {
       res.status(200).send("LogixMail API Server is running. Frontend build in progress...");
     }

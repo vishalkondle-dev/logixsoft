@@ -15,7 +15,7 @@ export async function uploadToR2(
       Authorization: `Bearer ${CONFIG.CF_API_TOKEN}`,
       "Content-Type": contentType,
     },
-    body: buffer,
+    body: new Uint8Array(buffer),
   });
 
   if (!res.ok) {
@@ -52,3 +52,28 @@ export async function getFromR2(
     contentType,
   };
 }
+
+export async function deleteFromR2(key: string): Promise<boolean> {
+  const url = `https://api.cloudflare.com/client/v4/accounts/${CONFIG.CF_ACCOUNT_ID}/r2/buckets/${R2_BUCKET}/objects/${encodeURIComponent(key)}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${CONFIG.CF_API_TOKEN}`,
+      },
+    });
+
+    if (!res.ok && res.status !== 404) {
+      const err = await res.text();
+      console.error(`Failed to delete object ${key} from R2:`, err);
+      return false;
+    }
+
+    return true;
+  } catch (err: any) {
+    console.error(`Error deleting object ${key} from R2:`, err.message);
+    return false;
+  }
+}
+

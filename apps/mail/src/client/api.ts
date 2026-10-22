@@ -109,6 +109,41 @@ export const api = {
     });
   },
 
+  getAttachmentPreviewUrl(id: string): string {
+    const token = getStoredToken();
+    return `/api/attachments/${id}/preview${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  },
+
+  async fetchAttachmentBlob(id: string): Promise<{ blob: Blob; contentType: string }> {
+    const token = getStoredToken();
+    const res = await fetch(`/api/attachments/${id}/preview`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      // Fallback to download endpoint if needed
+      const dlRes = await fetch(`/api/attachments/${id}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!dlRes.ok) throw new Error("Failed to load attachment");
+      const blob = await dlRes.blob();
+      return {
+        blob,
+        contentType: dlRes.headers.get("content-type") || "application/octet-stream",
+      };
+    }
+    const blob = await res.blob();
+    return {
+      blob,
+      contentType: res.headers.get("content-type") || "application/octet-stream",
+    };
+  },
+
+  async deleteAttachment(id: string): Promise<{ success: boolean; id: string; messageId: string }> {
+    return fetchAPI<{ success: boolean; id: string; messageId: string }>(`/api/attachments/${id}`, {
+      method: "DELETE",
+    });
+  },
+
   async downloadAttachment(id: string, filename: string): Promise<void> {
     const token = getStoredToken();
     const res = await fetch(`/api/attachments/${id}/download`, {
@@ -145,11 +180,13 @@ export const api = {
     prompt: string,
     tone = "professional",
     recipient = "",
-    subject = ""
+    subject = "",
+    from = "",
+    senderName = ""
   ): Promise<{ subject: string; body: string }> {
     return fetchAPI<{ subject: string; body: string }>("/api/ai/draft", {
       method: "POST",
-      body: JSON.stringify({ prompt, tone, recipient, subject }),
+      body: JSON.stringify({ prompt, tone, recipient, subject, from, senderName }),
     });
   },
 

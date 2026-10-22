@@ -36,7 +36,9 @@ export interface Attachment {
   id: string;
   message_id: string;
   filename: string;
-  mime_type: string;
-  size_bytes: number;
-  r2_key: string;
+  mime_type?: string;
+  content_type?: string;
+  size_bytes?: number;
+  size?: number;
+  r2_key?: string;
 }

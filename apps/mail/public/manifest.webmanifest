@@ -1,0 +1,49 @@
+{
+  "name": "LogixMail — Cloudflare Edge Webmail",
+  "short_name": "LogixMail",
+  "description": "High-speed custom domain edge webmail suite on logixsoft.in powered by Cloudflare",
+  "start_url": "/#inbox",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#0ca678",
+  "categories": ["productivity", "communication", "business"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Inbox",
+      "url": "/#inbox",
+      "description": "Open your Inbox"
+    },
+    {
+      "name": "Admin Console",
+      "url": "/#admin",
+      "description": "Manage users and aliases"
+    }
+  ]
+}

@@ -337,6 +337,9 @@ export const App: React.FC = () => {
                   onReply={handleReply}
                   aliases={aliases}
                   onBack={handleDeselectMessage}
+                  onAttachmentRemoved={(attId) =>
+                    setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
+                  }
                 />
               )}
             </Box>
@@ -376,6 +379,9 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onReply={handleReply}
                   aliases={aliases}
+                  onAttachmentRemoved={(attId) =>
+                    setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
+                  }
                 />
               </Box>
             </Box>
@@ -396,6 +402,7 @@ export const App: React.FC = () => {
                 : ""
             }
             defaultInReplyTo={replyToMessage?.id}
+            user={user}
           />
         </Layout>
       )}

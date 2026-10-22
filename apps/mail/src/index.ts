@@ -130,6 +130,7 @@ export async function sendMail(
     socketOptions.secureTransport = "starttls";
   }
 
+  // @ts-ignore - cloudflare:sockets is provided by Cloudflare Workers runtime
   const { connect } = await import("cloudflare:sockets");
   let socket = connect({ hostname: host, port }, socketOptions);
   try {

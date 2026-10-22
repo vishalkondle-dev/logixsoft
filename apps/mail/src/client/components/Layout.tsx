@@ -15,7 +15,10 @@ import {
   Burger,
   Select,
   Indicator,
+  Modal,
+  ThemeIcon,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import {
   IconMail,
@@ -28,6 +31,11 @@ import {
   IconShieldLock,
   IconAt,
   IconCircleCheck,
+  IconDeviceMobileDown,
+  IconBrandChrome,
+  IconBrandApple,
+  IconShare,
+  IconDownload,
 } from "@tabler/icons-react";
 import { User, Alias } from "../types";
 
@@ -64,6 +72,60 @@ export const Layout: React.FC<LayoutProps> = ({
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isSmallPhone = useMediaQuery("(max-width: 480px)");
   const isAdmin = user?.role === "admin" || user?.email === "admin@logixsoft.in";
+
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+  const [isStandalone, setIsStandalone] = React.useState(false);
+  const [pwaModalOpened, setPwaModalOpened] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check if running in standalone PWA mode
+    if (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true
+    ) {
+      setIsStandalone(true);
+    }
+
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      setIsStandalone(true);
+      notifications.show({
+        title: "LogixMail Installed",
+        message: "LogixMail is now installed on your device!",
+        color: "teal",
+      });
+    };
+
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        if (choiceResult?.outcome === "accepted") {
+          setDeferredPrompt(null);
+        }
+      } catch (err) {
+        setPwaModalOpened(true);
+      }
+    } else {
+      setPwaModalOpened(true);
+    }
+  };
 
   const handleSelectFolder = (folder: string) => {
     onSelectFolder(folder);
@@ -126,8 +188,23 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           </Group>
 
-          {/* Right: User Profile & Actions with Realtime Indicator on Avatar */}
+          {/* Right: PWA Install + User Profile & Actions with Realtime Indicator on Avatar */}
           <Group gap="xs" style={{ flexShrink: 0 }}>
+            {!isStandalone && (
+              <Tooltip label="Install LogixMail App" withArrow position="bottom-end">
+                <ActionIcon
+                  variant="light"
+                  color="teal"
+                  size="md"
+                  radius="md"
+                  onClick={handleInstallClick}
+                  aria-label="Install LogixMail Progressive Web App"
+                >
+                  <IconDeviceMobileDown size={18} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
             {user && (
               <Menu shadow="md" width={220} position="bottom-end">
                 <Menu.Target>
@@ -321,6 +398,72 @@ export const Layout: React.FC<LayoutProps> = ({
       <AppShell.Main style={{ height: "calc(100vh - 60px)", overflow: "hidden" }}>
         {children}
       </AppShell.Main>
+
+      {/* PWA Install Guide Modal */}
+      <Modal
+        opened={pwaModalOpened}
+        onClose={() => setPwaModalOpened(false)}
+        title={
+          <Group gap="xs">
+            <Avatar src="/icons/icon-192.png" radius="md" size="sm" />
+            <div>
+              <Text fw={700} size="sm">Install LogixMail App</Text>
+              <Text size="10px" c="dimmed">Progressive Web App</Text>
+            </div>
+          </Group>
+        }
+        centered
+        radius="md"
+        size="md"
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Install LogixMail on your phone, tablet, or desktop for lightning-fast edge performance, standalone window mode, and offline caching.
+          </Text>
+
+          <Box p="xs" style={{ backgroundColor: "#f1fdf8", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+            <Group gap="xs" mb="xs">
+              <ThemeIcon color="teal" size="sm" radius="xl">
+                <IconBrandChrome size={14} />
+              </ThemeIcon>
+              <Text fw={600} size="xs" c="teal.9">Chrome, Edge & Android</Text>
+            </Group>
+            <Text size="xs" c="gray.7">
+              Click the Install icon in the browser address bar, or tap the browser menu <Text span fw={700}>(⋮)</Text> and select <Text span fw={700}>"Install LogixMail"</Text> or <Text span fw={700}>"Add to Home screen"</Text>.
+            </Text>
+          </Box>
+
+          <Box p="xs" style={{ backgroundColor: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+            <Group gap="xs" mb="xs">
+              <ThemeIcon color="gray" size="sm" radius="xl">
+                <IconBrandApple size={14} />
+              </ThemeIcon>
+              <Text fw={600} size="xs">iPhone & iPad (Safari)</Text>
+            </Group>
+            <Text size="xs" c="gray.7">
+              Tap the <Text span fw={700}>Share button</Text> (the square with arrow pointing up <IconShare size={12} style={{ display: "inline", verticalAlign: "middle" }} /> at the bottom of Safari) and choose <Text span fw={700}>"Add to Home Screen"</Text>.
+            </Text>
+          </Box>
+
+          {deferredPrompt && (
+            <Button
+              color="teal"
+              leftSection={<IconDownload size={16} />}
+              onClick={() => {
+                deferredPrompt.prompt();
+                setPwaModalOpened(false);
+              }}
+              fullWidth
+            >
+              Install LogixMail Now
+            </Button>
+          )}
+
+          <Button variant="subtle" color="gray" size="xs" onClick={() => setPwaModalOpened(false)}>
+            Close
+          </Button>
+        </Stack>
+      </Modal>
     </AppShell>
   );
 };

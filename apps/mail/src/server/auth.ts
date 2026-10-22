@@ -27,13 +27,20 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  let token: string | undefined;
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else if (typeof req.query.token === "string" && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
     res.status(401).json({ error: "Missing or invalid authorization token" });
     return;
   }
 
-  const token = authHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(token, CONFIG.JWT_SECRET) as AuthUser;
     req.user = decoded;

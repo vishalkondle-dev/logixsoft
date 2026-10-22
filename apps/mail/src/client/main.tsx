@@ -19,3 +19,18 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </MantineProvider>
   </React.StrictMode>
 );
+
+// Register LogixMail PWA Service Worker
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        console.log("LogixMail Service Worker registered with scope:", reg.scope);
+      })
+      .catch((err) => {
+        console.error("LogixMail Service Worker registration failed:", err);
+      });
+  });
+}
+

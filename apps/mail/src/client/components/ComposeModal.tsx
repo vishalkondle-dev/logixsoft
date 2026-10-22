@@ -29,10 +29,19 @@ import {
   IconX,
   IconFile,
   IconWand,
+  IconEye,
+  IconTrash,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { Alias } from "../types";
+import { Alias, User } from "../types";
 import { api } from "../api";
+import {
+  AttachmentPreviewModal,
+  AttachmentPreviewTarget,
+  getFileIcon,
+  getFileCategory,
+  formatBytes,
+} from "./AttachmentPreviewModal";
 
 interface ComposeModalProps {
   opened: boolean;
@@ -42,6 +51,7 @@ interface ComposeModalProps {
   defaultTo?: string;
   defaultSubject?: string;
   defaultInReplyTo?: string;
+  user?: User | null;
 }
 
 interface AttachedFile {
@@ -60,6 +70,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   defaultTo = "",
   defaultSubject = "",
   defaultInReplyTo,
+  user,
 }) => {
   const [fromAddress, setFromAddress] = useState<string>("");
   const [customLocalPart, setCustomLocalPart] = useState<string>("");
@@ -74,6 +85,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   // Attachments state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
+  const [previewTarget, setPreviewTarget] = useState<AttachmentPreviewTarget | null>(null);
+  const [previewOpened, setPreviewOpened] = useState(false);
 
   // AI Draft generator state
   const [aiOpened, { toggle: toggleAi, open: openAi }] = useDisclosure(false);
@@ -146,8 +159,28 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     }
   };
 
+  const handleOpenPreview = (att: AttachedFile) => {
+    setPreviewTarget({
+      id: att.id,
+      name: att.name,
+      size: att.size,
+      type: att.type,
+      dataUrl: att.base64,
+    });
+    setPreviewOpened(true);
+  };
+
   const handleRemoveAttachment = (id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
+    if (previewTarget?.id === id) {
+      setPreviewOpened(false);
+      setPreviewTarget(null);
+    }
+    notifications.show({
+      title: "Attachment Removed",
+      message: "File has been removed from this draft",
+      color: "gray",
+    });
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -231,7 +264,20 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
 
     setAiLoading(true);
     try {
-      const res = await api.draftAI(targetPrompt, aiTone, to, targetSubject);
+      const selectedAlias = aliases.find((a) => a.address === fromAddress);
+      const senderDisplayName =
+        (selectedAlias?.displayName && selectedAlias.displayName !== selectedAlias.address
+          ? selectedAlias.displayName
+          : user?.name) || "";
+
+      const res = await api.draftAI(
+        targetPrompt,
+        aiTone,
+        to.trim(),
+        targetSubject,
+        fromAddress,
+        senderDisplayName
+      );
       if (res.subject && !subject) {
         setSubject(res.subject);
       }
@@ -265,8 +311,9 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   }));
 
   return (
-    <Modal
-      opened={opened}
+    <>
+      <Modal
+        opened={opened}
       onClose={onClose}
       fullScreen={isMobile}
       title={
@@ -402,7 +449,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           </Text>
         </Group>
 
-        <Collapse in={aiOpened}>
+        <Collapse expanded={aiOpened}>
           <Paper p="sm" withBorder bg="teal.0" radius="md">
             <Stack gap="xs">
               <Group justify="space-between">
@@ -458,32 +505,74 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         {/* ATTACHMENTS LIST CHIPS */}
         {attachments.length > 0 && (
           <Paper p="xs" withBorder radius="md" bg="gray.0">
-            <Group gap="xs" wrap="wrap">
+            <Group justify="space-between" mb={6}>
               <Text size="xs" fw={700} c="dimmed">
                 Attachments ({attachments.length}):
               </Text>
-              {attachments.map((att) => (
-                <Badge
-                  key={att.id}
-                  variant="outline"
-                  color="teal"
-                  size="md"
-                  leftSection={<IconFile size={12} />}
-                  rightSection={
-                    <ActionIcon
-                      size="xs"
-                      color="gray"
-                      variant="subtle"
-                      onClick={() => handleRemoveAttachment(att.id)}
+              <Text size="11px" c="dimmed">
+                Total: {formatBytes(attachments.reduce((sum, a) => sum + a.size, 0))}
+              </Text>
+            </Group>
+            <Group gap="xs" wrap="wrap">
+              {attachments.map((att) => {
+                const category = getFileCategory(att.name, att.type);
+                return (
+                  <Paper
+                    key={att.id}
+                    withBorder
+                    radius="md"
+                    p={4}
+                    px={8}
+                    bg="white"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      border: "1px solid #ced4da",
+                    }}
+                  >
+                    <Box style={{ display: "flex", alignItems: "center" }}>
+                      {getFileIcon(category, 16)}
+                    </Box>
+                    <Box
+                      style={{ cursor: "pointer", maxWidth: 180 }}
+                      onClick={() => handleOpenPreview(att)}
+                      title={`Preview "${att.name}"`}
                     >
-                      <IconX size={10} />
-                    </ActionIcon>
-                  }
-                  style={{ textTransform: "none" }}
-                >
-                  {att.name} ({formatFileSize(att.size)})
-                </Badge>
-              ))}
+                      <Text size="xs" fw={600} truncate>
+                        {att.name}
+                      </Text>
+                      <Text size="10px" c="dimmed">
+                        {formatBytes(att.size)}
+                      </Text>
+                    </Box>
+                    <Group gap={2} ml={4}>
+                      <Tooltip label="Preview attachment">
+                        <ActionIcon
+                          size="xs"
+                          color="teal"
+                          variant="light"
+                          aria-label="Preview attachment"
+                          onClick={() => handleOpenPreview(att)}
+                        >
+                          <IconEye size={12} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label="Remove attachment">
+                        <ActionIcon
+                          size="xs"
+                          color="red"
+                          variant="subtle"
+                          aria-label="Remove attachment"
+                          onClick={() => handleRemoveAttachment(att.id)}
+                        >
+                          <IconTrash size={12} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </Paper>
+                );
+              })}
             </Group>
           </Paper>
         )}
@@ -563,5 +652,15 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         </Group>
       </Stack>
     </Modal>
+
+    {/* ATTACHMENT PREVIEW MODAL */}
+    <AttachmentPreviewModal
+      opened={previewOpened}
+      onClose={() => setPreviewOpened(false)}
+      target={previewTarget}
+      onRemove={handleRemoveAttachment}
+      canRemove={true}
+    />
+  </>
   );
 };

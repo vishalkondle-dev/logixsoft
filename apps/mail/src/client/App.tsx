@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Box } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -12,6 +12,56 @@ import { LoginModal } from "./components/LoginModal";
 import { User, Alias, EmailMessage, Attachment } from "./types";
 import { api, getStoredUser, clearSession, connectRealtime } from "./api";
 
+interface HashRoute {
+  view: "mailbox" | "admin";
+  folder: string;
+  alias: string;
+  selectedId: string | null;
+  adminTab: string;
+}
+
+function parseHash(hashStr: string): HashRoute {
+  const raw = (hashStr || "").replace(/^#\/?/, "");
+  if (!raw) {
+    return { view: "mailbox", folder: "inbox", alias: "all", selectedId: null, adminTab: "users" };
+  }
+
+  const parts = raw.split("/").map(decodeURIComponent);
+  const main = parts[0];
+
+  if (main === "admin") {
+    return {
+      view: "admin",
+      folder: "inbox",
+      alias: "all",
+      selectedId: null,
+      adminTab: parts[1] || "users",
+    };
+  }
+
+  if (main === "alias") {
+    return {
+      view: "mailbox",
+      folder: "inbox",
+      alias: parts[1] || "all",
+      selectedId: parts[2] || null,
+      adminTab: "users",
+    };
+  }
+
+  if (["inbox", "sent", "starred", "trash"].includes(main)) {
+    return {
+      view: "mailbox",
+      folder: main,
+      alias: "all",
+      selectedId: parts[1] || null,
+      adminTab: "users",
+    };
+  }
+
+  return { view: "mailbox", folder: "inbox", alias: "all", selectedId: null, adminTab: "users" };
+}
+
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(getStoredUser());
   const [aliases, setAliases] = useState<Alias[]>([]);
@@ -19,14 +69,19 @@ export const App: React.FC = () => {
 
   const isMobile = useMediaQuery("(max-width: 850px)");
 
-  // Mail navigation
-  const [activeFolder, setActiveFolder] = useState<string>("inbox");
-  const [activeAlias, setActiveAlias] = useState<string>("all");
+  // Initial Route parsed from window.location.hash
+  const initialRoute = parseHash(typeof window !== "undefined" ? window.location.hash : "");
+
+  // Mail & Route state
+  const [currentView, setCurrentView] = useState<"mailbox" | "admin">(initialRoute.view);
+  const [activeFolder, setActiveFolder] = useState<string>(initialRoute.folder);
+  const [activeAlias, setActiveAlias] = useState<string>(initialRoute.alias);
+  const [selectedId, setSelectedId] = useState<string | null>(initialRoute.selectedId);
+  const [adminTab, setAdminTab] = useState<string>(initialRoute.adminTab);
   const [search, setSearch] = useState<string>("");
 
   // Messages state
   const [messages, setMessages] = useState<EmailMessage[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<EmailMessage | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<Attachment[]>([]);
   const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
@@ -36,11 +91,77 @@ export const App: React.FC = () => {
   const [composeOpened, setComposeOpened] = useState<boolean>(false);
   const [replyToMessage, setReplyToMessage] = useState<EmailMessage | null>(null);
 
-  // Admin View state
-  const [currentView, setCurrentView] = useState<"mailbox" | "admin">("mailbox");
-
   // Realtime Status
   const [realtimeStatus, setRealtimeStatus] = useState<"connected" | "disconnected">("disconnected");
+
+  // Hash router sync handler
+  const handleHashSync = useCallback(() => {
+    const route = parseHash(window.location.hash);
+    setCurrentView(route.view);
+    setActiveFolder(route.folder);
+    setActiveAlias(route.alias);
+    setSelectedId(route.selectedId);
+    setAdminTab(route.adminTab);
+  }, []);
+
+  // Listen for hashchange (Back / Forward / Direct URL edit)
+  useEffect(() => {
+    window.addEventListener("hashchange", handleHashSync);
+    // Ensure initial hash exists
+    if (!window.location.hash || window.location.hash === "#") {
+      window.location.hash = "#inbox";
+    }
+    return () => {
+      window.removeEventListener("hashchange", handleHashSync);
+    };
+  }, [handleHashSync]);
+
+  // Navigation action helpers (update window.location.hash directly)
+  const navigateTo = (newHash: string) => {
+    if (window.location.hash !== newHash) {
+      window.location.hash = newHash;
+    }
+  };
+
+  const handleSelectFolder = (folder: string) => {
+    navigateTo(`#${folder}`);
+  };
+
+  const handleSelectAlias = (alias: string) => {
+    if (alias === "all") {
+      navigateTo(`#${activeFolder || "inbox"}`);
+    } else {
+      navigateTo(`#alias/${encodeURIComponent(alias)}`);
+    }
+  };
+
+  const handleSelectMessage = (id: string) => {
+    if (activeAlias !== "all") {
+      navigateTo(`#alias/${encodeURIComponent(activeAlias)}/${id}`);
+    } else {
+      navigateTo(`#${activeFolder}/${id}`);
+    }
+  };
+
+  const handleDeselectMessage = () => {
+    if (activeAlias !== "all") {
+      navigateTo(`#alias/${encodeURIComponent(activeAlias)}`);
+    } else {
+      navigateTo(`#${activeFolder}`);
+    }
+  };
+
+  const handleToggleView = (view: "mailbox" | "admin") => {
+    if (view === "admin") {
+      navigateTo(`#admin/${adminTab || "users"}`);
+    } else {
+      navigateTo(`#${activeFolder || "inbox"}`);
+    }
+  };
+
+  const handleAdminTabChange = (tab: string) => {
+    navigateTo(`#admin/${tab}`);
+  };
 
   // Load Aliases & Initial User Check
   useEffect(() => {
@@ -96,11 +217,7 @@ export const App: React.FC = () => {
     api.getMessages(activeFolder, activeAlias, search)
       .then((res) => {
         setMessages(res.messages);
-        // On desktop, auto-select first message if none selected
-        if (!isMobile && res.messages.length > 0 && !selectedId) {
-          setSelectedId(res.messages[0].id);
-        } else if (res.messages.length === 0) {
-          setSelectedId(null);
+        if (res.messages.length === 0) {
           setSelectedMessage(null);
         }
       })
@@ -153,8 +270,7 @@ export const App: React.FC = () => {
   const handleTrashMessage = async (id: string) => {
     setMessages((prev) => prev.filter((m) => m.id !== id));
     if (selectedId === id) {
-      setSelectedId(null);
-      setSelectedMessage(null);
+      handleDeselectMessage();
     }
     await api.trashMessage(id).catch(() => {});
     notifications.show({ title: "Moved to Trash", message: "Message moved to trash", color: "teal" });
@@ -171,6 +287,7 @@ export const App: React.FC = () => {
     setMessages([]);
     setSelectedId(null);
     setSelectedMessage(null);
+    window.location.hash = "#inbox";
   };
 
   return (
@@ -182,28 +299,20 @@ export const App: React.FC = () => {
           user={user}
           aliases={aliases}
           activeFolder={activeFolder}
-          onSelectFolder={(folder) => {
-            setActiveFolder(folder);
-            setCurrentView("mailbox");
-            if (isMobile) setSelectedId(null);
-          }}
+          onSelectFolder={handleSelectFolder}
           activeAlias={activeAlias}
-          onSelectAlias={(alias) => {
-            setActiveAlias(alias);
-            setCurrentView("mailbox");
-            if (isMobile) setSelectedId(null);
-          }}
+          onSelectAlias={handleSelectAlias}
           onOpenCompose={() => {
             setReplyToMessage(null);
             setComposeOpened(true);
           }}
           onLogout={handleLogout}
           currentView={currentView}
-          onToggleView={setCurrentView}
+          onToggleView={handleToggleView}
           realtimeStatus={realtimeStatus}
         >
           {currentView === "admin" ? (
-            <AdminConsole />
+            <AdminConsole activeTab={adminTab} onTabChange={handleAdminTabChange} />
           ) : isMobile ? (
             /* MOBILE SINGLE PANE VIEW */
             <Box style={{ height: "100%", width: "100%" }}>
@@ -211,7 +320,7 @@ export const App: React.FC = () => {
                 <EmailList
                   messages={messages}
                   selectedId={selectedId}
-                  onSelect={(id) => setSelectedId(id)}
+                  onSelect={handleSelectMessage}
                   onToggleStar={handleToggleStar}
                   search={search}
                   onSearchChange={setSearch}
@@ -227,7 +336,7 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onReply={handleReply}
                   aliases={aliases}
-                  onBack={() => setSelectedId(null)}
+                  onBack={handleDeselectMessage}
                 />
               )}
             </Box>
@@ -248,7 +357,7 @@ export const App: React.FC = () => {
                 <EmailList
                   messages={messages}
                   selectedId={selectedId}
-                  onSelect={(id) => setSelectedId(id)}
+                  onSelect={handleSelectMessage}
                   onToggleStar={handleToggleStar}
                   search={search}
                   onSearchChange={setSearch}

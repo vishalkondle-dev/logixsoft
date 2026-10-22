@@ -34,7 +34,12 @@ import {
 import { notifications } from "@mantine/notifications";
 import { api } from "../api";
 
-export const AdminConsole: React.FC = () => {
+interface AdminConsoleProps {
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
+}
+
+export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users", onTabChange }) => {
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [aliasesData, setAliasesData] = useState<any>(null);
@@ -230,7 +235,7 @@ export const AdminConsole: React.FC = () => {
       </SimpleGrid>
 
       {/* Tabs Section */}
-      <Tabs defaultValue="users" color="teal">
+      <Tabs value={activeTab} onChange={(val) => onTabChange?.(val || "users")} color="teal">
         <Tabs.List>
           <Tabs.Tab value="users" leftSection={<IconUsers size={16} />}>
             Users Management ({users.length})

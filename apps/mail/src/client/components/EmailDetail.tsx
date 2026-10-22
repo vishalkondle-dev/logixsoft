@@ -28,6 +28,7 @@ import {
   IconSend,
   IconMailCheck,
   IconArrowLeft,
+  IconDownload,
 } from "@tabler/icons-react";
 import DOMPurify from "dompurify";
 import dayjs from "dayjs";
@@ -64,6 +65,27 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
 
   const [quickReplyText, setQuickReplyText] = useState("");
   const [sendingQuickReply, setSendingQuickReply] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownload = async (att: Attachment) => {
+    setDownloadingId(att.id);
+    try {
+      await api.downloadAttachment(att.id, att.filename);
+      notifications.show({
+        title: "Download Started",
+        message: `Downloading ${att.filename}`,
+        color: "teal",
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: "Download Failed",
+        message: err.message || "Failed to download attachment",
+        color: "red",
+      });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   // Reset AI states when selected message changes
   useEffect(() => {
@@ -292,25 +314,27 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
 
           {/* ATTACHMENTS (IF ANY) */}
           {attachments.length > 0 && (
-            <div>
-              <Text size="xs" fw={700} c="dimmed" mb={6}>
+            <Paper p="sm" withBorder radius="md" bg="gray.0">
+              <Text size="xs" fw={700} c="dimmed" mb={8}>
                 ATTACHMENTS ({attachments.length})
               </Text>
-              <Group gap="xs">
+              <Group gap="xs" wrap="wrap">
                 {attachments.map((att) => (
-                  <Badge
+                  <Button
                     key={att.id}
-                    size="lg"
-                    variant="outline"
+                    size="xs"
+                    variant="white"
                     color="teal"
-                    leftSection={<IconPaperclip size={14} />}
-                    style={{ textTransform: "none", cursor: "pointer" }}
+                    loading={downloadingId === att.id}
+                    leftSection={<IconDownload size={14} />}
+                    onClick={() => handleDownload(att)}
+                    style={{ border: "1px solid #ced4da", textTransform: "none" }}
                   >
-                    {att.filename} ({Math.round(att.size_bytes / 1024)} KB)
-                  </Badge>
+                    {att.filename} ({Math.round(((att as any).size || att.size_bytes || 0) / 1024)} KB)
+                  </Button>
                 ))}
               </Group>
-            </div>
+            </Paper>
           )}
 
           {/* QUICK REPLIES BAR */}

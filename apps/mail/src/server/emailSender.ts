@@ -1,6 +1,14 @@
 import { CONFIG } from "./config";
 import { executeD1 } from "./d1";
 import { broadcastSSE } from "./sse";
+import { uploadToR2 } from "./r2";
+
+export interface OutboundAttachment {
+  name: string;
+  type?: string;
+  size?: number;
+  base64: string;
+}
 
 export interface SendEmailPayload {
   userId: string;
@@ -14,6 +22,7 @@ export interface SendEmailPayload {
   text?: string;
   inReplyTo?: string;
   referencesHeader?: string;
+  attachments?: OutboundAttachment[];
 }
 
 export async function sendEmailViaCloudflare(payload: SendEmailPayload) {
@@ -40,6 +49,16 @@ export async function sendEmailViaCloudflare(payload: SendEmailPayload) {
 
   if (payload.cc && payload.cc.length > 0) requestBody.cc = payload.cc;
   if (payload.bcc && payload.bcc.length > 0) requestBody.bcc = payload.bcc;
+
+  // Map attachments for Cloudflare Email Sending REST API
+  if (payload.attachments && payload.attachments.length > 0) {
+    requestBody.attachments = payload.attachments.map((att) => ({
+      content: att.base64.includes(",") ? att.base64.split(",")[1] : att.base64,
+      filename: att.name,
+      type: att.type || "application/octet-stream",
+      disposition: "attachment",
+    }));
+  }
 
   const headers: Record<string, string> = {};
   if (payload.inReplyTo) headers["In-Reply-To"] = payload.inReplyTo;
@@ -92,6 +111,30 @@ export async function sendEmailViaCloudflare(payload: SendEmailPayload) {
         payload.referencesHeader || null,
       ]
     );
+
+    // Save attachments to R2 & D1
+    if (payload.attachments && payload.attachments.length > 0) {
+      for (const att of payload.attachments) {
+        try {
+          const rawBase64 = att.base64.includes(",") ? att.base64.split(",")[1] : att.base64;
+          const buffer = Buffer.from(rawBase64, "base64");
+          const r2Key = `attachments/${messageId}/${att.name}`;
+          await uploadToR2(r2Key, buffer, att.type || "application/octet-stream");
+
+          const attId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          const sizeBytes = att.size || buffer.length;
+          const mimeType = att.type || "application/octet-stream";
+
+          await executeD1(
+            `INSERT INTO message_attachments (id, message_id, filename, content_type, mime_type, size, size_bytes, r2_key)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [attId, messageId, att.name, mimeType, mimeType, sizeBytes, sizeBytes, r2Key]
+          );
+        } catch (attErr: any) {
+          console.warn(`Could not save attachment ${att.name}:`, attErr.message);
+        }
+      }
+    }
   } catch (err: any) {
     console.warn("Could not save outbound message to D1:", err.message);
   }

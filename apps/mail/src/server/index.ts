@@ -8,6 +8,7 @@ import { CONFIG } from "./config";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import { queryD1, executeD1 } from "./d1";
+import { getFromR2 } from "./r2";
 import {
   requireAuth,
   requireAdmin,
@@ -256,7 +257,7 @@ app.post("/api/messages/:id/trash", requireAuth, async (req: AuthenticatedReques
 // ----------------------------------------------------
 app.post("/api/messages/send", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { fromAddress, fromName, to, cc, bcc, subject, html, text, inReplyTo, referencesHeader } = req.body;
+    const { fromAddress, fromName, to, cc, bcc, subject, html, text, inReplyTo, referencesHeader, attachments } = req.body;
 
     if (!fromAddress || !to || !subject || !html) {
       res.status(400).json({ error: "Missing required fields (fromAddress, to, subject, html)" });
@@ -275,6 +276,7 @@ app.post("/api/messages/send", requireAuth, async (req: AuthenticatedRequest, re
       text,
       inReplyTo,
       referencesHeader,
+      attachments,
     });
 
     res.json(result);
@@ -346,6 +348,50 @@ app.post("/api/inbound/webhook", async (req: Request, res: Response) => {
 });
 
 // ----------------------------------------------------
+// ATTACHMENT DOWNLOAD ENDPOINT
+// ----------------------------------------------------
+app.get("/api/attachments/:id/download", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const rows = await queryD1<{
+      id: string;
+      message_id: string;
+      filename: string;
+      content_type: string;
+      mime_type: string;
+      r2_key: string;
+    }>(`SELECT * FROM message_attachments WHERE id = ? LIMIT 1`, [id]);
+
+    const att = rows[0];
+    if (!att) {
+      res.status(404).json({ error: "Attachment not found" });
+      return;
+    }
+
+    if (!att.r2_key) {
+      res.status(404).json({ error: "Attachment file key missing in database" });
+      return;
+    }
+
+    const fileData = await getFromR2(att.r2_key);
+    if (!fileData) {
+      res.status(404).json({ error: "File not found in R2 storage" });
+      return;
+    }
+
+    const filename = att.filename || "attachment";
+    const mimeType = att.mime_type || att.content_type || fileData.contentType || "application/octet-stream";
+
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.send(fileData.buffer);
+  } catch (err: any) {
+    console.error("Download attachment error:", err);
+    res.status(500).json({ error: err.message || "Failed to download attachment" });
+  }
+});
+
+// ----------------------------------------------------
 // AI ASSISTANT ENDPOINTS
 // ----------------------------------------------------
 app.post("/api/ai/summarize", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -374,12 +420,12 @@ app.post("/api/ai/quick-replies", requireAuth, async (req: AuthenticatedRequest,
 
 app.post("/api/ai/draft", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { prompt, tone, recipient } = req.body;
-    if (!prompt) {
-      res.status(400).json({ error: "prompt is required" });
+    const { prompt, tone, recipient, subject } = req.body;
+    if (!prompt && !subject) {
+      res.status(400).json({ error: "Either prompt or subject is required" });
       return;
     }
-    const draft = await draftEmailWithAI(prompt, tone || "professional", recipient);
+    const draft = await draftEmailWithAI(prompt || "", tone || "professional", recipient, subject || "");
     res.json(draft);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

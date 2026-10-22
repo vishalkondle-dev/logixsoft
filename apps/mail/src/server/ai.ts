@@ -65,24 +65,50 @@ ${body.slice(0, 2000)}`;
   ];
 }
 
-export async function draftEmailWithAI(prompt: string, tone = "professional", recipient = ""): Promise<{ subject: string; body: string }> {
-  const fullPrompt = `Draft a ${tone} email based on this instruction:
-"${prompt}"
+export async function draftEmailWithAI(
+  prompt: string,
+  tone = "professional",
+  recipient = "",
+  existingSubject = ""
+): Promise<{ subject: string; body: string }> {
+  let instruction = "";
+  if (prompt && prompt.trim()) {
+    instruction = `Prompt/Instruction: "${prompt.trim()}"`;
+    if (existingSubject && existingSubject.trim()) {
+      instruction += `\nSubject provided by user: "${existingSubject.trim()}" (Draft the email body to match this subject).`;
+    }
+  } else if (existingSubject && existingSubject.trim()) {
+    instruction = `The user provided the email Subject: "${existingSubject.trim()}". Write a complete, relevant, and well-structured email body for this subject.`;
+  } else {
+    instruction = "Write a courteous follow-up email.";
+  }
+
+  const fullPrompt = `You are an expert email copywriter. Draft a ${tone} email according to this request:
+${instruction}
 ${recipient ? `Recipient: ${recipient}` : ""}
 
 Return the response in this exact format:
-Subject: <Suggested Subject Line>
+Subject: <Suggested Subject Line or echo the user's subject>
 
-<Email Body text>`;
+<Email Body text (use standard paragraphs, polite greeting, clear core message, and sign-off)>`;
 
   const raw = await runWorkersAI("@cf/meta/llama-3.1-8b-instruct", [
-    { role: "system", content: `You are an expert email copywriter. Write a clean, well-formatted, ${tone} email.` },
+    {
+      role: "system",
+      content: `You are an executive email copywriter. Write a polished, well-formatted, ${tone} email without conversational intro, markdown fence codeblocks, or trailing explanation.`,
+    },
     { role: "user", content: fullPrompt },
   ]);
 
   const subjectMatch = raw.match(/Subject:\s*(.*)/i);
-  const subject = subjectMatch ? subjectMatch[1].trim() : "Follow up";
-  const body = raw.replace(/Subject:\s*.*(\r?\n)+/i, "").trim();
+  const subject =
+    existingSubject && existingSubject.trim()
+      ? existingSubject.trim()
+      : subjectMatch
+      ? subjectMatch[1].trim()
+      : "Follow up";
+
+  const body = raw.replace(/^Subject:\s*.*(\r?\n)+/im, "").trim();
 
   return { subject, body };
 }

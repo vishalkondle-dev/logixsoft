@@ -5,16 +5,15 @@ import {
   Text,
   Button,
   Stack,
-  Badge,
   Avatar,
   Menu,
   ActionIcon,
   Tooltip,
   Divider,
-  ScrollArea,
   NavLink,
   Box,
   Burger,
+  Select,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import {
@@ -28,8 +27,6 @@ import {
   IconShieldLock,
   IconAt,
   IconCircleCheck,
-  IconWifi,
-  IconWifiOff,
 } from "@tabler/icons-react";
 import { User, Alias } from "../types";
 
@@ -69,11 +66,17 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const handleSelectFolder = (folder: string) => {
     onSelectFolder(folder);
+    if (currentView !== "mailbox") {
+      onToggleView("mailbox");
+    }
     close();
   };
 
   const handleSelectAlias = (alias: string) => {
     onSelectAlias(alias);
+    if (currentView !== "mailbox") {
+      onToggleView("mailbox");
+    }
     close();
   };
 
@@ -81,6 +84,14 @@ export const Layout: React.FC<LayoutProps> = ({
     onOpenCompose();
     close();
   };
+
+  const aliasSelectData = [
+    { value: "all", label: "All Inboxes (Catch-All)" },
+    ...aliases.map((a) => ({
+      value: a.address,
+      label: a.displayName && a.displayName !== a.address ? `${a.address} (${a.displayName})` : a.address,
+    })),
+  ];
 
   return (
     <AppShell
@@ -114,22 +125,27 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           </Group>
 
-          {/* Center: Realtime Status & View Switcher */}
-          <Group gap={6} style={{ flexShrink: 1, overflow: "hidden" }}>
-            <Badge
-              size="xs"
-              variant="light"
-              color={realtimeStatus === "connected" ? "teal" : "red"}
-              leftSection={
-                realtimeStatus === "connected" ? (
-                  <IconWifi size={11} color="#0ca678" />
-                ) : (
-                  <IconWifiOff size={11} color="red" />
-                )
-              }
+          {/* Center: Sleek Realtime Indicator Dot + View Switcher */}
+          <Group gap="xs" style={{ flexShrink: 1, overflow: "hidden" }}>
+            {/* Realtime Status Indicator (Green glowing dot, no loud text badge) */}
+            <Tooltip
+              label={realtimeStatus === "connected" ? "Realtime sync active" : "Reconnecting to edge..."}
+              withArrow
+              position="bottom"
             >
-              {isSmallPhone ? "Live" : realtimeStatus === "connected" ? "Live Realtime" : "Reconnecting"}
-            </Badge>
+              <Group gap={6} align="center" style={{ cursor: "default", padding: "4px 6px" }}>
+                <Box
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: "50%",
+                    backgroundColor: realtimeStatus === "connected" ? "#0ca678" : "#fa5252",
+                    boxShadow: realtimeStatus === "connected" ? "0 0 8px rgba(12, 166, 120, 0.9)" : "none",
+                    transition: "all 0.3s ease",
+                  }}
+                />
+              </Group>
+            </Tooltip>
 
             {isAdmin && (
               <Group gap={2} p={2} bg="gray.1" style={{ borderRadius: 6 }}>
@@ -142,7 +158,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     close();
                   }}
                   leftSection={!isSmallPhone ? <IconInbox size={12} /> : undefined}
-                  style={{ fontSize: 11, padding: "0 6px" }}
+                  style={{ fontSize: 11, padding: "0 8px" }}
                 >
                   Mail
                 </Button>
@@ -155,7 +171,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     close();
                   }}
                   leftSection={!isSmallPhone ? <IconShieldLock size={12} /> : undefined}
-                  style={{ fontSize: 11, padding: "0 6px" }}
+                  style={{ fontSize: 11, padding: "0 8px" }}
                 >
                   Admin
                 </Button>
@@ -220,7 +236,33 @@ export const Layout: React.FC<LayoutProps> = ({
             Compose
           </Button>
 
-          <Divider my={6} />
+          <Divider my={4} />
+
+          {/* MAILBOX SELECT BOX (Item 5: Filter by Mailbox / Alias) */}
+          <Box px="xs">
+            <Text size="xs" fw={700} c="dimmed" mb={4}>
+              SELECT MAILBOX / ALIAS
+            </Text>
+            <Select
+              size="xs"
+              leftSection={<IconAt size={14} color="#0ca678" />}
+              data={aliasSelectData}
+              value={activeAlias}
+              onChange={(val) => handleSelectAlias(val || "all")}
+              allowDeselect={false}
+              comboboxProps={{ shadow: "md", transitionProps: { transition: "pop-top-left", duration: 150 } }}
+              styles={{
+                input: {
+                  backgroundColor: "#ffffff",
+                  borderColor: "#dee2e6",
+                  fontWeight: 600,
+                  fontSize: 12,
+                },
+              }}
+            />
+          </Box>
+
+          <Divider my={4} />
 
           {/* FOLDERS LIST */}
           <Text size="xs" fw={700} c="dimmed" px="xs">
@@ -231,71 +273,61 @@ export const Layout: React.FC<LayoutProps> = ({
             <NavLink
               label="Inbox"
               leftSection={<IconInbox size={18} />}
-              active={activeFolder === "inbox"}
+              active={currentView === "mailbox" && activeFolder === "inbox"}
               onClick={() => handleSelectFolder("inbox")}
               color="teal"
-              style={{ borderRadius: 8, fontWeight: activeFolder === "inbox" ? 700 : 500 }}
+              style={{ borderRadius: 8, fontWeight: currentView === "mailbox" && activeFolder === "inbox" ? 700 : 500 }}
             />
             <NavLink
               label="Sent"
               leftSection={<IconSend size={18} />}
-              active={activeFolder === "sent"}
+              active={currentView === "mailbox" && activeFolder === "sent"}
               onClick={() => handleSelectFolder("sent")}
               color="teal"
-              style={{ borderRadius: 8, fontWeight: activeFolder === "sent" ? 700 : 500 }}
+              style={{ borderRadius: 8, fontWeight: currentView === "mailbox" && activeFolder === "sent" ? 700 : 500 }}
             />
             <NavLink
               label="Starred"
               leftSection={<IconStar size={18} />}
-              active={activeFolder === "starred"}
+              active={currentView === "mailbox" && activeFolder === "starred"}
               onClick={() => handleSelectFolder("starred")}
               color="teal"
-              style={{ borderRadius: 8, fontWeight: activeFolder === "starred" ? 700 : 500 }}
+              style={{ borderRadius: 8, fontWeight: currentView === "mailbox" && activeFolder === "starred" ? 700 : 500 }}
             />
             <NavLink
               label="Trash"
               leftSection={<IconTrash size={18} />}
-              active={activeFolder === "trash"}
+              active={currentView === "mailbox" && activeFolder === "trash"}
               onClick={() => handleSelectFolder("trash")}
               color="teal"
-              style={{ borderRadius: 8, fontWeight: activeFolder === "trash" ? 700 : 500 }}
+              style={{ borderRadius: 8, fontWeight: currentView === "mailbox" && activeFolder === "trash" ? 700 : 500 }}
             />
           </Stack>
 
-          <Divider my={6} />
-
-          {/* CUSTOM ALIASES FILTER */}
-          <Group justify="space-between" px="xs">
-            <Text size="xs" fw={700} c="dimmed">
-              CUSTOM ALIASES
-            </Text>
-            <Badge size="xs" color="teal" variant="light">
-              Catch-All
-            </Badge>
-          </Group>
-
-          <ScrollArea style={{ flex: 1 }}>
-            <Stack gap={2}>
+          {/* ADMIN SIDEBAR ITEM (Item 4: Admin in Sidebar) */}
+          {isAdmin && (
+            <>
+              <Divider my={4} />
+              <Text size="xs" fw={700} c="dimmed" px="xs">
+                MANAGEMENT
+              </Text>
               <NavLink
-                label="All Inboxes"
-                active={activeAlias === "all"}
-                onClick={() => handleSelectAlias("all")}
+                label="Admin Console"
+                description="Users, Aliases & Routing"
+                leftSection={<IconShieldLock size={18} />}
+                active={currentView === "admin"}
+                onClick={() => {
+                  onToggleView("admin");
+                  close();
+                }}
                 color="teal"
-                style={{ borderRadius: 8, fontWeight: activeAlias === "all" ? 700 : 500 }}
+                style={{ borderRadius: 8, fontWeight: currentView === "admin" ? 700 : 500 }}
               />
-              {aliases.map((alias) => (
-                <NavLink
-                  key={alias.id}
-                  label={alias.address}
-                  description={alias.displayName}
-                  active={activeAlias === alias.address}
-                  onClick={() => handleSelectAlias(alias.address)}
-                  color="teal"
-                  style={{ borderRadius: 8, fontSize: 13 }}
-                />
-              ))}
-            </Stack>
-          </ScrollArea>
+            </>
+          )}
+
+          {/* Spacer to push footer to bottom */}
+          <Box style={{ flex: 1 }} />
 
           {/* FOOTER INFO */}
           <Box p="xs" bg="teal.0" style={{ borderRadius: 8 }}>

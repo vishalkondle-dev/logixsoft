@@ -101,11 +101,29 @@ export const api = {
     html: string;
     text?: string;
     inReplyTo?: string;
+    attachments?: Array<{ name: string; type: string; size: number; base64: string }>;
   }): Promise<{ success: boolean; messageId: string }> {
     return fetchAPI<{ success: boolean; messageId: string }>("/api/messages/send", {
       method: "POST",
       body: JSON.stringify(payload),
     });
+  },
+
+  async downloadAttachment(id: string, filename: string): Promise<void> {
+    const token = getStoredToken();
+    const res = await fetch(`/api/attachments/${id}/download`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error("Failed to download attachment");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   },
 
   // AI Assistant
@@ -123,10 +141,15 @@ export const api = {
     });
   },
 
-  async draftAI(prompt: string, tone = "professional", recipient = ""): Promise<{ subject: string; body: string }> {
+  async draftAI(
+    prompt: string,
+    tone = "professional",
+    recipient = "",
+    subject = ""
+  ): Promise<{ subject: string; body: string }> {
     return fetchAPI<{ subject: string; body: string }>("/api/ai/draft", {
       method: "POST",
-      body: JSON.stringify({ prompt, tone, recipient }),
+      body: JSON.stringify({ prompt, tone, recipient, subject }),
     });
   },
 

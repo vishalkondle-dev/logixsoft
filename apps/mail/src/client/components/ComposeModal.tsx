@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Modal,
   TextInput,
@@ -12,6 +12,8 @@ import {
   Paper,
   Box,
   Collapse,
+  Badge,
+  SegmentedControl,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { RichTextEditor, Link } from "@mantine/tiptap";
@@ -22,11 +24,11 @@ import TextAlign from "@tiptap/extension-text-align";
 import {
   IconSend,
   IconSparkles,
-  IconPlus,
   IconAt,
   IconPaperclip,
-  IconChevronDown,
-  IconChevronUp,
+  IconX,
+  IconFile,
+  IconWand,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { Alias } from "../types";
@@ -40,6 +42,14 @@ interface ComposeModalProps {
   defaultTo?: string;
   defaultSubject?: string;
   defaultInReplyTo?: string;
+}
+
+interface AttachedFile {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  base64: string;
 }
 
 export const ComposeModal: React.FC<ComposeModalProps> = ({
@@ -61,9 +71,14 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   const [sending, setSending] = useState(false);
   const isMobile = useMediaQuery("(max-width: 700px)");
 
+  // Attachments state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<AttachedFile[]>([]);
+
   // AI Draft generator state
-  const [aiOpened, { toggle: toggleAi }] = useDisclosure(false);
+  const [aiOpened, { toggle: toggleAi, open: openAi }] = useDisclosure(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [aiTone, setAiTone] = useState("professional");
   const [aiLoading, setAiLoading] = useState(false);
 
   const editor = useEditor({
@@ -86,7 +101,60 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   useEffect(() => {
     setTo(defaultTo);
     setSubject(defaultSubject);
-  }, [defaultTo, defaultSubject]);
+    setAttachments([]);
+  }, [defaultTo, defaultSubject, opened]);
+
+  // Handle File Attachments
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileList = Array.from(files);
+    let currentTotal = attachments.reduce((sum, a) => sum + a.size, 0);
+
+    for (const file of fileList) {
+      if (currentTotal + file.size > 25 * 1024 * 1024) {
+        notifications.show({
+          title: "Attachment Limit Exceeded",
+          message: `Total attachments must be under 25MB. "${file.name}" was skipped.`,
+          color: "red",
+        });
+        continue;
+      }
+
+      currentTotal += file.size;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string) || "";
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            name: file.name,
+            type: file.type || "application/octet-stream",
+            size: file.size,
+            base64,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Reset input so same file can be re-added if desired
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   const handleSend = async () => {
     const finalFrom = isCustomFrom
@@ -110,7 +178,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     setSending(true);
 
     try {
-      const res = await api.sendEmail({
+      await api.sendEmail({
         fromAddress: finalFrom,
         to: to.trim(),
         cc: cc.trim() ? cc.split(",").map((s) => s.trim()) : undefined,
@@ -118,6 +186,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         html,
         text: editor?.getText() || "",
         inReplyTo: defaultInReplyTo,
+        attachments: attachments.map((a) => ({
+          name: a.name,
+          type: a.type,
+          size: a.size,
+          base64: a.base64,
+        })),
       });
 
       notifications.show({
@@ -128,6 +202,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       });
 
       editor?.commands.setContent("<p></p>");
+      setAttachments([]);
       onClose();
     } catch (err: any) {
       notifications.show({
@@ -140,26 +215,39 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     }
   };
 
-  const handleAiDraft = async () => {
-    if (!aiPrompt.trim()) return;
+  // AI Email Writing (Prompt OR Subject)
+  const handleAiDraft = async (useSubjectDirectly = false) => {
+    const targetPrompt = useSubjectDirectly ? "" : aiPrompt.trim();
+    const targetSubject = subject.trim();
+
+    if (!targetPrompt && !targetSubject) {
+      notifications.show({
+        title: "AI Assistant",
+        message: "Please enter a prompt or subject for the AI to write about.",
+        color: "blue",
+      });
+      return;
+    }
+
     setAiLoading(true);
     try {
-      const res = await api.draftAI(aiPrompt, "professional", to);
+      const res = await api.draftAI(targetPrompt, aiTone, to, targetSubject);
       if (res.subject && !subject) {
         setSubject(res.subject);
       }
-      editor?.commands.setContent(
-        res.body
-          .split("\n\n")
-          .map((p) => `<p>${p}</p>`)
-          .join("")
-      );
+      if (res.body) {
+        editor?.commands.setContent(
+          res.body
+            .split("\n\n")
+            .map((p) => `<p>${p}</p>`)
+            .join("")
+        );
+      }
       notifications.show({
-        title: "Draft Generated",
-        message: "Workers AI drafted your email!",
+        title: "Draft Generated with AI",
+        message: `Written using Cloudflare Workers AI (${aiTone} tone)`,
         color: "teal",
       });
-      toggleAi();
     } catch (err: any) {
       notifications.show({
         title: "AI Error",
@@ -193,12 +281,21 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       radius="lg"
     >
       <Stack gap="sm">
-        {/* FROM ADDRESS SELECTOR */}
+        {/* Hidden File Input for Attachments */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          multiple
+          onChange={handleFileSelect}
+        />
+
+        {/* FROM ADDRESS SELECTOR (Select Box) */}
         <Group align="flex-end" gap="xs" wrap="wrap">
           {!isCustomFrom ? (
             <Select
-              label="From"
-              description="Send from any created alias or dynamic address"
+              label="From (Mailbox)"
+              description="Select which address to send from"
               data={aliasOptions}
               value={fromAddress}
               onChange={(val) => setFromAddress(val || "")}
@@ -209,7 +306,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             <TextInput
               label="Custom Dynamic From"
               description={`Type any address on @${domain}`}
-              placeholder="e.g. vip-orders, hello, alex"
+              placeholder="e.g. billing, updates, notifications"
               rightSection={<Text size="xs" c="dimmed">@{domain}</Text>}
               rightSectionWidth={110}
               value={customLocalPart}
@@ -226,7 +323,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             onClick={() => setIsCustomFrom(!isCustomFrom)}
             style={{ marginBottom: 2 }}
           >
-            {isCustomFrom ? "Pick Saved Alias" : "Type New Custom"}
+            {isCustomFrom ? "Pick Mailbox" : "+ Custom Alias"}
           </Button>
         </Group>
 
@@ -261,17 +358,35 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           />
         )}
 
-        {/* SUBJECT */}
+        {/* SUBJECT WITH 1-CLICK AI WRITING */}
         <TextInput
           label="Subject"
           placeholder="Subject of your email"
           value={subject}
           onChange={(e) => setSubject(e.currentTarget.value)}
           size="sm"
+          rightSectionWidth={160}
+          rightSection={
+            subject.trim() ? (
+              <Tooltip label="Generate email body based on this subject">
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  color="teal"
+                  loading={aiLoading}
+                  leftSection={<IconWand size={12} />}
+                  onClick={() => handleAiDraft(true)}
+                  style={{ fontSize: 11 }}
+                >
+                  Write with AI
+                </Button>
+              </Tooltip>
+            ) : null
+          }
         />
 
-        {/* AI PROMPT COLLAPSIBLE BAR */}
-        <Group justify="space-between" mt={4}>
+        {/* AI PROMPT ASSISTANT BAR */}
+        <Group justify="space-between" mt={2}>
           <Button
             variant="light"
             color="teal"
@@ -279,35 +394,99 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
             leftSection={<IconSparkles size={16} />}
             onClick={toggleAi}
           >
-            {aiOpened ? "Hide AI Draft Assistant" : "✨ Draft with Workers AI"}
+            {aiOpened ? "Hide AI Prompt Assistant" : "✨ Write with AI (Prompt or Topic)"}
           </Button>
+
+          <Text size="xs" c="dimmed">
+            Powered by Workers AI Llama 3.1
+          </Text>
         </Group>
 
         <Collapse in={aiOpened}>
           <Paper p="sm" withBorder bg="teal.0" radius="md">
             <Stack gap="xs">
-              <Text size="xs" fw={600} c="teal.9">
-                Describe what you want to say, and Workers AI will draft the email:
-              </Text>
+              <Group justify="space-between">
+                <Text size="xs" fw={700} c="teal.9">
+                  Describe what you want to write, or pick a tone:
+                </Text>
+                <SegmentedControl
+                  size="xs"
+                  color="teal"
+                  value={aiTone}
+                  onChange={setAiTone}
+                  data={[
+                    { label: "Professional", value: "professional" },
+                    { label: "Friendly", value: "friendly" },
+                    { label: "Short & Direct", value: "concise" },
+                    { label: "Persuasive", value: "persuasive" },
+                  ]}
+                />
+              </Group>
+
               <TextInput
-                placeholder="e.g. Accept invitation, confirm Monday 10am meeting, ask for zoom link"
+                placeholder="e.g. Thank client for partnership and share project update with launch next week"
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.currentTarget.value)}
                 size="sm"
+                onKeyDown={(e) => e.key === "Enter" && handleAiDraft(false)}
               />
-              <Group justify="flex-end">
+
+              <Group justify="flex-end" gap="xs">
+                {subject.trim() && (
+                  <Button
+                    size="xs"
+                    variant="default"
+                    loading={aiLoading}
+                    onClick={() => handleAiDraft(true)}
+                  >
+                    Draft from Subject: "{subject.slice(0, 25)}{subject.length > 25 ? '...' : ''}"
+                  </Button>
+                )}
                 <Button
                   size="xs"
                   color="teal"
                   loading={aiLoading}
-                  onClick={handleAiDraft}
+                  onClick={() => handleAiDraft(false)}
                 >
-                  Generate Draft
+                  Generate Email
                 </Button>
               </Group>
             </Stack>
           </Paper>
         </Collapse>
+
+        {/* ATTACHMENTS LIST CHIPS */}
+        {attachments.length > 0 && (
+          <Paper p="xs" withBorder radius="md" bg="gray.0">
+            <Group gap="xs" wrap="wrap">
+              <Text size="xs" fw={700} c="dimmed">
+                Attachments ({attachments.length}):
+              </Text>
+              {attachments.map((att) => (
+                <Badge
+                  key={att.id}
+                  variant="outline"
+                  color="teal"
+                  size="md"
+                  leftSection={<IconFile size={12} />}
+                  rightSection={
+                    <ActionIcon
+                      size="xs"
+                      color="gray"
+                      variant="subtle"
+                      onClick={() => handleRemoveAttachment(att.id)}
+                    >
+                      <IconX size={10} />
+                    </ActionIcon>
+                  }
+                  style={{ textTransform: "none" }}
+                >
+                  {att.name} ({formatFileSize(att.size)})
+                </Badge>
+              ))}
+            </Group>
+          </Paper>
+        )}
 
         {/* MANTINE TIPTAP RICH TEXT EDITOR */}
         <Box mt="xs">
@@ -355,10 +534,16 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         {/* FOOTER ACTIONS */}
         <Group justify="space-between" mt="md">
           <Group gap="xs">
-            <Tooltip label="Attach File (25MB limit)">
-              <ActionIcon variant="light" color="gray" size="lg">
-                <IconPaperclip size={18} />
-              </ActionIcon>
+            <Tooltip label="Attach File (max 25MB total)">
+              <Button
+                variant="light"
+                color="gray"
+                size="sm"
+                leftSection={<IconPaperclip size={16} />}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Attach Files {attachments.length > 0 && `(${attachments.length})`}
+              </Button>
             </Tooltip>
           </Group>
 

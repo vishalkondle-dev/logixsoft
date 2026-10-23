@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Box } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { IconMailFilled } from "@tabler/icons-react";
+import { IconMailFilled, IconAlertOctagon } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { Layout } from "./components/Layout";
 import { EmailList } from "./components/EmailList";
@@ -63,7 +63,7 @@ function parseHash(hashStr: string): HashRoute {
     };
   }
 
-  if (["inbox", "sent", "starred", "trash"].includes(main) || main.startsWith("label:")) {
+  if (["inbox", "sent", "starred", "junk", "trash"].includes(main) || main.startsWith("label:")) {
     return {
       view: "mailbox",
       folder: main,
@@ -278,15 +278,27 @@ export const App: React.FC = () => {
         playNotificationSound();
 
         // Realtime notification toast
-        notifications.show({
-          title: "New Email Received",
-          message: `${email.from_addr}: "${email.subject}"`,
-          color: "teal",
-          icon: <IconMailFilled size={18} />,
-        });
-
-        // Add to active messages list immediately
-        setMessages((prev) => [email, ...prev.filter((m) => m.id !== email.id)]);
+        if (email.status === "junk") {
+          notifications.show({
+            title: "Junk Email Detected",
+            message: `High-risk email (${email.from_addr}) automatically filed in Junk`,
+            color: "orange",
+            icon: <IconAlertOctagon size={18} />,
+          });
+          if (activeFolder === "junk") {
+            setMessages((prev) => [email, ...prev.filter((m) => m.id !== email.id)]);
+          }
+        } else {
+          notifications.show({
+            title: "New Email Received",
+            message: `${email.from_addr}: "${email.subject}"`,
+            color: "teal",
+            icon: <IconMailFilled size={18} />,
+          });
+          if (activeFolder !== "junk" && activeFolder !== "trash") {
+            setMessages((prev) => [email, ...prev.filter((m) => m.id !== email.id)]);
+          }
+        }
       },
       (status) => {
         setRealtimeStatus(status);
@@ -473,6 +485,42 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleMoveToJunk = async (id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    if (selectedId === id) {
+      handleDeselectMessage();
+    }
+    try {
+      await api.markJunk(id);
+      playPopSound();
+      notifications.show({
+        title: "Moved to Junk",
+        message: "Message moved to Junk folder",
+        color: "orange",
+      });
+    } catch (err: any) {
+      notifications.show({ title: "Move to Junk Failed", message: err.message, color: "red" });
+    }
+  };
+
+  const handleMarkNotJunk = async (id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    if (selectedId === id) {
+      handleDeselectMessage();
+    }
+    try {
+      await api.markNotJunk(id);
+      playPopSound();
+      notifications.show({
+        title: "Moved to Inbox",
+        message: "Message marked as not junk and moved to Inbox",
+        color: "teal",
+      });
+    } catch (err: any) {
+      notifications.show({ title: "Move to Inbox Failed", message: err.message, color: "red" });
+    }
+  };
+
   const handleReply = (message: EmailMessage, suggestedTone?: string) => {
     setReplyToMessage(message);
     setReplyTone(suggestedTone);
@@ -586,6 +634,8 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onRestore={handleRestoreMessage}
                   onDeletePermanently={handleDeletePermanently}
+                  onMoveToJunk={handleMoveToJunk}
+                  onMarkNotJunk={handleMarkNotJunk}
                   onReply={handleReply}
                   onReplyAll={handleReplyAll}
                   onForward={handleForward}
@@ -609,6 +659,8 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onRestore={handleRestoreMessage}
                   onDeletePermanently={handleDeletePermanently}
+                  onMoveToJunk={handleMoveToJunk}
+                  onMarkNotJunk={handleMarkNotJunk}
                   onReply={handleReply}
                   onReplyAll={handleReplyAll}
                   onForward={handleForward}
@@ -647,6 +699,8 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onRestore={handleRestoreMessage}
                   onDeletePermanently={handleDeletePermanently}
+                  onMoveToJunk={handleMoveToJunk}
+                  onMarkNotJunk={handleMarkNotJunk}
                   onReply={handleReply}
                   onReplyAll={handleReplyAll}
                   onForward={handleForward}
@@ -673,6 +727,8 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onRestore={handleRestoreMessage}
                   onDeletePermanently={handleDeletePermanently}
+                  onMoveToJunk={handleMoveToJunk}
+                  onMarkNotJunk={handleMarkNotJunk}
                   onReply={handleReply}
                   onReplyAll={handleReplyAll}
                   onForward={handleForward}

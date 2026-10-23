@@ -324,3 +324,70 @@ export async function checkOutgoingToneWithClef(
     advice: adviceMap[tone] || "Review draft before sending.",
   };
 }
+
+/**
+ * Calculates email risk score from 0 to 100 based on Clef-Flash evaluation:
+ * - Phishing scam: 85 - 100%
+ * - Cold junk outreach: 80 - 95%
+ * - Coercive threats / report phishing advice: 85 - 95%
+ * - Legitimate transactional / human: 5 - 25%
+ */
+export function calculateClefRiskScore(analysis: any): number {
+  if (!analysis) return 0;
+  try {
+    const val = typeof analysis === "string" ? JSON.parse(analysis) : analysis;
+    const validity = val.validity || {};
+    const category = validity.category;
+    const confidence = typeof validity.confidence === "number" ? validity.confidence : 85;
+    const probabilities = validity.probabilities || {};
+
+    // 1. Explicit probability distribution
+    const phishingProb = (probabilities.phishing_scam ?? 0) * 100;
+    const junkProb = (probabilities.junk_cold_outreach ?? 0) * 100;
+    if (phishingProb > 0 || junkProb > 0) {
+      const combined = Math.round(phishingProb + junkProb * 0.8);
+      return Math.min(Math.max(combined, 0), 100);
+    }
+
+    // 2. High risk category mappings
+    if (category === "phishing_scam") {
+      return Math.max(confidence, 85);
+    }
+
+    if (category === "junk_cold_outreach") {
+      return Math.max(confidence, 80);
+    }
+
+    if (val.recommendedAction?.action === "block_or_report_phishing") {
+      return 95;
+    }
+
+    if (val.recommendedAction?.action === "ignore_or_junk") {
+      return Math.max(confidence, 80);
+    }
+
+    if (val.tone?.primary === "threatening_coercive") {
+      return 85;
+    }
+
+    if (category === "newsletter_promotional") {
+      return 25;
+    }
+
+    if (category === "automated_transactional") {
+      return 10;
+    }
+
+    if (category === "valid_human") {
+      return 5;
+    }
+
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function isRiskAboveThreshold(analysis: any, threshold = 75): boolean {
+  return calculateClefRiskScore(analysis) > threshold;
+}

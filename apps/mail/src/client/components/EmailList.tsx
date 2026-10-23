@@ -38,6 +38,7 @@ import {
   IconCopy,
   IconLink,
   IconEye,
+  IconAlertOctagon,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
@@ -56,6 +57,8 @@ interface EmailListProps {
   onTrash?: (id: string) => void;
   onRestore?: (id: string) => void;
   onDeletePermanently?: (id: string) => void;
+  onMoveToJunk?: (id: string) => void;
+  onMarkNotJunk?: (id: string) => void;
   onReply?: (message: EmailMessage) => void;
   onReplyAll?: (message: EmailMessage) => void;
   onForward?: (message: EmailMessage) => void;
@@ -79,6 +82,8 @@ export const EmailList: React.FC<EmailListProps> = ({
   onTrash,
   onRestore,
   onDeletePermanently,
+  onMoveToJunk,
+  onMarkNotJunk,
   onReply,
   onReplyAll,
   onForward,
@@ -265,10 +270,12 @@ export const EmailList: React.FC<EmailListProps> = ({
                   <Stack align="center" gap="xs">
                     <IconInbox size={48} stroke={1.2} color="#adb5bd" />
                     <Text fw={600} size="sm" c="dimmed">
-                      No emails in {activeFolder}
+                      {activeFolder === "junk" ? "No emails in Junk" : `No emails in ${activeFolder}`}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      Pull down to check for new emails!
+                      {activeFolder === "junk"
+                        ? "Emails with over 75% risk score will automatically appear here."
+                        : "Pull down to check for new emails!"}
                     </Text>
                   </Stack>
                 </Center>
@@ -419,6 +426,11 @@ export const EmailList: React.FC<EmailListProps> = ({
                       {isOutbound && (
                         <Badge size="xs" variant="outline" color="gray">
                           Sent
+                        </Badge>
+                      )}
+                      {msg.status === "junk" && (
+                        <Badge size="xs" color="orange" variant="light">
+                          Junk
                         </Badge>
                       )}
                       {(() => {
@@ -681,7 +693,40 @@ export const EmailList: React.FC<EmailListProps> = ({
             </Menu.Item>
 
             <Menu.Divider />
-            {activeFolder === "trash" ? (
+            {activeFolder === "junk" ? (
+              <>
+                <Menu.Item
+                  leftSection={<IconInbox size={15} color="#0ca678" />}
+                  color="teal"
+                  onClick={() => {
+                    onMarkNotJunk?.(activeContextMenuMessage.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Move to Inbox (Not Junk)
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconTrash size={15} color="#e03131" />}
+                  color="red"
+                  onClick={() => {
+                    onTrash?.(activeContextMenuMessage.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Move to Trash
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconTrash size={15} color="#e03131" />}
+                  color="red"
+                  onClick={() => {
+                    onDeletePermanently?.(activeContextMenuMessage.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Delete Permanently
+                </Menu.Item>
+              </>
+            ) : activeFolder === "trash" ? (
               <>
                 <Menu.Item
                   leftSection={<IconArrowBackUp size={15} color="#0ca678" />}
@@ -705,16 +750,28 @@ export const EmailList: React.FC<EmailListProps> = ({
                 </Menu.Item>
               </>
             ) : (
-              <Menu.Item
-                leftSection={<IconTrash size={15} color="#e03131" />}
-                color="red"
-                onClick={() => {
-                  onTrash?.(activeContextMenuMessage.id);
-                  setContextMenu(null);
-                }}
-              >
-                Move to Trash
-              </Menu.Item>
+              <>
+                <Menu.Item
+                  leftSection={<IconAlertOctagon size={15} color="#fd7e14" />}
+                  color="orange"
+                  onClick={() => {
+                    onMoveToJunk?.(activeContextMenuMessage.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Move to Junk
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconTrash size={15} color="#e03131" />}
+                  color="red"
+                  onClick={() => {
+                    onTrash?.(activeContextMenuMessage.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Move to Trash
+                </Menu.Item>
+              </>
             )}
           </Menu.Dropdown>
         )}

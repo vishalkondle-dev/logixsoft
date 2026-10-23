@@ -29,6 +29,7 @@ import {
   IconInbox,
   IconSend,
   IconStar,
+  IconAlertOctagon,
   IconTrash,
   IconPlus,
   IconLogout,
@@ -491,6 +492,14 @@ export const Layout: React.FC<LayoutProps> = ({
               onClick={() => handleSelectFolder("starred")}
               color="teal"
               style={{ borderRadius: 8, fontWeight: currentView === "mailbox" && activeFolder === "starred" ? 700 : 500 }}
+            />
+            <NavLink
+              label="Junk"
+              leftSection={<IconAlertOctagon size={18} color="#fd7e14" />}
+              active={currentView === "mailbox" && activeFolder === "junk"}
+              onClick={() => handleSelectFolder("junk")}
+              color="orange"
+              style={{ borderRadius: 8, fontWeight: currentView === "mailbox" && activeFolder === "junk" ? 700 : 500 }}
             />
             <NavLink
               label="Trash"

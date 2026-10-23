@@ -175,11 +175,13 @@ app.get("/api/messages", requireAuth, async (req: AuthenticatedRequest, res: Res
     const params: any[] = [];
 
     if (folder === "inbox") {
-      sql += ` AND direction = 'inbound' AND status != 'trashed'`;
+      sql += ` AND direction = 'inbound' AND status != 'trashed' AND status != 'junk'`;
     } else if (folder === "sent") {
       sql += ` AND direction = 'outbound' AND status != 'trashed'`;
     } else if (folder === "starred") {
-      sql += ` AND starred = 1 AND status != 'trashed'`;
+      sql += ` AND starred = 1 AND status != 'trashed' AND status != 'junk'`;
+    } else if (folder === "junk") {
+      sql += ` AND (status = 'junk' OR status = 'spam')`;
     } else if (folder === "trash") {
       sql += ` AND status = 'trashed'`;
     }
@@ -284,6 +286,28 @@ app.post("/api/messages/:id/trash", requireAuth, async (req: AuthenticatedReques
     await executeD1(`UPDATE messages SET status = 'trashed' WHERE id = ?`, [id]);
     broadcastSSE("message_updated", { id, status: "trashed" });
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/messages/:id/junk", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await executeD1(`UPDATE messages SET status = 'junk' WHERE id = ?`, [id]);
+    broadcastSSE("message_updated", { id, status: "junk" });
+    res.json({ success: true, status: "junk" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/messages/:id/not-junk", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await executeD1(`UPDATE messages SET status = 'received' WHERE id = ?`, [id]);
+    broadcastSSE("message_updated", { id, status: "received" });
+    res.json({ success: true, status: "received" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

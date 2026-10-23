@@ -18,6 +18,7 @@ import {
   Chip,
   Menu,
   ColorSwatch,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   IconStar,
@@ -43,6 +44,8 @@ import {
   IconDotsVertical,
   IconCopy,
   IconLink,
+  IconAlertOctagon,
+  IconInbox,
 } from "@tabler/icons-react";
 import DOMPurify from "dompurify";
 import dayjs from "dayjs";
@@ -69,6 +72,8 @@ interface EmailDetailProps {
   onTrash: (id: string) => void;
   onRestore?: (id: string) => void;
   onDeletePermanently?: (id: string) => void;
+  onMoveToJunk?: (id: string) => void;
+  onMarkNotJunk?: (id: string) => void;
   onReply: (message: EmailMessage, suggestedTone?: string, advice?: string) => void;
   onReplyAll?: (message: EmailMessage) => void;
   onForward?: (message: EmailMessage) => void;
@@ -90,6 +95,8 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   onTrash,
   onRestore,
   onDeletePermanently,
+  onMoveToJunk,
+  onMarkNotJunk,
   onReply,
   onReplyAll,
   onForward,
@@ -398,7 +405,22 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
               </Menu>
             )}
 
-            {activeFolder === "trash" ? (
+            {activeFolder === "junk" || message.status === "junk" ? (
+              <>
+                {onMarkNotJunk && (
+                  <Tooltip label="Not Junk (Move to Inbox)">
+                    <ActionIcon variant="light" color="teal" size="md" onClick={() => onMarkNotJunk(message.id)}>
+                      <IconInbox size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+                <Tooltip label="Move to Trash">
+                  <ActionIcon variant="light" color="red" size="md" onClick={() => onTrash(message.id)}>
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </>
+            ) : activeFolder === "trash" ? (
               <>
                 {onRestore && (
                   <Tooltip label="Restore to Inbox">
@@ -416,11 +438,20 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
                 )}
               </>
             ) : (
-              <Tooltip label="Move to Trash">
-                <ActionIcon variant="light" color="red" size="md" onClick={() => onTrash(message.id)}>
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Tooltip>
+              <>
+                {onMoveToJunk && (
+                  <Tooltip label="Move to Junk">
+                    <ActionIcon variant="light" color="orange" size="md" onClick={() => onMoveToJunk(message.id)}>
+                      <IconAlertOctagon size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+                <Tooltip label="Move to Trash">
+                  <ActionIcon variant="light" color="red" size="md" onClick={() => onTrash(message.id)}>
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </>
             )}
 
             {/* MORE ACTIONS MENU */}
@@ -490,7 +521,35 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
                   Copy Deep Link
                 </Menu.Item>
                 <Menu.Divider />
-                {activeFolder === "trash" ? (
+                {activeFolder === "junk" || message.status === "junk" ? (
+                  <>
+                    {onMarkNotJunk && (
+                      <Menu.Item
+                        leftSection={<IconInbox size={15} color="#0ca678" />}
+                        color="teal"
+                        onClick={() => onMarkNotJunk(message.id)}
+                      >
+                        Move to Inbox (Not Junk)
+                      </Menu.Item>
+                    )}
+                    <Menu.Item
+                      leftSection={<IconTrash size={15} color="#e03131" />}
+                      color="red"
+                      onClick={() => onTrash(message.id)}
+                    >
+                      Move to Trash
+                    </Menu.Item>
+                    {onDeletePermanently && (
+                      <Menu.Item
+                        leftSection={<IconTrash size={15} color="#e03131" />}
+                        color="red"
+                        onClick={() => onDeletePermanently(message.id)}
+                      >
+                        Delete Permanently
+                      </Menu.Item>
+                    )}
+                  </>
+                ) : activeFolder === "trash" ? (
                   <>
                     {onRestore && (
                       <Menu.Item
@@ -512,13 +571,24 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
                     )}
                   </>
                 ) : (
-                  <Menu.Item
-                    leftSection={<IconTrash size={15} color="#e03131" />}
-                    color="red"
-                    onClick={() => onTrash(message.id)}
-                  >
-                    Move to Trash
-                  </Menu.Item>
+                  <>
+                    {onMoveToJunk && (
+                      <Menu.Item
+                        leftSection={<IconAlertOctagon size={15} color="#fd7e14" />}
+                        color="orange"
+                        onClick={() => onMoveToJunk(message.id)}
+                      >
+                        Move to Junk
+                      </Menu.Item>
+                    )}
+                    <Menu.Item
+                      leftSection={<IconTrash size={15} color="#e03131" />}
+                      color="red"
+                      onClick={() => onTrash(message.id)}
+                    >
+                      Move to Trash
+                    </Menu.Item>
+                  </>
                 )}
               </Menu.Dropdown>
             </Menu>
@@ -615,8 +685,46 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
                 paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 60px)",
               }}
             >
-          {/* CLEF-FLASH DEEP INTELLIGENCE (Tone, Spam, Validity, Urgency) */}
-          <ClefInspectionCard
+              {/* JUNK WARNING BANNER */}
+              {(activeFolder === "junk" || message.status === "junk") && (
+                <Paper
+                  p="sm"
+                  radius="md"
+                  withBorder
+                  bg="orange.0"
+                  style={{ border: "1px solid #ffd8a8" }}
+                >
+                  <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                    <Group gap="xs">
+                      <ThemeIcon size="md" color="orange" radius="xl">
+                        <IconAlertOctagon size={18} />
+                      </ThemeIcon>
+                      <div>
+                        <Text size="sm" fw={700} c="orange.9">
+                          This message is in your Junk folder
+                        </Text>
+                        <Text size="xs" c="orange.8">
+                          Classified as high risk (&gt; 75% risk score by Clef Intelligence or filter).
+                        </Text>
+                      </div>
+                    </Group>
+                    {onMarkNotJunk && (
+                      <Button
+                        size="xs"
+                        variant="filled"
+                        color="orange"
+                        leftSection={<IconInbox size={14} />}
+                        onClick={() => onMarkNotJunk(message.id)}
+                      >
+                        Not Junk (Move to Inbox)
+                      </Button>
+                    )}
+                  </Group>
+                </Paper>
+              )}
+
+              {/* CLEF-FLASH DEEP INTELLIGENCE (Tone, Spam, Validity, Urgency) */}
+              <ClefInspectionCard
             message={message}
             onApplyStrategy={(suggestedTone, advice) => onReply(message, suggestedTone, advice)}
           />
@@ -1009,7 +1117,44 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
           </Menu.Item>
 
           <Menu.Divider />
-          {activeFolder === "trash" ? (
+          {activeFolder === "junk" || message.status === "junk" ? (
+            <>
+              {onMarkNotJunk && (
+                <Menu.Item
+                  leftSection={<IconInbox size={15} color="#0ca678" />}
+                  color="teal"
+                  onClick={() => {
+                    onMarkNotJunk(message.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Move to Inbox (Not Junk)
+                </Menu.Item>
+              )}
+              <Menu.Item
+                leftSection={<IconTrash size={15} color="#e03131" />}
+                color="red"
+                onClick={() => {
+                  onTrash(message.id);
+                  setContextMenu(null);
+                }}
+              >
+                Move to Trash
+              </Menu.Item>
+              {onDeletePermanently && (
+                <Menu.Item
+                  leftSection={<IconTrash size={15} color="#e03131" />}
+                  color="red"
+                  onClick={() => {
+                    onDeletePermanently(message.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Delete Permanently
+                </Menu.Item>
+              )}
+            </>
+          ) : activeFolder === "trash" ? (
             <>
               {onRestore && (
                 <Menu.Item
@@ -1037,16 +1182,30 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
               )}
             </>
           ) : (
-            <Menu.Item
-              leftSection={<IconTrash size={15} color="#e03131" />}
-              color="red"
-              onClick={() => {
-                onTrash(message.id);
-                setContextMenu(null);
-              }}
-            >
-              Move to Trash
-            </Menu.Item>
+            <>
+              {onMoveToJunk && (
+                <Menu.Item
+                  leftSection={<IconAlertOctagon size={15} color="#fd7e14" />}
+                  color="orange"
+                  onClick={() => {
+                    onMoveToJunk(message.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Move to Junk
+                </Menu.Item>
+              )}
+              <Menu.Item
+                leftSection={<IconTrash size={15} color="#e03131" />}
+                color="red"
+                onClick={() => {
+                  onTrash(message.id);
+                  setContextMenu(null);
+                }}
+              >
+                Move to Trash
+              </Menu.Item>
+            </>
           )}
         </Menu.Dropdown>
       </Menu>

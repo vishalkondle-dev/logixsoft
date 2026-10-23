@@ -210,6 +210,24 @@ export const api = {
     });
   },
 
+  async markJunk(id: string): Promise<{ success: boolean; status: string }> {
+    return fetchAPI<{ success: boolean; status: string }>(`/api/messages/${id}/junk`, {
+      method: "POST",
+    });
+  },
+
+  async markNotJunk(id: string): Promise<{ success: boolean; status: string }> {
+    return fetchAPI<{ success: boolean; status: string }>(`/api/messages/${id}/not-junk`, {
+      method: "POST",
+    });
+  },
+
+  async sweepJunk(): Promise<{ success: boolean; audited: number; movedToJunk: number }> {
+    return fetchAPI<{ success: boolean; audited: number; movedToJunk: number }>(`/api/clef/sweep-junk`, {
+      method: "POST",
+    });
+  },
+
   async sendEmail(payload: {
     fromAddress: string;
     fromName?: string;

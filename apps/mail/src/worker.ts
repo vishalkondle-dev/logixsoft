@@ -9,7 +9,7 @@ import { signJwt, verifyJwt, type AuthUser } from "./jwt";
 import { createBetterAuth } from "./auth";
 import { inferMimeType } from "./mime";
 import { summarizeEmail, generateQuickReplies, draftEmailWithAI, performAiGlobalSearch } from "./ai";
-import { inspectEmailWithClef, checkOutgoingToneWithClef } from "./clef";
+import { inspectEmailWithClef, checkOutgoingToneWithClef, calculateClefRiskScore } from "./clef";
 import * as openapiRoutes from "./openapi";
 
 export { RealtimeHubDO };
@@ -402,11 +402,13 @@ app.get("/api/messages", authMiddleware, async (c) => {
     } else if (!search || !search.trim()) {
       sql += ` WHERE 1=1`;
       if (folder === "inbox") {
-        sql += ` AND m.direction = 'inbound' AND m.status != 'trashed'`;
+        sql += ` AND m.direction = 'inbound' AND m.status != 'trashed' AND m.status != 'junk'`;
       } else if (folder === "sent") {
         sql += ` AND m.direction = 'outbound' AND m.status != 'trashed'`;
       } else if (folder === "starred") {
-        sql += ` AND m.starred = 1 AND m.status != 'trashed'`;
+        sql += ` AND m.starred = 1 AND m.status != 'trashed' AND m.status != 'junk'`;
+      } else if (folder === "junk") {
+        sql += ` AND (m.status = 'junk' OR m.status = 'spam')`;
       } else if (folder === "trash") {
         sql += ` AND m.status = 'trashed'`;
       }
@@ -427,7 +429,7 @@ app.get("/api/messages", authMiddleware, async (c) => {
       const keywordMessages = (kwRes.results || []) as any[];
 
       // Run AI Semantic Search across candidates so emails are found EVEN IF exact keywords are not there!
-      let candidateSql = `SELECT m.id, m.from_addr, m.to_addr, m.subject, m.snippet, m.text_body, m.clef_analysis, m.created_at FROM messages m WHERE m.status != 'trashed'`;
+      let candidateSql = `SELECT m.id, m.from_addr, m.to_addr, m.subject, m.snippet, m.text_body, m.clef_analysis, m.created_at FROM messages m WHERE m.status != 'trashed' AND m.status != 'junk'`;
       const candParams: any[] = [];
       if (alias && alias !== "all") {
         candidateSql += ` AND (m.to_addr LIKE ? OR m.from_addr LIKE ?)`;
@@ -757,6 +759,99 @@ app.post("/api/messages/:id/trash", authMiddleware, async (c) => {
   }
 });
 
+app.post("/api/messages/:id/junk", authMiddleware, async (c) => {
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("UPDATE messages SET status = 'junk' WHERE id = ?").bind(id).run();
+
+    const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+    await hub.broadcast("message_updated", { id, status: "junk" });
+
+    return c.json({ success: true, status: "junk" });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.post("/api/messages/:id/not-junk", authMiddleware, async (c) => {
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("UPDATE messages SET status = 'received' WHERE id = ?").bind(id).run();
+
+    const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+    await hub.broadcast("message_updated", { id, status: "received" });
+
+    return c.json({ success: true, status: "received" });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+async function runSweepDirect(env: Env): Promise<{ audited: number; movedToJunk: number }> {
+  let movedToJunk = 0;
+  let audited = 0;
+
+  try {
+    const updateRes = await env.DB.prepare(
+      `UPDATE messages SET status = 'junk'
+       WHERE status != 'trashed' AND status != 'junk'
+       AND (spam_verdict = 'phishing_scam' OR spam_verdict = 'junk_cold_outreach')`
+    ).run();
+    movedToJunk += updateRes?.meta?.changes || 0;
+
+    const uninspected = await env.DB.prepare(
+      `SELECT id, from_addr, to_addr, subject, snippet, text_body, html_body, status, created_at
+       FROM messages
+       WHERE clef_analysis IS NULL AND direction = 'inbound' AND status != 'trashed'
+       ORDER BY created_at DESC LIMIT 25`
+    ).all();
+
+    const messages = (uninspected.results || []) as any[];
+    for (const msg of messages) {
+      try {
+        const analysis = await inspectEmailWithClef(env, {
+          from: msg.from_addr,
+          to: msg.to_addr,
+          subject: msg.subject,
+          body: msg.text_body || msg.html_body || msg.snippet || "",
+        });
+        const score = calculateClefRiskScore(analysis);
+        const newStatus = score > 75 ? "junk" : msg.status;
+        await env.DB.prepare(
+          "UPDATE messages SET clef_analysis = ?, spam_verdict = ?, status = ? WHERE id = ?"
+        )
+          .bind(JSON.stringify(analysis), analysis.validity?.category || null, newStatus, msg.id)
+          .run();
+
+        audited++;
+        if (newStatus === "junk") movedToJunk++;
+      } catch (e: any) {
+        console.warn(`Direct sweep error for message ${msg.id}:`, e.message);
+      }
+    }
+  } catch (err: any) {
+    console.error("Direct sweep error:", err);
+  }
+
+  return { audited, movedToJunk };
+}
+
+app.post("/api/clef/sweep-junk", authMiddleware, async (c) => {
+  try {
+    const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+    let res;
+    try {
+      res = await (hub as any).sweepJunkAndUninspected();
+    } catch (e: any) {
+      console.warn("DO sweepJunkAndUninspected fallback to direct sweep:", e.message);
+      res = await runSweepDirect(c.env);
+    }
+    return c.json({ success: true, ...res });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 // ----------------------------------------------------
 // SEND EMAIL
 // ----------------------------------------------------
@@ -962,17 +1057,19 @@ app.post("/api/inbound/webhook", async (c) => {
       .run();
 
     const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
-    await hub.broadcast("new_email", {
+    const processed = await (hub as any).handleInboundEmail({
       id,
       from_addr: from,
       to_addr: to,
       subject: subject || "(no subject)",
       snippet,
+      text_body: text || snippet,
+      html_body: html,
       created_at: now,
-      read: 0,
+      status: "received",
     });
 
-    return c.json({ success: true, id });
+    return c.json({ success: true, id, status: processed?.status, riskScore: processed?.riskScore });
   } catch (err: any) {
     console.error("Inbound webhook error:", err);
     return c.json({ error: err.message }, 500);
@@ -1760,38 +1857,54 @@ export default {
         }
       }
 
-      // 3. Run Clef-Flash Intelligence Inspection
-      let clefAnalysis: any = null;
-      try {
-        clefAnalysis = await inspectEmailWithClef(env, {
-          from,
-          to,
-          subject,
-          body: text || html,
-        });
-
-        await env.DB.prepare(
-          "UPDATE messages SET clef_analysis = ?, spam_verdict = ? WHERE id = ?"
-        )
-          .bind(JSON.stringify(clefAnalysis), clefAnalysis.validity.category, messageId)
-          .run();
-      } catch (clefErr: any) {
-        console.warn("Inbound Clef-Flash inspection error:", clefErr?.message);
-      }
-
-      // 4. Broadcast real-time new_email event
+      // 3. Process email & run Clef-Flash via Durable Object in real time
       const hub = env.REALTIME_HUB.get(env.REALTIME_HUB.idFromName("global"));
-      await hub.broadcast("new_email", {
-        id: messageId,
-        from_addr: from,
-        to_addr: to,
-        subject,
-        snippet,
-        created_at: now,
-        read: 0,
-        spam_verdict: clefAnalysis?.validity?.category || null,
-        clef_analysis: clefAnalysis ? JSON.stringify(clefAnalysis) : null,
-      });
+      try {
+        await (hub as any).handleInboundEmail({
+          id: messageId,
+          from_addr: from,
+          to_addr: to,
+          subject,
+          snippet,
+          text_body: text || snippet,
+          html_body: html,
+          created_at: now,
+          status: "received",
+        });
+      } catch (doErr: any) {
+        console.warn("DO handleInboundEmail error, running direct analysis fallback:", doErr.message);
+        try {
+          const analysis = await inspectEmailWithClef(env, {
+            from,
+            to,
+            subject,
+            body: text || html || snippet || "",
+          });
+          const score = calculateClefRiskScore(analysis);
+          const finalStatus = score > 75 ? "junk" : "received";
+          await env.DB.prepare(
+            "UPDATE messages SET clef_analysis = ?, spam_verdict = ?, status = ? WHERE id = ?"
+          )
+            .bind(JSON.stringify(analysis), analysis?.validity?.category || null, finalStatus, messageId)
+            .run();
+          await hub.broadcast("new_email", {
+            id: messageId,
+            from_addr: from,
+            to_addr: to,
+            subject,
+            snippet,
+            text_body: text || snippet,
+            html_body: html,
+            created_at: now,
+            status: finalStatus,
+            spam_verdict: analysis?.validity?.category || null,
+            clef_analysis: JSON.stringify(analysis),
+            risk_score: score,
+          });
+        } catch (fbErr: any) {
+          console.error("Inbound direct analysis fallback error:", fbErr.message);
+        }
+      }
 
       // 5. Optionally forward to verified external address if sent to support
       if (to.toLowerCase().includes("support@logixsoft.in")) {

@@ -185,9 +185,28 @@ export const api = {
     });
   },
 
+  async toggleRead(id: string, read: boolean): Promise<{ success: boolean; read: boolean }> {
+    return fetchAPI<{ success: boolean; read: boolean }>(`/api/messages/${id}/read`, {
+      method: "POST",
+      body: JSON.stringify({ read }),
+    });
+  },
+
   async trashMessage(id: string): Promise<{ success: boolean }> {
     return fetchAPI<{ success: boolean }>(`/api/messages/${id}/trash`, {
       method: "POST",
+    });
+  },
+
+  async restoreMessage(id: string): Promise<{ success: boolean }> {
+    return fetchAPI<{ success: boolean }>(`/api/messages/${id}/restore`, {
+      method: "POST",
+    });
+  },
+
+  async deleteMessagePermanently(id: string): Promise<{ success: boolean; id: string }> {
+    return fetchAPI<{ success: boolean; id: string }>(`/api/messages/${id}`, {
+      method: "DELETE",
     });
   },
 

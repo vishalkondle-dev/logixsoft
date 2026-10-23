@@ -229,6 +229,43 @@ app.get("/api/messages/:id", requireAuth, async (req: AuthenticatedRequest, res:
   }
 });
 
+app.post("/api/messages/:id/read", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { read } = req.body;
+    const readVal = read ? 1 : 0;
+    await executeD1(`UPDATE messages SET read = ? WHERE id = ?`, [readVal, id]);
+    broadcastSSE("message_updated", { id, read: readVal });
+    res.json({ success: true, read: !!read });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/messages/:id/restore", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await executeD1(`UPDATE messages SET status = 'active' WHERE id = ?`, [id]);
+    broadcastSSE("message_updated", { id, status: "active" });
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/messages/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await executeD1(`DELETE FROM message_labels WHERE message_id = ?`, [id]);
+    await executeD1(`DELETE FROM message_attachments WHERE message_id = ?`, [id]);
+    await executeD1(`DELETE FROM messages WHERE id = ?`, [id]);
+    broadcastSSE("message_deleted", { id });
+    res.json({ success: true, id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/messages/:id/star", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;

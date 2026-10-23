@@ -3,6 +3,7 @@ import { Box } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { IconMailFilled } from "@tabler/icons-react";
+import dayjs from "dayjs";
 import { Layout } from "./components/Layout";
 import { EmailList } from "./components/EmailList";
 import { EmailDetail } from "./components/EmailDetail";
@@ -13,7 +14,7 @@ import { UserProfileModal } from "./components/UserProfileModal";
 import { LabelsManagerModal } from "./components/LabelsManagerModal";
 import { User, Alias, EmailMessage, Attachment, Label } from "./types";
 import { api, getStoredUser, clearSession, connectRealtime } from "./api";
-import { playNotificationSound, isSoundEnabled, setSoundEnabled } from "./utils/sound";
+import { playNotificationSound, playPopSound, isSoundEnabled, setSoundEnabled } from "./utils/sound";
 
 interface HashRoute {
   view: "mailbox" | "admin";
@@ -106,6 +107,10 @@ export const App: React.FC = () => {
   const [composeOpened, setComposeOpened] = useState<boolean>(false);
   const [replyToMessage, setReplyToMessage] = useState<EmailMessage | null>(null);
   const [replyTone, setReplyTone] = useState<string | undefined>(undefined);
+  const [composeTo, setComposeTo] = useState<string>("");
+  const [composeCc, setComposeCc] = useState<string>("");
+  const [composeSubject, setComposeSubject] = useState<string>("");
+  const [composeBody, setComposeBody] = useState<string>("");
   const [labelsManagerOpened, setLabelsManagerOpened] = useState<boolean>(false);
   const [profileOpened, setProfileOpened] = useState<boolean>(false);
 
@@ -417,10 +422,113 @@ export const App: React.FC = () => {
     notifications.show({ title: "Moved to Trash", message: "Message moved to trash", color: "teal" });
   };
 
+  const handleToggleRead = async (id: string, read: boolean) => {
+    const readVal = read ? 1 : 0;
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, read: readVal } : m))
+    );
+    if (selectedMessage?.id === id) {
+      setSelectedMessage((prev) => (prev ? { ...prev, read: readVal } : null));
+    }
+
+    try {
+      await api.toggleRead(id, read);
+      notifications.show({
+        title: read ? "Marked as Read" : "Marked as Unread",
+        message: read ? "Message marked as read" : "Message marked as unread",
+        color: "teal",
+      });
+    } catch (err: any) {
+      notifications.show({ title: "Update Failed", message: err.message, color: "red" });
+    }
+  };
+
+  const handleRestoreMessage = async (id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    if (selectedId === id) {
+      handleDeselectMessage();
+    }
+    try {
+      await api.restoreMessage(id);
+      notifications.show({ title: "Restored", message: "Message restored to Inbox", color: "teal" });
+    } catch (err: any) {
+      notifications.show({ title: "Restore Failed", message: err.message, color: "red" });
+    }
+  };
+
+  const handleDeletePermanently = async (id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    if (selectedId === id) {
+      handleDeselectMessage();
+    }
+    try {
+      await api.deleteMessagePermanently(id);
+      notifications.show({
+        title: "Permanently Deleted",
+        message: "Message has been permanently removed",
+        color: "teal",
+      });
+    } catch (err: any) {
+      notifications.show({ title: "Delete Failed", message: err.message, color: "red" });
+    }
+  };
+
   const handleReply = (message: EmailMessage, suggestedTone?: string) => {
     setReplyToMessage(message);
     setReplyTone(suggestedTone);
+    setComposeTo(message.from_addr);
+    setComposeCc("");
+    setComposeSubject(message.subject.startsWith("Re:") ? message.subject : `Re: ${message.subject}`);
+    setComposeBody("");
     setComposeOpened(true);
+  };
+
+  const handleReplyAll = (message: EmailMessage) => {
+    setReplyToMessage(message);
+    setReplyTone(undefined);
+    setComposeTo(message.from_addr);
+    const extra = [message.to_addr, message.cc_addr]
+      .filter(Boolean)
+      .filter((a) => a !== user?.email && a !== message.from_addr)
+      .join(", ");
+    setComposeCc(extra);
+    setComposeSubject(message.subject.startsWith("Re:") ? message.subject : `Re: ${message.subject}`);
+    setComposeBody("");
+    setComposeOpened(true);
+  };
+
+  const handleForward = (message: EmailMessage) => {
+    setReplyToMessage(null);
+    setReplyTone(undefined);
+    setComposeTo("");
+    setComposeCc("");
+    setComposeSubject(message.subject.startsWith("Fwd:") ? message.subject : `Fwd: ${message.subject}`);
+    const dateStr = dayjs(message.created_at * 1000).format("ddd, MMM D, YYYY [at] h:mm A");
+    const quoteHtml = `
+      <p><br></p>
+      <hr style="border: none; border-top: 1px solid #dee2e6; margin: 16px 0;" />
+      <p style="font-size: 13px; color: #495057;">
+        <b>---------- Forwarded message ---------</b><br/>
+        <b>From:</b> ${message.from_addr}<br/>
+        <b>Date:</b> ${dateStr}<br/>
+        <b>Subject:</b> ${message.subject}<br/>
+        <b>To:</b> ${message.to_addr}
+      </p>
+      <br/>
+      ${message.html_body || `<p>${message.text_body || message.snippet || ""}</p>`}
+    `;
+    setComposeBody(quoteHtml);
+    setComposeOpened(true);
+  };
+
+  const handleToggleMessageLabel = async (messageId: string, labelId: string) => {
+    try {
+      const res = await api.setMessageLabels(messageId, { labelId, action: "toggle" });
+      handleLabelsChanged(messageId, res.labels);
+      playPopSound();
+    } catch (err: any) {
+      notifications.show({ title: "Label Error", message: err.message, color: "red" });
+    }
   };
 
   const handleLogout = async () => {
@@ -447,6 +555,11 @@ export const App: React.FC = () => {
           onSelectAlias={handleSelectAlias}
           onOpenCompose={() => {
             setReplyToMessage(null);
+            setReplyTone(undefined);
+            setComposeTo("");
+            setComposeCc("");
+            setComposeSubject("");
+            setComposeBody("");
             setComposeOpened(true);
           }}
           onLogout={handleLogout}
@@ -469,6 +582,16 @@ export const App: React.FC = () => {
                   selectedId={selectedId}
                   onSelect={handleSelectMessage}
                   onToggleStar={handleToggleStar}
+                  onToggleRead={handleToggleRead}
+                  onTrash={handleTrashMessage}
+                  onRestore={handleRestoreMessage}
+                  onDeletePermanently={handleDeletePermanently}
+                  onReply={handleReply}
+                  onReplyAll={handleReplyAll}
+                  onForward={handleForward}
+                  availableLabels={labels}
+                  onToggleLabel={handleToggleMessageLabel}
+                  onOpenLabelsManager={() => setLabelsManagerOpened(true)}
                   search={search}
                   onSearchChange={setSearch}
                   loading={loadingMessages}
@@ -482,8 +605,13 @@ export const App: React.FC = () => {
                   attachments={selectedAttachments}
                   loading={loadingDetail}
                   onToggleStar={(id) => handleToggleStar(id)}
+                  onToggleRead={handleToggleRead}
                   onTrash={handleTrashMessage}
+                  onRestore={handleRestoreMessage}
+                  onDeletePermanently={handleDeletePermanently}
                   onReply={handleReply}
+                  onReplyAll={handleReplyAll}
+                  onForward={handleForward}
                   aliases={aliases}
                   availableLabels={labels}
                   onLabelsChanged={handleLabelsChanged}
@@ -492,6 +620,7 @@ export const App: React.FC = () => {
                     setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
                   }
                   onRefresh={handleRefreshDetail}
+                  activeFolder={activeFolder}
                 />
               )}
             </Box>
@@ -514,6 +643,16 @@ export const App: React.FC = () => {
                   selectedId={selectedId}
                   onSelect={handleSelectMessage}
                   onToggleStar={handleToggleStar}
+                  onToggleRead={handleToggleRead}
+                  onTrash={handleTrashMessage}
+                  onRestore={handleRestoreMessage}
+                  onDeletePermanently={handleDeletePermanently}
+                  onReply={handleReply}
+                  onReplyAll={handleReplyAll}
+                  onForward={handleForward}
+                  availableLabels={labels}
+                  onToggleLabel={handleToggleMessageLabel}
+                  onOpenLabelsManager={() => setLabelsManagerOpened(true)}
                   search={search}
                   onSearchChange={setSearch}
                   loading={loadingMessages}
@@ -530,8 +669,13 @@ export const App: React.FC = () => {
                   attachments={selectedAttachments}
                   loading={loadingDetail}
                   onToggleStar={(id) => handleToggleStar(id)}
+                  onToggleRead={handleToggleRead}
                   onTrash={handleTrashMessage}
+                  onRestore={handleRestoreMessage}
+                  onDeletePermanently={handleDeletePermanently}
                   onReply={handleReply}
+                  onReplyAll={handleReplyAll}
+                  onForward={handleForward}
                   aliases={aliases}
                   availableLabels={labels}
                   onLabelsChanged={handleLabelsChanged}
@@ -539,6 +683,7 @@ export const App: React.FC = () => {
                     setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
                   }
                   onRefresh={handleRefreshDetail}
+                  activeFolder={activeFolder}
                 />
               </Box>
             </Box>
@@ -550,16 +695,12 @@ export const App: React.FC = () => {
             onClose={() => setComposeOpened(false)}
             aliases={aliases}
             domain={domain}
-            defaultTo={replyToMessage ? replyToMessage.from_addr : ""}
-            defaultSubject={
-              replyToMessage
-                ? replyToMessage.subject.startsWith("Re:")
-                  ? replyToMessage.subject
-                  : `Re: ${replyToMessage.subject}`
-                : ""
-            }
+            defaultTo={composeTo}
+            defaultCc={composeCc}
+            defaultSubject={composeSubject}
             defaultInReplyTo={replyToMessage?.id}
             defaultTone={replyTone}
+            defaultBody={composeBody}
             user={user}
           />
 

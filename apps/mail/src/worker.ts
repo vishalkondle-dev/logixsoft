@@ -678,6 +678,54 @@ app.delete("/api/labels/:id", authMiddleware, async (c) => {
   }
 });
 
+app.post("/api/messages/:id/read", authMiddleware, async (c) => {
+  try {
+    const id = c.req.param("id");
+    const { read } = await c.req.json().catch(() => ({ read: true }));
+    const readVal = read ? 1 : 0;
+    await c.env.DB.prepare("UPDATE messages SET read = ? WHERE id = ?")
+      .bind(readVal, id)
+      .run();
+
+    const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+    await hub.broadcast("message_updated", { id, read: readVal });
+
+    return c.json({ success: true, read: !!read });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.post("/api/messages/:id/restore", authMiddleware, async (c) => {
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("UPDATE messages SET status = 'active' WHERE id = ?").bind(id).run();
+
+    const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+    await hub.broadcast("message_updated", { id, status: "active" });
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.delete("/api/messages/:id", authMiddleware, async (c) => {
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("DELETE FROM message_labels WHERE message_id = ?").bind(id).run();
+    await c.env.DB.prepare("DELETE FROM message_attachments WHERE message_id = ?").bind(id).run();
+    await c.env.DB.prepare("DELETE FROM messages WHERE id = ?").bind(id).run();
+
+    const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+    await hub.broadcast("message_deleted", { id });
+
+    return c.json({ success: true, id });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 app.post("/api/messages/:id/star", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");

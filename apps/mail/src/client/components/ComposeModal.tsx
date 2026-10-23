@@ -54,9 +54,11 @@ interface ComposeModalProps {
   aliases: Alias[];
   domain: string;
   defaultTo?: string;
+  defaultCc?: string;
   defaultSubject?: string;
   defaultInReplyTo?: string;
   defaultTone?: string;
+  defaultBody?: string;
   user?: User | null;
 }
 
@@ -74,17 +76,19 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   aliases,
   domain,
   defaultTo = "",
+  defaultCc = "",
   defaultSubject = "",
   defaultInReplyTo,
   defaultTone,
+  defaultBody = "",
   user,
 }) => {
   const [fromAddress, setFromAddress] = useState<string>("");
   const [customLocalPart, setCustomLocalPart] = useState<string>("");
   const [isCustomFrom, setIsCustomFrom] = useState(false);
   const [to, setTo] = useState(defaultTo);
-  const [cc, setCc] = useState("");
-  const [showCc, setShowCc] = useState(false);
+  const [cc, setCc] = useState(defaultCc);
+  const [showCc, setShowCc] = useState(!!defaultCc);
   const [subject, setSubject] = useState(defaultSubject);
   const [sending, setSending] = useState(false);
   const isMobile = useMediaQuery("(max-width: 700px)");
@@ -149,6 +153,8 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
 
   useEffect(() => {
     setTo(defaultTo);
+    setCc(defaultCc);
+    setShowCc(!!defaultCc);
     setSubject(defaultSubject);
     setAttachments([]);
     setClefToneResult(null);
@@ -156,14 +162,23 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       setAiTone(defaultTone);
       openAi();
     }
-    if (opened && editor && user?.signature) {
-      const current = editor.getHTML();
-      if (!current || current === "<p></p>") {
-        const sigHtml = `<p><br></p><p style="color: #6c757d;">--<br>${user.signature.replace(/\n/g, "<br>")}</p>`;
-        editor.commands.setContent(`<p></p>${sigHtml}`);
+    if (opened && editor) {
+      if (defaultBody) {
+        let contentToSet = defaultBody;
+        if (user?.signature) {
+          const sigHtml = `<p><br></p><p style="color: #6c757d;">--<br>${user.signature.replace(/\n/g, "<br>")}</p>`;
+          contentToSet = `<p></p>${sigHtml}${defaultBody}`;
+        }
+        editor.commands.setContent(contentToSet);
+      } else if (user?.signature) {
+        const current = editor.getHTML();
+        if (!current || current === "<p></p>") {
+          const sigHtml = `<p><br></p><p style="color: #6c757d;">--<br>${user.signature.replace(/\n/g, "<br>")}</p>`;
+          editor.commands.setContent(`<p></p>${sigHtml}`);
+        }
       }
     }
-  }, [defaultTo, defaultSubject, defaultTone, opened, editor, user?.signature]);
+  }, [defaultTo, defaultCc, defaultSubject, defaultTone, defaultBody, opened, editor, user?.signature]);
 
   // Handle File Attachments
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

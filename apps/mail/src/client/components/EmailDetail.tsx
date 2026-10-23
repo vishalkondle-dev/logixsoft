@@ -24,11 +24,15 @@ import {
   IconStarFilled,
   IconTrash,
   IconArrowBackUp,
+  IconArrowBackUpDouble,
+  IconArrowForwardUp,
   IconSparkles,
   IconShieldCheck,
   IconPaperclip,
   IconSend,
   IconMailCheck,
+  IconMail,
+  IconMailOpened,
   IconArrowLeft,
   IconDownload,
   IconEye,
@@ -36,6 +40,9 @@ import {
   IconTag,
   IconCheck,
   IconX,
+  IconDotsVertical,
+  IconCopy,
+  IconLink,
 } from "@tabler/icons-react";
 import DOMPurify from "dompurify";
 import dayjs from "dayjs";
@@ -58,14 +65,20 @@ interface EmailDetailProps {
   attachments: Attachment[];
   loading: boolean;
   onToggleStar: (id: string) => void;
+  onToggleRead?: (id: string, read: boolean) => void;
   onTrash: (id: string) => void;
+  onRestore?: (id: string) => void;
+  onDeletePermanently?: (id: string) => void;
   onReply: (message: EmailMessage, suggestedTone?: string, advice?: string) => void;
+  onReplyAll?: (message: EmailMessage) => void;
+  onForward?: (message: EmailMessage) => void;
   aliases: Alias[];
   availableLabels?: Label[];
   onLabelsChanged?: (messageId: string, updatedLabels: Label[]) => void;
   onBack?: () => void;
   onAttachmentRemoved?: (attachmentId: string) => void;
   onRefresh?: () => Promise<void> | void;
+  activeFolder?: string;
 }
 
 export const EmailDetail: React.FC<EmailDetailProps> = ({
@@ -73,17 +86,24 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   attachments,
   loading,
   onToggleStar,
+  onToggleRead,
   onTrash,
+  onRestore,
+  onDeletePermanently,
   onReply,
+  onReplyAll,
+  onForward,
   aliases,
   availableLabels = [],
   onLabelsChanged,
   onBack,
   onAttachmentRemoved,
   onRefresh,
+  activeFolder,
 }) => {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const [quickReplies, setQuickReplies] = useState<string[]>([]);
   const [loadingReplies, setLoadingReplies] = useState(false);
@@ -264,7 +284,18 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   const dateStr = dayjs(message.created_at * 1000).format("MMMM D, YYYY [at] h:mm A");
 
   return (
-    <Box style={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
+    <Box
+      style={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}
+      onContextMenu={(e) => {
+        // Only trigger custom context menu if not selecting text
+        const selection = window.getSelection()?.toString();
+        if (!selection) {
+          e.preventDefault();
+          e.stopPropagation();
+          setContextMenu({ x: e.clientX, y: e.clientY });
+        }
+      }}
+    >
       {/* Top Header Actions */}
       <Box p={{ base: "xs", sm: "md" }} style={{ borderBottom: "1px solid #e9ecef" }}>
         {onBack && (
@@ -308,6 +339,35 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
               </ActionIcon>
             </Tooltip>
 
+            {onReplyAll && (
+              <Tooltip label="Reply All">
+                <ActionIcon variant="light" color="blue" size="md" onClick={() => onReplyAll(message)}>
+                  <IconArrowBackUpDouble size={16} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
+            {onForward && (
+              <Tooltip label="Forward">
+                <ActionIcon variant="light" color="indigo" size="md" onClick={() => onForward(message)}>
+                  <IconArrowForwardUp size={16} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
+            {onToggleRead && (
+              <Tooltip label={message.read ? "Mark as Unread" : "Mark as Read"}>
+                <ActionIcon
+                  variant="light"
+                  color="teal"
+                  size="md"
+                  onClick={() => onToggleRead(message.id, !message.read)}
+                >
+                  {message.read ? <IconMail size={16} /> : <IconMailOpened size={16} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+
             {/* ASSIGN LABELS MENU */}
             {availableLabels.length > 0 && (
               <Menu shadow="md" width={200} position="bottom-end">
@@ -327,6 +387,7 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
                         key={lbl.id}
                         leftSection={<ColorSwatch color={lbl.color} size={14} />}
                         rightSection={isTagged ? <IconCheck size={14} color="#0ca678" /> : null}
+                        closeMenuOnClick={false}
                         onClick={() => handleToggleLabel(lbl.id)}
                       >
                         {lbl.name}
@@ -337,11 +398,130 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
               </Menu>
             )}
 
-            <Tooltip label="Move to Trash">
-              <ActionIcon variant="light" color="red" size="md" onClick={() => onTrash(message.id)}>
-                <IconTrash size={16} />
-              </ActionIcon>
-            </Tooltip>
+            {activeFolder === "trash" ? (
+              <>
+                {onRestore && (
+                  <Tooltip label="Restore to Inbox">
+                    <ActionIcon variant="light" color="teal" size="md" onClick={() => onRestore(message.id)}>
+                      <IconArrowBackUp size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+                {onDeletePermanently && (
+                  <Tooltip label="Delete Permanently">
+                    <ActionIcon variant="light" color="red" size="md" onClick={() => onDeletePermanently(message.id)}>
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </>
+            ) : (
+              <Tooltip label="Move to Trash">
+                <ActionIcon variant="light" color="red" size="md" onClick={() => onTrash(message.id)}>
+                  <IconTrash size={16} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
+            {/* MORE ACTIONS MENU */}
+            <Menu shadow="md" width={220} position="bottom-end">
+              <Menu.Target>
+                <Tooltip label="More Actions">
+                  <ActionIcon variant="light" color="gray" size="md">
+                    <IconDotsVertical size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>Options</Menu.Label>
+                {onReplyAll && (
+                  <Menu.Item
+                    leftSection={<IconArrowBackUpDouble size={15} color="#1c7ed6" />}
+                    onClick={() => onReplyAll(message)}
+                  >
+                    Reply All
+                  </Menu.Item>
+                )}
+                {onForward && (
+                  <Menu.Item
+                    leftSection={<IconArrowForwardUp size={15} color="#4c6ef5" />}
+                    onClick={() => onForward(message)}
+                  >
+                    Forward
+                  </Menu.Item>
+                )}
+                {onToggleRead && (
+                  <Menu.Item
+                    leftSection={message.read ? <IconMail size={15} color="#0ca678" /> : <IconMailOpened size={15} color="#0ca678" />}
+                    onClick={() => onToggleRead(message.id, !message.read)}
+                  >
+                    {message.read ? "Mark as Unread" : "Mark as Read"}
+                  </Menu.Item>
+                )}
+                <Menu.Divider />
+                <Menu.Label>Copy</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconCopy size={15} color="#868e96" />}
+                  onClick={() => {
+                    const addr = message.direction === "outbound" ? message.to_addr : message.from_addr;
+                    navigator.clipboard.writeText(addr);
+                    notifications.show({ title: "Address Copied", message: `"${addr}" copied`, color: "teal" });
+                  }}
+                >
+                  Copy Address
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconCopy size={15} color="#868e96" />}
+                  onClick={() => {
+                    navigator.clipboard.writeText(message.subject || "");
+                    notifications.show({ title: "Subject Copied", message: "Subject copied to clipboard", color: "teal" });
+                  }}
+                >
+                  Copy Subject
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconLink size={15} color="#868e96" />}
+                  onClick={() => {
+                    const link = `${window.location.origin}${window.location.pathname}#${activeFolder || "inbox"}/${message.id}`;
+                    navigator.clipboard.writeText(link);
+                    notifications.show({ title: "Link Copied", message: "Deep link copied to clipboard", color: "teal" });
+                  }}
+                >
+                  Copy Deep Link
+                </Menu.Item>
+                <Menu.Divider />
+                {activeFolder === "trash" ? (
+                  <>
+                    {onRestore && (
+                      <Menu.Item
+                        leftSection={<IconArrowBackUp size={15} color="#0ca678" />}
+                        color="teal"
+                        onClick={() => onRestore(message.id)}
+                      >
+                        Restore to Inbox
+                      </Menu.Item>
+                    )}
+                    {onDeletePermanently && (
+                      <Menu.Item
+                        leftSection={<IconTrash size={15} color="#e03131" />}
+                        color="red"
+                        onClick={() => onDeletePermanently(message.id)}
+                      >
+                        Delete Permanently
+                      </Menu.Item>
+                    )}
+                  </>
+                ) : (
+                  <Menu.Item
+                    leftSection={<IconTrash size={15} color="#e03131" />}
+                    color="red"
+                    onClick={() => onTrash(message.id)}
+                  >
+                    Move to Trash
+                  </Menu.Item>
+                )}
+              </Menu.Dropdown>
+            </Menu>
 
             {onRefresh && (
               <Tooltip label="Refresh email (or pull down to refresh)">
@@ -663,6 +843,213 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
         onRemove={handleRemoveAttachment}
         canRemove={true}
       />
+
+      {/* RIGHT-CLICK CONTEXT MENU */}
+      <Menu
+        opened={!!contextMenu}
+        onClose={() => setContextMenu(null)}
+        shadow="md"
+        radius="md"
+        width={230}
+        position="bottom-start"
+        withinPortal
+        zIndex={1000}
+      >
+        <Menu.Target>
+          <div
+            style={{
+              position: "fixed",
+              top: contextMenu?.y ?? 0,
+              left: contextMenu?.x ?? 0,
+              width: 1,
+              height: 1,
+              pointerEvents: "none",
+              visibility: "hidden",
+            }}
+          />
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Box px="xs" py={6} style={{ borderBottom: "1px solid #f1f3f5", maxWidth: 220 }}>
+            <Text size="xs" fw={700} truncate c="dark.8">
+              {message.subject || "(no subject)"}
+            </Text>
+            <Text size="11px" c="dimmed" truncate>
+              {message.direction === "outbound" ? `To: ${message.to_addr}` : message.from_addr}
+            </Text>
+          </Box>
+
+          <Menu.Label>Respond</Menu.Label>
+          <Menu.Item
+            leftSection={<IconArrowBackUp size={15} color="#228be6" />}
+            onClick={() => {
+              onReply(message);
+              setContextMenu(null);
+            }}
+          >
+            Reply
+          </Menu.Item>
+          {onReplyAll && (
+            <Menu.Item
+              leftSection={<IconArrowBackUpDouble size={15} color="#1c7ed6" />}
+              onClick={() => {
+                onReplyAll(message);
+                setContextMenu(null);
+              }}
+            >
+              Reply All
+            </Menu.Item>
+          )}
+          {onForward && (
+            <Menu.Item
+              leftSection={<IconArrowForwardUp size={15} color="#4c6ef5" />}
+              onClick={() => {
+                onForward(message);
+                setContextMenu(null);
+              }}
+            >
+              Forward
+            </Menu.Item>
+          )}
+
+          <Menu.Divider />
+          <Menu.Label>Status & Labels</Menu.Label>
+          {onToggleRead && (
+            <Menu.Item
+              leftSection={
+                message.read ? (
+                  <IconMail size={15} color="#0ca678" />
+                ) : (
+                  <IconMailOpened size={15} color="#0ca678" />
+                )
+              }
+              onClick={() => {
+                onToggleRead(message.id, !message.read);
+                setContextMenu(null);
+              }}
+            >
+              {message.read ? "Mark as Unread" : "Mark as Read"}
+            </Menu.Item>
+          )}
+          <Menu.Item
+            leftSection={
+              message.starred ? (
+                <IconStarFilled size={15} color="#fab005" />
+              ) : (
+                <IconStar size={15} color="#fab005" />
+              )
+            }
+            onClick={() => {
+              onToggleStar(message.id);
+              setContextMenu(null);
+            }}
+          >
+            {message.starred ? "Remove Star" : "Star Message"}
+          </Menu.Item>
+
+          {availableLabels && availableLabels.length > 0 && (
+            <Menu.Sub>
+              <Menu.Sub.Target>
+                <Menu.Item leftSection={<IconTag size={15} color="#7950f2" />}>
+                  Labels
+                </Menu.Item>
+              </Menu.Sub.Target>
+              <Menu.Sub.Dropdown>
+                <Menu.Label>Assign Labels</Menu.Label>
+                {availableLabels.map((lbl) => {
+                  const isTagged = message.labels?.some((l) => l.id === lbl.id);
+                  return (
+                    <Menu.Item
+                      key={lbl.id}
+                      leftSection={<ColorSwatch color={lbl.color} size={14} />}
+                      rightSection={isTagged ? <IconCheck size={14} color="#0ca678" /> : null}
+                      closeMenuOnClick={false}
+                      onClick={() => handleToggleLabel(lbl.id)}
+                    >
+                      {lbl.name}
+                    </Menu.Item>
+                  );
+                })}
+              </Menu.Sub.Dropdown>
+            </Menu.Sub>
+          )}
+
+          <Menu.Divider />
+          <Menu.Label>Share & Copy</Menu.Label>
+          <Menu.Item
+            leftSection={<IconCopy size={15} color="#868e96" />}
+            onClick={() => {
+              const addr = message.direction === "outbound" ? message.to_addr : message.from_addr;
+              navigator.clipboard.writeText(addr);
+              notifications.show({ title: "Address Copied", message: `"${addr}" copied`, color: "teal" });
+              setContextMenu(null);
+            }}
+          >
+            Copy Address
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconCopy size={15} color="#868e96" />}
+            onClick={() => {
+              navigator.clipboard.writeText(message.subject || "");
+              notifications.show({ title: "Subject Copied", message: "Subject copied to clipboard", color: "teal" });
+              setContextMenu(null);
+            }}
+          >
+            Copy Subject
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconLink size={15} color="#868e96" />}
+            onClick={() => {
+              const link = `${window.location.origin}${window.location.pathname}#${activeFolder || "inbox"}/${message.id}`;
+              navigator.clipboard.writeText(link);
+              notifications.show({ title: "Link Copied", message: "Deep link copied to clipboard", color: "teal" });
+              setContextMenu(null);
+            }}
+          >
+            Copy Deep Link
+          </Menu.Item>
+
+          <Menu.Divider />
+          {activeFolder === "trash" ? (
+            <>
+              {onRestore && (
+                <Menu.Item
+                  leftSection={<IconArrowBackUp size={15} color="#0ca678" />}
+                  color="teal"
+                  onClick={() => {
+                    onRestore(message.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Restore to Inbox
+                </Menu.Item>
+              )}
+              {onDeletePermanently && (
+                <Menu.Item
+                  leftSection={<IconTrash size={15} color="#e03131" />}
+                  color="red"
+                  onClick={() => {
+                    onDeletePermanently(message.id);
+                    setContextMenu(null);
+                  }}
+                >
+                  Delete Permanently
+                </Menu.Item>
+              )}
+            </>
+          ) : (
+            <Menu.Item
+              leftSection={<IconTrash size={15} color="#e03131" />}
+              color="red"
+              onClick={() => {
+                onTrash(message.id);
+                setContextMenu(null);
+              }}
+            >
+              Move to Trash
+            </Menu.Item>
+          )}
+        </Menu.Dropdown>
+      </Menu>
     </Box>
   );
 };

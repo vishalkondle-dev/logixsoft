@@ -38,12 +38,12 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
     headers,
   });
 
-  const data = await res.json();
+  const data = (await res.json()) as any;
   if (!res.ok) {
     throw new Error(data.error || "Request failed");
   }
 
-  return data;
+  return data as T;
 }
 
 export const api = {

@@ -9,9 +9,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": "./src",
-    "declaration": false
+    "rootDir": "./",
+    "declaration": false,
+    "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "worker-configuration.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

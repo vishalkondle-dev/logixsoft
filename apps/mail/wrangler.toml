@@ -1,19 +1,44 @@
-name = "mail"
+name = "logix-mail"
 main = "src/worker.ts"
 compatibility_date = "2026-08-13"
+compatibility_flags = ["nodejs_compat"]
 
-[[routes]]
-pattern = "mail.logixsoft.in"
-custom_domain = true
+routes = [
+  { pattern = "email.logixsoft.in/*", zone_name = "logixsoft.in" }
+]
+
+[assets]
+directory = "dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mailflare"
+database_id = "7b5a3ebc-3058-4bd6-b021-15d5083beb49"
+
+[[r2_buckets]]
+binding = "ATTACHMENTS"
+bucket_name = "mailflare-attachments"
+
+[ai]
+binding = "AI"
+
+[[send_email]]
+name = "EMAIL"
+
+[durable_objects]
+bindings = [
+  { name = "REALTIME_HUB", class_name = "RealtimeHubDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RealtimeHubDO"]
 
 [vars]
-SMTP_HOST = "smtp.zoho.in"
-SMTP_PORT = "465"
-SMTP_SECURE = "true"
-SMTP_USER = "support@logixsoft.in"
-
-[env.development]
-vars = { SMTP_HOST = "smtp.zoho.in", SMTP_PORT = "465", SMTP_SECURE = "true", SMTP_USER = "support@logixsoft.in" }
-
-[env.production]
-vars = { SMTP_HOST = "smtp.zoho.in", SMTP_PORT = "465", SMTP_SECURE = "true", SMTP_USER = "support@logixsoft.in" }
+DOMAIN = "logixsoft.in"
+JWT_SECRET = "logixsoft_mail_ultra_secret_key_2026_teal"
+CF_ACCOUNT_ID = "08b6dbcf3a926b3d07b19715e05efd2b"
+CF_API_TOKEN = "cfut_MtfGX2qAh6bOpf5hbKb0Q4Ta3pcBb5xyX7uyM5Jk208e28b1"

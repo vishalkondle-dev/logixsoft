@@ -94,6 +94,7 @@ export const EmailList: React.FC<EmailListProps> = ({
       <Box p="xs" px="md" style={{ borderBottom: "1px solid #e9ecef", backgroundColor: "#ffffff" }}>
         <Group gap="xs" wrap="nowrap">
           <TextInput
+            id="inpage-ai-search-input"
             placeholder="AI Search: ask anything (e.g. 'refunds', 'hosting bill')..."
             leftSection={
               <Tooltip label="Powered by Workers AI — semantic search finds emails even without exact keywords" withArrow>

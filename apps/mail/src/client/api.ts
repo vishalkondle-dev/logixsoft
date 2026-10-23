@@ -8,6 +8,7 @@ import {
   ClefAnalysisResult,
   ClefToneCheckResult,
 } from "./types";
+import { authClient } from "./auth";
 
 const TOKEN_KEY = "logixmail_token";
 const USER_KEY = "logixmail_user";
@@ -43,27 +44,55 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
   }
 
   const res = await fetch(endpoint, {
+    credentials: "include",
     ...options,
     headers,
   });
 
   const data = (await res.json()) as any;
   if (!res.ok) {
-    throw new Error(data.error || "Request failed");
+    throw new Error(data.error || data.message || "Request failed");
   }
 
   return data as T;
 }
 
 export const api = {
-  // Auth
+  // Auth via Better Auth
   async login(email: string, password: string): Promise<{ token: string; user: User }> {
-    const data = await fetchAPI<{ token: string; user: User }>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
+    const res = await authClient.signIn.email({
+      email: email.toLowerCase().trim(),
+      password,
     });
-    setSession(data.token, data.user);
-    return data;
+
+    if (res.error) {
+      throw new Error(res.error.message || "Invalid email or password");
+    }
+
+    const rawUser = res.data?.user as any;
+    const token = (res.data as any)?.token || (res.data as any)?.session?.token || "";
+
+    const user: User = {
+      id: rawUser?.id,
+      email: rawUser?.email,
+      name: rawUser?.name || rawUser?.email?.split("@")[0],
+      role: rawUser?.role || "user",
+      avatar_url: rawUser?.avatarUrl || rawUser?.image || null,
+      status_message: rawUser?.statusMessage || null,
+      bio: rawUser?.bio || null,
+      signature: rawUser?.signature || null,
+      sound_enabled: rawUser?.soundEnabled !== undefined ? rawUser?.soundEnabled : 1,
+    };
+
+    setSession(token, user);
+    return { token, user };
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await authClient.signOut();
+    } catch {}
+    clearSession();
   },
 
   async getMe(): Promise<{ user: User }> {

@@ -137,12 +137,16 @@ export const App: React.FC = () => {
     };
   }, [handleHashSync]);
 
-  // Global Keyboard Shortcut: Cmd+K / Ctrl+K opens AI Global Search
+  // Global Keyboard Shortcut: Cmd+K / Ctrl+K focuses AI Search input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setAiSearchOpened(true);
+        const input = document.getElementById("inpage-ai-search-input") as HTMLInputElement | null;
+        if (input) {
+          input.focus();
+          input.select();
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -419,8 +423,8 @@ export const App: React.FC = () => {
     setComposeOpened(true);
   };
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await api.logout();
     setUser(null);
     setMessages([]);
     setSelectedId(null);

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import PostalMime from "postal-mime";
 import { RealtimeHubDO } from "./realtime";
 import { signJwt, verifyJwt, type AuthUser } from "./jwt";
+import { createBetterAuth } from "./auth";
 import { inferMimeType } from "./mime";
 import { summarizeEmail, generateQuickReplies, draftEmailWithAI, performAiGlobalSearch } from "./ai";
 import { inspectEmailWithClef, checkOutgoingToneWithClef } from "./clef";
@@ -29,37 +30,98 @@ type Variables = {
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-// Global CORS
+// Global CORS with Credentials for Better Auth Session Cookies
 app.use(
   "*",
   cors({
     origin: (origin) => origin || "*",
-    allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cookie"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
+    exposeHeaders: ["Set-Cookie"],
   })
 );
+
+// ----------------------------------------------------
+// AUTH RESOLUTION VIA BETTER AUTH
+// ----------------------------------------------------
+async function resolveUserFromRequest(c: any): Promise<AuthUser | null> {
+  const auth = createBetterAuth(c.env);
+
+  // 1. Better Auth session via cookies or Authorization header (via bearer plugin)
+  try {
+    const sessionRes = await auth.api.getSession({
+      headers: c.req.raw.headers,
+    });
+    if (sessionRes && sessionRes.user) {
+      const u = sessionRes.user as any;
+      if (u.disabled) return null;
+      return {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role || "user",
+        avatar_url: u.avatarUrl || u.image || null,
+        status_message: u.statusMessage || null,
+        bio: u.bio || null,
+        signature: u.signature || null,
+        sound_enabled: u.soundEnabled !== undefined ? u.soundEnabled : 1,
+      };
+    }
+  } catch (err) {
+    console.warn("Better Auth getSession error:", err);
+  }
+
+  // 2. Query param token (used for SSE /api/events, attachment downloads, and avatar previews)
+  const queryToken = c.req.query("token");
+  if (queryToken) {
+    try {
+      const headers = new Headers(c.req.raw.headers);
+      headers.set("Authorization", `Bearer ${queryToken}`);
+      const sessionRes = await auth.api.getSession({ headers });
+      if (sessionRes && sessionRes.user) {
+        const u = sessionRes.user as any;
+        if (u.disabled) return null;
+        return {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role || "user",
+          avatar_url: u.avatarUrl || u.image || null,
+          status_message: u.statusMessage || null,
+          bio: u.bio || null,
+          signature: u.signature || null,
+          sound_enabled: u.soundEnabled !== undefined ? u.soundEnabled : 1,
+        };
+      }
+    } catch {}
+  }
+
+  // 3. Fallback: Check legacy JWT during deployment transition
+  let legacyToken: string | undefined;
+  const authHeader = c.req.header("Authorization");
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    legacyToken = authHeader.slice(7).trim();
+  } else if (queryToken) {
+    legacyToken = queryToken;
+  }
+  if (legacyToken) {
+    const legacyUser = await verifyJwt(legacyToken, c.env.JWT_SECRET);
+    if (legacyUser) {
+      return legacyUser;
+    }
+  }
+
+  return null;
+}
 
 // ----------------------------------------------------
 // AUTH MIDDLEWARE
 // ----------------------------------------------------
 async function authMiddleware(c: any, next: () => Promise<void>) {
-  let token: string | undefined;
-
-  const authHeader = c.req.header("Authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    token = authHeader.slice(7).trim();
-  } else {
-    token = c.req.query("token");
-  }
-
-  if (!token) {
-    return c.json({ error: "Missing or invalid authorization token" }, 401);
-  }
-
-  const user = await verifyJwt(token, c.env.JWT_SECRET);
+  const user = await resolveUserFromRequest(c);
   if (!user) {
-    return c.json({ error: "Session expired or invalid" }, 401);
+    return c.json({ error: "Missing or invalid authorization session" }, 401);
   }
 
   c.set("user", user);
@@ -80,15 +142,8 @@ async function adminMiddleware(c: any, next: () => Promise<void>) {
 // REALTIME SERVER-SENT EVENTS
 // ----------------------------------------------------
 app.get("/api/events", async (c) => {
-  let token = c.req.query("token") || c.req.header("Authorization")?.replace("Bearer ", "");
-  let userId = "guest";
-
-  if (token) {
-    const user = await verifyJwt(token, c.env.JWT_SECRET);
-    if (user) {
-      userId = user.id;
-    }
-  }
+  const user = await resolveUserFromRequest(c);
+  const userId = user ? user.id : "guest";
 
   const hubId = c.env.REALTIME_HUB.idFromName("global");
   const hub = c.env.REALTIME_HUB.get(hubId);
@@ -96,82 +151,73 @@ app.get("/api/events", async (c) => {
 });
 
 // ----------------------------------------------------
-// AUTHENTICATION
+// BETTER AUTH ROUTES (/api/auth/*)
 // ----------------------------------------------------
-app.post("/api/auth/login", async (c) => {
-  const { email, password } = await c.req.json().catch(() => ({}));
-  if (!email || !password) {
-    return c.json({ error: "Email and password are required" }, 400);
+app.all("/api/auth/*", async (c) => {
+  const path = c.req.path;
+  const auth = createBetterAuth(c.env);
+
+  // Backward-compatible login handler
+  if (path === "/api/auth/login" && c.req.method === "POST") {
+    const { email, password } = await c.req.json().catch(() => ({}));
+    if (!email || !password) {
+      return c.json({ error: "Email and password are required" }, 400);
+    }
+
+    try {
+      const cleanEmail = email.toLowerCase().trim();
+      const signInRes = await auth.api.signInEmail({
+        body: { email: cleanEmail, password },
+        asResponse: true,
+      });
+
+      if (!signInRes.ok) {
+        const errData = (await signInRes.json().catch(() => ({}))) as any;
+        return c.json({ error: errData.message || "Invalid email or password" }, 401);
+      }
+
+      const setCookie = signInRes.headers.get("set-cookie");
+      const data = (await signInRes.json()) as any;
+      const authUser = data.user;
+
+      if (authUser?.disabled) {
+        return c.json({ error: "This account has been disabled. Contact admin." }, 403);
+      }
+
+      const user: AuthUser = {
+        id: authUser.id,
+        email: authUser.email,
+        name: authUser.name,
+        role: authUser.role || "user",
+        avatar_url: authUser.avatarUrl || authUser.image || null,
+        status_message: authUser.statusMessage || null,
+        bio: authUser.bio || null,
+        signature: authUser.signature || null,
+        sound_enabled: authUser.soundEnabled !== undefined ? authUser.soundEnabled : 1,
+      };
+
+      const token = data.token || "";
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (setCookie) headers["Set-Cookie"] = setCookie;
+
+      return new Response(JSON.stringify({ token, user }), { status: 200, headers });
+    } catch (err: any) {
+      console.error("Better Auth login error:", err);
+      return c.json({ error: err.message || "Login failed" }, 500);
+    }
   }
 
-  try {
-    const cleanEmail = email.toLowerCase().trim();
-    const user = await c.env.DB.prepare(
-      "SELECT id, email, name, password_hash, role, disabled, avatar_url, status_message, bio, signature, sound_enabled FROM users WHERE email = ? LIMIT 1"
-    )
-      .bind(cleanEmail)
-      .first<{
-        id: string;
-        email: string;
-        name: string;
-        password_hash: string;
-        role: "admin" | "user";
-        disabled: number;
-        avatar_url: string | null;
-        status_message: string | null;
-        bio: string | null;
-        signature: string | null;
-        sound_enabled: number;
-      }>();
-
+  // Session profile me route
+  if (path === "/api/auth/me" && c.req.method === "GET") {
+    const user = await resolveUserFromRequest(c);
     if (!user) {
-      return c.json({ error: "Invalid email or password" }, 401);
+      return c.json({ error: "Missing or invalid authorization session" }, 401);
     }
-
-    if (user.disabled) {
-      return c.json({ error: "This account has been disabled. Contact admin." }, 403);
-    }
-
-    const matches = bcrypt.compareSync(password, user.password_hash);
-    if (!matches) {
-      return c.json({ error: "Invalid email or password" }, 401);
-    }
-
-    const authUser: AuthUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      avatar_url: user.avatar_url,
-      status_message: user.status_message,
-      bio: user.bio,
-      signature: user.signature,
-      sound_enabled: user.sound_enabled !== undefined ? user.sound_enabled : 1,
-    };
-
-    const token = await signJwt(authUser, c.env.JWT_SECRET);
-
-    return c.json({
-      token,
-      user: authUser,
-    });
-  } catch (err: any) {
-    console.error("Login error:", err);
-    return c.json({ error: err.message || "Login failed" }, 500);
+    return c.json({ user });
   }
-});
 
-app.get("/api/auth/me", authMiddleware, async (c) => {
-  const authUser = c.get("user") as AuthUser;
-  try {
-    const user = await c.env.DB.prepare(
-      "SELECT id, email, name, role, avatar_url, status_message, bio, signature, sound_enabled FROM users WHERE id = ? LIMIT 1"
-    ).bind(authUser.id).first<any>();
-
-    return c.json({ user: user || authUser });
-  } catch {
-    return c.json({ user: authUser });
-  }
+  // All other endpoints handled natively by Better Auth
+  return auth.handler(c.req.raw);
 });
 
 // ----------------------------------------------------
@@ -1217,6 +1263,7 @@ app.patch("/api/user/profile", authMiddleware, async (c) => {
     if (updates.length > 0) {
       params.push(authUser.id);
       await c.env.DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).bind(...params).run();
+      await c.env.DB.prepare(`UPDATE user SET ${updates.join(", ")}, updated_at = ? WHERE id = ?`).bind(...params.slice(0, -1), Date.now(), authUser.id).run().catch(() => {});
     }
 
     const updated = await c.env.DB.prepare(
@@ -1264,6 +1311,7 @@ app.post("/api/user/avatar", authMiddleware, async (c) => {
 
     const avatarUrl = `/api/user/avatar/${authUser.id}?v=${Date.now()}`;
     await c.env.DB.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").bind(avatarUrl, authUser.id).run();
+    await c.env.DB.prepare("UPDATE user SET avatar_url = ?, image = ?, updated_at = ? WHERE id = ?").bind(avatarUrl, avatarUrl, Date.now(), authUser.id).run().catch(() => {});
 
     return c.json({ avatar_url: avatarUrl });
   } catch (err: any) {
@@ -1317,6 +1365,20 @@ app.post("/api/admin/users", adminMiddleware, async (c) => {
       .bind(id, cleanEmail, passHash, name.trim(), role || "user", now)
       .run();
 
+    await c.env.DB.prepare(
+      "INSERT INTO user (id, name, email, email_verified, role, disabled, created_at, updated_at) VALUES (?, ?, ?, 1, ?, 0, ?, ?)"
+    )
+      .bind(id, name.trim(), cleanEmail, role || "user", now * 1000, now * 1000)
+      .run()
+      .catch(() => {});
+
+    await c.env.DB.prepare(
+      "INSERT INTO account (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES (?, ?, 'credential', ?, ?, ?, ?)"
+    )
+      .bind("acc_" + id, id, id, passHash, now * 1000, now * 1000)
+      .run()
+      .catch(() => {});
+
     const domain = c.env.DOMAIN || "logixsoft.in";
     if (cleanEmail.endsWith(`@${domain}`)) {
       const localPart = cleanEmail.split("@")[0];
@@ -1351,15 +1413,24 @@ app.patch("/api/admin/users/:id", adminMiddleware, async (c) => {
       await c.env.DB.prepare("UPDATE users SET disabled = ? WHERE id = ?")
         .bind(disabled ? 1 : 0, id)
         .run();
+      await c.env.DB.prepare("UPDATE user SET disabled = ?, updated_at = ? WHERE id = ?")
+        .bind(disabled ? 1 : 0, Date.now(), id)
+        .run()
+        .catch(() => {});
     }
     if (role !== undefined) {
       await c.env.DB.prepare("UPDATE users SET role = ? WHERE id = ?").bind(role, id).run();
+      await c.env.DB.prepare("UPDATE user SET role = ?, updated_at = ? WHERE id = ?").bind(role, Date.now(), id).run().catch(() => {});
     }
     if (password) {
       const passHash = bcrypt.hashSync(password, 10);
       await c.env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
         .bind(passHash, id)
         .run();
+      await c.env.DB.prepare("UPDATE account SET password = ?, updated_at = ? WHERE user_id = ? AND provider_id = 'credential'")
+        .bind(passHash, Date.now(), id)
+        .run()
+        .catch(() => {});
     }
 
     return c.json({ success: true });

@@ -46,6 +46,8 @@ export interface EmailMessage {
   spam_verdict?: string;
   clef_analysis?: string;
   labels?: Label[];
+  ai_reason?: string;
+  relevance_score?: number;
 }
 
 export interface ClefAnalysisResult {

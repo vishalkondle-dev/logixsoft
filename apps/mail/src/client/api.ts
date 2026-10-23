@@ -138,11 +138,11 @@ export const api = {
   },
 
   // Messages
-  async getMessages(folder: string, alias?: string, search?: string): Promise<{ messages: EmailMessage[] }> {
+  async getMessages(folder: string, alias?: string, search?: string): Promise<{ messages: EmailMessage[]; ai_summary?: string; is_ai_search?: boolean }> {
     const params = new URLSearchParams({ folder });
     if (alias && alias !== "all") params.append("alias", alias);
     if (search) params.append("search", search);
-    return fetchAPI<{ messages: EmailMessage[] }>(`/api/messages?${params.toString()}`);
+    return fetchAPI<{ messages: EmailMessage[]; ai_summary?: string; is_ai_search?: boolean }>(`/api/messages?${params.toString()}`);
   },
 
   async getMessage(id: string): Promise<{ message: EmailMessage; attachments: Attachment[] }> {

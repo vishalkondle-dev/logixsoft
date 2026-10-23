@@ -241,6 +241,28 @@ app.get("/api/aliases", authMiddleware, async (c) => {
 // ----------------------------------------------------
 // MESSAGES & INBOX
 // ----------------------------------------------------
+async function attachLabelsToMessages(db: D1Database, messages: any[]) {
+  if (!messages || messages.length === 0) return;
+  const msgIds = messages.map((m: any) => m.id);
+  const placeholders = msgIds.map(() => "?").join(",");
+  const labelsRes = await db.prepare(
+    `SELECT ml.message_id, l.id, l.name, l.color
+     FROM message_labels ml
+     JOIN labels l ON ml.label_id = l.id
+     WHERE ml.message_id IN (${placeholders})`
+  ).bind(...msgIds).all().then((r: any) => r.results || []).catch(() => []);
+
+  const labelsByMsg: Record<string, any[]> = {};
+  for (const l of labelsRes as any[]) {
+    if (!labelsByMsg[l.message_id]) labelsByMsg[l.message_id] = [];
+    labelsByMsg[l.message_id].push({ id: l.id, name: l.name, color: l.color });
+  }
+
+  for (const msg of messages) {
+    msg.labels = labelsByMsg[msg.id] || [];
+  }
+}
+
 app.get("/api/messages", authMiddleware, async (c) => {
   try {
     const folder = c.req.query("folder") || "inbox";
@@ -254,7 +276,7 @@ app.get("/api/messages", authMiddleware, async (c) => {
     if (labelId) {
       sql += ` JOIN message_labels ml ON m.id = ml.message_id WHERE ml.label_id = ? AND m.status != 'trashed'`;
       params.push(labelId);
-    } else {
+    } else if (!search || !search.trim()) {
       sql += ` WHERE 1=1`;
       if (folder === "inbox") {
         sql += ` AND m.direction = 'inbound' AND m.status != 'trashed'`;
@@ -265,6 +287,8 @@ app.get("/api/messages", authMiddleware, async (c) => {
       } else if (folder === "trash") {
         sql += ` AND m.status = 'trashed'`;
       }
+    } else {
+      sql += ` WHERE m.status != 'trashed'`;
     }
 
     if (alias && alias !== "all") {
@@ -272,37 +296,94 @@ app.get("/api/messages", authMiddleware, async (c) => {
       params.push(`%${alias}%`, `%${alias}%`);
     }
 
-    if (search) {
-      sql += ` AND (m.subject LIKE ? OR m.from_addr LIKE ? OR m.snippet LIKE ? OR m.text_body LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    if (search && search.trim()) {
+      const cleanSearch = search.trim();
+      const keywordSql = sql + ` AND (m.subject LIKE ? OR m.from_addr LIKE ? OR m.snippet LIKE ? OR m.text_body LIKE ?) ORDER BY m.created_at DESC LIMIT 50`;
+      const kwParams = [...params, `%${cleanSearch}%`, `%${cleanSearch}%`, `%${cleanSearch}%`, `%${cleanSearch}%`];
+      const kwRes = await c.env.DB.prepare(keywordSql).bind(...kwParams).all().catch(() => ({ results: [] }));
+      const keywordMessages = (kwRes.results || []) as any[];
+
+      // Run AI Semantic Search across candidates so emails are found EVEN IF exact keywords are not there!
+      let candidateSql = `SELECT m.id, m.from_addr, m.to_addr, m.subject, m.snippet, m.text_body, m.clef_analysis, m.created_at FROM messages m WHERE m.status != 'trashed'`;
+      const candParams: any[] = [];
+      if (alias && alias !== "all") {
+        candidateSql += ` AND (m.to_addr LIKE ? OR m.from_addr LIKE ?)`;
+        candParams.push(`%${alias}%`, `%${alias}%`);
+      }
+      candidateSql += ` ORDER BY m.created_at DESC LIMIT 35`;
+
+      const candRes = await c.env.DB.prepare(candidateSql).bind(...candParams).all().catch(() => ({ results: [] }));
+      const candidates = (candRes.results || []) as any[];
+
+      let aiResult: any = null;
+      if (candidates.length > 0) {
+        try {
+          aiResult = await performAiGlobalSearch(c.env, cleanSearch, candidates);
+        } catch (e: any) {
+          console.warn("performAiGlobalSearch error in /api/messages:", e.message);
+        }
+      }
+
+      const seenIds = new Set<string>();
+      const combinedMessages: any[] = [];
+      const aiMatchMap = new Map<string, { score: number; reason: string }>();
+
+      if (aiResult?.matches && Array.isArray(aiResult.matches)) {
+        for (const m of aiResult.matches) {
+          aiMatchMap.set(m.id, { score: m.relevanceScore, reason: m.reason });
+        }
+      }
+
+      // Query full message records for any AI matches not in keywordMessages
+      const aiMatchedIds = Array.from(aiMatchMap.keys());
+      let aiFetchedMessages: any[] = [];
+      if (aiMatchedIds.length > 0) {
+        const placeholders = aiMatchedIds.map(() => "?").join(",");
+        const aiMsgRes = await c.env.DB.prepare(
+          `SELECT m.id, m.user_id, m.direction, m.from_addr, m.to_addr, m.cc_addr, m.subject, m.snippet, m.status, m.created_at, m.read, m.starred, m.in_reply_to, m.spam_verdict, m.clef_analysis FROM messages m WHERE m.id IN (${placeholders})`
+        ).bind(...aiMatchedIds).all().catch(() => ({ results: [] }));
+        aiFetchedMessages = (aiMsgRes.results || []) as any[];
+      }
+
+      // 1. Add AI matches in ranked relevance order (finds emails even without exact keyword)
+      for (const id of aiMatchedIds) {
+        const found = aiFetchedMessages.find((m: any) => m.id === id) || keywordMessages.find((m: any) => m.id === id);
+        if (found && !seenIds.has(found.id)) {
+          seenIds.add(found.id);
+          const aiMeta = aiMatchMap.get(found.id);
+          combinedMessages.push({
+            ...found,
+            ai_reason: aiMeta?.reason,
+            relevance_score: aiMeta?.score,
+          });
+        }
+      }
+
+      // 2. Add any remaining direct keyword matches
+      for (const kwMsg of keywordMessages) {
+        if (!seenIds.has(kwMsg.id)) {
+          seenIds.add(kwMsg.id);
+          combinedMessages.push({
+            ...kwMsg,
+            ai_reason: `Keyword match`,
+            relevance_score: 85,
+          });
+        }
+      }
+
+      await attachLabelsToMessages(c.env.DB, combinedMessages);
+
+      return c.json({
+        messages: combinedMessages,
+        ai_summary: aiResult?.summary || (combinedMessages.length > 0 ? `Found ${combinedMessages.length} matching emails.` : `No emails found matching "${cleanSearch}".`),
+        is_ai_search: true,
+      });
     }
 
     sql += ` ORDER BY m.created_at DESC LIMIT 100`;
-
     const res = await c.env.DB.prepare(sql).bind(...params).all();
     const messages = (res.results || []) as any[];
-
-    // Attach labels to messages
-    if (messages.length > 0) {
-      const msgIds = messages.map((m: any) => m.id);
-      const placeholders = msgIds.map(() => "?").join(",");
-      const labelsRes = await c.env.DB.prepare(
-        `SELECT ml.message_id, l.id, l.name, l.color
-         FROM message_labels ml
-         JOIN labels l ON ml.label_id = l.id
-         WHERE ml.message_id IN (${placeholders})`
-      ).bind(...msgIds).all().then((r: any) => r.results || []).catch(() => []);
-
-      const labelsByMsg: Record<string, any[]> = {};
-      for (const l of labelsRes as any[]) {
-        if (!labelsByMsg[l.message_id]) labelsByMsg[l.message_id] = [];
-        labelsByMsg[l.message_id].push({ id: l.id, name: l.name, color: l.color });
-      }
-
-      for (const msg of messages) {
-        msg.labels = labelsByMsg[msg.id] || [];
-      }
-    }
+    await attachLabelsToMessages(c.env.DB, messages);
 
     return c.json({ messages });
   } catch (err: any) {

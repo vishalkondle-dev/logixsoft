@@ -10,7 +10,6 @@ import { ComposeModal } from "./components/ComposeModal";
 import { AdminConsole } from "./components/AdminConsole";
 import { LoginModal } from "./components/LoginModal";
 import { UserProfileModal } from "./components/UserProfileModal";
-import { AiSearchModal } from "./components/AiSearchModal";
 import { LabelsManagerModal } from "./components/LabelsManagerModal";
 import { User, Alias, EmailMessage, Attachment, Label } from "./types";
 import { api, getStoredUser, clearSession, connectRealtime } from "./api";
@@ -94,6 +93,7 @@ export const App: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(initialRoute.selectedId);
   const [adminTab, setAdminTab] = useState<string>(initialRoute.adminTab);
   const [search, setSearch] = useState<string>("");
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
 
   // Messages state
   const [messages, setMessages] = useState<EmailMessage[]>([]);
@@ -107,7 +107,6 @@ export const App: React.FC = () => {
   const [replyToMessage, setReplyToMessage] = useState<EmailMessage | null>(null);
   const [replyTone, setReplyTone] = useState<string | undefined>(undefined);
   const [labelsManagerOpened, setLabelsManagerOpened] = useState<boolean>(false);
-  const [aiSearchOpened, setAiSearchOpened] = useState<boolean>(false);
   const [profileOpened, setProfileOpened] = useState<boolean>(false);
 
   // Sound Notifications state
@@ -290,6 +289,33 @@ export const App: React.FC = () => {
     };
   }, [user?.id]);
 
+  // Global Keyboard Shortcuts (Cmd+K to focus AI Search, C to Compose)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder*="AI Search"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      } else if (
+        e.key.toLowerCase() === "c" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !["input", "textarea"].includes((document.activeElement?.tagName || "").toLowerCase()) &&
+        !document.querySelector(".mantine-Modal-root")
+      ) {
+        e.preventDefault();
+        setReplyToMessage(null);
+        setReplyTone(undefined);
+        setComposeOpened(true);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
+
   // Fetch Messages when folder, alias or search changes
   useEffect(() => {
     if (!user || currentView === "admin") return;
@@ -298,6 +324,7 @@ export const App: React.FC = () => {
     api.getMessages(activeFolder, activeAlias, search)
       .then((res) => {
         setMessages(res.messages);
+        setAiSummary(res.ai_summary || null);
         if (res.messages.length === 0) {
           setSelectedMessage(null);
         }
@@ -319,6 +346,7 @@ export const App: React.FC = () => {
         api.getAliases().catch(() => ({ aliases: [], domain: "" })),
       ]);
       setMessages(msgRes.messages);
+      setAiSummary(msgRes.ai_summary || null);
       if (aliasRes.aliases && aliasRes.aliases.length > 0) {
         setAliases(aliasRes.aliases);
       }
@@ -424,7 +452,6 @@ export const App: React.FC = () => {
           soundEnabled={soundActive}
           onToggleSound={handleToggleSound}
           onOpenProfile={() => setProfileOpened(true)}
-          onOpenAiSearch={() => setAiSearchOpened(true)}
           onOpenLabelsManager={() => setLabelsManagerOpened(true)}
         >
           {currentView === "admin" ? (
@@ -443,6 +470,7 @@ export const App: React.FC = () => {
                   loading={loadingMessages}
                   activeFolder={activeFolder}
                   onRefresh={handleRefreshMessages}
+                  aiSummary={aiSummary}
                 />
               ) : (
                 <EmailDetail
@@ -487,6 +515,7 @@ export const App: React.FC = () => {
                   loading={loadingMessages}
                   activeFolder={activeFolder}
                   onRefresh={handleRefreshMessages}
+                  aiSummary={aiSummary}
                 />
               </Box>
 
@@ -539,14 +568,6 @@ export const App: React.FC = () => {
               setUser(updated);
               setSoundActive(isSoundEnabled(updated.sound_enabled));
             }}
-          />
-
-          {/* AI GLOBAL SEARCH MODAL */}
-          <AiSearchModal
-            opened={aiSearchOpened}
-            onClose={() => setAiSearchOpened(false)}
-            onSelectMessage={handleSelectMessage}
-            activeMailbox={activeAlias}
           />
 
           {/* LABELS MANAGER MODAL */}

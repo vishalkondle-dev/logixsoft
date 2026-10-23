@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Stack,
   Paper,
@@ -11,6 +11,8 @@ import {
   Box,
   Center,
   Tooltip,
+  Loader,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   IconSearch,
@@ -22,6 +24,8 @@ import {
   IconArrowDownLeft,
   IconInbox,
   IconRefresh,
+  IconSparkles,
+  IconX,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -40,6 +44,7 @@ interface EmailListProps {
   loading: boolean;
   activeFolder: string;
   onRefresh?: () => Promise<void> | void;
+  aiSummary?: string | null;
 }
 
 export const EmailList: React.FC<EmailListProps> = ({
@@ -52,20 +57,90 @@ export const EmailList: React.FC<EmailListProps> = ({
   loading,
   activeFolder,
   onRefresh,
+  aiSummary,
 }) => {
+  const [localSearch, setLocalSearch] = useState(search);
+
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  // Debounced search trigger (450ms)
+  useEffect(() => {
+    if (localSearch === search) return;
+    const timer = setTimeout(() => {
+      onSearchChange(localSearch);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [localSearch, search, onSearchChange]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      onSearchChange(localSearch);
+    } else if (e.key === "Escape") {
+      setLocalSearch("");
+      onSearchChange("");
+    }
+  };
+
+  const handleClear = () => {
+    setLocalSearch("");
+    onSearchChange("");
+  };
+
   return (
     <Box style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Search Bar & Manual Refresh */}
-      <Box p="md" style={{ borderBottom: "1px solid #e9ecef" }}>
+      {/* AI Semantic Search Bar & Manual Refresh */}
+      <Box p="xs" px="md" style={{ borderBottom: "1px solid #e9ecef", backgroundColor: "#ffffff" }}>
         <Group gap="xs" wrap="nowrap">
           <TextInput
-            placeholder="Search subjects, senders, contents..."
-            leftSection={<IconSearch size={16} />}
-            value={search}
-            onChange={(e) => onSearchChange(e.currentTarget.value)}
+            placeholder="AI Search: ask anything (e.g. 'refunds', 'hosting bill')..."
+            leftSection={
+              <Tooltip label="Powered by Workers AI — semantic search finds emails even without exact keywords" withArrow>
+                <Box style={{ display: "flex", alignItems: "center" }}>
+                  <IconSparkles size={16} color="#0ca678" />
+                </Box>
+              </Tooltip>
+            }
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.currentTarget.value)}
+            onKeyDown={handleKeyDown}
             size="sm"
             radius="md"
             style={{ flex: 1 }}
+            rightSection={
+              loading ? (
+                <Loader size={14} color="teal" />
+              ) : localSearch ? (
+                <ActionIcon
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  onClick={handleClear}
+                  aria-label="Clear AI search"
+                >
+                  <IconX size={14} />
+                </ActionIcon>
+              ) : (
+                <Tooltip label="Semantic AI Search" withArrow>
+                  <Badge
+                    size="xs"
+                    variant="light"
+                    color="teal"
+                    style={{ textTransform: "none", cursor: "default" }}
+                  >
+                    AI
+                  </Badge>
+                </Tooltip>
+              )
+            }
+            styles={{
+              input: {
+                backgroundColor: localSearch ? "#f0fdf4" : "#f8fafc",
+                borderColor: localSearch ? "#0ca678" : "#dee2e6",
+                fontWeight: 500,
+              },
+            }}
           />
           {onRefresh && (
             <Tooltip label="Refresh emails (or pull down to refresh)">
@@ -83,6 +158,43 @@ export const EmailList: React.FC<EmailListProps> = ({
             </Tooltip>
           )}
         </Group>
+
+        {/* AI Semantic Search Synthesis Banner */}
+        {search.trim() && aiSummary && (
+          <Paper
+            p="xs"
+            mt="xs"
+            radius="md"
+            withBorder
+            bg="teal.0"
+            style={{ border: "1px solid #a7f3d0" }}
+          >
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <Group gap={6} align="flex-start" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                <ThemeIcon size="xs" color="teal" radius="xl" mt={2} style={{ flexShrink: 0 }}>
+                  <IconSparkles size={12} />
+                </ThemeIcon>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text size="11px" fw={700} c="teal.9">
+                    Workers AI Search Synthesis
+                  </Text>
+                  <Text size="11px" c="teal.8" lineClamp={2} style={{ lineHeight: 1.4 }}>
+                    {aiSummary}
+                  </Text>
+                </div>
+              </Group>
+              <ActionIcon
+                size="xs"
+                variant="subtle"
+                color="teal"
+                onClick={handleClear}
+                title="Clear AI search"
+              >
+                <IconX size={12} />
+              </ActionIcon>
+            </Group>
+          </Paper>
+        )}
       </Box>
 
       {/* Message Cards Scroll List with Pull To Refresh */}
@@ -183,6 +295,19 @@ export const EmailList: React.FC<EmailListProps> = ({
                     </Text>
 
                     <Group gap={4} mt={6} wrap="wrap">
+                      {/* AI SEMANTIC MATCH REASON */}
+                      {msg.ai_reason && (
+                        <Badge
+                          size="xs"
+                          color="teal"
+                          variant="light"
+                          leftSection={<IconSparkles size={11} />}
+                          style={{ textTransform: "none", fontWeight: 600 }}
+                        >
+                          {msg.relevance_score ? `${msg.relevance_score}% • ` : ""}{msg.ai_reason}
+                        </Badge>
+                      )}
+
                       {/* LABELS */}
                       {msg.labels && msg.labels.length > 0 && (
                         <>

@@ -45,6 +45,7 @@ import {
   IconVolume,
   IconVolumeOff,
   IconTag,
+  IconEdit,
 } from "@tabler/icons-react";
 import { User, Alias, Label } from "../types";
 
@@ -226,24 +227,19 @@ export const Layout: React.FC<LayoutProps> = ({
 
           {/* Center / Right actions */}
           <Group gap="xs" style={{ flexWrap: "nowrap" }}>
-            {/* AI Global Search Trigger */}
-            <Tooltip label="Search inbox with Workers AI (Cmd+K)" withArrow position="bottom">
-              <Button
-                variant="light"
+            {/* Quick Compose ActionIcon in Header */}
+            <Tooltip label="Compose new email (C)" withArrow position="bottom">
+              <ActionIcon
+                variant="filled"
                 color="teal"
-                size="xs"
+                size="md"
                 radius="md"
-                leftSection={<IconSparkles size={14} color="#0ca678" />}
-                onClick={onOpenAiSearch}
-                style={{ fontWeight: 600 }}
+                onClick={handleCompose}
+                aria-label="Compose new email"
+                style={{ boxShadow: "0 2px 8px rgba(12, 166, 120, 0.25)" }}
               >
-                {!isMobile ? "AI Global Search" : "AI Search"}
-                {!isMobile && (
-                  <Badge size="xs" variant="outline" color="teal" ml="xs" style={{ textTransform: "none" }}>
-                    ⌘K
-                  </Badge>
-                )}
-              </Button>
+                <IconEdit size={18} />
+              </ActionIcon>
             </Tooltip>
 
             {/* Sound Notification Quick Toggle */}

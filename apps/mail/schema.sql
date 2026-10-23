@@ -75,6 +75,14 @@ CREATE TABLE IF NOT EXISTS verification (
   updated_at INTEGER
 );
 
+-- Sync trigger: keep Better Auth 'user' table synchronized with 'users' table
+CREATE TRIGGER IF NOT EXISTS sync_user_to_users
+AFTER INSERT ON user
+BEGIN
+  INSERT OR IGNORE INTO users (id, email, password_hash, name, role, disabled, created_at)
+  VALUES (NEW.id, NEW.email, 'better_auth', NEW.name, COALESCE(NEW.role, 'user'), COALESCE(NEW.disabled, 0), NEW.created_at);
+END;
+
 CREATE TABLE IF NOT EXISTS mailboxes (
   id TEXT PRIMARY KEY NOT NULL,
   user_id TEXT REFERENCES users(id) ON DELETE CASCADE,

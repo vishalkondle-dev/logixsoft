@@ -1,5 +1,5 @@
 import { CONFIG } from "./config";
-import { executeD1 } from "./d1";
+import { queryD1, executeD1 } from "./d1";
 import { broadcastSSE } from "./sse";
 import { uploadToR2 } from "./r2";
 
@@ -89,28 +89,72 @@ export async function sendEmailViaCloudflare(payload: SendEmailPayload) {
 
   // Save to D1 database under messages table
   try {
-    await executeD1(
-      `INSERT INTO messages (
-        id, user_id, direction, provider_message_id, from_addr, to_addr, cc_addr, bcc_addr,
-        subject, snippet, status, created_at, read, starred, text_body, html_body, in_reply_to, references_header
-      ) VALUES (?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, 'sent', ?, 1, 0, ?, ?, ?, ?)`,
-      [
-        messageId,
-        payload.userId,
-        messageId,
-        `"${payload.fromName || payload.fromAddress.split("@")[0]}" <${payload.fromAddress}>`,
-        toList.join(", "),
-        payload.cc ? payload.cc.join(", ") : null,
-        payload.bcc ? payload.bcc.join(", ") : null,
-        payload.subject,
-        snippet,
-        now,
-        payload.text || snippet,
-        payload.html,
-        payload.inReplyTo || null,
-        payload.referencesHeader || null,
-      ]
-    );
+    let validUserId: string | null = null;
+    if (payload.userId) {
+      try {
+        const uRows = await queryD1<{ id: string }>("SELECT id FROM users WHERE id = ? LIMIT 1", [payload.userId]);
+        if (uRows.length > 0) {
+          validUserId = uRows[0].id;
+        } else {
+          const emailRows = await queryD1<{ id: string }>("SELECT id FROM users WHERE email = ? LIMIT 1", [payload.fromAddress.toLowerCase()]);
+          if (emailRows.length > 0) {
+            validUserId = emailRows[0].id;
+          }
+        }
+      } catch {}
+    }
+
+    try {
+      await executeD1(
+        `INSERT INTO messages (
+          id, user_id, direction, provider_message_id, from_addr, to_addr, cc_addr, bcc_addr,
+          subject, snippet, status, created_at, read, starred, text_body, html_body, in_reply_to, references_header
+        ) VALUES (?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, 'sent', ?, 1, 0, ?, ?, ?, ?)`,
+        [
+          messageId,
+          validUserId,
+          messageId,
+          `"${payload.fromName || payload.fromAddress.split("@")[0]}" <${payload.fromAddress}>`,
+          toList.join(", "),
+          payload.cc ? payload.cc.join(", ") : null,
+          payload.bcc ? payload.bcc.join(", ") : null,
+          payload.subject,
+          snippet,
+          now,
+          payload.text || snippet,
+          payload.html,
+          payload.inReplyTo || null,
+          payload.referencesHeader || null,
+        ]
+      );
+    } catch (insertErr: any) {
+      if (insertErr.message?.includes("FOREIGN KEY") || insertErr.message?.includes("SQLITE_CONSTRAINT")) {
+        console.warn("Retrying message insert with NULL user_id due to FK constraint:", insertErr.message);
+        await executeD1(
+          `INSERT INTO messages (
+            id, user_id, direction, provider_message_id, from_addr, to_addr, cc_addr, bcc_addr,
+            subject, snippet, status, created_at, read, starred, text_body, html_body, in_reply_to, references_header
+          ) VALUES (?, NULL, 'outbound', ?, ?, ?, ?, ?, ?, ?, 'sent', ?, 1, 0, ?, ?, ?, ?)`,
+          [
+            messageId,
+            messageId,
+            `"${payload.fromName || payload.fromAddress.split("@")[0]}" <${payload.fromAddress}>`,
+            toList.join(", "),
+            payload.cc ? payload.cc.join(", ") : null,
+            payload.bcc ? payload.bcc.join(", ") : null,
+            payload.subject,
+            snippet,
+            now,
+            payload.text || snippet,
+            payload.html,
+            payload.inReplyTo || null,
+            payload.referencesHeader || null,
+          ]
+        );
+      } else {
+        throw insertErr;
+      }
+    }
 
     // Save attachments to R2 & D1
     if (payload.attachments && payload.attachments.length > 0) {

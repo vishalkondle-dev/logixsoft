@@ -1042,30 +1042,90 @@ app.post("/api/messages/send", authMiddleware, async (c) => {
       ? text.slice(0, 120)
       : html.replace(/<[^>]*>/g, "").slice(0, 120);
 
+    // 2. Resolve valid user_id for messages table FK constraint (references users.id)
+    let validUserId: string | null = null;
+    if (user?.id) {
+      try {
+        const uRow = await c.env.DB.prepare("SELECT id FROM users WHERE id = ? LIMIT 1")
+          .bind(user.id)
+          .first<{ id: string }>();
+        if (uRow) {
+          validUserId = uRow.id;
+        } else if (user.email) {
+          const emailRow = await c.env.DB.prepare("SELECT id FROM users WHERE email = ? LIMIT 1")
+            .bind(user.email.toLowerCase().trim())
+            .first<{ id: string }>();
+          if (emailRow) {
+            validUserId = emailRow.id;
+          } else {
+            const nowTs = Math.floor(Date.now() / 1000);
+            await c.env.DB.prepare(
+              "INSERT OR IGNORE INTO users (id, email, password_hash, name, role, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+            )
+              .bind(user.id, user.email.toLowerCase().trim(), "managed_auth", user.name || "User", user.role || "user", nowTs)
+              .run();
+            validUserId = user.id;
+          }
+        }
+      } catch (userLookupErr) {
+        console.warn("Could not resolve user_id for messages FK:", userLookupErr);
+      }
+    }
+
     // 2. Insert into D1 messages table
-    await c.env.DB.prepare(
-      `INSERT OR REPLACE INTO messages (
-        id, user_id, direction, provider_message_id, from_addr, to_addr, cc_addr, bcc_addr,
-        subject, snippet, status, created_at, read, starred, text_body, html_body, in_reply_to, references_header
-      ) VALUES (?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, 'sent', ?, 1, 0, ?, ?, ?, ?)`
-    )
-      .bind(
-        messageId,
-        user.id,
-        rawProviderId,
-        `"${fromName || user.name}" <${fromAddress}>`,
-        toList.join(", "),
-        cc ? (Array.isArray(cc) ? cc.join(", ") : cc) : null,
-        bcc ? (Array.isArray(bcc) ? bcc.join(", ") : bcc) : null,
-        subject,
-        snippet,
-        now,
-        text || snippet,
-        html,
-        inReplyTo || null,
-        referencesHeader || null
+    try {
+      await c.env.DB.prepare(
+        `INSERT INTO messages (
+          id, user_id, direction, provider_message_id, from_addr, to_addr, cc_addr, bcc_addr,
+          subject, snippet, status, created_at, read, starred, text_body, html_body, in_reply_to, references_header
+        ) VALUES (?, ?, 'outbound', ?, ?, ?, ?, ?, ?, ?, 'sent', ?, 1, 0, ?, ?, ?, ?)`
       )
-      .run();
+        .bind(
+          messageId,
+          validUserId,
+          rawProviderId,
+          `"${fromName || user.name}" <${fromAddress}>`,
+          toList.join(", "),
+          cc ? (Array.isArray(cc) ? cc.join(", ") : cc) : null,
+          bcc ? (Array.isArray(bcc) ? bcc.join(", ") : bcc) : null,
+          subject,
+          snippet,
+          now,
+          text || snippet,
+          html,
+          inReplyTo || null,
+          referencesHeader || null
+        )
+        .run();
+    } catch (insertErr: any) {
+      if (insertErr.message?.includes("FOREIGN KEY") || insertErr.message?.includes("SQLITE_CONSTRAINT")) {
+        console.warn("Retrying message insert with NULL user_id due to constraint:", insertErr.message);
+        await c.env.DB.prepare(
+          `INSERT INTO messages (
+            id, user_id, direction, provider_message_id, from_addr, to_addr, cc_addr, bcc_addr,
+            subject, snippet, status, created_at, read, starred, text_body, html_body, in_reply_to, references_header
+          ) VALUES (?, NULL, 'outbound', ?, ?, ?, ?, ?, ?, ?, 'sent', ?, 1, 0, ?, ?, ?, ?)`
+        )
+          .bind(
+            messageId,
+            rawProviderId,
+            `"${fromName || user.name}" <${fromAddress}>`,
+            toList.join(", "),
+            cc ? (Array.isArray(cc) ? cc.join(", ") : cc) : null,
+            bcc ? (Array.isArray(bcc) ? bcc.join(", ") : bcc) : null,
+            subject,
+            snippet,
+            now,
+            text || snippet,
+            html,
+            inReplyTo || null,
+            referencesHeader || null
+          )
+          .run();
+      } else {
+        throw insertErr;
+      }
+    }
 
     // 3. Save attachments to R2 & D1
     if (attachments && attachments.length > 0) {

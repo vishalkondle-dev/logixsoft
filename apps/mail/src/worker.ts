@@ -1,4 +1,6 @@
-import { Hono } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { apiReference } from "@scalar/hono-api-reference";
+import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
 import bcrypt from "bcryptjs";
 import PostalMime from "postal-mime";
@@ -8,6 +10,7 @@ import { createBetterAuth } from "./auth";
 import { inferMimeType } from "./mime";
 import { summarizeEmail, generateQuickReplies, draftEmailWithAI, performAiGlobalSearch } from "./ai";
 import { inspectEmailWithClef, checkOutgoingToneWithClef } from "./clef";
+import * as openapiRoutes from "./openapi";
 
 export { RealtimeHubDO };
 
@@ -28,7 +31,7 @@ type Variables = {
   user?: AuthUser;
 };
 
-const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
 // Global CORS with Credentials for Better Auth Session Cookies
 app.use(
@@ -39,6 +42,80 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
     exposeHeaders: ["Set-Cookie"],
+  })
+);
+
+// ----------------------------------------------------
+// OPENAPI 3.1 & ZOD REGISTRATION
+// ----------------------------------------------------
+app.openAPIRegistry.registerComponent("securitySchemes", "BearerAuth", {
+  type: "http",
+  scheme: "bearer",
+  bearerFormat: "JWT / Better Auth Session Token",
+  description: "Session token from Better Auth or JWT token",
+});
+
+app.openAPIRegistry.registerComponent("securitySchemes", "CookieAuth", {
+  type: "apiKey",
+  in: "cookie",
+  name: "__Secure-better-auth.session_token",
+  description: "Better Auth HTTP-only session cookie",
+});
+
+for (const [key, route] of Object.entries(openapiRoutes)) {
+  if (route && typeof route === "object" && "method" in route && "path" in route) {
+    app.openAPIRegistry.registerPath(route as any);
+  }
+}
+
+// OpenAPI JSON Schema Endpoint
+app.doc("/api/openapi.json", (c) => {
+  const domain = c.env.DOMAIN || "logixsoft.in";
+  return {
+    openapi: "3.1.0",
+    info: {
+      title: "LogixMail Cloudflare Edge Webmail API",
+      version: "1.0.0",
+      description: "High-performance serverless email API running on Cloudflare Workers edge, Cloudflare D1 (SQLite), Cloudflare R2 object storage, Cloudflare Workers AI (Llama 3.1 8B), and Better Auth.",
+      contact: {
+        name: "LogixSoft Platform Team",
+        email: `admin@${domain}`,
+        url: `https://email.${domain}`,
+      },
+      license: {
+        name: "MIT",
+      },
+    },
+    servers: [
+      {
+        url: `https://email.${domain}`,
+        description: "Cloudflare Edge Production Server",
+      },
+      {
+        url: "http://localhost:8787",
+        description: "Local Wrangler Dev Server",
+      },
+    ],
+  };
+});
+
+// Scalar Interactive API Documentation
+app.get(
+  "/api/docs",
+  apiReference({
+    pageTitle: "LogixMail API Documentation (Scalar)",
+    theme: "saturn",
+    spec: {
+      url: "/api/openapi.json",
+    },
+  })
+);
+
+// Swagger UI Documentation
+app.get(
+  "/api/swagger",
+  swaggerUI({
+    url: "/api/openapi.json",
   })
 );
 

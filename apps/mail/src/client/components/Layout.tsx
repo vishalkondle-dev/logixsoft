@@ -46,6 +46,8 @@ import {
   IconVolumeOff,
   IconTag,
   IconEdit,
+  IconCode,
+  IconBook,
 } from "@tabler/icons-react";
 import { User, Alias, Label } from "../types";
 
@@ -339,6 +341,22 @@ export const Layout: React.FC<LayoutProps> = ({
                       {currentView === "admin" ? "Switch to Mailbox" : "Admin Console"}
                     </Menu.Item>
                   )}
+                  <Menu.Item
+                    component="a"
+                    href="/api/docs"
+                    target="_blank"
+                    leftSection={<IconCode size={14} />}
+                  >
+                    API Docs (Scalar)
+                  </Menu.Item>
+                  <Menu.Item
+                    component="a"
+                    href="/api/swagger"
+                    target="_blank"
+                    leftSection={<IconBook size={14} />}
+                  >
+                    Swagger UI
+                  </Menu.Item>
                   <Divider />
                   <Menu.Item color="red" leftSection={<IconLogout size={14} />} onClick={onLogout}>
                     Sign Out
@@ -558,6 +576,16 @@ export const Layout: React.FC<LayoutProps> = ({
                 }}
                 color="teal"
                 style={{ borderRadius: 8, fontWeight: currentView === "admin" ? 700 : 500 }}
+              />
+              <NavLink
+                label="OpenAPI 3.1 Reference"
+                description="Scalar & Swagger Docs"
+                leftSection={<IconCode size={18} />}
+                component="a"
+                href="/api/docs"
+                target="_blank"
+                color="teal"
+                style={{ borderRadius: 8 }}
               />
             </>
           )}

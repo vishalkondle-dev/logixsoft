@@ -32,6 +32,9 @@ import {
   IconX,
   IconRefresh,
   IconMailFast,
+  IconCode,
+  IconBook,
+  IconExternalLink,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { api } from "../api";
@@ -314,6 +317,19 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
             >
               {isMobile ? "System Status" : "Domain & System Status"}
             </Tabs.Tab>
+
+            <Tabs.Tab
+              value="api"
+              leftSection={<IconCode size={isMobile ? 15 : 16} />}
+              style={{
+                flexShrink: 0,
+                fontSize: isMobile ? 12 : 13,
+                padding: isMobile ? "6px 12px" : "8px 16px",
+                fontWeight: 600,
+              }}
+            >
+              {isMobile ? "OpenAPI" : "OpenAPI & Developer API"}
+            </Tabs.Tab>
           </Tabs.List>
         </Box>
 
@@ -489,6 +505,85 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
                   <Badge color="teal" mt={4} leftSection={<IconCheck size={12} />}>
                     Live on Port 3080
                   </Badge>
+                </Paper>
+              </SimpleGrid>
+            </Stack>
+          </Paper>
+        </Tabs.Panel>
+
+        {/* OPENAPI DEVELOPER API TAB */}
+        <Tabs.Panel value="api" pt="md">
+          <Paper p="md" radius="md" withBorder>
+            <Stack gap="md">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <div>
+                  <Group gap="xs">
+                    <Text fw={700} size="md">
+                      LogixMail Edge OpenAPI 3.1 & Developer API
+                    </Text>
+                    <Badge color="teal" variant="light">
+                      @hono/zod-openapi
+                    </Badge>
+                  </Group>
+                  <Text size="xs" c="dimmed" mt={2}>
+                    Auto-generated OpenAPI 3.1 schema, type-safe Zod validators, and interactive documentation.
+                  </Text>
+                </div>
+                <Group gap="xs">
+                  <Button
+                    component="a"
+                    href="/api/docs"
+                    target="_blank"
+                    color="teal"
+                    size="xs"
+                    leftSection={<IconCode size={14} />}
+                    rightSection={<IconExternalLink size={12} />}
+                  >
+                    Open Scalar Docs
+                  </Button>
+                  <Button
+                    component="a"
+                    href="/api/swagger"
+                    target="_blank"
+                    variant="light"
+                    color="teal"
+                    size="xs"
+                    leftSection={<IconBook size={14} />}
+                    rightSection={<IconExternalLink size={12} />}
+                  >
+                    Open Swagger UI
+                  </Button>
+                  <Button
+                    component="a"
+                    href="/api/openapi.json"
+                    target="_blank"
+                    variant="default"
+                    size="xs"
+                    rightSection={<IconExternalLink size={12} />}
+                  >
+                    OpenAPI JSON
+                  </Button>
+                </Group>
+              </Group>
+
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+                <Paper p="sm" withBorder radius="md">
+                  <Text fw={700} size="sm" c="teal">Interactive Reference (Scalar)</Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Modern, reactive documentation at <code>/api/docs</code> with interactive API try-out, request snippets, and search.
+                  </Text>
+                </Paper>
+                <Paper p="sm" withBorder radius="md">
+                  <Text fw={700} size="sm" c="teal">Swagger UI</Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Standard OpenAPI interactive testing console at <code>/api/swagger</code> with curl command generation.
+                  </Text>
+                </Paper>
+                <Paper p="sm" withBorder radius="md">
+                  <Text fw={700} size="sm" c="teal">Zod Schema Validation</Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Runtime request/response type-safety, automatic header/cookie auth inspection, and schema generation.
+                  </Text>
                 </Paper>
               </SimpleGrid>
             </Stack>

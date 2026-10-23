@@ -4,7 +4,7 @@ compatibility_date = "2026-08-13"
 compatibility_flags = ["nodejs_compat"]
 
 routes = [
-  { pattern = "email.logixsoft.in/*", zone_name = "logixsoft.in" }
+  { pattern = "email.logixsoft.in", custom_domain = true }
 ]
 
 [assets]

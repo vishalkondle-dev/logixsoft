@@ -179,17 +179,32 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <AppShell
-      header={{ height: 60 }}
+      header={{ height: "calc(60px + env(safe-area-inset-top, 0px))" }}
       navbar={{
         width: isMobile ? 300 : 260,
         breakpoint: "sm",
         collapsed: { mobile: !opened },
       }}
       padding={0}
-      style={{ height: "100vh", overflow: "hidden" }}
+      style={{
+        height: "100%",
+        minHeight: "100dvh",
+        maxHeight: "100dvh",
+        overflow: "hidden",
+      }}
     >
       {/* APP HEADER */}
-      <AppShell.Header p="xs" px={{ base: "xs", sm: "md" }} style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e9ecef" }}>
+      <AppShell.Header
+        p="xs"
+        px={{ base: "xs", sm: "md" }}
+        style={{
+          backgroundColor: "#ffffff",
+          borderBottom: "1px solid #e9ecef",
+          height: "calc(60px + env(safe-area-inset-top, 0px))",
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 6px)",
+          boxSizing: "border-box",
+        }}
+      >
         <Group justify="space-between" style={{ height: "100%", flexWrap: "nowrap" }}>
           {/* Left: Burger (on mobile) + Logo & Brand */}
           <Group gap="xs" style={{ flexShrink: 0 }}>
@@ -347,7 +362,7 @@ export const Layout: React.FC<LayoutProps> = ({
           color="#000"
           backgroundOpacity={0.45}
           onClick={close}
-          style={{ top: 60 }}
+          style={{ top: "calc(60px + env(safe-area-inset-top, 0px))" }}
         />
       )}
 
@@ -358,10 +373,10 @@ export const Layout: React.FC<LayoutProps> = ({
           backgroundColor: "#fafbfc",
           borderRight: "1px solid #e9ecef",
           zIndex: 150,
-          top: "60px",
+          top: "calc(60px + env(safe-area-inset-top, 0px))",
           bottom: 0,
-          height: "calc(100vh - 60px)",
-          maxHeight: "calc(100vh - 60px)",
+          height: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
+          maxHeight: "calc(100dvh - 60px - env(safe-area-inset-top, 0px))",
           width: isMobile ? 300 : 260,
           maxWidth: "85vw",
           boxShadow: isMobile && opened ? "4px 0 24px rgba(0,0,0,0.2)" : undefined,
@@ -383,7 +398,15 @@ export const Layout: React.FC<LayoutProps> = ({
             },
           }}
         >
-          <Stack gap="xs" p="sm" pb={{ base: 90, md: "md" }} style={{ minHeight: "100%" }}>
+          <Stack
+            gap="xs"
+            px="sm"
+            pt="sm"
+            style={{
+              minHeight: "100%",
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+            }}
+          >
           {/* COMPOSE BUTTON */}
           <Button
             color="teal"
@@ -567,7 +590,9 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* MAIN CONTENT AREA */}
       <AppShell.Main
         style={{
-          height: "calc(100vh - 60px)",
+          height: "100%",
+          minHeight: "100dvh",
+          maxHeight: "100dvh",
           overflow: "hidden",
           pointerEvents: isMobile && opened ? "none" : "auto",
         }}

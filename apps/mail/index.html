@@ -19,14 +19,38 @@
       html, body {
         margin: 0;
         padding: 0;
+        width: 100%;
+        height: 100%;
+        height: -webkit-fill-available;
+        height: 100dvh;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background-color: #f8fafc;
         -webkit-text-size-adjust: 100%;
-        touch-action: manipulation;
-        overscroll-behavior-y: contain;
+        overscroll-behavior: none;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        height: -webkit-fill-available;
+        height: 100dvh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
       * {
         box-sizing: border-box;
+      }
+
+      /* iOS WebKit smooth momentum scrolling on all scroll areas */
+      .mantine-ScrollArea-viewport {
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain !important;
       }
 
       /* Prevent mobile browsers (especially iOS Safari) from auto-zooming on input focus */

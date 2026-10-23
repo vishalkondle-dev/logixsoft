@@ -88,8 +88,23 @@ export const EmailList: React.FC<EmailListProps> = ({
       {/* Message Cards Scroll List with Pull To Refresh */}
       <Box style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <PullToRefresh onRefresh={onRefresh || (() => {})}>
-          <ScrollArea style={{ height: "100%" }}>
-            <Stack gap={6} p="xs">
+          <ScrollArea
+            style={{ height: "100%" }}
+            viewportProps={{
+              style: {
+                overscrollBehaviorY: "contain",
+                WebkitOverflowScrolling: "touch",
+              },
+            }}
+          >
+            <Stack
+              gap={6}
+              px="xs"
+              pt="xs"
+              style={{
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)",
+              }}
+            >
               {messages.length === 0 && !loading && (
                 <Center py={60}>
                   <Stack align="center" gap="xs">

@@ -376,7 +376,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       size="xl"
       radius="lg"
     >
-      <Stack gap="sm">
+      <Stack gap="sm" style={{ paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 24px)" : undefined }}>
         {/* Hidden File Input for Attachments */}
         <input
           type="file"

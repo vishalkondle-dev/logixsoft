@@ -418,8 +418,23 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
       {/* Main Email Reading Content with Pull to Refresh */}
       <Box style={{ flex: 1, minHeight: 0, position: "relative" }}>
         <PullToRefresh onRefresh={onRefresh || (() => {})}>
-          <ScrollArea style={{ height: "100%" }} p="md">
-        <Stack gap="md">
+          <ScrollArea
+            style={{ height: "100%" }}
+            px="md"
+            pt="md"
+            viewportProps={{
+              style: {
+                overscrollBehaviorY: "contain",
+                WebkitOverflowScrolling: "touch",
+              },
+            }}
+          >
+            <Stack
+              gap="md"
+              style={{
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 60px)",
+              }}
+            >
           {/* CLEF-FLASH DEEP INTELLIGENCE (Tone, Spam, Validity, Urgency) */}
           <ClefInspectionCard
             message={message}

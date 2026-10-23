@@ -80,6 +80,14 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     const deltaY = clientY - startYRef.current;
     const deltaX = clientX - startXRef.current;
 
+    // If user is scrolling downwards through the list (finger moving up, deltaY < 0),
+    // immediately disarm candidate so native WebKit scrolling proceeds with full momentum!
+    if (deltaY < 0) {
+      isCandidateRef.current = false;
+      isPullingRef.current = false;
+      return;
+    }
+
     // If movement is predominantly horizontal, ignore (don't interfere with swipe)
     if (!isPullingRef.current && Math.abs(deltaX) > Math.abs(deltaY)) {
       isCandidateRef.current = false;

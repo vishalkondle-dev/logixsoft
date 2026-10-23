@@ -162,7 +162,16 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ activeTab = "users",
   }
 
   return (
-    <Stack gap="md" p={{ base: "xs", sm: "md", md: "lg" }} style={{ height: "100%", overflowY: "auto" }}>
+    <Stack
+      gap="md"
+      p={{ base: "xs", sm: "md", md: "lg" }}
+      style={{
+        height: "100%",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 50px)",
+      }}
+    >
       {/* Top Header */}
       <Group justify="space-between" align="center" wrap="wrap" gap="xs">
         <div>

@@ -19,6 +19,8 @@ import {
   ThemeIcon,
   Badge,
   ColorSwatch,
+  ScrollArea,
+  Overlay,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
@@ -179,7 +181,7 @@ export const Layout: React.FC<LayoutProps> = ({
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: 260,
+        width: isMobile ? 300 : 260,
         breakpoint: "sm",
         collapsed: { mobile: !opened },
       }}
@@ -337,9 +339,51 @@ export const Layout: React.FC<LayoutProps> = ({
         </Group>
       </AppShell.Header>
 
+      {/* MOBILE BACKDROP OVERLAY */}
+      {isMobile && opened && (
+        <Overlay
+          fixed
+          zIndex={140}
+          color="#000"
+          backgroundOpacity={0.45}
+          onClick={close}
+          style={{ top: 60 }}
+        />
+      )}
+
       {/* APP NAVBAR / SIDEBAR */}
-      <AppShell.Navbar p="sm" style={{ backgroundColor: "#fafbfc", borderRight: "1px solid #e9ecef" }}>
-        <Stack gap="xs" style={{ height: "100%" }}>
+      <AppShell.Navbar
+        p={0}
+        style={{
+          backgroundColor: "#fafbfc",
+          borderRight: "1px solid #e9ecef",
+          zIndex: 150,
+          top: "60px",
+          bottom: 0,
+          height: "calc(100vh - 60px)",
+          maxHeight: "calc(100vh - 60px)",
+          width: isMobile ? 300 : 260,
+          maxWidth: "85vw",
+          boxShadow: isMobile && opened ? "4px 0 24px rgba(0,0,0,0.2)" : undefined,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <ScrollArea
+          style={{ height: "100%", width: "100%" }}
+          scrollbars="y"
+          type="hover"
+          offsetScrollbars
+          viewportProps={{
+            style: {
+              overscrollBehavior: "contain",
+              touchAction: "pan-y",
+              WebkitOverflowScrolling: "touch",
+            },
+          }}
+        >
+          <Stack gap="xs" p="sm" pb={{ base: 90, md: "md" }} style={{ minHeight: "100%" }}>
           {/* COMPOSE BUTTON */}
           <Button
             color="teal"
@@ -517,10 +561,17 @@ export const Layout: React.FC<LayoutProps> = ({
             </Group>
           </Box>
         </Stack>
+        </ScrollArea>
       </AppShell.Navbar>
 
       {/* MAIN CONTENT AREA */}
-      <AppShell.Main style={{ height: "calc(100vh - 60px)", overflow: "hidden" }}>
+      <AppShell.Main
+        style={{
+          height: "calc(100vh - 60px)",
+          overflow: "hidden",
+          pointerEvents: isMobile && opened ? "none" : "auto",
+        }}
+      >
         {children}
       </AppShell.Main>
 

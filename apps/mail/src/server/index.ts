@@ -165,41 +165,102 @@ app.get("/api/aliases", requireAuth, async (req: AuthenticatedRequest, res: Resp
 // ----------------------------------------------------
 // MESSAGES & INBOX
 // ----------------------------------------------------
+app.get("/api/folders/counts", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id || "usr_admin_logixsoft";
+    const rows = await queryD1<any>(
+      `SELECT
+        COUNT(CASE WHEN m.direction = 'inbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as inbox,
+        COUNT(CASE WHEN m.direction = 'outbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently') THEN 1 END) as sent,
+        COUNT(CASE WHEN m.starred = 1 AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as starred,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) IN ('junk', 'spam') THEN 1 END) as junk,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) = 'trashed' THEN 1 END) as trash
+      FROM messages m
+      LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+      WHERE (ums.status IS NULL OR ums.status != 'deleted_permanently')`,
+      [userId]
+    );
+
+    const r = rows[0];
+    res.json({
+      counts: {
+        inbox: r?.inbox || 0,
+        sent: r?.sent || 0,
+        starred: r?.starred || 0,
+        junk: r?.junk || 0,
+        trash: r?.trash || 0,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/messages", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const userId = req.user?.id || "usr_admin_logixsoft";
     const folder = (req.query.folder as string) || "inbox";
     const alias = req.query.alias as string;
     const search = req.query.search as string;
 
-    let sql = `SELECT id, user_id, direction, from_addr, to_addr, cc_addr, subject, snippet, status, created_at, read, starred, in_reply_to, spam_verdict FROM messages WHERE 1=1`;
-    const params: any[] = [];
+    let sql = `SELECT m.id, m.user_id, m.direction, m.from_addr, m.to_addr, m.cc_addr, m.subject, m.snippet, COALESCE(ums.status, m.status) as status, m.created_at, m.read, m.starred, m.in_reply_to, m.spam_verdict FROM messages m
+      LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+      WHERE (ums.status IS NULL OR ums.status != 'deleted_permanently')`;
+    const params: any[] = [userId];
 
-    if (folder === "inbox") {
-      sql += ` AND direction = 'inbound' AND status != 'trashed' AND status != 'junk'`;
-    } else if (folder === "sent") {
-      sql += ` AND direction = 'outbound' AND status != 'trashed'`;
-    } else if (folder === "starred") {
-      sql += ` AND starred = 1 AND status != 'trashed' AND status != 'junk'`;
-    } else if (folder === "junk") {
-      sql += ` AND (status = 'junk' OR status = 'spam')`;
-    } else if (folder === "trash") {
-      sql += ` AND status = 'trashed'`;
+    if (!search || !search.trim()) {
+      if (folder === "inbox") {
+        sql += ` AND m.direction = 'inbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'junk', 'spam')`;
+      } else if (folder === "sent") {
+        sql += ` AND m.direction = 'outbound' AND COALESCE(ums.status, m.status) != 'trashed'`;
+      } else if (folder === "starred") {
+        sql += ` AND m.starred = 1 AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'junk', 'spam')`;
+      } else if (folder === "junk") {
+        sql += ` AND (COALESCE(ums.status, m.status) = 'junk' OR COALESCE(ums.status, m.status) = 'spam')`;
+      } else if (folder === "trash") {
+        sql += ` AND COALESCE(ums.status, m.status) = 'trashed'`;
+      }
+    } else {
+      sql += ` AND COALESCE(ums.status, m.status) != 'trashed'`;
     }
 
     if (alias && alias !== "all") {
-      sql += ` AND (to_addr LIKE ? OR from_addr LIKE ?)`;
+      sql += ` AND (m.to_addr LIKE ? OR m.from_addr LIKE ?)`;
       params.push(`%${alias}%`, `%${alias}%`);
     }
 
     if (search) {
-      sql += ` AND (subject LIKE ? OR from_addr LIKE ? OR snippet LIKE ? OR text_body LIKE ?)`;
+      sql += ` AND (m.subject LIKE ? OR m.from_addr LIKE ? OR m.snippet LIKE ? OR m.text_body LIKE ?)`;
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    sql += ` ORDER BY created_at DESC LIMIT 100`;
+    sql += ` ORDER BY m.created_at DESC LIMIT 100`;
 
     const messages = await queryD1(sql, params);
-    res.json({ messages });
+
+    const countsRows = await queryD1<any>(
+      `SELECT
+        COUNT(CASE WHEN m.direction = 'inbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as inbox,
+        COUNT(CASE WHEN m.direction = 'outbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently') THEN 1 END) as sent,
+        COUNT(CASE WHEN m.starred = 1 AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as starred,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) IN ('junk', 'spam') THEN 1 END) as junk,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) = 'trashed' THEN 1 END) as trash
+      FROM messages m
+      LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+      WHERE (ums.status IS NULL OR ums.status != 'deleted_permanently')`,
+      [userId]
+    ).catch(() => []);
+
+    const cr = countsRows[0];
+    const folder_counts = {
+      inbox: cr?.inbox || 0,
+      sent: cr?.sent || 0,
+      starred: cr?.starred || 0,
+      junk: cr?.junk || 0,
+      trash: cr?.trash || 0,
+    };
+
+    res.json({ messages, folder_counts });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -208,13 +269,20 @@ app.get("/api/messages", requireAuth, async (req: AuthenticatedRequest, res: Res
 app.get("/api/messages/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const messages = await queryD1(`SELECT * FROM messages WHERE id = ? LIMIT 1`, [id]);
+    const userId = req.user?.id || "usr_admin_logixsoft";
+    const messages = await queryD1(
+      `SELECT m.*, COALESCE(ums.status, m.status) as status
+       FROM messages m
+       LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+       WHERE m.id = ? AND (ums.status IS NULL OR ums.status != 'deleted_permanently') LIMIT 1`,
+      [userId, id]
+    );
     if (!messages || messages.length === 0) {
       res.status(404).json({ error: "Message not found" });
       return;
     }
 
-    const message = messages[0];
+    const message: any = messages[0];
 
     // Mark as read automatically
     if (!message.read) {
@@ -247,8 +315,9 @@ app.post("/api/messages/:id/read", requireAuth, async (req: AuthenticatedRequest
 app.post("/api/messages/:id/restore", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await executeD1(`UPDATE messages SET status = 'active' WHERE id = ?`, [id]);
-    broadcastSSE("message_updated", { id, status: "active" });
+    const userId = req.user?.id || "usr_admin_logixsoft";
+    await executeD1(`DELETE FROM user_message_status WHERE user_id = ? AND message_id = ?`, [userId, id]);
+    broadcastSSE("message_updated", { id, status: "received" });
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -258,9 +327,12 @@ app.post("/api/messages/:id/restore", requireAuth, async (req: AuthenticatedRequ
 app.delete("/api/messages/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await executeD1(`DELETE FROM message_labels WHERE message_id = ?`, [id]);
-    await executeD1(`DELETE FROM message_attachments WHERE message_id = ?`, [id]);
-    await executeD1(`DELETE FROM messages WHERE id = ?`, [id]);
+    const userId = req.user?.id || "usr_admin_logixsoft";
+    const now = Math.floor(Date.now() / 1000);
+    await executeD1(
+      `INSERT OR REPLACE INTO user_message_status (user_id, message_id, status, updated_at) VALUES (?, ?, 'deleted_permanently', ?)`,
+      [userId, id, now]
+    );
     broadcastSSE("message_deleted", { id });
     res.json({ success: true, id });
   } catch (err: any) {
@@ -283,7 +355,12 @@ app.post("/api/messages/:id/star", requireAuth, async (req: AuthenticatedRequest
 app.post("/api/messages/:id/trash", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await executeD1(`UPDATE messages SET status = 'trashed' WHERE id = ?`, [id]);
+    const userId = req.user?.id || "usr_admin_logixsoft";
+    const now = Math.floor(Date.now() / 1000);
+    await executeD1(
+      `INSERT OR REPLACE INTO user_message_status (user_id, message_id, status, updated_at) VALUES (?, ?, 'trashed', ?)`,
+      [userId, id, now]
+    );
     broadcastSSE("message_updated", { id, status: "trashed" });
     res.json({ success: true });
   } catch (err: any) {
@@ -294,7 +371,12 @@ app.post("/api/messages/:id/trash", requireAuth, async (req: AuthenticatedReques
 app.post("/api/messages/:id/junk", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await executeD1(`UPDATE messages SET status = 'junk' WHERE id = ?`, [id]);
+    const userId = req.user?.id || "usr_admin_logixsoft";
+    const now = Math.floor(Date.now() / 1000);
+    await executeD1(
+      `INSERT OR REPLACE INTO user_message_status (user_id, message_id, status, updated_at) VALUES (?, ?, 'junk', ?)`,
+      [userId, id, now]
+    );
     broadcastSSE("message_updated", { id, status: "junk" });
     res.json({ success: true, status: "junk" });
   } catch (err: any) {
@@ -305,8 +387,10 @@ app.post("/api/messages/:id/junk", requireAuth, async (req: AuthenticatedRequest
 app.post("/api/messages/:id/not-junk", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
-    await executeD1(`UPDATE messages SET status = 'received' WHERE id = ?`, [id]);
+    const userId = req.user?.id || "usr_admin_logixsoft";
+    await executeD1(`DELETE FROM user_message_status WHERE user_id = ? AND message_id = ?`, [userId, id]);
     broadcastSSE("message_updated", { id, status: "received" });
+    res.json({ success: true, status: "received" });
     res.json({ success: true, status: "received" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -533,39 +617,7 @@ app.get("/api/attachments/:id/preview", requireAuth, async (req: AuthenticatedRe
 });
 
 app.delete("/api/attachments/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const rows = await queryD1<{
-      id: string;
-      message_id: string;
-      filename: string;
-      r2_key: string;
-    }>(`SELECT * FROM message_attachments WHERE id = ? LIMIT 1`, [id]);
-
-    const att = rows[0];
-    if (!att) {
-      res.status(404).json({ error: "Attachment not found" });
-      return;
-    }
-
-    // Delete object from R2 bucket if r2_key exists
-    if (att.r2_key) {
-      await deleteFromR2(att.r2_key);
-    }
-
-    // Delete record from database
-    await executeD1(`DELETE FROM message_attachments WHERE id = ?`, [id]);
-
-    res.json({
-      success: true,
-      id,
-      messageId: att.message_id,
-      filename: att.filename,
-    });
-  } catch (err: any) {
-    console.error("Delete attachment error:", err);
-    res.status(500).json({ error: err.message || "Failed to delete attachment" });
-  }
+  res.status(403).json({ error: "Removing attachments from messages is not allowed" });
 });
 
 // ----------------------------------------------------
@@ -817,7 +869,7 @@ app.use((req: Request, res: Response) => {
 // START SERVER
 // ----------------------------------------------------
 app.listen(CONFIG.PORT, "0.0.0.0", () => {
-  console.log(`🚀 LogixMail Server listening on http://127.0.0.1:${CONFIG.PORT}`);
-  console.log(`🌐 Routed via cloudflared on https://email.logixsoft.in`);
+  console.log(`[Server] LogixMail Server listening on http://127.0.0.1:${CONFIG.PORT}`);
+  console.log(`[Server] Routed via cloudflared on https://email.logixsoft.in`);
   startSSEHeartbeatAndWatcher();
 });

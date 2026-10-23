@@ -1,3 +1,11 @@
+export interface FolderCounts {
+  inbox: number;
+  sent: number;
+  starred: number;
+  junk: number;
+  trash: number;
+}
+
 export interface User {
   id: string;
   email: string;

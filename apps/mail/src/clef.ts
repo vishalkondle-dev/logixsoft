@@ -187,17 +187,17 @@ export async function inspectEmailWithClef(
     automated_transactional: "Transactional Notification",
     newsletter_promotional: "Newsletter / Promo",
     junk_cold_outreach: "Junk / Cold Outreach",
-    phishing_scam: "⚠️ High Phishing Risk",
+    phishing_scam: "High Phishing Risk",
   };
 
   const toneLabels: Record<string, string> = {
-    urgent_emergency: "🚨 Urgent / Emergency",
-    angry_escalated: "😡 Frustrated / Escalated",
-    collaborative_friendly: "🤝 Friendly / Collaborative",
-    formal_business: "💼 Formal / Executive",
-    threatening_coercive: "⚠️ Coercive / Threatening",
-    skeptical_hesitant: "🤔 Skeptical / Hesitant",
-    promotional_sales: "📢 Sales / Pitch",
+    urgent_emergency: "Urgent / Emergency",
+    angry_escalated: "Frustrated / Escalated",
+    collaborative_friendly: "Friendly / Collaborative",
+    formal_business: "Formal / Executive",
+    threatening_coercive: "Coercive / Threatening",
+    skeptical_hesitant: "Skeptical / Hesitant",
+    promotional_sales: "Sales / Pitch",
   };
 
   const urgencyLabels: Record<string, string> = {

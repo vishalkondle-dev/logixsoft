@@ -267,9 +267,12 @@ export const AiSearchModal: React.FC<AiSearchModalProps> = ({
 
                                 {/* AI MATCH REASON */}
                                 <Paper p={6} mt={6} bg="teal.0" radius="xs" style={{ borderLeft: "3px solid #0ca678" }}>
-                                  <Text size="10px" c="teal.9" fw={500}>
-                                    💡 {match.reason}
-                                  </Text>
+                                  <Group gap={4} wrap="nowrap" align="flex-start">
+                                    <IconSparkles size={12} color="#0ca678" style={{ marginTop: 2, flexShrink: 0 }} />
+                                    <Text size="10px" c="teal.9" fw={500}>
+                                      {match.reason}
+                                    </Text>
+                                  </Group>
                                 </Paper>
                               </div>
                             </Group>

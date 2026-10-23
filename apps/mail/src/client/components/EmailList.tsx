@@ -39,6 +39,9 @@ import {
   IconLink,
   IconEye,
   IconAlertOctagon,
+  IconAlertTriangle,
+  IconBolt,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
@@ -454,23 +457,23 @@ export const EmailList: React.FC<EmailListProps> = ({
                         return (
                           <>
                             {clef.validity?.category === "phishing_scam" && (
-                              <Badge size="xs" color="red" variant="filled">
-                                ⚠️ Phishing
+                              <Badge size="xs" color="red" variant="filled" leftSection={<IconAlertTriangle size={11} />}>
+                                Phishing
                               </Badge>
                             )}
                             {clef.validity?.category === "junk_cold_outreach" && (
-                              <Badge size="xs" color="orange" variant="light">
+                              <Badge size="xs" color="orange" variant="light" leftSection={<IconAlertOctagon size={11} />}>
                                 Junk
                               </Badge>
                             )}
                             {clef.urgency?.level === "critical_same_day" && (
-                              <Badge size="xs" color="red" variant="light">
-                                ⚡ Urgent
+                              <Badge size="xs" color="red" variant="light" leftSection={<IconBolt size={11} />}>
+                                Urgent
                               </Badge>
                             )}
                             {clef.tone?.primary === "angry_escalated" && (
-                              <Badge size="xs" color="grape" variant="light">
-                                😡 Escalated
+                              <Badge size="xs" color="grape" variant="light" leftSection={<IconAlertCircle size={11} />}>
+                                Escalated
                               </Badge>
                             )}
                           </>

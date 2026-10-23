@@ -50,12 +50,13 @@ import {
   IconCode,
   IconBook,
 } from "@tabler/icons-react";
-import { User, Alias, Label } from "../types";
+import { User, Alias, Label, FolderCounts } from "../types";
 
 interface LayoutProps {
   user: User | null;
   aliases: Alias[];
   labels?: Label[];
+  folderCounts?: FolderCounts;
   activeFolder: string;
   onSelectFolder: (folder: string) => void;
   activeAlias: string;
@@ -77,6 +78,7 @@ export const Layout: React.FC<LayoutProps> = ({
   user,
   aliases,
   labels = [],
+  folderCounts,
   activeFolder,
   onSelectFolder,
   activeAlias,
@@ -315,7 +317,7 @@ export const Layout: React.FC<LayoutProps> = ({
                           {user.name}
                         </Text>
                         <Text size="10px" c="dimmed" lineClamp={1}>
-                          {user.status_message || user.email}
+                          {user.status_message ? user.status_message.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/ug, '').trim() || user.email : user.email}
                         </Text>
                       </div>
                     )}
@@ -472,6 +474,13 @@ export const Layout: React.FC<LayoutProps> = ({
             <NavLink
               label="Inbox"
               leftSection={<IconInbox size={18} />}
+              rightSection={
+                folderCounts?.inbox !== undefined && folderCounts.inbox > 0 ? (
+                  <Badge size="xs" variant="light" color="teal">
+                    {folderCounts.inbox}
+                  </Badge>
+                ) : null
+              }
               active={currentView === "mailbox" && activeFolder === "inbox"}
               onClick={() => handleSelectFolder("inbox")}
               color="teal"
@@ -480,6 +489,13 @@ export const Layout: React.FC<LayoutProps> = ({
             <NavLink
               label="Sent"
               leftSection={<IconSend size={18} />}
+              rightSection={
+                folderCounts?.sent !== undefined && folderCounts.sent > 0 ? (
+                  <Badge size="xs" variant="light" color="gray">
+                    {folderCounts.sent}
+                  </Badge>
+                ) : null
+              }
               active={currentView === "mailbox" && activeFolder === "sent"}
               onClick={() => handleSelectFolder("sent")}
               color="teal"
@@ -488,6 +504,13 @@ export const Layout: React.FC<LayoutProps> = ({
             <NavLink
               label="Starred"
               leftSection={<IconStar size={18} />}
+              rightSection={
+                folderCounts?.starred !== undefined && folderCounts.starred > 0 ? (
+                  <Badge size="xs" variant="light" color="yellow">
+                    {folderCounts.starred}
+                  </Badge>
+                ) : null
+              }
               active={currentView === "mailbox" && activeFolder === "starred"}
               onClick={() => handleSelectFolder("starred")}
               color="teal"
@@ -496,6 +519,13 @@ export const Layout: React.FC<LayoutProps> = ({
             <NavLink
               label="Junk"
               leftSection={<IconAlertOctagon size={18} color="#fd7e14" />}
+              rightSection={
+                folderCounts?.junk !== undefined && folderCounts.junk > 0 ? (
+                  <Badge size="xs" variant="light" color="orange">
+                    {folderCounts.junk}
+                  </Badge>
+                ) : null
+              }
               active={currentView === "mailbox" && activeFolder === "junk"}
               onClick={() => handleSelectFolder("junk")}
               color="orange"
@@ -504,6 +534,13 @@ export const Layout: React.FC<LayoutProps> = ({
             <NavLink
               label="Trash"
               leftSection={<IconTrash size={18} />}
+              rightSection={
+                folderCounts?.trash !== undefined && folderCounts.trash > 0 ? (
+                  <Badge size="xs" variant="light" color="red">
+                    {folderCounts.trash}
+                  </Badge>
+                ) : null
+              }
               active={currentView === "mailbox" && activeFolder === "trash"}
               onClick={() => handleSelectFolder("trash")}
               color="teal"

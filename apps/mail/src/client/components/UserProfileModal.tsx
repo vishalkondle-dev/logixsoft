@@ -39,11 +39,11 @@ interface UserProfileModalProps {
 }
 
 const STATUS_PRESETS = [
-  "🟢 Available",
-  "💻 Deep Work",
-  "☕ In a meeting",
-  "✈️ Out of office",
-  "⚡ High Focus",
+  "Available",
+  "Deep Work",
+  "In a meeting",
+  "Out of office",
+  "High Focus",
 ];
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
@@ -100,15 +100,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
+  const stripEmojis = (str: string) => str.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/ug, "");
+
   const handleSave = async () => {
     setSaving(true);
     try {
       setSoundEnabled(soundActive);
+      const cleanStatus = stripEmojis(statusMessage).trim();
       const res = await api.updateUserProfile({
-        name,
-        status_message: statusMessage,
-        bio,
-        signature,
+        name: stripEmojis(name).trim(),
+        status_message: cleanStatus,
+        bio: stripEmojis(bio).trim(),
+        signature: stripEmojis(signature).trim(),
         avatar_url: avatarUrl,
         sound_enabled: soundActive ? 1 : 0,
       });
@@ -222,7 +225,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         <div>
           <TextInput
             label="Status Message"
-            placeholder="e.g. 💻 Deep Work, ☕ In a meeting"
+            placeholder="e.g. Deep Work, In a meeting"
             value={statusMessage}
             onChange={(e) => setStatusMessage(e.currentTarget.value)}
             size="sm"

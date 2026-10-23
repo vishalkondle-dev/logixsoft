@@ -4,6 +4,7 @@ import {
   EmailMessage,
   Attachment,
   Label,
+  FolderCounts,
   AiGlobalSearchResult,
   ClefAnalysisResult,
   ClefToneCheckResult,
@@ -167,11 +168,15 @@ export const api = {
   },
 
   // Messages
-  async getMessages(folder: string, alias?: string, search?: string): Promise<{ messages: EmailMessage[]; ai_summary?: string; is_ai_search?: boolean }> {
+  async getMessages(folder: string, alias?: string, search?: string): Promise<{ messages: EmailMessage[]; folder_counts?: FolderCounts; ai_summary?: string; is_ai_search?: boolean }> {
     const params = new URLSearchParams({ folder });
     if (alias && alias !== "all") params.append("alias", alias);
     if (search) params.append("search", search);
-    return fetchAPI<{ messages: EmailMessage[]; ai_summary?: string; is_ai_search?: boolean }>(`/api/messages?${params.toString()}`);
+    return fetchAPI<{ messages: EmailMessage[]; folder_counts?: FolderCounts; ai_summary?: string; is_ai_search?: boolean }>(`/api/messages?${params.toString()}`);
+  },
+
+  async getFolderCounts(): Promise<{ counts: FolderCounts }> {
+    return fetchAPI<{ counts: FolderCounts }>("/api/folders/counts");
   },
 
   async getMessage(id: string): Promise<{ message: EmailMessage; attachments: Attachment[] }> {

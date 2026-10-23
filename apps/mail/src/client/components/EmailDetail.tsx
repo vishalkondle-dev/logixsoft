@@ -853,23 +853,6 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
                             <IconDownload size={14} />
                           </ActionIcon>
                         </Tooltip>
-
-                        <Tooltip label="Remove attachment from message">
-                          <ActionIcon
-                            size="sm"
-                            variant="subtle"
-                            color="red"
-                            aria-label="Remove attachment from message"
-                            loading={isDeleting}
-                            onClick={() => {
-                              if (window.confirm(`Are you sure you want to remove "${att.filename}" from this email?`)) {
-                                handleRemoveAttachment(att.id);
-                              }
-                            }}
-                          >
-                            <IconTrash size={14} />
-                          </ActionIcon>
-                        </Tooltip>
                       </Group>
                     </Paper>
                   );
@@ -948,8 +931,7 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
         opened={previewOpened}
         onClose={() => setPreviewOpened(false)}
         target={previewTarget}
-        onRemove={handleRemoveAttachment}
-        canRemove={true}
+        canRemove={false}
       />
 
       {/* RIGHT-CLICK CONTEXT MENU */}

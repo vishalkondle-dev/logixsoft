@@ -290,6 +290,17 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         })),
       });
 
+      onClose();
+
+      try {
+        editor?.commands.setContent("<p></p>");
+      } catch {}
+      setAttachments([]);
+      setTo("");
+      setSubject("");
+      setCc("");
+      setClefToneResult(null);
+
       playSentSound();
       notifications.show({
         title: "Email Sent Successfully",
@@ -297,10 +308,6 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         color: "teal",
         icon: <IconSend size={18} />,
       });
-
-      editor?.commands.setContent("<p></p>");
-      setAttachments([]);
-      onClose();
     } catch (err: any) {
       notifications.show({
         title: "Failed to Send Email",
@@ -506,7 +513,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
               leftSection={<IconSparkles size={16} />}
               onClick={toggleAi}
             >
-              {aiOpened ? "Hide AI Assistant" : "✨ Write with AI"}
+              {aiOpened ? "Hide AI Assistant" : "Write with AI"}
             </Button>
 
             <Button

@@ -143,6 +143,15 @@ CREATE TABLE IF NOT EXISTS message_labels (
   UNIQUE(message_id, label_id)
 );
 
+-- Per-user message state (user-specific trashed, deleted_permanently, junk)
+CREATE TABLE IF NOT EXISTS user_message_status (
+  user_id TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, message_id)
+);
+
 -- Indexes for ultra-fast querying
 CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_direction ON messages(direction);

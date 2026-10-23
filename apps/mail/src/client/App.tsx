@@ -12,7 +12,7 @@ import { AdminConsole } from "./components/AdminConsole";
 import { LoginModal } from "./components/LoginModal";
 import { UserProfileModal } from "./components/UserProfileModal";
 import { LabelsManagerModal } from "./components/LabelsManagerModal";
-import { User, Alias, EmailMessage, Attachment, Label } from "./types";
+import { User, Alias, EmailMessage, Attachment, Label, FolderCounts } from "./types";
 import { api, getStoredUser, clearSession, connectRealtime } from "./api";
 import { playNotificationSound, playPopSound, isSoundEnabled, setSoundEnabled } from "./utils/sound";
 
@@ -98,6 +98,7 @@ export const App: React.FC = () => {
 
   // Messages state
   const [messages, setMessages] = useState<EmailMessage[]>([]);
+  const [folderCounts, setFolderCounts] = useState<FolderCounts | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<EmailMessage | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<Attachment[]>([]);
   const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
@@ -299,6 +300,7 @@ export const App: React.FC = () => {
             setMessages((prev) => [email, ...prev.filter((m) => m.id !== email.id)]);
           }
         }
+        refreshFolderCounts();
       },
       (status) => {
         setRealtimeStatus(status);
@@ -337,6 +339,11 @@ export const App: React.FC = () => {
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, []);
 
+  const refreshFolderCounts = useCallback(() => {
+    if (!user) return;
+    api.getFolderCounts().then((res) => setFolderCounts(res.counts)).catch(() => {});
+  }, [user]);
+
   // Fetch Messages when folder, alias or search changes
   useEffect(() => {
     if (!user || currentView === "admin") return;
@@ -345,6 +352,9 @@ export const App: React.FC = () => {
     api.getMessages(activeFolder, activeAlias, search)
       .then((res) => {
         setMessages(res.messages);
+        if (res.folder_counts) {
+          setFolderCounts(res.folder_counts);
+        }
         setAiSummary(res.ai_summary || null);
         if (res.messages.length === 0) {
           setSelectedMessage(null);
@@ -367,6 +377,9 @@ export const App: React.FC = () => {
         api.getAliases().catch(() => ({ aliases: [], domain: "" })),
       ]);
       setMessages(msgRes.messages);
+      if (msgRes.folder_counts) {
+        setFolderCounts(msgRes.folder_counts);
+      }
       setAiSummary(msgRes.ai_summary || null);
       if (aliasRes.aliases && aliasRes.aliases.length > 0) {
         setAliases(aliasRes.aliases);
@@ -431,6 +444,7 @@ export const App: React.FC = () => {
       handleDeselectMessage();
     }
     await api.trashMessage(id).catch(() => {});
+    refreshFolderCounts();
     notifications.show({ title: "Moved to Trash", message: "Message moved to trash", color: "teal" });
   };
 
@@ -445,6 +459,7 @@ export const App: React.FC = () => {
 
     try {
       await api.toggleRead(id, read);
+      refreshFolderCounts();
       notifications.show({
         title: read ? "Marked as Read" : "Marked as Unread",
         message: read ? "Message marked as read" : "Message marked as unread",
@@ -462,6 +477,7 @@ export const App: React.FC = () => {
     }
     try {
       await api.restoreMessage(id);
+      refreshFolderCounts();
       notifications.show({ title: "Restored", message: "Message restored to Inbox", color: "teal" });
     } catch (err: any) {
       notifications.show({ title: "Restore Failed", message: err.message, color: "red" });
@@ -475,6 +491,7 @@ export const App: React.FC = () => {
     }
     try {
       await api.deleteMessagePermanently(id);
+      refreshFolderCounts();
       notifications.show({
         title: "Permanently Deleted",
         message: "Message has been permanently removed",
@@ -493,6 +510,7 @@ export const App: React.FC = () => {
     try {
       await api.markJunk(id);
       playPopSound();
+      refreshFolderCounts();
       notifications.show({
         title: "Moved to Junk",
         message: "Message moved to Junk folder",
@@ -511,6 +529,7 @@ export const App: React.FC = () => {
     try {
       await api.markNotJunk(id);
       playPopSound();
+      refreshFolderCounts();
       notifications.show({
         title: "Moved to Inbox",
         message: "Message marked as not junk and moved to Inbox",
@@ -597,6 +616,7 @@ export const App: React.FC = () => {
           user={user}
           aliases={aliases}
           labels={labels}
+          folderCounts={folderCounts || undefined}
           activeFolder={activeFolder}
           onSelectFolder={handleSelectFolder}
           activeAlias={activeAlias}
@@ -748,7 +768,15 @@ export const App: React.FC = () => {
           {/* COMPOSE MODAL */}
           <ComposeModal
             opened={composeOpened}
-            onClose={() => setComposeOpened(false)}
+            onClose={() => {
+              setComposeOpened(false);
+              setReplyToMessage(null);
+              setReplyTone(undefined);
+              setComposeTo("");
+              setComposeCc("");
+              setComposeSubject("");
+              setComposeBody("");
+            }}
             aliases={aliases}
             domain={domain}
             defaultTo={composeTo}

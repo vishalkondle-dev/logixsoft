@@ -386,34 +386,65 @@ async function attachLabelsToMessages(db: D1Database, messages: any[]) {
   }
 }
 
+app.get("/api/folders/counts", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user") as AuthUser;
+    const row = await c.env.DB.prepare(
+      `SELECT
+        COUNT(CASE WHEN m.direction = 'inbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as inbox,
+        COUNT(CASE WHEN m.direction = 'outbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently') THEN 1 END) as sent,
+        COUNT(CASE WHEN m.starred = 1 AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as starred,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) IN ('junk', 'spam') THEN 1 END) as junk,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) = 'trashed' THEN 1 END) as trash
+      FROM messages m
+      LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+      WHERE (ums.status IS NULL OR ums.status != 'deleted_permanently')`
+    ).bind(user.id).first<any>();
+
+    return c.json({
+      counts: {
+        inbox: row?.inbox || 0,
+        sent: row?.sent || 0,
+        starred: row?.starred || 0,
+        junk: row?.junk || 0,
+        trash: row?.trash || 0,
+      },
+    });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 app.get("/api/messages", authMiddleware, async (c) => {
   try {
+    const user = c.get("user") as AuthUser;
     const folder = c.req.query("folder") || "inbox";
     const alias = c.req.query("alias");
     const search = c.req.query("search");
     const labelId = c.req.query("labelId") || (folder.startsWith("label:") ? folder.replace("label:", "") : null);
 
-    let sql = `SELECT m.id, m.user_id, m.direction, m.from_addr, m.to_addr, m.cc_addr, m.subject, m.snippet, m.status, m.created_at, m.read, m.starred, m.in_reply_to, m.spam_verdict, m.clef_analysis FROM messages m`;
-    const params: any[] = [];
+    let sql = `SELECT m.id, m.user_id, m.direction, m.from_addr, m.to_addr, m.cc_addr, m.subject, m.snippet, COALESCE(ums.status, m.status) as status, m.created_at, m.read, m.starred, m.in_reply_to, m.spam_verdict, m.clef_analysis FROM messages m
+      LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+      WHERE (ums.status IS NULL OR ums.status != 'deleted_permanently')`;
+    const params: any[] = [user.id];
 
     if (labelId) {
-      sql += ` JOIN message_labels ml ON m.id = ml.message_id WHERE ml.label_id = ? AND m.status != 'trashed'`;
+      sql += ` AND m.id IN (SELECT message_id FROM message_labels WHERE label_id = ?) AND COALESCE(ums.status, m.status) != 'trashed'`;
       params.push(labelId);
     } else if (!search || !search.trim()) {
-      sql += ` WHERE 1=1`;
       if (folder === "inbox") {
-        sql += ` AND m.direction = 'inbound' AND m.status != 'trashed' AND m.status != 'junk'`;
+        sql += ` AND m.direction = 'inbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'junk', 'spam')`;
       } else if (folder === "sent") {
-        sql += ` AND m.direction = 'outbound' AND m.status != 'trashed'`;
+        sql += ` AND m.direction = 'outbound' AND COALESCE(ums.status, m.status) != 'trashed'`;
       } else if (folder === "starred") {
-        sql += ` AND m.starred = 1 AND m.status != 'trashed' AND m.status != 'junk'`;
+        sql += ` AND m.starred = 1 AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'junk', 'spam')`;
       } else if (folder === "junk") {
-        sql += ` AND (m.status = 'junk' OR m.status = 'spam')`;
+        sql += ` AND (COALESCE(ums.status, m.status) = 'junk' OR COALESCE(ums.status, m.status) = 'spam')`;
       } else if (folder === "trash") {
-        sql += ` AND m.status = 'trashed'`;
+        sql += ` AND COALESCE(ums.status, m.status) = 'trashed'`;
       }
     } else {
-      sql += ` WHERE m.status != 'trashed'`;
+      sql += ` AND COALESCE(ums.status, m.status) != 'trashed'`;
     }
 
     if (alias && alias !== "all") {
@@ -498,8 +529,29 @@ app.get("/api/messages", authMiddleware, async (c) => {
 
       await attachLabelsToMessages(c.env.DB, combinedMessages);
 
+      const countsRow = await c.env.DB.prepare(
+        `SELECT
+          COUNT(CASE WHEN m.direction = 'inbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as inbox,
+          COUNT(CASE WHEN m.direction = 'outbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently') THEN 1 END) as sent,
+          COUNT(CASE WHEN m.starred = 1 AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as starred,
+          COUNT(CASE WHEN COALESCE(ums.status, m.status) IN ('junk', 'spam') THEN 1 END) as junk,
+          COUNT(CASE WHEN COALESCE(ums.status, m.status) = 'trashed' THEN 1 END) as trash
+        FROM messages m
+        LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+        WHERE (ums.status IS NULL OR ums.status != 'deleted_permanently')`
+      ).bind(user.id).first<any>().catch(() => null);
+
+      const folder_counts = {
+        inbox: countsRow?.inbox || 0,
+        sent: countsRow?.sent || 0,
+        starred: countsRow?.starred || 0,
+        junk: countsRow?.junk || 0,
+        trash: countsRow?.trash || 0,
+      };
+
       return c.json({
         messages: combinedMessages,
+        folder_counts,
         ai_summary: aiResult?.summary || (combinedMessages.length > 0 ? `Found ${combinedMessages.length} matching emails.` : `No emails found matching "${cleanSearch}".`),
         is_ai_search: true,
       });
@@ -510,7 +562,27 @@ app.get("/api/messages", authMiddleware, async (c) => {
     const messages = (res.results || []) as any[];
     await attachLabelsToMessages(c.env.DB, messages);
 
-    return c.json({ messages });
+    const countsRow = await c.env.DB.prepare(
+      `SELECT
+        COUNT(CASE WHEN m.direction = 'inbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as inbox,
+        COUNT(CASE WHEN m.direction = 'outbound' AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently') THEN 1 END) as sent,
+        COUNT(CASE WHEN m.starred = 1 AND COALESCE(ums.status, m.status) NOT IN ('trashed', 'deleted_permanently', 'junk', 'spam') THEN 1 END) as starred,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) IN ('junk', 'spam') THEN 1 END) as junk,
+        COUNT(CASE WHEN COALESCE(ums.status, m.status) = 'trashed' THEN 1 END) as trash
+      FROM messages m
+      LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+      WHERE (ums.status IS NULL OR ums.status != 'deleted_permanently')`
+    ).bind(user.id).first<any>().catch(() => null);
+
+    const folder_counts = {
+      inbox: countsRow?.inbox || 0,
+      sent: countsRow?.sent || 0,
+      starred: countsRow?.starred || 0,
+      junk: countsRow?.junk || 0,
+      trash: countsRow?.trash || 0,
+    };
+
+    return c.json({ messages, folder_counts });
   } catch (err: any) {
     return c.json({ error: err.message }, 500);
   }
@@ -519,8 +591,14 @@ app.get("/api/messages", authMiddleware, async (c) => {
 app.get("/api/messages/:id", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
-    const message = await c.env.DB.prepare("SELECT * FROM messages WHERE id = ? LIMIT 1")
-      .bind(id)
+    const user = c.get("user") as AuthUser;
+    const message = await c.env.DB.prepare(
+      `SELECT m.*, COALESCE(ums.status, m.status) as status
+       FROM messages m
+       LEFT JOIN user_message_status ums ON ums.message_id = m.id AND ums.user_id = ?
+       WHERE m.id = ? AND (ums.status IS NULL OR ums.status != 'deleted_permanently') LIMIT 1`
+    )
+      .bind(user.id, id)
       .first<any>();
 
     if (!message) {
@@ -701,10 +779,14 @@ app.post("/api/messages/:id/read", authMiddleware, async (c) => {
 app.post("/api/messages/:id/restore", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
-    await c.env.DB.prepare("UPDATE messages SET status = 'active' WHERE id = ?").bind(id).run();
+    const user = c.get("user") as AuthUser;
+
+    // Restore for this user
+    await c.env.DB.prepare("DELETE FROM user_message_status WHERE user_id = ? AND message_id = ?")
+      .bind(user.id, id).run();
 
     const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
-    await hub.broadcast("message_updated", { id, status: "active" });
+    await hub.broadcast("message_updated", { id, status: "received" }, user.id);
 
     return c.json({ success: true });
   } catch (err: any) {
@@ -715,12 +797,16 @@ app.post("/api/messages/:id/restore", authMiddleware, async (c) => {
 app.delete("/api/messages/:id", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
-    await c.env.DB.prepare("DELETE FROM message_labels WHERE message_id = ?").bind(id).run();
-    await c.env.DB.prepare("DELETE FROM message_attachments WHERE message_id = ?").bind(id).run();
-    await c.env.DB.prepare("DELETE FROM messages WHERE id = ?").bind(id).run();
+    const user = c.get("user") as AuthUser;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Delete for this user only
+    await c.env.DB.prepare(
+      "INSERT OR REPLACE INTO user_message_status (user_id, message_id, status, updated_at) VALUES (?, ?, 'deleted_permanently', ?)"
+    ).bind(user.id, id, now).run();
 
     const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
-    await hub.broadcast("message_deleted", { id });
+    await hub.broadcast("message_deleted", { id }, user.id);
 
     return c.json({ success: true, id });
   } catch (err: any) {
@@ -748,10 +834,16 @@ app.post("/api/messages/:id/star", authMiddleware, async (c) => {
 app.post("/api/messages/:id/trash", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
-    await c.env.DB.prepare("UPDATE messages SET status = 'trashed' WHERE id = ?").bind(id).run();
+    const user = c.get("user") as AuthUser;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Move to trash for this user only
+    await c.env.DB.prepare(
+      "INSERT OR REPLACE INTO user_message_status (user_id, message_id, status, updated_at) VALUES (?, ?, 'trashed', ?)"
+    ).bind(user.id, id, now).run();
 
     const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
-    await hub.broadcast("message_updated", { id, status: "trashed" });
+    await hub.broadcast("message_updated", { id, status: "trashed" }, user.id);
 
     return c.json({ success: true });
   } catch (err: any) {
@@ -762,10 +854,16 @@ app.post("/api/messages/:id/trash", authMiddleware, async (c) => {
 app.post("/api/messages/:id/junk", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
-    await c.env.DB.prepare("UPDATE messages SET status = 'junk' WHERE id = ?").bind(id).run();
+    const user = c.get("user") as AuthUser;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Move to junk for this user only
+    await c.env.DB.prepare(
+      "INSERT OR REPLACE INTO user_message_status (user_id, message_id, status, updated_at) VALUES (?, ?, 'junk', ?)"
+    ).bind(user.id, id, now).run();
 
     const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
-    await hub.broadcast("message_updated", { id, status: "junk" });
+    await hub.broadcast("message_updated", { id, status: "junk" }, user.id);
 
     return c.json({ success: true, status: "junk" });
   } catch (err: any) {
@@ -776,10 +874,16 @@ app.post("/api/messages/:id/junk", authMiddleware, async (c) => {
 app.post("/api/messages/:id/not-junk", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
-    await c.env.DB.prepare("UPDATE messages SET status = 'received' WHERE id = ?").bind(id).run();
+    const user = c.get("user") as AuthUser;
+
+    // Restore from junk for this user only
+    await c.env.DB.prepare("DELETE FROM user_message_status WHERE user_id = ? AND message_id = ?")
+      .bind(user.id, id).run();
 
     const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
-    await hub.broadcast("message_updated", { id, status: "received" });
+    await hub.broadcast("message_updated", { id, status: "received" }, user.id);
+
+    return c.json({ success: true, status: "received" });
 
     return c.json({ success: true, status: "received" });
   } catch (err: any) {
@@ -1151,33 +1255,7 @@ app.get("/api/attachments/:id/preview", authMiddleware, async (c) => {
 });
 
 app.delete("/api/attachments/:id", authMiddleware, async (c) => {
-  try {
-    const id = c.req.param("id");
-    const att = await c.env.DB.prepare(
-      "SELECT id, message_id, filename, r2_key FROM message_attachments WHERE id = ? LIMIT 1"
-    )
-      .bind(id)
-      .first<any>();
-
-    if (!att) {
-      return c.json({ error: "Attachment not found" }, 404);
-    }
-
-    if (att.r2_key) {
-      await c.env.ATTACHMENTS.delete(att.r2_key).catch(() => {});
-    }
-
-    await c.env.DB.prepare("DELETE FROM message_attachments WHERE id = ?").bind(id).run();
-
-    return c.json({
-      success: true,
-      id,
-      messageId: att.message_id,
-      filename: att.filename,
-    });
-  } catch (err: any) {
-    return c.json({ error: err.message }, 500);
-  }
+  return c.json({ error: "Removing attachments from messages is not allowed" }, 403);
 });
 
 // ----------------------------------------------------

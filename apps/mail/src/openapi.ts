@@ -14,7 +14,7 @@ export const UserSchema = z.object({
   name: z.string().openapi({ example: "Admin" }),
   role: z.enum(["admin", "user"]).openapi({ example: "admin" }),
   avatar_url: z.string().nullable().optional().openapi({ example: "/api/user/avatar/usr_admin_logixsoft" }),
-  status_message: z.string().nullable().optional().openapi({ example: "🟢 High Velocity Dev" }),
+  status_message: z.string().nullable().optional().openapi({ example: "High Velocity Dev" }),
   bio: z.string().nullable().optional(),
   signature: z.string().nullable().optional().openapi({ example: "Best regards,\nLogixSoft Executive Admin" }),
   sound_enabled: z.number().openapi({ example: 1 }),
@@ -136,7 +136,7 @@ export const AiGlobalSearchRequestSchema = z.object({
 
 export const UserProfileUpdateRequestSchema = z.object({
   name: z.string().optional().openapi({ example: "Admin User" }),
-  status_message: z.string().optional().openapi({ example: "🟢 Available" }),
+  status_message: z.string().optional().openapi({ example: "Available" }),
   bio: z.string().optional(),
   signature: z.string().optional(),
   sound_enabled: z.number().optional(),

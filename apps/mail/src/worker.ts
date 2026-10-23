@@ -5,7 +5,7 @@ import PostalMime from "postal-mime";
 import { RealtimeHubDO } from "./realtime";
 import { signJwt, verifyJwt, type AuthUser } from "./jwt";
 import { inferMimeType } from "./mime";
-import { summarizeEmail, generateQuickReplies, draftEmailWithAI } from "./ai";
+import { summarizeEmail, generateQuickReplies, draftEmailWithAI, performAiGlobalSearch } from "./ai";
 import { inspectEmailWithClef, checkOutgoingToneWithClef } from "./clef";
 
 export { RealtimeHubDO };
@@ -107,7 +107,7 @@ app.post("/api/auth/login", async (c) => {
   try {
     const cleanEmail = email.toLowerCase().trim();
     const user = await c.env.DB.prepare(
-      "SELECT id, email, name, password_hash, role, disabled FROM users WHERE email = ? LIMIT 1"
+      "SELECT id, email, name, password_hash, role, disabled, avatar_url, status_message, bio, signature, sound_enabled FROM users WHERE email = ? LIMIT 1"
     )
       .bind(cleanEmail)
       .first<{
@@ -117,6 +117,11 @@ app.post("/api/auth/login", async (c) => {
         password_hash: string;
         role: "admin" | "user";
         disabled: number;
+        avatar_url: string | null;
+        status_message: string | null;
+        bio: string | null;
+        signature: string | null;
+        sound_enabled: number;
       }>();
 
     if (!user) {
@@ -137,6 +142,11 @@ app.post("/api/auth/login", async (c) => {
       email: user.email,
       name: user.name,
       role: user.role,
+      avatar_url: user.avatar_url,
+      status_message: user.status_message,
+      bio: user.bio,
+      signature: user.signature,
+      sound_enabled: user.sound_enabled !== undefined ? user.sound_enabled : 1,
     };
 
     const token = await signJwt(authUser, c.env.JWT_SECRET);
@@ -152,7 +162,16 @@ app.post("/api/auth/login", async (c) => {
 });
 
 app.get("/api/auth/me", authMiddleware, async (c) => {
-  return c.json({ user: c.get("user") });
+  const authUser = c.get("user") as AuthUser;
+  try {
+    const user = await c.env.DB.prepare(
+      "SELECT id, email, name, role, avatar_url, status_message, bio, signature, sound_enabled FROM users WHERE id = ? LIMIT 1"
+    ).bind(authUser.id).first<any>();
+
+    return c.json({ user: user || authUser });
+  } catch {
+    return c.json({ user: authUser });
+  }
 });
 
 // ----------------------------------------------------
@@ -227,34 +246,65 @@ app.get("/api/messages", authMiddleware, async (c) => {
     const folder = c.req.query("folder") || "inbox";
     const alias = c.req.query("alias");
     const search = c.req.query("search");
+    const labelId = c.req.query("labelId") || (folder.startsWith("label:") ? folder.replace("label:", "") : null);
 
-    let sql = `SELECT id, user_id, direction, from_addr, to_addr, cc_addr, subject, snippet, status, created_at, read, starred, in_reply_to, spam_verdict, clef_analysis FROM messages WHERE 1=1`;
+    let sql = `SELECT m.id, m.user_id, m.direction, m.from_addr, m.to_addr, m.cc_addr, m.subject, m.snippet, m.status, m.created_at, m.read, m.starred, m.in_reply_to, m.spam_verdict, m.clef_analysis FROM messages m`;
     const params: any[] = [];
 
-    if (folder === "inbox") {
-      sql += ` AND direction = 'inbound' AND status != 'trashed'`;
-    } else if (folder === "sent") {
-      sql += ` AND direction = 'outbound' AND status != 'trashed'`;
-    } else if (folder === "starred") {
-      sql += ` AND starred = 1 AND status != 'trashed'`;
-    } else if (folder === "trash") {
-      sql += ` AND status = 'trashed'`;
+    if (labelId) {
+      sql += ` JOIN message_labels ml ON m.id = ml.message_id WHERE ml.label_id = ? AND m.status != 'trashed'`;
+      params.push(labelId);
+    } else {
+      sql += ` WHERE 1=1`;
+      if (folder === "inbox") {
+        sql += ` AND m.direction = 'inbound' AND m.status != 'trashed'`;
+      } else if (folder === "sent") {
+        sql += ` AND m.direction = 'outbound' AND m.status != 'trashed'`;
+      } else if (folder === "starred") {
+        sql += ` AND m.starred = 1 AND m.status != 'trashed'`;
+      } else if (folder === "trash") {
+        sql += ` AND m.status = 'trashed'`;
+      }
     }
 
     if (alias && alias !== "all") {
-      sql += ` AND (to_addr LIKE ? OR from_addr LIKE ?)`;
+      sql += ` AND (m.to_addr LIKE ? OR m.from_addr LIKE ?)`;
       params.push(`%${alias}%`, `%${alias}%`);
     }
 
     if (search) {
-      sql += ` AND (subject LIKE ? OR from_addr LIKE ? OR snippet LIKE ? OR text_body LIKE ?)`;
+      sql += ` AND (m.subject LIKE ? OR m.from_addr LIKE ? OR m.snippet LIKE ? OR m.text_body LIKE ?)`;
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    sql += ` ORDER BY created_at DESC LIMIT 100`;
+    sql += ` ORDER BY m.created_at DESC LIMIT 100`;
 
     const res = await c.env.DB.prepare(sql).bind(...params).all();
-    return c.json({ messages: res.results || [] });
+    const messages = (res.results || []) as any[];
+
+    // Attach labels to messages
+    if (messages.length > 0) {
+      const msgIds = messages.map((m: any) => m.id);
+      const placeholders = msgIds.map(() => "?").join(",");
+      const labelsRes = await c.env.DB.prepare(
+        `SELECT ml.message_id, l.id, l.name, l.color
+         FROM message_labels ml
+         JOIN labels l ON ml.label_id = l.id
+         WHERE ml.message_id IN (${placeholders})`
+      ).bind(...msgIds).all().then((r: any) => r.results || []).catch(() => []);
+
+      const labelsByMsg: Record<string, any[]> = {};
+      for (const l of labelsRes as any[]) {
+        if (!labelsByMsg[l.message_id]) labelsByMsg[l.message_id] = [];
+        labelsByMsg[l.message_id].push({ id: l.id, name: l.name, color: l.color });
+      }
+
+      for (const msg of messages) {
+        msg.labels = labelsByMsg[msg.id] || [];
+      }
+    }
+
+    return c.json({ messages });
   } catch (err: any) {
     return c.json({ error: err.message }, 500);
   }
@@ -286,7 +336,139 @@ app.get("/api/messages/:id", authMiddleware, async (c) => {
       .then((r: any) => r.results || [])
       .catch(() => []);
 
+    // Fetch message labels
+    const labels = await c.env.DB.prepare(
+      `SELECT l.id, l.name, l.color
+       FROM message_labels ml
+       JOIN labels l ON ml.label_id = l.id
+       WHERE ml.message_id = ?`
+    ).bind(id).all().then((r: any) => r.results || []).catch(() => []);
+
+    message.labels = labels;
+
     return c.json({ message, attachments });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.post("/api/messages/:id/labels", authMiddleware, async (c) => {
+  try {
+    const messageId = c.req.param("id");
+    const body = await c.req.json().catch(() => ({}));
+    const { labelId, labelIds, action } = body;
+
+    if (Array.isArray(labelIds)) {
+      await c.env.DB.prepare("DELETE FROM message_labels WHERE message_id = ?").bind(messageId).run();
+      for (const lid of labelIds) {
+        const linkId = `ml_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        await c.env.DB.prepare(
+          "INSERT OR IGNORE INTO message_labels (id, message_id, label_id, created_at) VALUES (?, ?, ?, ?)"
+        ).bind(linkId, messageId, lid, Math.floor(Date.now() / 1000)).run();
+      }
+    } else if (labelId) {
+      if (action === "remove") {
+        await c.env.DB.prepare("DELETE FROM message_labels WHERE message_id = ? AND label_id = ?")
+          .bind(messageId, labelId).run();
+      } else if (action === "add") {
+        const linkId = `ml_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        await c.env.DB.prepare(
+          "INSERT OR IGNORE INTO message_labels (id, message_id, label_id, created_at) VALUES (?, ?, ?, ?)"
+        ).bind(linkId, messageId, labelId, Math.floor(Date.now() / 1000)).run();
+      } else {
+        // Toggle
+        const existing = await c.env.DB.prepare(
+          "SELECT id FROM message_labels WHERE message_id = ? AND label_id = ? LIMIT 1"
+        ).bind(messageId, labelId).first();
+        if (existing) {
+          await c.env.DB.prepare("DELETE FROM message_labels WHERE message_id = ? AND label_id = ?")
+            .bind(messageId, labelId).run();
+        } else {
+          const linkId = `ml_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+          await c.env.DB.prepare(
+            "INSERT OR IGNORE INTO message_labels (id, message_id, label_id, created_at) VALUES (?, ?, ?, ?)"
+          ).bind(linkId, messageId, labelId, Math.floor(Date.now() / 1000)).run();
+        }
+      }
+    }
+
+    const updatedLabels = await c.env.DB.prepare(
+      `SELECT l.id, l.name, l.color
+       FROM message_labels ml
+       JOIN labels l ON ml.label_id = l.id
+       WHERE ml.message_id = ?`
+    ).bind(messageId).all().then((r: any) => r.results || []).catch(() => []);
+
+    try {
+      const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+      await hub.broadcast("message_updated", { id: messageId, labels: updatedLabels });
+    } catch {}
+
+    return c.json({ success: true, labels: updatedLabels });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// ----------------------------------------------------
+// LABELS CRUD
+// ----------------------------------------------------
+app.get("/api/labels", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user") as AuthUser;
+    const res = await c.env.DB.prepare(`
+      SELECT l.id, l.user_id, l.name, l.color, l.created_at,
+             COUNT(ml.message_id) AS message_count
+      FROM labels l
+      LEFT JOIN message_labels ml ON l.id = ml.label_id
+      WHERE l.user_id IS NULL OR l.user_id = ?
+      GROUP BY l.id
+      ORDER BY l.name ASC
+    `).bind(user.id).all();
+
+    return c.json({ labels: res.results || [] });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.post("/api/labels", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user") as AuthUser;
+    const { name, color } = await c.req.json().catch(() => ({}));
+    if (!name || !name.trim()) {
+      return c.json({ error: "Label name is required" }, 400);
+    }
+    const cleanName = name.trim();
+    const cleanColor = color || "#228be6";
+    const id = `lbl_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const now = Math.floor(Date.now() / 1000);
+
+    await c.env.DB.prepare(
+      "INSERT INTO labels (id, user_id, name, color, created_at) VALUES (?, ?, ?, ?, ?)"
+    ).bind(id, user.id, cleanName, cleanColor, now).run();
+
+    return c.json({
+      label: {
+        id,
+        user_id: user.id,
+        name: cleanName,
+        color: cleanColor,
+        created_at: now,
+        message_count: 0,
+      },
+    });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.delete("/api/labels/:id", authMiddleware, async (c) => {
+  try {
+    const id = c.req.param("id");
+    await c.env.DB.prepare("DELETE FROM message_labels WHERE label_id = ?").bind(id).run();
+    await c.env.DB.prepare("DELETE FROM labels WHERE id = ?").bind(id).run();
+    return c.json({ success: true, id });
   } catch (err: any) {
     return c.json({ error: err.message }, 500);
   }
@@ -781,6 +963,245 @@ app.post("/api/ai/clef-tone-check", authMiddleware, async (c) => {
     console.error("Clef tone check error:", err);
     return c.json({ error: err.message }, 500);
   }
+});
+
+// ----------------------------------------------------
+// AI GLOBAL SEARCH (Semantic Multi-Factor Email Search)
+// ----------------------------------------------------
+app.post("/api/ai/global-search", authMiddleware, async (c) => {
+  try {
+    const user = c.get("user") as AuthUser;
+    const { query, mailbox } = await c.req.json().catch(() => ({}));
+
+    if (!query || !query.trim()) {
+      return c.json({ error: "Search query is required" }, 400);
+    }
+
+    const cleanQuery = query.trim();
+    const searchTerms = cleanQuery.split(/\s+/).filter((t: string) => t.length > 2);
+
+    let candidateSql = `
+      SELECT id, from_addr, to_addr, subject, snippet, text_body, clef_analysis, created_at
+      FROM messages
+      WHERE status != 'trashed'
+    `;
+    const params: any[] = [];
+    if (mailbox && mailbox !== "all") {
+      candidateSql += ` AND (to_addr LIKE ? OR from_addr LIKE ?)`;
+      params.push(`%${mailbox}%`, `%${mailbox}%`);
+    }
+
+    if (searchTerms.length > 0) {
+      const likeClauses = searchTerms
+        .map(() => `(subject LIKE ? OR snippet LIKE ? OR from_addr LIKE ? OR text_body LIKE ?)`)
+        .join(" OR ");
+      candidateSql += ` AND (${likeClauses})`;
+      searchTerms.forEach((term: string) => {
+        params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`);
+      });
+    }
+
+    candidateSql += ` ORDER BY created_at DESC LIMIT 30`;
+
+    let candidates = await c.env.DB.prepare(candidateSql)
+      .bind(...params)
+      .all()
+      .then((r: any) => r.results || [])
+      .catch(() => []);
+
+    // If keyword filter returned fewer than 5 candidates, fetch recent emails as well
+    if (candidates.length < 5) {
+      const fallbackSql = `
+        SELECT id, from_addr, to_addr, subject, snippet, text_body, clef_analysis, created_at
+        FROM messages
+        WHERE status != 'trashed'
+        ORDER BY created_at DESC LIMIT 20
+      `;
+      const fallback = await c.env.DB.prepare(fallbackSql).all().then((r: any) => r.results || []).catch(() => []);
+      const seen = new Set(candidates.map((m: any) => m.id));
+      for (const f of fallback as any[]) {
+        if (!seen.has(f.id)) {
+          candidates.push(f);
+          seen.add(f.id);
+        }
+      }
+    }
+
+    if (candidates.length === 0) {
+      return c.json({
+        query: cleanQuery,
+        summary: "No emails found in your inbox to analyze.",
+        matches: [],
+      });
+    }
+
+    // Run Workers AI
+    const result = await performAiGlobalSearch(c.env, cleanQuery, candidates as any);
+
+    if (result.matches && result.matches.length > 0) {
+      const matchedIds = result.matches.map((m: any) => m.id);
+      const placeholders = matchedIds.map(() => "?").join(",");
+      const fullMessages = await c.env.DB.prepare(
+        `SELECT id, user_id, direction, from_addr, to_addr, cc_addr, subject, snippet, status, created_at, read, starred, in_reply_to, spam_verdict, clef_analysis
+         FROM messages WHERE id IN (${placeholders})`
+      ).bind(...matchedIds).all().then((r: any) => r.results || []);
+
+      const labelsRes = await c.env.DB.prepare(
+        `SELECT ml.message_id, l.id, l.name, l.color
+         FROM message_labels ml
+         JOIN labels l ON ml.label_id = l.id
+         WHERE ml.message_id IN (${placeholders})`
+      ).bind(...matchedIds).all().then((r: any) => r.results || []).catch(() => []);
+
+      const labelsByMsg: Record<string, any[]> = {};
+      for (const l of labelsRes as any[]) {
+        if (!labelsByMsg[l.message_id]) labelsByMsg[l.message_id] = [];
+        labelsByMsg[l.message_id].push({ id: l.id, name: l.name, color: l.color });
+      }
+
+      const msgMap = new Map<string, any>();
+      for (const msg of fullMessages as any[]) {
+        msg.labels = labelsByMsg[msg.id] || [];
+        msgMap.set(msg.id, msg);
+      }
+
+      result.matches = result.matches
+        .filter((m: any) => msgMap.has(m.id))
+        .map((m: any) => ({
+          ...m,
+          message: msgMap.get(m.id),
+        }));
+    }
+
+    return c.json(result);
+  } catch (err: any) {
+    console.error("AI global search error:", err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// ----------------------------------------------------
+// USER PROFILE & AVATAR
+// ----------------------------------------------------
+app.get("/api/user/profile", authMiddleware, async (c) => {
+  try {
+    const authUser = c.get("user") as AuthUser;
+    const user = await c.env.DB.prepare(
+      "SELECT id, email, name, role, avatar_url, status_message, bio, signature, sound_enabled, created_at FROM users WHERE id = ? LIMIT 1"
+    ).bind(authUser.id).first<any>();
+
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+    return c.json({ user });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.patch("/api/user/profile", authMiddleware, async (c) => {
+  try {
+    const authUser = c.get("user") as AuthUser;
+    const body = await c.req.json().catch(() => ({}));
+    const { name, status_message, bio, signature, sound_enabled, avatar_url } = body;
+
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (typeof name === "string" && name.trim()) {
+      updates.push("name = ?");
+      params.push(name.trim());
+    }
+    if (status_message !== undefined) {
+      updates.push("status_message = ?");
+      params.push(status_message);
+    }
+    if (bio !== undefined) {
+      updates.push("bio = ?");
+      params.push(bio);
+    }
+    if (signature !== undefined) {
+      updates.push("signature = ?");
+      params.push(signature);
+    }
+    if (sound_enabled !== undefined) {
+      updates.push("sound_enabled = ?");
+      params.push(sound_enabled ? 1 : 0);
+    }
+    if (avatar_url !== undefined) {
+      updates.push("avatar_url = ?");
+      params.push(avatar_url);
+    }
+
+    if (updates.length > 0) {
+      params.push(authUser.id);
+      await c.env.DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).bind(...params).run();
+    }
+
+    const updated = await c.env.DB.prepare(
+      "SELECT id, email, name, role, avatar_url, status_message, bio, signature, sound_enabled, created_at FROM users WHERE id = ? LIMIT 1"
+    ).bind(authUser.id).first<any>();
+
+    return c.json({ user: updated });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.post("/api/user/avatar", authMiddleware, async (c) => {
+  try {
+    const authUser = c.get("user") as AuthUser;
+    const contentType = c.req.header("Content-Type") || "";
+
+    let imageBytes: Uint8Array;
+    let mime = "image/jpeg";
+
+    if (contentType.includes("application/json")) {
+      const { imageBase64, mimeType } = await c.req.json().catch(() => ({}));
+      if (!imageBase64) return c.json({ error: "Missing imageBase64" }, 400);
+      const raw = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      const binaryStr = atob(raw);
+      imageBytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) imageBytes[i] = binaryStr.charCodeAt(i);
+      mime = mimeType || "image/jpeg";
+    } else if (contentType.includes("multipart/form-data")) {
+      const formData = await c.req.formData();
+      const file = formData.get("avatar") as File;
+      if (!file) return c.json({ error: "No avatar file uploaded" }, 400);
+      const arrayBuffer = await file.arrayBuffer();
+      imageBytes = new Uint8Array(arrayBuffer);
+      mime = file.type || "image/jpeg";
+    } else {
+      return c.json({ error: "Unsupported Content-Type" }, 400);
+    }
+
+    const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+    const r2Key = `avatars/${authUser.id}.${ext}`;
+    await c.env.ATTACHMENTS.put(r2Key, imageBytes, {
+      httpMetadata: { contentType: mime, cacheControl: "public, max-age=604800" },
+    });
+
+    const avatarUrl = `/api/user/avatar/${authUser.id}?v=${Date.now()}`;
+    await c.env.DB.prepare("UPDATE users SET avatar_url = ? WHERE id = ?").bind(avatarUrl, authUser.id).run();
+
+    return c.json({ avatar_url: avatarUrl });
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.get("/api/user/avatar/:id", async (c) => {
+  const id = c.req.param("id");
+  for (const ext of ["jpg", "png", "webp"]) {
+    const object = await c.env.ATTACHMENTS.get(`avatars/${id}.${ext}`);
+    if (object) {
+      const headers = new Headers();
+      object.writeHttpMetadata(headers as any);
+      headers.set("Cache-Control", "public, max-age=604800");
+      return new Response(object.body as any, { headers });
+    }
+  }
+  return c.json({ error: "Avatar not found" }, 404);
 });
 
 // ----------------------------------------------------

@@ -3,6 +3,11 @@ export interface AuthUser {
   email: string;
   name: string;
   role: "admin" | "user";
+  avatar_url?: string | null;
+  status_message?: string | null;
+  bio?: string | null;
+  signature?: string | null;
+  sound_enabled?: number;
 }
 
 async function getJwtKey(secret: string): Promise<CryptoKey> {
@@ -99,6 +104,11 @@ export async function verifyJwt(token: string, secret: string): Promise<AuthUser
       email: payload.email,
       name: payload.name || payload.email.split("@")[0],
       role: payload.role || "user",
+      avatar_url: payload.avatar_url || null,
+      status_message: payload.status_message || null,
+      bio: payload.bio || null,
+      signature: payload.signature || null,
+      sound_enabled: payload.sound_enabled !== undefined ? payload.sound_enabled : 1,
     };
   } catch {
     return null;

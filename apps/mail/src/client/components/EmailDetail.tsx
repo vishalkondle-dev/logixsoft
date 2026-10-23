@@ -16,6 +16,8 @@ import {
   Loader,
   Center,
   Chip,
+  Menu,
+  ColorSwatch,
 } from "@mantine/core";
 import {
   IconStar,
@@ -31,12 +33,16 @@ import {
   IconDownload,
   IconEye,
   IconRefresh,
+  IconTag,
+  IconCheck,
+  IconX,
 } from "@tabler/icons-react";
 import DOMPurify from "dompurify";
 import dayjs from "dayjs";
 import { notifications } from "@mantine/notifications";
-import { EmailMessage, Attachment, Alias } from "../types";
+import { EmailMessage, Attachment, Alias, Label } from "../types";
 import { api } from "../api";
+import { playPopSound, playSentSound } from "../utils/sound";
 import {
   AttachmentPreviewModal,
   AttachmentPreviewTarget,
@@ -55,6 +61,8 @@ interface EmailDetailProps {
   onTrash: (id: string) => void;
   onReply: (message: EmailMessage, suggestedTone?: string, advice?: string) => void;
   aliases: Alias[];
+  availableLabels?: Label[];
+  onLabelsChanged?: (messageId: string, updatedLabels: Label[]) => void;
   onBack?: () => void;
   onAttachmentRemoved?: (attachmentId: string) => void;
   onRefresh?: () => Promise<void> | void;
@@ -68,6 +76,8 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   onTrash,
   onReply,
   aliases,
+  availableLabels = [],
+  onLabelsChanged,
   onBack,
   onAttachmentRemoved,
   onRefresh,
@@ -216,6 +226,7 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
         inReplyTo: message.in_reply_to || message.id,
       });
 
+      playSentSound();
       notifications.show({
         title: "Reply Sent",
         message: "Quick reply dispatched via Cloudflare edge",
@@ -227,6 +238,19 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
       notifications.show({ title: "Reply Failed", message: err.message, color: "red" });
     } finally {
       setSendingQuickReply(false);
+    }
+  };
+
+  const handleToggleLabel = async (labelId: string) => {
+    if (!message) return;
+    try {
+      const res = await api.setMessageLabels(message.id, { labelId, action: "toggle" });
+      playPopSound();
+      if (onLabelsChanged) {
+        onLabelsChanged(message.id, res.labels);
+      }
+    } catch (err: any) {
+      notifications.show({ title: "Label Error", message: err.message, color: "red" });
     }
   };
 
@@ -284,6 +308,35 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
               </ActionIcon>
             </Tooltip>
 
+            {/* ASSIGN LABELS MENU */}
+            {availableLabels.length > 0 && (
+              <Menu shadow="md" width={200} position="bottom-end">
+                <Menu.Target>
+                  <Tooltip label="Assign Labels">
+                    <ActionIcon variant="light" color="blue" size="md">
+                      <IconTag size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Assign Labels</Menu.Label>
+                  {availableLabels.map((lbl) => {
+                    const isTagged = message.labels?.some((l) => l.id === lbl.id);
+                    return (
+                      <Menu.Item
+                        key={lbl.id}
+                        leftSection={<ColorSwatch color={lbl.color} size={14} />}
+                        rightSection={isTagged ? <IconCheck size={14} color="#0ca678" /> : null}
+                        onClick={() => handleToggleLabel(lbl.id)}
+                      >
+                        {lbl.name}
+                      </Menu.Item>
+                    );
+                  })}
+                </Menu.Dropdown>
+              </Menu>
+            )}
+
             <Tooltip label="Move to Trash">
               <ActionIcon variant="light" color="red" size="md" onClick={() => onTrash(message.id)}>
                 <IconTrash size={16} />
@@ -333,6 +386,33 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
             {dateStr}
           </Text>
         </Group>
+
+        {/* ACTIVE LABELS DISPLAY */}
+        {message.labels && message.labels.length > 0 && (
+          <Group gap={6} mt="xs" wrap="wrap">
+            {message.labels.map((lbl) => (
+              <Badge
+                key={lbl.id}
+                size="sm"
+                variant="filled"
+                style={{ backgroundColor: lbl.color, color: "#fff" }}
+                rightSection={
+                  <ActionIcon
+                    size="xs"
+                    color="transparent"
+                    variant="transparent"
+                    onClick={() => handleToggleLabel(lbl.id)}
+                    title="Remove label"
+                  >
+                    <IconX size={10} color="#fff" />
+                  </ActionIcon>
+                }
+              >
+                {lbl.name}
+              </Badge>
+            ))}
+          </Group>
+        )}
       </Box>
 
       {/* Main Email Reading Content with Pull to Refresh */}

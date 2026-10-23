@@ -39,6 +39,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { Alias, User, ClefToneCheckResult } from "../types";
 import { api } from "../api";
+import { playSentSound } from "../utils/sound";
 import {
   AttachmentPreviewModal,
   AttachmentPreviewTarget,
@@ -155,7 +156,14 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
       setAiTone(defaultTone);
       openAi();
     }
-  }, [defaultTo, defaultSubject, defaultTone, opened]);
+    if (opened && editor && user?.signature) {
+      const current = editor.getHTML();
+      if (!current || current === "<p></p>") {
+        const sigHtml = `<p><br></p><p style="color: #6c757d;">--<br>${user.signature.replace(/\n/g, "<br>")}</p>`;
+        editor.commands.setContent(`<p></p>${sigHtml}`);
+      }
+    }
+  }, [defaultTo, defaultSubject, defaultTone, opened, editor, user?.signature]);
 
   // Handle File Attachments
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,6 +275,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
         })),
       });
 
+      playSentSound();
       notifications.show({
         title: "Email Sent Successfully",
         message: `Dispatched as ${finalFrom} via Cloudflare edge`,

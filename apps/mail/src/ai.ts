@@ -267,3 +267,127 @@ CRITICAL RULES:
 
   return { subject, body };
 }
+
+export interface AiSearchMatchResult {
+  id: string;
+  relevanceScore: number;
+  reason: string;
+}
+
+export interface AiGlobalSearchResult {
+  query: string;
+  summary: string;
+  matches: AiSearchMatchResult[];
+}
+
+export async function performAiGlobalSearch(
+  env: any,
+  query: string,
+  candidates: Array<{
+    id: string;
+    from_addr: string;
+    to_addr: string;
+    subject: string;
+    snippet?: string;
+    text_body?: string;
+    clef_analysis?: string;
+    created_at: number;
+  }>
+): Promise<AiGlobalSearchResult> {
+  if (!candidates || candidates.length === 0) {
+    return {
+      query,
+      summary: "No candidate emails found to search across.",
+      matches: [],
+    };
+  }
+
+  const summaries = candidates
+    .slice(0, 25)
+    .map((c, i) => {
+      let toneTag = "";
+      if (c.clef_analysis) {
+        try {
+          const parsed = JSON.parse(c.clef_analysis);
+          toneTag = `[Tone: ${parsed.tone?.label || ""}, Validity: ${parsed.validity?.label || ""}]`;
+        } catch {}
+      }
+      const preview = (c.snippet || c.text_body || "").slice(0, 180).replace(/\s+/g, " ");
+      return `Message #${i + 1}:
+- ID: ${c.id}
+- From: ${c.from_addr}
+- Subject: "${c.subject || "(No Subject)"}"
+- Metadata: ${toneTag}
+- Content snippet: "${preview}"`;
+    })
+    .join("\n\n");
+
+  const prompt = `You are an intelligent email search assistant. The user wants to search their inbox using natural language: "${query}".
+
+Analyze the candidate emails below and find the most relevant matches:
+${summaries}
+
+Instructions:
+1. Select the emails that logically, semantically, or sentimentally match the user's inquiry "${query}".
+2. Rank the top matches by relevanceScore (1 to 100).
+3. For each match, provide a 1-sentence reason explaining why it satisfies the query.
+4. Write a concise executive synthesis "summary" (2-3 sentences max) answering the query and synthesizing the email contents.
+5. Return ONLY a valid JSON object matching this exact schema:
+{
+  "summary": "<concise answer/synthesis for the user>",
+  "matches": [
+    {
+      "id": "<exact email ID from candidate list>",
+      "relevanceScore": <number 1-100>,
+      "reason": "<one sentence explanation of why this matches>"
+    }
+  ]
+}
+If absolutely no candidates match, return: {"summary": "No matching emails found for this query.", "matches": []}`;
+
+  try {
+    const raw = await runAI(env, "@cf/meta/llama-3.1-8b-instruct", [
+      {
+        role: "system",
+        content: "You are an intelligent email search analyzer. Output strictly valid JSON matching the schema.",
+      },
+      { role: "user", content: prompt },
+    ]);
+
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        query,
+        summary: parsed.summary || "Search complete.",
+        matches: Array.isArray(parsed.matches) ? parsed.matches : [],
+      };
+    }
+  } catch (err: any) {
+    console.warn("AI global search parsing error:", err.message);
+  }
+
+  // Fallback if AI fails: simple keyword match ranking
+  const lowerQ = query.toLowerCase();
+  const fallbackMatches = candidates
+    .filter((c) => {
+      const text = `${c.subject} ${c.from_addr} ${c.snippet || ""}`.toLowerCase();
+      return text.includes(lowerQ) || lowerQ.split(" ").some((w) => w.length > 3 && text.includes(w));
+    })
+    .slice(0, 5)
+    .map((c) => ({
+      id: c.id,
+      relevanceScore: 80,
+      reason: `Matches keyword criteria from "${c.subject}"`,
+    }));
+
+  return {
+    query,
+    summary:
+      fallbackMatches.length > 0
+        ? `Found ${fallbackMatches.length} emails relevant to "${query}".`
+        : `No direct matches found for "${query}".`,
+    matches: fallbackMatches,
+  };
+}
+

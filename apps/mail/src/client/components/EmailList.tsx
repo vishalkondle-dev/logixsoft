@@ -168,6 +168,22 @@ export const EmailList: React.FC<EmailListProps> = ({
                     </Text>
 
                     <Group gap={4} mt={6} wrap="wrap">
+                      {/* LABELS */}
+                      {msg.labels && msg.labels.length > 0 && (
+                        <>
+                          {msg.labels.map((lbl) => (
+                            <Badge
+                              key={lbl.id}
+                              size="xs"
+                              variant="filled"
+                              style={{ backgroundColor: lbl.color, fontSize: 10, color: "#fff" }}
+                            >
+                              {lbl.name}
+                            </Badge>
+                          ))}
+                        </>
+                      )}
+
                       <Badge size="xs" variant="light" color="teal">
                         {msg.to_addr.split("@")[0]}
                       </Badge>

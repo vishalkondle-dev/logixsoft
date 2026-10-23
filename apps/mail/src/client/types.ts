@@ -3,6 +3,20 @@ export interface User {
   email: string;
   name: string;
   role: "admin" | "user";
+  avatar_url?: string | null;
+  status_message?: string | null;
+  bio?: string | null;
+  signature?: string | null;
+  sound_enabled?: number;
+}
+
+export interface Label {
+  id: string;
+  user_id?: string | null;
+  name: string;
+  color: string;
+  created_at: number;
+  message_count?: number;
 }
 
 export interface Alias {
@@ -31,6 +45,7 @@ export interface EmailMessage {
   html_body?: string;
   spam_verdict?: string;
   clef_analysis?: string;
+  labels?: Label[];
 }
 
 export interface ClefAnalysisResult {
@@ -104,4 +119,17 @@ export interface Attachment {
   size_bytes?: number;
   size?: number;
   r2_key?: string;
+}
+
+export interface AiSearchMatch {
+  id: string;
+  relevanceScore: number;
+  reason: string;
+  message?: EmailMessage;
+}
+
+export interface AiGlobalSearchResult {
+  query: string;
+  summary: string;
+  matches: AiSearchMatch[];
 }

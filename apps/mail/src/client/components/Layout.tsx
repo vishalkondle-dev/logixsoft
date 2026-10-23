@@ -17,6 +17,8 @@ import {
   Indicator,
   Modal,
   ThemeIcon,
+  Badge,
+  ColorSwatch,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
@@ -36,12 +38,18 @@ import {
   IconBrandApple,
   IconShare,
   IconDownload,
+  IconUser,
+  IconSparkles,
+  IconVolume,
+  IconVolumeOff,
+  IconTag,
 } from "@tabler/icons-react";
-import { User, Alias } from "../types";
+import { User, Alias, Label } from "../types";
 
 interface LayoutProps {
   user: User | null;
   aliases: Alias[];
+  labels?: Label[];
   activeFolder: string;
   onSelectFolder: (folder: string) => void;
   activeAlias: string;
@@ -51,12 +59,18 @@ interface LayoutProps {
   currentView: "mailbox" | "admin";
   onToggleView: (view: "mailbox" | "admin") => void;
   realtimeStatus: "connected" | "disconnected";
+  soundEnabled?: boolean;
+  onToggleSound?: () => void;
+  onOpenProfile?: () => void;
+  onOpenAiSearch?: () => void;
+  onOpenLabelsManager?: () => void;
   children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
   user,
   aliases,
+  labels = [],
   activeFolder,
   onSelectFolder,
   activeAlias,
@@ -66,6 +80,11 @@ export const Layout: React.FC<LayoutProps> = ({
   currentView,
   onToggleView,
   realtimeStatus,
+  soundEnabled = true,
+  onToggleSound,
+  onOpenProfile,
+  onOpenAiSearch,
+  onOpenLabelsManager,
   children,
 }) => {
   const [opened, { toggle, close }] = useDisclosure(false);
@@ -188,8 +207,48 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           </Group>
 
-          {/* Right: PWA Install + User Profile & Actions with Realtime Indicator on Avatar */}
-          <Group gap="xs" style={{ flexShrink: 0 }}>
+          {/* Center / Right actions */}
+          <Group gap="xs" style={{ flexWrap: "nowrap" }}>
+            {/* AI Global Search Trigger */}
+            <Tooltip label="Search inbox with Workers AI (Cmd+K)" withArrow position="bottom">
+              <Button
+                variant="light"
+                color="teal"
+                size="xs"
+                radius="md"
+                leftSection={<IconSparkles size={14} color="#0ca678" />}
+                onClick={onOpenAiSearch}
+                style={{ fontWeight: 600 }}
+              >
+                {!isMobile ? "AI Global Search" : "AI Search"}
+                {!isMobile && (
+                  <Badge size="xs" variant="outline" color="teal" ml="xs" style={{ textTransform: "none" }}>
+                    ⌘K
+                  </Badge>
+                )}
+              </Button>
+            </Tooltip>
+
+            {/* Sound Notification Quick Toggle */}
+            {onToggleSound && (
+              <Tooltip
+                label={soundEnabled ? "Notification sound enabled (click to mute)" : "Notification sound muted (click to enable)"}
+                withArrow
+                position="bottom"
+              >
+                <ActionIcon
+                  variant="subtle"
+                  color={soundEnabled ? "teal" : "gray"}
+                  size="md"
+                  radius="md"
+                  onClick={onToggleSound}
+                  aria-label="Toggle sound notifications"
+                >
+                  {soundEnabled ? <IconVolume size={18} /> : <IconVolumeOff size={18} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+
             {!isStandalone && (
               <Tooltip label="Install LogixMail App" withArrow position="bottom-end">
                 <ActionIcon
@@ -223,7 +282,13 @@ export const Layout: React.FC<LayoutProps> = ({
                         withBorder
                         processing={realtimeStatus === "connected"}
                       >
-                        <Avatar color="teal" radius="xl" size="sm">
+                        <Avatar
+                          src={user.avatar_url || undefined}
+                          color="teal"
+                          radius="xl"
+                          size="sm"
+                          style={{ border: user.avatar_url ? "1.5px solid #0ca678" : "none" }}
+                        >
                           {user.name.charAt(0).toUpperCase()}
                         </Avatar>
                       </Indicator>
@@ -234,7 +299,7 @@ export const Layout: React.FC<LayoutProps> = ({
                           {user.name}
                         </Text>
                         <Text size="10px" c="dimmed" lineClamp={1}>
-                          {user.email}
+                          {user.status_message || user.email}
                         </Text>
                       </div>
                     )}
@@ -248,6 +313,10 @@ export const Layout: React.FC<LayoutProps> = ({
                   </Menu.Item>
                   <Menu.Item leftSection={<IconShieldLock size={14} />}>
                     Role: {user.role.toUpperCase()}
+                  </Menu.Item>
+                  <Divider />
+                  <Menu.Item leftSection={<IconUser size={14} />} onClick={onOpenProfile}>
+                    My Profile & Settings
                   </Menu.Item>
                   {isAdmin && (
                     <Menu.Item
@@ -350,6 +419,62 @@ export const Layout: React.FC<LayoutProps> = ({
               color="teal"
               style={{ borderRadius: 8, fontWeight: currentView === "mailbox" && activeFolder === "trash" ? 700 : 500 }}
             />
+          </Stack>
+
+          {/* LABELS SECTION */}
+          <Divider my={4} />
+          <Group justify="space-between" px="xs" mb={2}>
+            <Text size="xs" fw={700} c="dimmed">
+              LABELS
+            </Text>
+            {onOpenLabelsManager && (
+              <ActionIcon
+                size="xs"
+                variant="subtle"
+                color="teal"
+                title="Manage labels"
+                onClick={onOpenLabelsManager}
+              >
+                <IconPlus size={14} />
+              </ActionIcon>
+            )}
+          </Group>
+
+          <Stack gap={2}>
+            {labels.map((lbl) => (
+              <NavLink
+                key={lbl.id}
+                label={lbl.name}
+                leftSection={<ColorSwatch color={lbl.color} size={10} />}
+                rightSection={
+                  lbl.message_count !== undefined && lbl.message_count > 0 ? (
+                    <Badge size="xs" variant="light" color="gray">
+                      {lbl.message_count}
+                    </Badge>
+                  ) : null
+                }
+                active={currentView === "mailbox" && activeFolder === `label:${lbl.id}`}
+                onClick={() => handleSelectFolder(`label:${lbl.id}`)}
+                color="teal"
+                style={{
+                  borderRadius: 8,
+                  fontWeight: currentView === "mailbox" && activeFolder === `label:${lbl.id}` ? 700 : 500,
+                }}
+              />
+            ))}
+            {onOpenLabelsManager && (
+              <Button
+                variant="subtle"
+                color="gray"
+                size="compact-xs"
+                leftSection={<IconTag size={12} />}
+                onClick={onOpenLabelsManager}
+                justify="flex-start"
+                styles={{ root: { paddingLeft: 8, color: "#868e96", height: 26, fontSize: 11 } }}
+              >
+                Edit Labels...
+              </Button>
+            )}
           </Stack>
 
           {/* ADMIN SIDEBAR ITEM (Item 4: Admin in Sidebar) */}

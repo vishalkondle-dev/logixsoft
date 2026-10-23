@@ -1,4 +1,13 @@
-import { User, Alias, EmailMessage, Attachment, ClefAnalysisResult, ClefToneCheckResult } from "./types";
+import {
+  User,
+  Alias,
+  EmailMessage,
+  Attachment,
+  Label,
+  AiGlobalSearchResult,
+  ClefAnalysisResult,
+  ClefToneCheckResult,
+} from "./types";
 
 const TOKEN_KEY = "logixmail_token";
 const USER_KEY = "logixmail_user";
@@ -59,6 +68,68 @@ export const api = {
 
   async getMe(): Promise<{ user: User }> {
     return fetchAPI<{ user: User }>("/api/auth/me");
+  },
+
+  // User Profile & Settings
+  async getUserProfile(): Promise<{ user: User }> {
+    return fetchAPI<{ user: User }>("/api/user/profile");
+  },
+
+  async updateUserProfile(data: Partial<User>): Promise<{ user: User }> {
+    const res = await fetchAPI<{ user: User }>("/api/user/profile", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    if (res.user) {
+      const stored = getStoredUser();
+      if (stored) {
+        setSession(getStoredToken() || "", { ...stored, ...res.user });
+      }
+    }
+    return res;
+  },
+
+  async uploadUserAvatar(data: { imageBase64: string; mimeType?: string }): Promise<{ avatar_url: string }> {
+    return fetchAPI<{ avatar_url: string }>("/api/user/avatar", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Labels
+  async getLabels(): Promise<{ labels: Label[] }> {
+    return fetchAPI<{ labels: Label[] }>("/api/labels");
+  },
+
+  async createLabel(name: string, color?: string): Promise<{ label: Label }> {
+    return fetchAPI<{ label: Label }>("/api/labels", {
+      method: "POST",
+      body: JSON.stringify({ name, color }),
+    });
+  },
+
+  async deleteLabel(id: string): Promise<{ success: boolean; id: string }> {
+    return fetchAPI<{ success: boolean; id: string }>(`/api/labels/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  async setMessageLabels(
+    messageId: string,
+    payload: { labelId?: string; labelIds?: string[]; action?: string }
+  ): Promise<{ success: boolean; labels: Label[] }> {
+    return fetchAPI<{ success: boolean; labels: Label[] }>(`/api/messages/${messageId}/labels`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  // AI Global Search
+  async aiGlobalSearch(query: string, mailbox?: string): Promise<AiGlobalSearchResult> {
+    return fetchAPI<AiGlobalSearchResult>("/api/ai/global-search", {
+      method: "POST",
+      body: JSON.stringify({ query, mailbox }),
+    });
   },
 
   // Aliases

@@ -13,6 +13,11 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   role TEXT DEFAULT 'user' NOT NULL,
   disabled INTEGER DEFAULT 0 NOT NULL,
+  avatar_url TEXT,
+  status_message TEXT,
+  bio TEXT,
+  signature TEXT,
+  sound_enabled INTEGER DEFAULT 1,
   created_at INTEGER NOT NULL
 );
 
@@ -55,6 +60,7 @@ CREATE TABLE IF NOT EXISTS messages (
   starred INTEGER DEFAULT 0 NOT NULL,
   in_reply_to TEXT,
   spam_verdict TEXT,
+  clef_analysis TEXT,
   created_at INTEGER NOT NULL
 );
 
@@ -67,6 +73,22 @@ CREATE TABLE IF NOT EXISTS message_attachments (
   r2_key TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS labels (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_id TEXT,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS message_labels (
+  id TEXT PRIMARY KEY NOT NULL,
+  message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  label_id TEXT NOT NULL REFERENCES labels(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  UNIQUE(message_id, label_id)
+);
+
 -- Indexes for ultra-fast querying
 CREATE INDEX IF NOT EXISTS idx_messages_user_created ON messages(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_direction ON messages(direction);
@@ -74,6 +96,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_starred ON messages(starred);
 CREATE INDEX IF NOT EXISTS idx_messages_read ON messages(read);
 CREATE INDEX IF NOT EXISTS idx_mailboxes_user ON mailboxes(user_id);
 CREATE INDEX IF NOT EXISTS idx_aliases_mailbox ON mailbox_aliases(mailbox_id);
+CREATE INDEX IF NOT EXISTS idx_message_labels_msg ON message_labels(message_id);
+CREATE INDEX IF NOT EXISTS idx_message_labels_lbl ON message_labels(label_id);
+CREATE INDEX IF NOT EXISTS idx_labels_user ON labels(user_id);
 
 -- Initial Domain Seed
 INSERT OR IGNORE INTO domains (id, hostname, created_at)

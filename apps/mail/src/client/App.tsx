@@ -9,8 +9,12 @@ import { EmailDetail } from "./components/EmailDetail";
 import { ComposeModal } from "./components/ComposeModal";
 import { AdminConsole } from "./components/AdminConsole";
 import { LoginModal } from "./components/LoginModal";
-import { User, Alias, EmailMessage, Attachment } from "./types";
+import { UserProfileModal } from "./components/UserProfileModal";
+import { AiSearchModal } from "./components/AiSearchModal";
+import { LabelsManagerModal } from "./components/LabelsManagerModal";
+import { User, Alias, EmailMessage, Attachment, Label } from "./types";
 import { api, getStoredUser, clearSession, connectRealtime } from "./api";
+import { playNotificationSound, isSoundEnabled, setSoundEnabled } from "./utils/sound";
 
 interface HashRoute {
   view: "mailbox" | "admin";
@@ -49,7 +53,17 @@ function parseHash(hashStr: string): HashRoute {
     };
   }
 
-  if (["inbox", "sent", "starred", "trash"].includes(main)) {
+  if (main === "label") {
+    return {
+      view: "mailbox",
+      folder: `label:${parts[1] || ""}`,
+      alias: "all",
+      selectedId: parts[2] || null,
+      adminTab: "users",
+    };
+  }
+
+  if (["inbox", "sent", "starred", "trash"].includes(main) || main.startsWith("label:")) {
     return {
       view: "mailbox",
       folder: main,
@@ -65,6 +79,7 @@ function parseHash(hashStr: string): HashRoute {
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(getStoredUser());
   const [aliases, setAliases] = useState<Alias[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [domain, setDomain] = useState("logixsoft.in");
 
   const isMobile = useMediaQuery("(max-width: 850px)");
@@ -87,10 +102,16 @@ export const App: React.FC = () => {
   const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 
-  // Compose Modal state
+  // Modals state
   const [composeOpened, setComposeOpened] = useState<boolean>(false);
   const [replyToMessage, setReplyToMessage] = useState<EmailMessage | null>(null);
   const [replyTone, setReplyTone] = useState<string | undefined>(undefined);
+  const [labelsManagerOpened, setLabelsManagerOpened] = useState<boolean>(false);
+  const [aiSearchOpened, setAiSearchOpened] = useState<boolean>(false);
+  const [profileOpened, setProfileOpened] = useState<boolean>(false);
+
+  // Sound Notifications state
+  const [soundActive, setSoundActive] = useState<boolean>(isSoundEnabled(user?.sound_enabled));
 
   // Realtime Status
   const [realtimeStatus, setRealtimeStatus] = useState<"connected" | "disconnected">("disconnected");
@@ -117,6 +138,18 @@ export const App: React.FC = () => {
     };
   }, [handleHashSync]);
 
+  // Global Keyboard Shortcut: Cmd+K / Ctrl+K opens AI Global Search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setAiSearchOpened(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Navigation action helpers (update window.location.hash directly)
   const navigateTo = (newHash: string) => {
     if (window.location.hash !== newHash) {
@@ -125,7 +158,12 @@ export const App: React.FC = () => {
   };
 
   const handleSelectFolder = (folder: string) => {
-    navigateTo(`#${folder}`);
+    if (folder.startsWith("label:")) {
+      const lblId = folder.replace("label:", "");
+      navigateTo(`#label/${encodeURIComponent(lblId)}`);
+    } else {
+      navigateTo(`#${folder}`);
+    }
   };
 
   const handleSelectAlias = (alias: string) => {
@@ -137,7 +175,10 @@ export const App: React.FC = () => {
   };
 
   const handleSelectMessage = (id: string) => {
-    if (activeAlias !== "all") {
+    if (activeFolder.startsWith("label:")) {
+      const lblId = activeFolder.replace("label:", "");
+      navigateTo(`#label/${encodeURIComponent(lblId)}/${id}`);
+    } else if (activeAlias !== "all") {
       navigateTo(`#alias/${encodeURIComponent(activeAlias)}/${id}`);
     } else {
       navigateTo(`#${activeFolder}/${id}`);
@@ -145,7 +186,10 @@ export const App: React.FC = () => {
   };
 
   const handleDeselectMessage = () => {
-    if (activeAlias !== "all") {
+    if (activeFolder.startsWith("label:")) {
+      const lblId = activeFolder.replace("label:", "");
+      navigateTo(`#label/${encodeURIComponent(lblId)}`);
+    } else if (activeAlias !== "all") {
       navigateTo(`#alias/${encodeURIComponent(activeAlias)}`);
     } else {
       navigateTo(`#${activeFolder}`);
@@ -164,11 +208,42 @@ export const App: React.FC = () => {
     navigateTo(`#admin/${tab}`);
   };
 
-  // Load Aliases & Initial User Check
+  const handleRefreshLabels = () => {
+    api.getLabels()
+      .then((res) => setLabels(res.labels || []))
+      .catch(() => {});
+  };
+
+  const handleLabelsChanged = (messageId: string, updatedLabels: Label[]) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, labels: updatedLabels } : m))
+    );
+    if (selectedMessage?.id === messageId) {
+      setSelectedMessage((prev) => (prev ? { ...prev, labels: updatedLabels } : null));
+    }
+    handleRefreshLabels();
+  };
+
+  const handleToggleSound = () => {
+    const next = !soundActive;
+    setSoundEnabled(next);
+    setSoundActive(next);
+    notifications.show({
+      title: next ? "Sound Enabled" : "Sound Muted",
+      message: next ? "Notification sounds are turned ON" : "Notification sounds are MUTED",
+      color: next ? "teal" : "gray",
+    });
+    if (next) playNotificationSound();
+  };
+
+  // Load Aliases, Labels & Initial User Check
   useEffect(() => {
     if (user) {
       api.getMe()
-        .then((res) => setUser(res.user))
+        .then((res) => {
+          setUser(res.user);
+          setSoundActive(isSoundEnabled(res.user.sound_enabled));
+        })
         .catch(() => {
           clearSession();
           setUser(null);
@@ -180,6 +255,8 @@ export const App: React.FC = () => {
           setDomain(res.domain);
         })
         .catch(() => {});
+
+      handleRefreshLabels();
     }
   }, [user?.id]);
 
@@ -189,7 +266,10 @@ export const App: React.FC = () => {
 
     const disconnect = connectRealtime(
       (email) => {
-        // Realtime notification
+        // Play notification chime
+        playNotificationSound();
+
+        // Realtime notification toast
         notifications.show({
           title: "New Email Received",
           message: `${email.from_addr}: "${email.subject}"`,
@@ -328,6 +408,7 @@ export const App: React.FC = () => {
         <Layout
           user={user}
           aliases={aliases}
+          labels={labels}
           activeFolder={activeFolder}
           onSelectFolder={handleSelectFolder}
           activeAlias={activeAlias}
@@ -340,6 +421,11 @@ export const App: React.FC = () => {
           currentView={currentView}
           onToggleView={handleToggleView}
           realtimeStatus={realtimeStatus}
+          soundEnabled={soundActive}
+          onToggleSound={handleToggleSound}
+          onOpenProfile={() => setProfileOpened(true)}
+          onOpenAiSearch={() => setAiSearchOpened(true)}
+          onOpenLabelsManager={() => setLabelsManagerOpened(true)}
         >
           {currentView === "admin" ? (
             <AdminConsole activeTab={adminTab} onTabChange={handleAdminTabChange} />
@@ -367,6 +453,8 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onReply={handleReply}
                   aliases={aliases}
+                  availableLabels={labels}
+                  onLabelsChanged={handleLabelsChanged}
                   onBack={handleDeselectMessage}
                   onAttachmentRemoved={(attId) =>
                     setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
@@ -412,6 +500,8 @@ export const App: React.FC = () => {
                   onTrash={handleTrashMessage}
                   onReply={handleReply}
                   aliases={aliases}
+                  availableLabels={labels}
+                  onLabelsChanged={handleLabelsChanged}
                   onAttachmentRemoved={(attId) =>
                     setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
                   }
@@ -438,6 +528,33 @@ export const App: React.FC = () => {
             defaultInReplyTo={replyToMessage?.id}
             defaultTone={replyTone}
             user={user}
+          />
+
+          {/* USER PROFILE MODAL */}
+          <UserProfileModal
+            opened={profileOpened}
+            onClose={() => setProfileOpened(false)}
+            user={user}
+            onUserUpdated={(updated) => {
+              setUser(updated);
+              setSoundActive(isSoundEnabled(updated.sound_enabled));
+            }}
+          />
+
+          {/* AI GLOBAL SEARCH MODAL */}
+          <AiSearchModal
+            opened={aiSearchOpened}
+            onClose={() => setAiSearchOpened(false)}
+            onSelectMessage={handleSelectMessage}
+            activeMailbox={activeAlias}
+          />
+
+          {/* LABELS MANAGER MODAL */}
+          <LabelsManagerModal
+            opened={labelsManagerOpened}
+            onClose={() => setLabelsManagerOpened(false)}
+            labels={labels}
+            onLabelsUpdated={handleRefreshLabels}
           />
         </Layout>
       )}

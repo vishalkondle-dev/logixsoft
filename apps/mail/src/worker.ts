@@ -6,6 +6,7 @@ import { RealtimeHubDO } from "./realtime";
 import { signJwt, verifyJwt, type AuthUser } from "./jwt";
 import { inferMimeType } from "./mime";
 import { summarizeEmail, generateQuickReplies, draftEmailWithAI } from "./ai";
+import { inspectEmailWithClef, checkOutgoingToneWithClef } from "./clef";
 
 export { RealtimeHubDO };
 
@@ -227,7 +228,7 @@ app.get("/api/messages", authMiddleware, async (c) => {
     const alias = c.req.query("alias");
     const search = c.req.query("search");
 
-    let sql = `SELECT id, user_id, direction, from_addr, to_addr, cc_addr, subject, snippet, status, created_at, read, starred, in_reply_to, spam_verdict FROM messages WHERE 1=1`;
+    let sql = `SELECT id, user_id, direction, from_addr, to_addr, cc_addr, subject, snippet, status, created_at, read, starred, in_reply_to, spam_verdict, clef_analysis FROM messages WHERE 1=1`;
     const params: any[] = [];
 
     if (folder === "inbox") {
@@ -698,6 +699,91 @@ app.post("/api/ai/draft", authMiddleware, async (c) => {
 });
 
 // ----------------------------------------------------
+// CLEF-FLASH DEEP EMAIL INTELLIGENCE (Tone, Spam, Validity, Urgency)
+// ----------------------------------------------------
+app.post("/api/ai/clef-inspect", authMiddleware, async (c) => {
+  try {
+    const { messageId, from, to, subject, body, forceRefresh } = await c.req.json();
+    let emailFrom = from || "";
+    let emailTo = to || "";
+    let emailSub = subject || "";
+    let emailBody = body || "";
+
+    if (messageId && (!emailBody || !emailSub || !forceRefresh)) {
+      const msg = await c.env.DB.prepare(
+        "SELECT from_addr, to_addr, subject, text_body, html_body, clef_analysis FROM messages WHERE id = ? LIMIT 1"
+      )
+        .bind(messageId)
+        .first<any>();
+
+      if (msg) {
+        // If already inspected and not forcing refresh, return cached result
+        if (msg.clef_analysis && !forceRefresh) {
+          try {
+            return c.json(JSON.parse(msg.clef_analysis));
+          } catch {}
+        }
+        emailFrom = emailFrom || msg.from_addr;
+        emailTo = emailTo || msg.to_addr;
+        emailSub = emailSub || msg.subject;
+        emailBody = emailBody || msg.text_body || msg.html_body?.replace(/<[^>]*>/g, "") || "";
+      }
+    }
+
+    if (!emailSub && !emailBody) {
+      return c.json({ error: "Email subject or body is required for Clef inspection" }, 400);
+    }
+
+    const analysis = await inspectEmailWithClef(c.env, {
+      from: emailFrom,
+      to: emailTo,
+      subject: emailSub,
+      body: emailBody,
+    });
+
+    if (messageId) {
+      await c.env.DB.prepare(
+        "UPDATE messages SET clef_analysis = ?, spam_verdict = ? WHERE id = ?"
+      )
+        .bind(JSON.stringify(analysis), analysis.validity.category, messageId)
+        .run();
+
+      const hub = c.env.REALTIME_HUB.get(c.env.REALTIME_HUB.idFromName("global"));
+      await hub.broadcast("message_updated", {
+        id: messageId,
+        clef_analysis: JSON.stringify(analysis),
+        spam_verdict: analysis.validity.category,
+      });
+    }
+
+    return c.json(analysis);
+  } catch (err: any) {
+    console.error("Clef inspect error:", err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+app.post("/api/ai/clef-tone-check", authMiddleware, async (c) => {
+  try {
+    const { subject, body, recipient } = await c.req.json();
+    if (!body) {
+      return c.json({ error: "Draft body is required" }, 400);
+    }
+
+    const toneResult = await checkOutgoingToneWithClef(c.env, {
+      subject: subject || "",
+      body,
+      recipient,
+    });
+
+    return c.json(toneResult);
+  } catch (err: any) {
+    console.error("Clef tone check error:", err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
+// ----------------------------------------------------
 // ADMIN MODULE
 // ----------------------------------------------------
 app.get("/api/admin/users", adminMiddleware, async (c) => {
@@ -976,7 +1062,26 @@ export default {
         }
       }
 
-      // 3. Broadcast real-time new_email event
+      // 3. Run Clef-Flash Intelligence Inspection
+      let clefAnalysis: any = null;
+      try {
+        clefAnalysis = await inspectEmailWithClef(env, {
+          from,
+          to,
+          subject,
+          body: text || html,
+        });
+
+        await env.DB.prepare(
+          "UPDATE messages SET clef_analysis = ?, spam_verdict = ? WHERE id = ?"
+        )
+          .bind(JSON.stringify(clefAnalysis), clefAnalysis.validity.category, messageId)
+          .run();
+      } catch (clefErr: any) {
+        console.warn("Inbound Clef-Flash inspection error:", clefErr?.message);
+      }
+
+      // 4. Broadcast real-time new_email event
       const hub = env.REALTIME_HUB.get(env.REALTIME_HUB.idFromName("global"));
       await hub.broadcast("new_email", {
         id: messageId,
@@ -986,9 +1091,11 @@ export default {
         snippet,
         created_at: now,
         read: 0,
+        spam_verdict: clefAnalysis?.validity?.category || null,
+        clef_analysis: clefAnalysis ? JSON.stringify(clefAnalysis) : null,
       });
 
-      // 4. Optionally forward to verified external address if sent to support
+      // 5. Optionally forward to verified external address if sent to support
       if (to.toLowerCase().includes("support@logixsoft.in")) {
         try {
           await message.forward("vishalkondle.dev@gmail.com");

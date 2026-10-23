@@ -14,6 +14,7 @@ import {
   Collapse,
   Badge,
   SegmentedControl,
+  ThemeIcon,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { RichTextEditor, Link } from "@mantine/tiptap";
@@ -31,9 +32,12 @@ import {
   IconWand,
   IconEye,
   IconTrash,
+  IconBolt,
+  IconCheck,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { Alias, User } from "../types";
+import { Alias, User, ClefToneCheckResult } from "../types";
 import { api } from "../api";
 import {
   AttachmentPreviewModal,
@@ -51,6 +55,7 @@ interface ComposeModalProps {
   defaultTo?: string;
   defaultSubject?: string;
   defaultInReplyTo?: string;
+  defaultTone?: string;
   user?: User | null;
 }
 
@@ -70,6 +75,7 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   defaultTo = "",
   defaultSubject = "",
   defaultInReplyTo,
+  defaultTone,
   user,
 }) => {
   const [fromAddress, setFromAddress] = useState<string>("");
@@ -94,6 +100,35 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
   const [aiTone, setAiTone] = useState("professional");
   const [aiLoading, setAiLoading] = useState(false);
 
+  const [clefToneLoading, setClefToneLoading] = useState(false);
+  const [clefToneResult, setClefToneResult] = useState<ClefToneCheckResult | null>(null);
+
+  const handleCheckTone = async () => {
+    const bodyText = editor?.getText() || "";
+    if (!bodyText.trim()) {
+      notifications.show({
+        title: "Nothing to Check",
+        message: "Please write some text in the message body first",
+        color: "orange",
+      });
+      return;
+    }
+
+    setClefToneLoading(true);
+    try {
+      const res = await api.clefToneCheck({
+        subject: subject.trim(),
+        body: bodyText,
+        recipient: to.trim(),
+      });
+      setClefToneResult(res);
+    } catch (err: any) {
+      notifications.show({ title: "Clef Tone Check Error", message: err.message, color: "red" });
+    } finally {
+      setClefToneLoading(false);
+    }
+  };
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -115,7 +150,12 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
     setTo(defaultTo);
     setSubject(defaultSubject);
     setAttachments([]);
-  }, [defaultTo, defaultSubject, opened]);
+    setClefToneResult(null);
+    if (defaultTone) {
+      setAiTone(defaultTone);
+      openAi();
+    }
+  }, [defaultTo, defaultSubject, defaultTone, opened]);
 
   // Handle File Attachments
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -432,22 +472,87 @@ export const ComposeModal: React.FC<ComposeModalProps> = ({
           }
         />
 
-        {/* AI PROMPT ASSISTANT BAR */}
-        <Group justify="space-between" mt={2}>
-          <Button
-            variant="light"
-            color="teal"
-            size="compact-sm"
-            leftSection={<IconSparkles size={16} />}
-            onClick={toggleAi}
-          >
-            {aiOpened ? "Hide AI Prompt Assistant" : "✨ Write with AI (Prompt or Topic)"}
-          </Button>
+        {/* AI PROMPT & CLEF TONE ASSISTANT BAR */}
+        <Group justify="space-between" mt={2} wrap="wrap">
+          <Group gap="xs">
+            <Button
+              variant="light"
+              color="teal"
+              size="compact-sm"
+              leftSection={<IconSparkles size={16} />}
+              onClick={toggleAi}
+            >
+              {aiOpened ? "Hide AI Assistant" : "✨ Write with AI"}
+            </Button>
+
+            <Button
+              variant="subtle"
+              color="cyan"
+              size="compact-sm"
+              loading={clefToneLoading}
+              leftSection={<IconBolt size={15} />}
+              onClick={handleCheckTone}
+            >
+              Clef Tone Check
+            </Button>
+          </Group>
 
           <Text size="xs" c="dimmed">
-            Powered by Workers AI Llama 3.1
+            Powered by Cloudflare Clef-Flash & Llama 3.1
           </Text>
         </Group>
+
+        {/* CLEF TONE VERDICT BANNER */}
+        {clefToneResult && (
+          <Paper
+            p="xs"
+            radius="md"
+            withBorder
+            style={{
+              backgroundColor: clefToneResult.isSafeToSend ? "#f4fcf9" : "#fff9db",
+              borderColor: clefToneResult.isSafeToSend ? "#63e6be" : "#ffe066",
+            }}
+          >
+            <Group justify="space-between" align="flex-start" wrap="nowrap">
+              <Group gap="xs" align="flex-start">
+                <ThemeIcon
+                  size="sm"
+                  radius="md"
+                  variant="light"
+                  color={clefToneResult.isSafeToSend ? "teal" : "orange"}
+                >
+                  {clefToneResult.isSafeToSend ? <IconCheck size={14} /> : <IconAlertCircle size={14} />}
+                </ThemeIcon>
+                <div>
+                  <Group gap={6}>
+                    <Text size="xs" fw={700} c="dark.8">
+                      Clef Tone: {clefToneResult.label} ({clefToneResult.confidence}%)
+                    </Text>
+                    <Badge
+                      size="xs"
+                      color={clefToneResult.isSafeToSend ? "teal" : "orange"}
+                      variant="light"
+                    >
+                      {clefToneResult.isSafeToSend ? "Safe to Send" : "Review Suggested"}
+                    </Badge>
+                  </Group>
+                  <Text size="xs" c="dimmed" mt={2}>
+                    {clefToneResult.advice}
+                  </Text>
+                </div>
+              </Group>
+
+              <ActionIcon
+                size="xs"
+                variant="subtle"
+                color="gray"
+                onClick={() => setClefToneResult(null)}
+              >
+                <IconX size={12} />
+              </ActionIcon>
+            </Group>
+          </Paper>
+        )}
 
         <Collapse expanded={aiOpened}>
           <Paper p="sm" withBorder bg="teal.0" radius="md">

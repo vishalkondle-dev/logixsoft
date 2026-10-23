@@ -167,7 +167,7 @@ export const EmailList: React.FC<EmailListProps> = ({
                       {msg.snippet || "No preview available"}
                     </Text>
 
-                    <Group gap={4} mt={6}>
+                    <Group gap={4} mt={6} wrap="wrap">
                       <Badge size="xs" variant="light" color="teal">
                         {msg.to_addr.split("@")[0]}
                       </Badge>
@@ -176,11 +176,49 @@ export const EmailList: React.FC<EmailListProps> = ({
                           Sent
                         </Badge>
                       )}
-                      {msg.spam_verdict && msg.spam_verdict !== "pass" && (
-                        <Badge size="xs" color="orange">
-                          Spam Warning
-                        </Badge>
-                      )}
+                      {(() => {
+                        let clef: any = null;
+                        if (msg.clef_analysis) {
+                          try {
+                            clef = JSON.parse(msg.clef_analysis);
+                          } catch {}
+                        }
+                        if (!clef) {
+                          if (msg.spam_verdict && msg.spam_verdict !== "pass" && msg.spam_verdict !== "valid_human") {
+                            return (
+                              <Badge size="xs" color="orange">
+                                {msg.spam_verdict}
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        }
+
+                        return (
+                          <>
+                            {clef.validity?.category === "phishing_scam" && (
+                              <Badge size="xs" color="red" variant="filled">
+                                ⚠️ Phishing
+                              </Badge>
+                            )}
+                            {clef.validity?.category === "junk_cold_outreach" && (
+                              <Badge size="xs" color="orange" variant="light">
+                                Junk
+                              </Badge>
+                            )}
+                            {clef.urgency?.level === "critical_same_day" && (
+                              <Badge size="xs" color="red" variant="light">
+                                ⚡ Urgent
+                              </Badge>
+                            )}
+                            {clef.tone?.primary === "angry_escalated" && (
+                              <Badge size="xs" color="grape" variant="light">
+                                😡 Escalated
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      })()}
                     </Group>
                   </Paper>
                 );

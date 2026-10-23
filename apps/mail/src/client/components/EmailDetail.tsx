@@ -45,6 +45,7 @@ import {
   formatBytes,
 } from "./AttachmentPreviewModal";
 import { PullToRefresh } from "./PullToRefresh";
+import { ClefInspectionCard } from "./ClefInspectionCard";
 
 interface EmailDetailProps {
   message: EmailMessage | null;
@@ -52,7 +53,7 @@ interface EmailDetailProps {
   loading: boolean;
   onToggleStar: (id: string) => void;
   onTrash: (id: string) => void;
-  onReply: (message: EmailMessage) => void;
+  onReply: (message: EmailMessage, suggestedTone?: string, advice?: string) => void;
   aliases: Alias[];
   onBack?: () => void;
   onAttachmentRemoved?: (attachmentId: string) => void;
@@ -339,6 +340,12 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
         <PullToRefresh onRefresh={onRefresh || (() => {})}>
           <ScrollArea style={{ height: "100%" }} p="md">
         <Stack gap="md">
+          {/* CLEF-FLASH DEEP INTELLIGENCE (Tone, Spam, Validity, Urgency) */}
+          <ClefInspectionCard
+            message={message}
+            onApplyStrategy={(suggestedTone, advice) => onReply(message, suggestedTone, advice)}
+          />
+
           {/* AI SUMMARY CARD */}
           <Paper p="sm" radius="md" withBorder bg="teal.0">
             <Group justify="space-between">

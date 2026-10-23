@@ -90,6 +90,7 @@ export const App: React.FC = () => {
   // Compose Modal state
   const [composeOpened, setComposeOpened] = useState<boolean>(false);
   const [replyToMessage, setReplyToMessage] = useState<EmailMessage | null>(null);
+  const [replyTone, setReplyTone] = useState<string | undefined>(undefined);
 
   // Realtime Status
   const [realtimeStatus, setRealtimeStatus] = useState<"connected" | "disconnected">("disconnected");
@@ -304,8 +305,9 @@ export const App: React.FC = () => {
     notifications.show({ title: "Moved to Trash", message: "Message moved to trash", color: "teal" });
   };
 
-  const handleReply = (message: EmailMessage) => {
+  const handleReply = (message: EmailMessage, suggestedTone?: string) => {
     setReplyToMessage(message);
+    setReplyTone(suggestedTone);
     setComposeOpened(true);
   };
 
@@ -434,6 +436,7 @@ export const App: React.FC = () => {
                 : ""
             }
             defaultInReplyTo={replyToMessage?.id}
+            defaultTone={replyTone}
             user={user}
           />
         </Layout>

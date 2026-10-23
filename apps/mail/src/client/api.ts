@@ -1,4 +1,4 @@
-import { User, Alias, EmailMessage, Attachment } from "./types";
+import { User, Alias, EmailMessage, Attachment, ClefAnalysisResult, ClefToneCheckResult } from "./types";
 
 const TOKEN_KEY = "logixmail_token";
 const USER_KEY = "logixmail_user";
@@ -187,6 +187,32 @@ export const api = {
     return fetchAPI<{ subject: string; body: string }>("/api/ai/draft", {
       method: "POST",
       body: JSON.stringify({ prompt, tone, recipient, subject, from, senderName }),
+    });
+  },
+
+  // Clef-Flash Deep Intelligence
+  async clefInspect(payload: {
+    messageId?: string;
+    from?: string;
+    to?: string;
+    subject?: string;
+    body?: string;
+    forceRefresh?: boolean;
+  }): Promise<ClefAnalysisResult> {
+    return fetchAPI<ClefAnalysisResult>("/api/ai/clef-inspect", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async clefToneCheck(payload: {
+    subject: string;
+    body: string;
+    recipient?: string;
+  }): Promise<ClefToneCheckResult> {
+    return fetchAPI<ClefToneCheckResult>("/api/ai/clef-tone-check", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   },
 

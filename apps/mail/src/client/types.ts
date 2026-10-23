@@ -30,6 +30,69 @@ export interface EmailMessage {
   text_body?: string;
   html_body?: string;
   spam_verdict?: string;
+  clef_analysis?: string;
+}
+
+export interface ClefAnalysisResult {
+  validity: {
+    category:
+      | "valid_human"
+      | "automated_transactional"
+      | "junk_cold_outreach"
+      | "phishing_scam"
+      | "newsletter_promotional";
+    label: string;
+    confidence: number;
+    probabilities: Record<string, number>;
+  };
+  tone: {
+    primary:
+      | "urgent_emergency"
+      | "angry_escalated"
+      | "collaborative_friendly"
+      | "formal_business"
+      | "threatening_coercive"
+      | "skeptical_hesitant"
+      | "promotional_sales";
+    label: string;
+    confidence: number;
+    probabilities: Record<string, number>;
+  };
+  sentiment: {
+    type: "positive" | "neutral" | "negative";
+    confidence: number;
+  };
+  urgency: {
+    level: "critical_same_day" | "moderate" | "low_or_none";
+    label: string;
+    confidence: number;
+  };
+  recommendedAction: {
+    action:
+      | "reply_urgently"
+      | "deescalate_with_care"
+      | "review_and_file"
+      | "ignore_or_junk"
+      | "block_or_report_phishing";
+    label: string;
+    advice: string;
+  };
+  inspectedAt: number;
+}
+
+export interface ClefToneCheckResult {
+  overallTone:
+    | "professional_diplomatic"
+    | "friendly_engaging"
+    | "overly_blunt_harsh"
+    | "passive_aggressive"
+    | "confusing_unclear"
+    | "inappropriately_casual";
+  label: string;
+  confidence: number;
+  isSafeToSend: boolean;
+  advice: string;
+  suggestions?: string[];
 }
 
 export interface Attachment {

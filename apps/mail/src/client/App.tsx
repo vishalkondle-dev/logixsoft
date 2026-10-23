@@ -229,6 +229,34 @@ export const App: React.FC = () => {
       });
   }, [user, activeFolder, activeAlias, search, currentView]);
 
+  // Pull-down and manual refresh handler for messages and aliases
+  const handleRefreshMessages = async () => {
+    if (!user || currentView === "admin") return;
+    try {
+      const [msgRes, aliasRes] = await Promise.all([
+        api.getMessages(activeFolder, activeAlias, search),
+        api.getAliases().catch(() => ({ aliases: [], domain: "" })),
+      ]);
+      setMessages(msgRes.messages);
+      if (aliasRes.aliases && aliasRes.aliases.length > 0) {
+        setAliases(aliasRes.aliases);
+      }
+    } catch (err: any) {
+      notifications.show({ title: "Refresh Error", message: err.message, color: "red" });
+    }
+  };
+
+  const handleRefreshDetail = async () => {
+    if (!selectedId) return;
+    try {
+      const res = await api.getMessage(selectedId);
+      setSelectedMessage(res.message);
+      setSelectedAttachments(res.attachments || []);
+    } catch (err: any) {
+      notifications.show({ title: "Detail Refresh Error", message: err.message, color: "red" });
+    }
+  };
+
   // Fetch Message Details when selectedId changes
   useEffect(() => {
     if (!selectedId) {
@@ -326,6 +354,7 @@ export const App: React.FC = () => {
                   onSearchChange={setSearch}
                   loading={loadingMessages}
                   activeFolder={activeFolder}
+                  onRefresh={handleRefreshMessages}
                 />
               ) : (
                 <EmailDetail
@@ -340,6 +369,7 @@ export const App: React.FC = () => {
                   onAttachmentRemoved={(attId) =>
                     setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
                   }
+                  onRefresh={handleRefreshDetail}
                 />
               )}
             </Box>
@@ -366,6 +396,7 @@ export const App: React.FC = () => {
                   onSearchChange={setSearch}
                   loading={loadingMessages}
                   activeFolder={activeFolder}
+                  onRefresh={handleRefreshMessages}
                 />
               </Box>
 
@@ -382,6 +413,7 @@ export const App: React.FC = () => {
                   onAttachmentRemoved={(attId) =>
                     setSelectedAttachments((prev) => prev.filter((a) => a.id !== attId))
                   }
+                  onRefresh={handleRefreshDetail}
                 />
               </Box>
             </Box>

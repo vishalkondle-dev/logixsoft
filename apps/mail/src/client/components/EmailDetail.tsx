@@ -30,6 +30,7 @@ import {
   IconArrowLeft,
   IconDownload,
   IconEye,
+  IconRefresh,
 } from "@tabler/icons-react";
 import DOMPurify from "dompurify";
 import dayjs from "dayjs";
@@ -43,6 +44,7 @@ import {
   getFileCategory,
   formatBytes,
 } from "./AttachmentPreviewModal";
+import { PullToRefresh } from "./PullToRefresh";
 
 interface EmailDetailProps {
   message: EmailMessage | null;
@@ -54,6 +56,7 @@ interface EmailDetailProps {
   aliases: Alias[];
   onBack?: () => void;
   onAttachmentRemoved?: (attachmentId: string) => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export const EmailDetail: React.FC<EmailDetailProps> = ({
@@ -66,6 +69,7 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
   aliases,
   onBack,
   onAttachmentRemoved,
+  onRefresh,
 }) => {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
@@ -284,6 +288,21 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
                 <IconTrash size={16} />
               </ActionIcon>
             </Tooltip>
+
+            {onRefresh && (
+              <Tooltip label="Refresh email (or pull down to refresh)">
+                <ActionIcon
+                  variant="light"
+                  color="teal"
+                  size="md"
+                  onClick={() => onRefresh()}
+                  loading={loading}
+                  aria-label="Refresh email"
+                >
+                  <IconRefresh size={16} />
+                </ActionIcon>
+              </Tooltip>
+            )}
           </Group>
         </Group>
 
@@ -315,8 +334,10 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
         </Group>
       </Box>
 
-      {/* Main Email Reading Content */}
-      <ScrollArea style={{ flex: 1 }} p="md">
+      {/* Main Email Reading Content with Pull to Refresh */}
+      <Box style={{ flex: 1, minHeight: 0, position: "relative" }}>
+        <PullToRefresh onRefresh={onRefresh || (() => {})}>
+          <ScrollArea style={{ height: "100%" }} p="md">
         <Stack gap="md">
           {/* AI SUMMARY CARD */}
           <Paper p="sm" radius="md" withBorder bg="teal.0">
@@ -529,6 +550,8 @@ export const EmailDetail: React.FC<EmailDetailProps> = ({
           </Box>
         </Stack>
       </ScrollArea>
+    </PullToRefresh>
+  </Box>
 
       {/* ATTACHMENT PREVIEW MODAL */}
       <AttachmentPreviewModal

@@ -1190,12 +1190,12 @@ export default function HomePage() {
                     },
                   }}
                 >
-                  Annual Billing (Save 20%)
+                  Annual Billing (Save 17% • 2 Months Free)
                 </Button>
               </Group>
             </Stack>
 
-            <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" maw={980} mx="auto">
               {/* Starter Plan */}
               <Card
                 padding="xl"
@@ -1208,42 +1208,67 @@ export default function HomePage() {
                 }}
               >
                 <Text fw={700} size="lg" c="white">
-                  Starter POS
+                  Starter Plan
                 </Text>
                 <Text size="xs" c="#adb5bd" mb="md">
-                  Ideal for Quick-Service Cafes, Bakeries & Cloud Kitchens
+                  Ideal for Quick-Service Cafes, Bakeries, Food Trucks & Takeaways
                 </Text>
-                <Group align="baseline" gap={4} mb="lg">
+                <Group align="baseline" gap={4} mb={4}>
                   <Text style={{ fontSize: "2.4rem", fontWeight: 850, color: "#ffffff" }}>
-                    {billingCycle === "yearly" ? "₹799" : "₹999"}
+                    {billingCycle === "yearly" ? "₹833" : "₹999"}
                   </Text>
                   <Text size="sm" c="#adb5bd">
                     / outlet / month
                   </Text>
                 </Group>
+                <Text size="xs" c="#868e96" mb="lg">
+                  {billingCycle === "yearly"
+                    ? "Billed annually at ₹9,990/year (2 months free)"
+                    : "Billed monthly at ₹999/mo, cancel anytime"}
+                </Text>
 
                 <Divider mb="lg" color="rgba(255,255,255,0.08)" />
 
                 <Stack gap="xs" mb="xl" style={{ flex: 1 }}>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Fast Counter POS & Billing</Text>
+                    <Text size="sm" c="#e9ecef">Fast Counter POS & Keyboard Billing Register</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Desktop App (Windows/Mac/Linux)</Text>
+                    <Text size="sm" c="#e9ecef">Graphical Table Floor Plan & Live Occupancy</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Silent Thermal KOT Printing</Text>
+                    <Text size="sm" c="#e9ecef">Silent Direct ESC/POS Thermal Receipt & KOT</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Dynamic UPI QR Code Billing</Text>
+                    <Text size="sm" c="#e9ecef">Contactless Table QR Menu & Self-Ordering</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Daily Cashier Sales Reports</Text>
+                    <Text size="sm" c="#e9ecef">Dynamic UPI QR Code, Cash & Split Card Tenders</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">GST Compliant Invoices, Tax Slabs & Service Charges</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">Daily Cashier Shift Summary & Sales CSV Reports</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">Customer Directory CRM & In-Dining Star Ratings</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">Finance Drawer Petty Cash & Daily Expense Tracker</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">Native Desktop Apps (Win/Mac/Linux) & Web POS</Text>
                   </Group>
                 </Stack>
 
@@ -1294,50 +1319,67 @@ export default function HomePage() {
                 </Badge>
 
                 <Text fw={700} size="lg" c="#d0bfff">
-                  Pro Dine-In
+                  Pro Plan
                 </Text>
                 <Text size="xs" c="#adb5bd" mb="md">
-                  Full-service Restaurants, Casual Dine, Bars & Breweries
+                  Full-Service Restaurants, Dine-In Outlets, Bars, Breweries & Food Chains
                 </Text>
-                <Group align="baseline" gap={4} mb="lg">
+                <Group align="baseline" gap={4} mb={4}>
                   <Text style={{ fontSize: "2.4rem", fontWeight: 850, color: "#ffffff" }}>
-                    {billingCycle === "yearly" ? "₹1,499" : "₹1,799"}
+                    {billingCycle === "yearly" ? "₹1,249" : "₹1,499"}
                   </Text>
                   <Text size="sm" c="#adb5bd">
                     / outlet / month
                   </Text>
                 </Group>
+                <Text size="xs" c="#d0bfff" mb="lg">
+                  {billingCycle === "yearly"
+                    ? "Billed annually at ₹14,990/year (2 months free)"
+                    : "Billed monthly at ₹1,499/mo, cancel anytime"}
+                </Text>
 
                 <Divider mb="lg" color="rgba(255,255,255,0.08)" />
 
                 <Stack gap="xs" mb="xl" style={{ flex: 1 }}>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" fw={600} c="white">Everything in Starter POS, plus:</Text>
+                    <Text size="sm" fw={700} c="white">Everything in Starter Plan, plus:</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Interactive Table Floor Map</Text>
+                    <Text size="sm" c="#e9ecef">Kitchen Display System (KDS) Bump Screens & Stations</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Waiter Tablets & Kitchen KDS</Text>
+                    <Text size="sm" c="#e9ecef">Handheld Waiter Mobility Tablets & Calling Bells</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Customer QR Dine-In Ordering</Text>
+                    <Text size="sm" c="#e9ecef">Raw Ingredient Inventory & Recipe BOM Food Costing</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Live Waiter Calling & Bill Request</Text>
+                    <Text size="sm" c="#e9ecef">Swiggy, Zomato, Magicpin & ONDC Relay Integration</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Customer Reviews & Star Ratings</Text>
+                    <Text size="sm" c="#e9ecef">In-House Delivery Fleet & Courier Dispatch Queue</Text>
                   </Group>
                   <Group gap={8}>
                     <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">WhatsApp Automated Alerts</Text>
+                    <Text size="sm" c="#e9ecef">WhatsApp Automated Digital e-Bills (Paperless PDF)</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">WhatsApp Promotional Campaigns & Guest Broadcasts</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">Table Reservations Calendar & Guest Seating</Text>
+                  </Group>
+                  <Group gap={8}>
+                    <IconCheck size={16} color="#20c997" />
+                    <Text size="sm" c="#e9ecef">Custom Roles & 18-Module Granular Permissions Matrix</Text>
                   </Group>
                 </Stack>
 
@@ -1357,87 +1399,56 @@ export default function HomePage() {
                   Get Started with Pro
                 </Button>
               </Card>
+            </SimpleGrid>
 
-              {/* Enterprise Plan */}
-              <Card
-                padding="xl"
-                radius="lg"
-                style={{
-                  background: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <Text fw={700} size="lg" c="white">
-                  Enterprise Chains
-                </Text>
-                <Text size="xs" c="#adb5bd" mb="md">
-                  Multi-Outlet Brands, Franchises & Fine Dining
-                </Text>
-                <Group align="baseline" gap={4} mb="lg">
-                  <Text style={{ fontSize: "2.4rem", fontWeight: 850, color: "#ffffff" }}>
-                    {billingCycle === "yearly" ? "₹2,499" : "₹2,999"}
+            {/* Multi-Branch / Enterprise Callout Banner */}
+            <Paper
+              p={{ base: "lg", md: "xl" }}
+              radius="lg"
+              mt={36}
+              maw={980}
+              mx="auto"
+              style={{
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+              }}
+            >
+              <Group justify="space-between" align="center" wrap="wrap" gap="md">
+                <Box style={{ maxWidth: 620 }}>
+                  <Group gap={8} mb={4}>
+                    <ThemeIcon size={24} radius="md" color="grape" variant="light">
+                      <IconBuildingStore size={14} />
+                    </ThemeIcon>
+                    <Text fw={700} size="sm" c="white">
+                      Operating Multiple Outlets or a Restaurant Chain?
+                    </Text>
+                  </Group>
+                  <Text size="xs" c="#adb5bd" style={{ lineHeight: 1.6 }}>
+                    Manage multiple branches from one centralized control plane with consolidated sales analytics,
+                    per-outlet role permissions, and volume negotiated pricing.
                   </Text>
-                  <Text size="sm" c="#adb5bd">
-                    / outlet / month
-                  </Text>
-                </Group>
-
-                <Divider mb="lg" color="rgba(255,255,255,0.08)" />
-
-                <Stack gap="xs" mb="xl" style={{ flex: 1 }}>
-                  <Group gap={8}>
-                    <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" fw={600} c="white">Everything in Pro Dine-In, plus:</Text>
-                  </Group>
-                  <Group gap={8}>
-                    <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Swiggy & Zomato Aggregator Relay</Text>
-                  </Group>
-                  <Group gap={8}>
-                    <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Inventory & Recipe BOM Tracking</Text>
-                  </Group>
-                  <Group gap={8}>
-                    <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Multi-Outlet Central Dashboard</Text>
-                  </Group>
-                  <Group gap={8}>
-                    <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Advanced Sales & Tax Audit Export</Text>
-                  </Group>
-                  <Group gap={8}>
-                    <IconCheck size={16} color="#20c997" />
-                    <Text size="sm" c="#e9ecef">Custom Role & Outlet Permissions</Text>
-                  </Group>
-                </Stack>
-
+                </Box>
                 <Button
                   component="a"
-                  href="https://wa.me/919999999999?text=Hi%20Logix%20Dine,%20I'm%20interested%20in%20Logix%20Dine%20Enterprise"
+                  href="https://wa.me/919999999999?text=Hi%20Logix%20Dine,%20I'm%20interested%20in%20multi-outlet%20chain%20solutions"
                   target="_blank"
                   rel="noreferrer"
                   variant="outline"
-                  color="gray"
-                  fullWidth
+                  color="grape"
                   radius="md"
+                  size="sm"
                   styles={{
                     root: {
-                      backgroundColor: "rgba(255, 255, 255, 0.08)",
-                      borderColor: "rgba(255, 255, 255, 0.25)",
-                      color: "#ffffff",
-                    },
-                    label: {
-                      color: "#ffffff",
-                      fontWeight: 600,
+                      backgroundColor: "rgba(121, 80, 242, 0.1)",
+                      borderColor: "rgba(121, 80, 242, 0.4)",
                     },
                   }}
+                  leftSection={<IconBrandWhatsapp size={16} />}
                 >
-                  Chat with Sales
+                  Contact Chain Sales
                 </Button>
-              </Card>
-            </SimpleGrid>
+              </Group>
+            </Paper>
           </Container>
         </Box>
 

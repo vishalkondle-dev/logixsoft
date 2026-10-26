@@ -500,7 +500,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
 
   return (
     <AppShell
-      header={isLanding ? undefined : { height: { base: 60, sm: 64 } }}
+      header={isLanding || isCustomerRoute ? undefined : { height: { base: 60, sm: 64 } }}
       footer={
         visibleNav.length > 0 && !isPortal && !isLanding
           ? { height: { base: 84, md: 0 } }
@@ -526,7 +526,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
           user={user}
         />
       </React.Suspense>
-      {!isLanding && (
+      {!isLanding && !isCustomerRoute && (
         <AppShell.Header withBorder={false}>
         <Box h="100%" px={{ base: "xs", sm: "md" }}>
           <Group justify="space-between" h="100%" wrap="nowrap">
@@ -1058,7 +1058,7 @@ export function AppShellLayout({ children }: { children: ReactNode }) {
       )}
 
       <AppShell.Main>
-        {!isLanding && (user as any)?.role === "ADMIN" && !pathname?.startsWith("/admin") && (
+        {!isLanding && !isCustomerRoute && (user as any)?.role === "ADMIN" && !pathname?.startsWith("/admin") && (
           <Box
             bg="#fff3bf"
             px={{ base: "xs", sm: "md" }}

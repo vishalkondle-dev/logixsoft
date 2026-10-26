@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { sql, eq, and, desc, inArray, or, isNull, asc } from 'drizzle-orm';
+import { sql, eq, and, desc, inArray, or, isNull, asc, ne } from 'drizzle-orm';
 import * as z from 'zod';
 import { generateId } from '@logixsoft/helpers/crypto';
 import { createDbWithClient, appSchema } from '../db';
@@ -63,8 +63,8 @@ async function handleGetPortalSession(c: any) {
       )
       .orderBy(desc(appSchema.outletWaitlist.createdAt));
 
-    // Active/upcoming reservations for this customer
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Active/upcoming reservations for this customer (yesterday onwards for timezone safety, not cancelled)
+    const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const reservationRows = await db
       .select()
       .from(appSchema.tableReservation)
@@ -74,11 +74,8 @@ async function handleGetPortalSession(c: any) {
             inArray(appSchema.tableReservation.guestPhone, variants),
             sql`${appSchema.tableReservation.guestPhone} LIKE ${'%' + rawDigits}`
           ),
-          sql`${appSchema.tableReservation.reservationDate} >= ${todayStr}`,
-          or(
-            eq(appSchema.tableReservation.status, 'CONFIRMED'),
-            eq(appSchema.tableReservation.status, 'SEATED')
-          )
+          sql`${appSchema.tableReservation.reservationDate} >= ${yesterdayDate}`,
+          ne(appSchema.tableReservation.status, 'CANCELLED')
         )
       )
       .orderBy(asc(appSchema.tableReservation.reservationDate), asc(appSchema.tableReservation.startTime));

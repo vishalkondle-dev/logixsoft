@@ -11,9 +11,11 @@ export default function CustomerMyOrdersPage() {
   const {
     activeOrders,
     pastOrders,
+    activeReservations,
     stats,
     refetch,
     openRateModal,
+    openReservationModal,
     shareReceiptWhatsApp,
   } = useCustomer();
 
@@ -38,10 +40,12 @@ export default function CustomerMyOrdersPage() {
     <PortalOrdersView
       activeOrders={activeOrders}
       pastOrders={pastOrders}
+      activeReservations={activeReservations}
       lifetimeSpendPaise={stats?.lifetimeSpendPaise}
       initialSubTab="past"
       onRefresh={refetch}
       onOpenRateModal={openRateModal}
+      onOpenReservationModal={openReservationModal}
       onNavigateTab={handleNavigateTab}
       onShareReceiptWhatsApp={shareReceiptWhatsApp}
     />

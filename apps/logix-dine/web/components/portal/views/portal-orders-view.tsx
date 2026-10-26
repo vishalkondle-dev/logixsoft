@@ -30,19 +30,24 @@ import {
   IconChevronRight,
   IconMotorbike,
   IconShoppingBag,
+  IconCalendar,
+  IconPhone,
+  IconPlus,
 } from "@tabler/icons-react";
 import { VegNonVegIcon } from "@/components/common/veg-nonveg-icon";
-import type { CustomerPortalOrder } from "@/lib/api-client";
+import type { CustomerPortalOrder, CustomerReservationEntry } from "@/lib/api-client";
 import { ActiveOrderCard } from "../active-order-card";
 import type { PortalTab } from "../portal-bottom-nav";
 
 interface PortalOrdersViewProps {
   activeOrders: CustomerPortalOrder[];
   pastOrders: CustomerPortalOrder[];
+  activeReservations?: CustomerReservationEntry[];
   lifetimeSpendPaise?: number;
-  initialSubTab?: "active" | "past";
+  initialSubTab?: "active" | "past" | "reservations";
   onRefresh?: () => void;
   onOpenRateModal: (order: CustomerPortalOrder) => void;
+  onOpenReservationModal?: () => void;
   onNavigateTab: (tab: PortalTab) => void;
   onShareReceiptWhatsApp: (order: CustomerPortalOrder) => void;
 }
@@ -71,19 +76,27 @@ function formatDate(dateStr?: string | null): string {
 export function PortalOrdersView({
   activeOrders,
   pastOrders,
+  activeReservations = [],
   lifetimeSpendPaise = 0,
   initialSubTab = "active",
   onRefresh,
   onOpenRateModal,
+  onOpenReservationModal,
   onNavigateTab,
   onShareReceiptWhatsApp,
 }: PortalOrdersViewProps) {
-  const [subTab, setSubTab] = useState<"active" | "past">(
-    initialSubTab === "past" || activeOrders.length === 0 ? "past" : "active"
+  const [subTab, setSubTab] = useState<"active" | "past" | "reservations">(
+    initialSubTab === "reservations"
+      ? "reservations"
+      : initialSubTab === "past" || activeOrders.length === 0
+      ? "past"
+      : "active"
   );
 
   React.useEffect(() => {
-    if (initialSubTab === "past") {
+    if (initialSubTab === "reservations") {
+      setSubTab("reservations");
+    } else if (initialSubTab === "past") {
       setSubTab("past");
     } else if (activeOrders.length > 0) {
       setSubTab("active");
@@ -141,7 +154,7 @@ export function PortalOrdersView({
       <SegmentedControl
         fullWidth
         value={subTab}
-        onChange={(val) => setSubTab(val as "active" | "past")}
+        onChange={(val) => setSubTab(val as "active" | "past" | "reservations")}
         radius="xl"
         size="xs"
         color="dinePrimary"
@@ -166,6 +179,15 @@ export function PortalOrdersView({
               <Group gap={6} justify="center" wrap="nowrap">
                 <IconHistory size={14} />
                 <span>Past ({pastOrders.length})</span>
+              </Group>
+            ),
+          },
+          {
+            value: "reservations",
+            label: (
+              <Group gap={6} justify="center" wrap="nowrap">
+                <IconCalendar size={14} color={subTab === "reservations" ? "#fff" : "#228be6"} />
+                <span>Bookings ({activeReservations.length})</span>
               </Group>
             ),
           },
@@ -548,6 +570,137 @@ export function PortalOrdersView({
                 </Card>
               );
             })
+          )}
+        </Stack>
+      )}
+
+      {/* ─── SUB-TAB 3: TABLE RESERVATIONS ─── */}
+      {subTab === "reservations" && (
+        <Stack gap="md">
+          {activeReservations.length === 0 ? (
+            <Paper p="xl" radius="xl" withBorder style={{ textAlign: "center", background: "#fff" }}>
+              <Stack align="center" gap="sm">
+                <ThemeIcon size={60} radius="xl" color="blue" variant="light">
+                  <IconCalendar size={32} />
+                </ThemeIcon>
+                <Title order={3} style={{ fontSize: "1.2rem", fontWeight: 700 }}>
+                  No Table Reservations Yet
+                </Title>
+                <Text c="dimmed" size="sm" maw={420} mx="auto">
+                  Book a table in advance at any of our outlets to enjoy a guaranteed seat with zero waiting time.
+                </Text>
+                {onOpenReservationModal && (
+                  <Button
+                    mt="xs"
+                    color="dinePrimary"
+                    size="sm"
+                    radius="md"
+                    onClick={() => onOpenReservationModal()}
+                    leftSection={<IconCalendar size={16} />}
+                  >
+                    Book a Table Now
+                  </Button>
+                )}
+              </Stack>
+            </Paper>
+          ) : (
+            <Stack gap="sm">
+              <Group justify="space-between" align="center" px={4}>
+                <Text size="xs" fw={700} c="dimmed" style={{ textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Active Table Bookings ({activeReservations.length})
+                </Text>
+                {onOpenReservationModal && (
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="dinePrimary"
+                    radius="md"
+                    onClick={() => onOpenReservationModal()}
+                    leftSection={<IconPlus size={14} />}
+                  >
+                    New Booking
+                  </Button>
+                )}
+              </Group>
+
+              {activeReservations.map((res) => {
+                const isConfirmed = res.status?.toUpperCase() === "CONFIRMED";
+                const isSeated = res.status?.toUpperCase() === "SEATED";
+                const isPending = res.status?.toUpperCase() === "REQUESTED" || res.status?.toUpperCase() === "PENDING";
+                const badgeColor = isConfirmed ? "teal" : isSeated ? "green" : isPending ? "yellow" : "blue";
+
+                return (
+                  <Card key={res.id} radius="lg" withBorder p="md" style={{ background: "#fff" }}>
+                    <Stack gap="xs">
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <div>
+                          <Group gap="xs" align="center">
+                            <Text fw={800} size="sm">
+                              {res.restaurantName}
+                            </Text>
+                            {res.outletName && (
+                              <Text size="xs" c="dimmed">
+                                • {res.outletName}
+                              </Text>
+                            )}
+                          </Group>
+                          {res.outletAddress && (
+                            <Text size="11px" c="dimmed" lineClamp={1}>
+                              {res.outletAddress}
+                            </Text>
+                          )}
+                        </div>
+                        <Badge color={badgeColor} variant="light" size="sm">
+                          {res.status}
+                        </Badge>
+                      </Group>
+
+                      <Divider my={4} />
+
+                      <Group justify="space-between" align="center">
+                        <Group gap="xs">
+                          <ThemeIcon color="blue" variant="light" size="md" radius="md">
+                            <IconCalendar size={16} />
+                          </ThemeIcon>
+                          <div>
+                            <Text size="xs" fw={700}>
+                              {res.reservationDate} at {res.startTime}
+                            </Text>
+                            <Text size="11px" c="dimmed">
+                              Party of {res.partySize} {res.partySize === 1 ? "Guest" : "Guests"}
+                              {res.tableName ? ` • Table ${res.tableName}` : ""}
+                            </Text>
+                          </div>
+                        </Group>
+
+                        {res.outletPhone && (
+                          <Button
+                            component="a"
+                            href={`tel:${res.outletPhone}`}
+                            variant="light"
+                            color="blue"
+                            size="xs"
+                            radius="md"
+                            leftSection={<IconPhone size={13} />}
+                          >
+                            Call Outlet
+                          </Button>
+                        )}
+                      </Group>
+
+                      {res.notes && (
+                        <Paper p="xs" radius="sm" style={{ background: "#f8f9fa" }}>
+                          <Text size="11px" c="dimmed">
+                            <Text span fw={600}>Notes: </Text>
+                            {res.notes}
+                          </Text>
+                        </Paper>
+                      )}
+                    </Stack>
+                  </Card>
+                );
+              })}
+            </Stack>
           )}
         </Stack>
       )}

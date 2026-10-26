@@ -36,7 +36,11 @@ interface CustomerContextValue {
   openOrderMore: (order?: CustomerPortalOrder) => void;
   openBillBreakdown: (order?: CustomerPortalOrder) => void;
   openRateModal: (order: CustomerPortalOrder) => void;
-  openReservationModal: () => void;
+  openReservationModal: (outletInfo?: {
+    outletId?: string;
+    outletName?: string;
+    restaurantName?: string;
+  }) => void;
   shareReceiptWhatsApp: (order: CustomerPortalOrder) => void;
 }
 
@@ -96,6 +100,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
 
   const [isReservationOpen, setIsReservationOpen] = useState(false);
+  const [reservationTarget, setReservationTarget] = useState<{
+    outletId?: string;
+    outletName?: string;
+    restaurantName?: string;
+  } | null>(null);
 
   const openCallWaiter = (
     order?: CustomerPortalOrder,
@@ -129,7 +138,18 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     setIsRateModalOpen(true);
   };
 
-  const openReservationModal = () => {
+  const openReservationModal = (outletInfo?: {
+    outletId?: string;
+    outletName?: string;
+    restaurantName?: string;
+  }) => {
+    setReservationTarget(
+      outletInfo || (primaryActiveOrder ? {
+        outletId: primaryActiveOrder.outletId,
+        outletName: primaryActiveOrder.outletName,
+        restaurantName: primaryActiveOrder.restaurantName,
+      } : null)
+    );
     setIsReservationOpen(true);
   };
 
@@ -223,10 +243,16 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
       <ReservationModal
         opened={isReservationOpen}
-        onClose={() => setIsReservationOpen(false)}
+        onClose={() => {
+          setIsReservationOpen(false);
+          setReservationTarget(null);
+        }}
         customerName={customer?.name || user?.name || ""}
         customerPhone={customer?.phone || user?.phoneNumber || ""}
-        outletId={primaryActiveOrder?.outletId}
+        outletId={reservationTarget?.outletId}
+        outletName={reservationTarget?.outletName}
+        restaurantName={reservationTarget?.restaurantName}
+        onSuccess={() => refetch()}
       />
     </CustomerContext.Provider>
   );

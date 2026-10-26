@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Modal,
   Stack,
@@ -14,24 +14,37 @@ import {
   Badge,
   SegmentedControl,
   SimpleGrid,
+  Paper,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   IconCalendar,
   IconClock,
   IconUsers,
   IconCheck,
-  IconSparkles,
+  IconBuildingStore,
+  IconPhone,
+  IconUser,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import { useCreateReservation } from "@/lib/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createMarketplaceReservation,
+  getMarketplaceExplore,
+  type MarketplaceExploreResponse,
+} from "@/lib/api-client";
+import { qk } from "@/lib/queries";
 
 interface ReservationModalProps {
   opened: boolean;
   onClose: () => void;
   restaurantId?: string;
   outletId?: string;
+  outletName?: string;
+  restaurantName?: string;
   customerName?: string | null;
   customerPhone?: string | null;
+  onSuccess?: () => void;
 }
 
 const TIME_SLOTS = [
@@ -50,11 +63,17 @@ const TIME_SLOTS = [
 export function ReservationModal({
   opened,
   onClose,
-  restaurantId,
   outletId,
+  outletName,
+  restaurantName,
   customerName,
   customerPhone,
+  onSuccess,
 }: ReservationModalProps) {
+  const queryClient = useQueryClient();
+  const [selectedOutletId, setSelectedOutletId] = useState<string>(outletId || "");
+  const [guestName, setGuestName] = useState<string>(customerName || "");
+  const [guestPhone, setGuestPhone] = useState<string>(customerPhone || "");
   const [partySize, setPartySize] = useState<number>(2);
   const [timeSlot, setTimeSlot] = useState<string>("07:30 PM");
   const [seatingPref, setSeatingPref] = useState<string>("Indoor AC");
@@ -62,49 +81,95 @@ export function ReservationModal({
   const [reservationDate, setReservationDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const createReservationMutation = useCreateReservation(restaurantId || "", outletId);
+  // Sync props when modal opens or props change
+  useEffect(() => {
+    if (outletId) setSelectedOutletId(outletId);
+    if (customerName) setGuestName(customerName);
+    if (customerPhone) setGuestPhone(customerPhone);
+  }, [outletId, customerName, customerPhone, opened]);
+
+  // Fetch explore outlets list if no outletId was provided in props
+  const { data: marketplaceData } = useQuery<MarketplaceExploreResponse>({
+    queryKey: ["marketplaceExplore"],
+    queryFn: () => getMarketplaceExplore({}),
+    enabled: opened && !outletId,
+    staleTime: 60_000,
+  });
+
+  const outletOptions = useMemo(() => {
+    if (!marketplaceData?.outlets) return [];
+    return marketplaceData.outlets.map((o) => ({
+      value: o.id,
+      label: `${o.restaurantName} - ${o.name}`,
+    }));
+  }, [marketplaceData]);
+
+  const targetOutletId = outletId || selectedOutletId;
+  const currentOutletItem = marketplaceData?.outlets?.find((o) => o.id === targetOutletId);
+  const resolvedOutletName =
+    outletName || currentOutletItem?.name || (targetOutletId ? "Restaurant Branch" : "");
+  const resolvedRestaurantName =
+    restaurantName || currentOutletItem?.restaurantName || "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerPhone) {
+
+    if (!targetOutletId) {
       notifications.show({
-        title: "Phone Required",
-        message: "Please sign in with your phone to book a table.",
+        title: "Outlet Required",
+        message: "Please select a dining outlet to book your table.",
         color: "red",
       });
       return;
     }
 
+    const cleanPhone = guestPhone.replace(/\D/g, "");
+    if (cleanPhone.length < 10) {
+      notifications.show({
+        title: "Phone Required",
+        message: "Please enter a valid 10-digit mobile number.",
+        color: "red",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      if (restaurantId && outletId) {
-        await createReservationMutation.mutateAsync({
-          outletId,
-          guestName: customerName || "Guest Diner",
-          guestPhone: customerPhone,
-          partySize: Number(partySize) || 2,
-          reservationDate,
-          startTime: timeSlot,
-          notes: `${seatingPref}${specialNotes ? ` • ${specialNotes}` : ""}`,
-        });
-      }
+      const res = await createMarketplaceReservation({
+        outletId: targetOutletId,
+        guestName: guestName.trim() || customerName || "Valued Diner",
+        guestPhone: cleanPhone,
+        partySize: Number(partySize) || 2,
+        reservationDate,
+        startTime: timeSlot,
+        notes: `${seatingPref}${specialNotes.trim() ? ` • ${specialNotes.trim()}` : ""}`,
+      });
+
+      // Invalidate customer portal queries so reservation appears immediately
+      queryClient.invalidateQueries({ queryKey: qk.customerPortal() });
+      if (onSuccess) onSuccess();
 
       notifications.show({
-        title: "Reservation Requested!",
-        message: `Table for ${partySize} guests on ${reservationDate} at ${timeSlot} received. The host will confirm shortly.`,
+        title: "Table Reserved Successfully!",
+        message:
+          res?.message ||
+          `Table for ${partySize} guests on ${reservationDate} at ${timeSlot} is confirmed.`,
         color: "teal",
         icon: <IconCheck size={16} />,
+        autoClose: 5000,
       });
+
       onClose();
     } catch (err: any) {
-      // Even if API is mock or offline, show pleasant fallback
       notifications.show({
-        title: "Table Request Received",
-        message: `Your reservation request for ${partySize} guests at ${timeSlot} has been registered with our host.`,
-        color: "teal",
-        icon: <IconCheck size={16} />,
+        title: "Reservation Failed",
+        message: err?.message || "Failed to book table. Please check your details and try again.",
+        color: "red",
       });
-      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -114,8 +179,10 @@ export function ReservationModal({
       onClose={onClose}
       title={
         <Group gap="xs">
-          <IconCalendar size={18} color="#7950f2" />
-          <Text fw={700}>Book a Table</Text>
+          <ThemeIcon size={28} radius="md" color="dinePrimary" variant="light">
+            <IconCalendar size={18} />
+          </ThemeIcon>
+          <Text fw={700}>Book a Dining Table</Text>
         </Group>
       }
       radius="md"
@@ -124,6 +191,59 @@ export function ReservationModal({
     >
       <form onSubmit={handleSubmit}>
         <Stack gap="sm">
+          {/* Outlet Selection / Info */}
+          {outletId || resolvedOutletName ? (
+            <Paper p="xs" radius="md" bg="blue.0" withBorder>
+              <Group justify="space-between" align="center">
+                <Group gap="xs">
+                  <ThemeIcon size={24} radius="xl" color="blue" variant="light">
+                    <IconBuildingStore size={14} />
+                  </ThemeIcon>
+                  <div>
+                    <Text size="xs" fw={700} c="blue.9">
+                      {resolvedRestaurantName ? `${resolvedRestaurantName} • ` : ""}
+                      {resolvedOutletName}
+                    </Text>
+                  </div>
+                </Group>
+                <Badge color="blue" variant="light" size="xs">
+                  Instant Confirmation
+                </Badge>
+              </Group>
+            </Paper>
+          ) : (
+            <Select
+              label="Dining Restaurant & Branch"
+              placeholder="Choose restaurant..."
+              data={outletOptions}
+              value={selectedOutletId}
+              onChange={(val) => setSelectedOutletId(val || "")}
+              searchable
+              required
+              leftSection={<IconBuildingStore size={16} />}
+            />
+          )}
+
+          {/* Guest Details */}
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput
+              label="Guest Name"
+              placeholder="e.g. Vishal Kondle"
+              value={guestName}
+              onChange={(e) => setGuestName(e.currentTarget.value)}
+              leftSection={<IconUser size={16} />}
+              required
+            />
+            <TextInput
+              label="Phone Number"
+              placeholder="10-digit mobile"
+              value={guestPhone}
+              onChange={(e) => setGuestPhone(e.currentTarget.value)}
+              leftSection={<IconPhone size={16} />}
+              required
+            />
+          </SimpleGrid>
+
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <NumberInput
               label="Party Size"
@@ -183,14 +303,14 @@ export function ReservationModal({
           />
 
           <Group justify="flex-end" mt="md" gap="xs">
-            <Button variant="default" size="xs" onClick={onClose}>
+            <Button variant="default" size="xs" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button
               color="dinePrimary"
               size="xs"
               type="submit"
-              loading={createReservationMutation.isPending}
+              loading={isSubmitting}
               leftSection={<IconCheck size={14} />}
             >
               Confirm Reservation

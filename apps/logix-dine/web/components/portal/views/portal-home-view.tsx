@@ -82,6 +82,7 @@ export function PortalHomeView({
   const customer = data?.customer;
   const stats = data?.stats;
   const activeOrders = data?.activeOrders || [];
+  const activeReservations = data?.activeReservations || [];
   const pastOrders = data?.pastOrders || [];
   const primaryActiveOrder = activeOrders[0];
 
@@ -192,6 +193,100 @@ export function PortalHomeView({
           </Group>
         </Paper>
       ) : null}
+
+      {/* ─── Table Reservations Banner (when confirmed upcoming bookings) ─── */}
+      {activeReservations.length > 0 && (
+        <Stack gap="xs">
+          <Group justify="space-between" align="center">
+            <Group gap={6}>
+              <ThemeIcon size={24} radius="xl" color="blue" variant="light">
+                <IconCalendar size={14} />
+              </ThemeIcon>
+              <Text fw={700} size="sm">
+                Your Table Reservations ({activeReservations.length})
+              </Text>
+            </Group>
+            <Button
+              variant="subtle"
+              color="blue"
+              size="compact-xs"
+              onClick={() => onNavigateTab("live")}
+              rightSection={<IconChevronRight size={12} />}
+            >
+              View in Live Activity
+            </Button>
+          </Group>
+
+          <Stack gap="xs">
+            {activeReservations.map((res) => (
+              <Paper
+                key={res.id}
+                p="md"
+                radius="xl"
+                withBorder
+                style={{
+                  background: "#ffffff",
+                  borderColor: "#d0ebff",
+                  boxShadow: "0 2px 8px rgba(34, 139, 230, 0.08)",
+                }}
+              >
+                <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+                  <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
+                    <ThemeIcon size={42} radius="xl" color="blue" variant="light" style={{ flexShrink: 0 }}>
+                      <IconCalendar size={20} />
+                    </ThemeIcon>
+                    <Box style={{ minWidth: 0 }}>
+                      <Group gap={6} align="center">
+                        <Text fw={700} size="sm" lineClamp={1}>
+                          {res.restaurantName} {res.outletName ? `• ${res.outletName}` : ""}
+                        </Text>
+                        <Badge color="blue" variant="light" size="xs">
+                          {res.status}
+                        </Badge>
+                      </Group>
+                      <Text size="xs" c="dimmed" mt={2} lineClamp={1}>
+                        📅 {res.reservationDate} at ⏰ {res.startTime} • 👥 {res.partySize} Guests
+                        {res.tableName ? ` • Table ${res.tableName}` : ""}
+                      </Text>
+                      {res.notes && (
+                        <Text size="11px" c="dimmed" mt={2} lineClamp={1}>
+                          Note: {res.notes}
+                        </Text>
+                      )}
+                    </Box>
+                  </Group>
+
+                  <Group gap="xs" style={{ flexShrink: 0 }}>
+                    {res.outletPhone && (
+                      <Button
+                        component="a"
+                        href={`tel:${res.outletPhone}`}
+                        variant="subtle"
+                        color="blue"
+                        size="xs"
+                        radius="md"
+                        leftSection={<IconPhone size={13} />}
+                      >
+                        Call
+                      </Button>
+                    )}
+                    <Button
+                      variant="light"
+                      color="blue"
+                      size="xs"
+                      radius="md"
+                      onClick={() => onNavigateTab("live")}
+                      rightSection={<IconChevronRight size={13} />}
+                    >
+                      Live Tracking
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            ))}
+          </Stack>
+        </Stack>
+      )}
 
       {/* ─── 3. Quick Action Hub (when active order) ─── */}
       {primaryActiveOrder ? (
